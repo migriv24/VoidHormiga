@@ -19,26 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-THIRD-PARTY COMPONENTS
-
-This repository vendors its dependencies rather than fetching them, so every
-third-party component ships with its own license beside the code it covers:
-
-  vendor/sqlite/      SQLite amalgamation — public domain (LICENSE.md)
-  vendor/libsodium/   libsodium — ISC (LICENSE)
-  vendor/json/        nlohmann/json — MIT (LICENSE.md)
-  vendor/stb/         stb single-file libraries — MIT / public domain (LICENSE.md)
-  vendor/blake3/      BLAKE3 — CC0 (LICENSE-CC0.txt)
-  vendor/icons/       Lucide icons — ISC (LICENSE-lucide.txt)
-  vendor/fonts/       Inter, Source Serif, Space Grotesk, Lato, JetBrains Mono —
-                      SIL Open Font License (OFL-*.txt); Font Awesome Free
-                      (LICENSE.md)
-
-  demo-assets/        The Cat Colony demo photographs, from cataas.com. The
-                      colony itself is fictional: fifty invented cats with
-                      invented biographies, shipped so the application has a
-                      real dataset to open on first run and so no example in
-                      this repository is ever a real person.

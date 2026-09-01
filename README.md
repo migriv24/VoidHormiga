@@ -89,9 +89,9 @@ Void repository carries one at its root.
 
 ## License
 
-MIT — see [LICENSE](LICENSE), which also indexes the license of every vendored
-dependency. Third-party components are vendored, never fetched, and each ships
-its license beside the code it covers.
+MIT — see [LICENSE](LICENSE). Third-party components are vendored, never
+fetched, and each ships its license beside the code it covers; they are indexed
+in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## A note on what lives in this repo
 
