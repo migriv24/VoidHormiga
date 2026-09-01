@@ -1,0 +1,1952 @@
+mantle new civic
+rune new policy opp
+set opp source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-1
+set opp-1 heading 'Authority T'
+set opp-1 number '1'
+set opp-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-2
+set opp-2 heading 'Officers Of The Common Council'
+set opp-2 number '2'
+set opp-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-2-1
+set opp-2-1 heading 'Election of President At the'
+set opp-2-1 number '2.1'
+set opp-2-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-2-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-2-2
+set opp-2-2 heading 'Other Seats The City Manager'
+set opp-2-2 number '2.2'
+set opp-2-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-2-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-2-3
+set opp-2-3 heading 'Council Vacancy Process The Council'
+set opp-2-3 number '2.3'
+set opp-2-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-2-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3
+set opp-3 heading 'Regular Meetings Of The Common Council'
+set opp-3 number '3'
+set opp-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-1
+set opp-3-1 heading 'Location The'
+set opp-3-1 number '3.1'
+set opp-3-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-2
+set opp-3-2 heading 'Time The'
+set opp-3-2 number '3.2'
+set opp-3-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-3
+set opp-3-3 heading 'Mayor and Councilor Attendance'
+set opp-3-3 number '3.3'
+set opp-3-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-3-1
+set opp-3-3-1 heading 'Notification'
+set opp-3-3-1 number '3.3.1'
+set opp-3-3-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-3-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-3-2
+set opp-3-3-2 heading 'Excused Absences'
+set opp-3-3-2 number '3.3.2'
+set opp-3-3-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-3-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-3-3
+set opp-3-3-3 heading 'Remote Participation'
+set opp-3-3-3 number '3.3.3'
+set opp-3-3-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-3-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-4
+set opp-3-4 heading 'Public Meetings'
+set opp-3-4 number '3.4'
+set opp-3-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-4-2
+set opp-3-4-2 heading 'Accommodation for Persons'
+set opp-3-4-2 number '3.4.2'
+set opp-3-4-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-4-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-4-3
+set opp-3-4-3 heading 'Deaf or Hard of Hearing Accommodation'
+set opp-3-4-3 number '3.4.3'
+set opp-3-4-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-4-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5
+set opp-3-5 heading 'Council Agenda'
+set opp-3-5 number '3.5'
+set opp-3-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-1
+set opp-3-5-1 heading 'Agenda Items'
+set opp-3-5-1 number '3.5.1'
+set opp-3-5-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-1-1
+set opp-3-5-1-1 heading 'All'
+set opp-3-5-1-1 number '3.5.1.1'
+set opp-3-5-1-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-1-2
+set opp-3-5-1-2 heading 'All'
+set opp-3-5-1-2 number '3.5.1.2'
+set opp-3-5-1-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-1-3
+set opp-3-5-1-3 heading 'All'
+set opp-3-5-1-3 number '3.5.1.3'
+set opp-3-5-1-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-1-4
+set opp-3-5-1-4 heading 'All'
+set opp-3-5-1-4 number '3.5.1.4'
+set opp-3-5-1-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-2
+set opp-3-5-2 heading 'Other Items'
+set opp-3-5-2 number '3.5.2'
+set opp-3-5-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-2-1
+set opp-3-5-2-1 heading 'Requests for Proclamation'
+set opp-3-5-2-1 number '3.5.2.1'
+set opp-3-5-2-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-2-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-2-2
+set opp-3-5-2-2 heading 'Reading of Proclamations'
+set opp-3-5-2-2 number '3.5.2.2'
+set opp-3-5-2-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-2-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-5-3
+set opp-3-5-3 heading 'Time Limit'
+set opp-3-5-3 number '3.5.3'
+set opp-3-5-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-6
+set opp-3-6 heading 'Correspondence'
+set opp-3-6 number '3.6'
+set opp-3-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-6-1
+set opp-3-6-1 heading 'Matters on'
+set opp-3-6-1 number '3.6.1'
+set opp-3-6-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-6-2
+set opp-3-6-2 heading 'Matters Not on'
+set opp-3-6-2 number '3.6.2'
+set opp-3-6-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-6-3
+set opp-3-6-3 heading 'Discretionary Matters'
+set opp-3-6-3 number '3.6.3'
+set opp-3-6-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-6-4
+set opp-3-6-4 heading 'Withholding an Item'
+set opp-3-6-4 number '3.6.4'
+set opp-3-6-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-7
+set opp-3-7 heading 'Order of Business The'
+set opp-3-7 number '3.7'
+set opp-3-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-3-8
+set opp-3-8 heading 'Recesses and Adjournments The Mayor'
+set opp-3-8 number '3.8'
+set opp-3-8 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-8 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-4
+set opp-4 heading 'Conduct At Council Meetings'
+set opp-4 number '4'
+set opp-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-4-1
+set opp-4-1 heading 'Meeting Conduct The'
+set opp-4-1 number '4.1'
+set opp-4-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-4-2
+set opp-4-2 heading 'Procedures The Council'
+set opp-4-2 number '4.2'
+set opp-4-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-4-3
+set opp-4-3 heading 'Parliamentary Procedure The City Attorney'
+set opp-4-3 number '4.3'
+set opp-4-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-4-4
+set opp-4-4 heading 'Motions Except'
+set opp-4-4 number '4.4'
+set opp-4-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-4-5
+set opp-4-5 heading 'Motions on Bids and Claims Motions on'
+set opp-4-5 number '4.5'
+set opp-4-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-4-6
+set opp-4-6 heading 'Informed Public It'
+set opp-4-6 number '4.6'
+set opp-4-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-5
+set opp-5 heading 'Council Work Sessions'
+set opp-5 number '5'
+set opp-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-5-1
+set opp-5-1 heading 'Governing Rules The City Council'
+set opp-5-1 number '5.1'
+set opp-5-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-5-1-1
+set opp-5-1-1 heading 'Location'
+set opp-5-1-1 number '5.1.1'
+set opp-5-1-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-5-1-2
+set opp-5-1-2 heading 'Agenda'
+set opp-5-1-2 number '5.1.2'
+set opp-5-1-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-5-1-3
+set opp-5-1-3 heading 'Work Sessions'
+set opp-5-1-3 number '5.1.3'
+set opp-5-1-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-5-1-4
+set opp-5-1-4 heading 'No Work Sessions on Fifth Monday'
+set opp-5-1-4 number '5.1.4'
+set opp-5-1-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-5-1-5
+set opp-5-1-5 heading 'Decisions'
+set opp-5-1-5 number '5.1.5'
+set opp-5-1-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6
+set opp-6 heading 'Council Executive Sessions'
+set opp-6 number '6'
+set opp-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-1
+set opp-6-1 heading 'Conduct All Executive Sessions of'
+set opp-6-1 number '6.1'
+set opp-6-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-2
+set opp-6-2 heading 'Final Decisions/Actions No Executive Session'
+set opp-6-2 number '6.2'
+set opp-6-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-3
+set opp-6-3 heading 'Attendance Executive'
+set opp-6-3 number '6.3'
+set opp-6-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-4
+set opp-6-4 heading 'News Media Attendance Policy'
+set opp-6-4 number '6.4'
+set opp-6-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-4-1
+set opp-6-4-1 heading 'Exclusions to Attendance'
+set opp-6-4-1 number '6.4.1'
+set opp-6-4-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-4-2
+set opp-6-4-2 heading 'Recognized News Media Organizations'
+set opp-6-4-2 number '6.4.2'
+set opp-6-4-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-4-3
+set opp-6-4-3 heading 'Attendance'
+set opp-6-4-3 number '6.4.3'
+set opp-6-4-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-4-4
+set opp-6-4-4 heading 'Request Form'
+set opp-6-4-4 number '6.4.4'
+set opp-6-4-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-4-5
+set opp-6-4-5 heading 'Providing Credentials in Advance'
+set opp-6-4-5 number '6.4.5'
+set opp-6-4-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-4-6
+set opp-6-4-6 heading 'Recording Devices Prohibited'
+set opp-6-4-6 number '6.4.6'
+set opp-6-4-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-6-4-7
+set opp-6-4-7 heading 'Application to Boards and Commissions'
+set opp-6-4-7 number '6.4.7'
+set opp-6-4-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7
+set opp-7 heading 'Conduct At Council Meetings And Work Sessions'
+set opp-7 number '7'
+set opp-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-1
+set opp-7-1 heading 'Responsibility for Order The'
+set opp-7-1 number '7.1'
+set opp-7-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2
+set opp-7-2 heading 'Order and Decorum'
+set opp-7-2 number '7.2'
+set opp-7-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-1
+set opp-7-2-1 heading 'Responsibility for Order'
+set opp-7-2-1 number '7.2.1'
+set opp-7-2-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-1-1
+set opp-7-2-1-1 heading 'The'
+set opp-7-2-1-1 number '7.2.1.1'
+set opp-7-2-1-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-1-2
+set opp-7-2-1-2 heading 'The'
+set opp-7-2-1-2 number '7.2.1.2'
+set opp-7-2-1-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-1-3
+set opp-7-2-1-3 heading 'The'
+set opp-7-2-1-3 number '7.2.1.3'
+set opp-7-2-1-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-1-4
+set opp-7-2-1-4 heading 'The'
+set opp-7-2-1-4 number '7.2.1.4'
+set opp-7-2-1-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-1-5
+set opp-7-2-1-5 heading 'The'
+set opp-7-2-1-5 number '7.2.1.5'
+set opp-7-2-1-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-1-6
+set opp-7-2-1-6 heading 'The'
+set opp-7-2-1-6 number '7.2.1.6'
+set opp-7-2-1-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-1-7
+set opp-7-2-1-7 heading 'Any'
+set opp-7-2-1-7 number '7.2.1.7'
+set opp-7-2-1-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-2
+set opp-7-2-2 heading 'Warning'
+set opp-7-2-2 number '7.2.2'
+set opp-7-2-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-2-3
+set opp-7-2-3 heading 'Clearing Council Chambers'
+set opp-7-2-3 number '7.2.3'
+set opp-7-2-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-3
+set opp-7-3 heading 'Flags'
+set opp-7-3 number '7.3'
+set opp-7-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-4
+set opp-7-4 heading 'Picture Taking and Filming The'
+set opp-7-4 number '7.4'
+set opp-7-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-5
+set opp-7-5 heading 'Limitations on Public Debate'
+set opp-7-5 number '7.5'
+set opp-7-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-5-1
+set opp-7-5-1 heading 'Time Limitation'
+set opp-7-5-1 number '7.5.1'
+set opp-7-5-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-5-2
+set opp-7-5-2 heading 'Questions'
+set opp-7-5-2 number '7.5.2'
+set opp-7-5-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-5-3
+set opp-7-5-3 heading 'Directed Discussion'
+set opp-7-5-3 number '7.5.3'
+set opp-7-5-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-5-4
+set opp-7-5-4 heading 'Request to Speak'
+set opp-7-5-4 number '7.5.4'
+set opp-7-5-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-5-5
+set opp-7-5-5 heading 'Business'
+set opp-7-5-5 number '7.5.5'
+set opp-7-5-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-5-6
+set opp-7-5-6 heading 'Acknowledgement'
+set opp-7-5-6 number '7.5.6'
+set opp-7-5-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-5-7
+set opp-7-5-7 heading 'Order of Testimony'
+set opp-7-5-7 number '7.5.7'
+set opp-7-5-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-6
+set opp-7-6 heading 'Seating Capacity and Safety Requirements'
+set opp-7-6 number '7.6'
+set opp-7-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-6-1
+set opp-7-6-1 heading 'Seating Capacity'
+set opp-7-6-1 number '7.6.1'
+set opp-7-6-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-6-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-6-2
+set opp-7-6-2 heading 'No Obstructions'
+set opp-7-6-2 number '7.6.2'
+set opp-7-6-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-6-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-7
+set opp-7-7 heading 'News Media'
+set opp-7-7 number '7.7'
+set opp-7-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-7-1
+set opp-7-7-1 heading 'Not Disruptive'
+set opp-7-7-1 number '7.7.1'
+set opp-7-7-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-7-2
+set opp-7-7-2 heading 'Recording Equipment Usage'
+set opp-7-7-2 number '7.7.2'
+set opp-7-7-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-7-3
+set opp-7-7-3 heading 'Video Tape Equipment Usage'
+set opp-7-7-3 number '7.7.3'
+set opp-7-7-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-7-7-4
+set opp-7-7-4 heading 'Still Camera Usage'
+set opp-7-7-4 number '7.7.4'
+set opp-7-7-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8
+set opp-8 heading 'Miscellaneous City Council Policies And Procedures'
+set opp-8 number '8'
+set opp-8 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-1
+set opp-8-1 heading 'Legal Opinions Members of'
+set opp-8-1 number '8.1'
+set opp-8-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-2
+set opp-8-2 heading 'Staff Time The Mayor and City Council'
+set opp-8-2 number '8.2'
+set opp-8-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3
+set opp-8-3 heading 'Travel Expenses Authorization'
+set opp-8-3 number '8.3'
+set opp-8-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-1
+set opp-8-3-1 heading 'Reimbursement Request'
+set opp-8-3-1 number '8.3.1'
+set opp-8-3-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-2
+set opp-8-3-2 heading 'Reimbursement Process'
+set opp-8-3-2 number '8.3.2'
+set opp-8-3-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-3
+set opp-8-3-3 heading 'Accompanying Public Official'
+set opp-8-3-3 number '8.3.3'
+set opp-8-3-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-4
+set opp-8-3-4 heading 'Expense Approval'
+set opp-8-3-4 number '8.3.4'
+set opp-8-3-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-5
+set opp-8-3-5 heading 'Parking Pass'
+set opp-8-3-5 number '8.3.5'
+set opp-8-3-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-6
+set opp-8-3-6 heading 'Office Supplies'
+set opp-8-3-6 number '8.3.6'
+set opp-8-3-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-7
+set opp-8-3-7 heading 'Cellular Telephone and Internet'
+set opp-8-3-7 number '8.3.7'
+set opp-8-3-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-7-1
+set opp-8-3-7-1 heading 'Internet Services'
+set opp-8-3-7-1 number '8.3.7.1'
+set opp-8-3-7-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-7-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-7-2
+set opp-8-3-7-2 heading 'Cellular Telephone'
+set opp-8-3-7-2 number '8.3.7.2'
+set opp-8-3-7-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-7-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-3-7-3
+set opp-8-3-7-3 heading 'Mileage Reimbursement'
+set opp-8-3-7-3 number '8.3.7.3'
+set opp-8-3-7-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-7-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-5-1
+set opp-8-5-1 heading 'Legal Compliance'
+set opp-8-5-1 number '8.5.1'
+set opp-8-5-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-5-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-8-6-3
+set opp-8-6-3 heading 'Council Meeting'
+set opp-8-6-3 number '8.6.3'
+set opp-8-6-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-6-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9
+set opp-9 heading 'Council Boards'
+set opp-9 number '9'
+set opp-9 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-1
+set opp-9-1 heading 'City Boards'
+set opp-9-1 number '9.1'
+set opp-9-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-1-1
+set opp-9-1-1 heading 'Citizen Participation'
+set opp-9-1-1 number '9.1.1'
+set opp-9-1-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-1-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-1-2
+set opp-9-1-2 heading 'Authority'
+set opp-9-1-2 number '9.1.2'
+set opp-9-1-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-1-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-2
+set opp-9-2 heading 'BCC Categories'
+set opp-9-2 number '9.2'
+set opp-9-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-2-1
+set opp-9-2-1 heading 'Council Subcommittee'
+set opp-9-2-1 number '9.2.1'
+set opp-9-2-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-2-2
+set opp-9-2-2 heading 'Council BCC'
+set opp-9-2-2 number '9.2.2'
+set opp-9-2-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-2-3
+set opp-9-2-3 heading 'Mayoral Committee'
+set opp-9-2-3 number '9.2.3'
+set opp-9-2-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-2-4
+set opp-9-2-4 heading 'Intergovernmental BCC'
+set opp-9-2-4 number '9.2.4'
+set opp-9-2-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-2-5
+set opp-9-2-5 heading 'Other Ad Hoc Committee'
+set opp-9-2-5 number '9.2.5'
+set opp-9-2-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3
+set opp-9-3 heading 'BCC Structure'
+set opp-9-3 number '9.3'
+set opp-9-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-1
+set opp-9-3-1 heading 'Statement of Purpose'
+set opp-9-3-1 number '9.3.1'
+set opp-9-3-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-2
+set opp-9-3-2 heading 'BCC Size'
+set opp-9-3-2 number '9.3.2'
+set opp-9-3-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-3
+set opp-9-3-3 heading 'Council Liaison'
+set opp-9-3-3 number '9.3.3'
+set opp-9-3-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-4
+set opp-9-3-4 heading 'BCC Liaison'
+set opp-9-3-4 number '9.3.4'
+set opp-9-3-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-5
+set opp-9-3-5 heading 'Staff Liaison'
+set opp-9-3-5 number '9.3.5'
+set opp-9-3-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-6
+set opp-9-3-6 heading 'Member List'
+set opp-9-3-6 number '9.3.6'
+set opp-9-3-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-7
+set opp-9-3-7 heading 'Term of Appointment'
+set opp-9-3-7 number '9.3.7'
+set opp-9-3-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-8
+set opp-9-3-8 heading 'No Alternate Voting Members'
+set opp-9-3-8 number '9.3.8'
+set opp-9-3-8 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-8 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-3-9
+set opp-9-3-9 heading 'Dissolving BCCs'
+set opp-9-3-9 number '9.3.9'
+set opp-9-3-9 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-9 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-4
+set opp-9-4 heading 'Board'
+set opp-9-4 number '9.4'
+set opp-9-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-4-1
+set opp-9-4-1 heading 'Qualifications'
+set opp-9-4-1 number '9.4.1'
+set opp-9-4-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-4-2
+set opp-9-4-2 heading 'Vacancies'
+set opp-9-4-2 number '9.4.2'
+set opp-9-4-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-4-3
+set opp-9-4-3 heading 'Written Application'
+set opp-9-4-3 number '9.4.3'
+set opp-9-4-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-4-4
+set opp-9-4-4 heading 'Interviews'
+set opp-9-4-4 number '9.4.4'
+set opp-9-4-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-4-5
+set opp-9-4-5 heading 'Appointment Process'
+set opp-9-4-5 number '9.4.5'
+set opp-9-4-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-4-6
+set opp-9-4-6 heading 'Appointment Considerations'
+set opp-9-4-6 number '9.4.6'
+set opp-9-4-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-4-7
+set opp-9-4-7 heading 'Member Removal'
+set opp-9-4-7 number '9.4.7'
+set opp-9-4-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5
+set opp-9-5 heading 'BCC Procedures'
+set opp-9-5 number '9.5'
+set opp-9-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-1
+set opp-9-5-1 heading 'Supersede Previous Policies'
+set opp-9-5-1 number '9.5.1'
+set opp-9-5-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-2
+set opp-9-5-2 heading 'BCC Bylaws'
+set opp-9-5-2 number '9.5.2'
+set opp-9-5-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-3
+set opp-9-5-3 heading 'Public Meetings Law'
+set opp-9-5-3 number '9.5.3'
+set opp-9-5-3 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-3 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-4
+set opp-9-5-4 heading 'Notice of Meetings'
+set opp-9-5-4 number '9.5.4'
+set opp-9-5-4 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-4 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-5
+set opp-9-5-5 heading 'Agenda and Minutes'
+set opp-9-5-5 number '9.5.5'
+set opp-9-5-5 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-5 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-6
+set opp-9-5-6 heading 'Quorum'
+set opp-9-5-6 number '9.5.6'
+set opp-9-5-6 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-6 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-7
+set opp-9-5-7 heading 'Public Official Ethics Laws'
+set opp-9-5-7 number '9.5.7'
+set opp-9-5-7 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-7 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-8
+set opp-9-5-8 heading 'Speaking on Behalf of'
+set opp-9-5-8 number '9.5.8'
+set opp-9-5-8 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-8 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-9
+set opp-9-5-9 heading 'New Members Briefing'
+set opp-9-5-9 number '9.5.9'
+set opp-9-5-9 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-9 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-10
+set opp-9-5-10 heading 'Joint Meetings'
+set opp-9-5-10 number '9.5.10'
+set opp-9-5-10 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-10 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-11
+set opp-9-5-11 heading 'Budget Requests'
+set opp-9-5-11 number '9.5.11'
+set opp-9-5-11 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-11 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-9-5-12
+set opp-9-5-12 heading 'Council Meeting Attendance'
+set opp-9-5-12 number '9.5.12'
+set opp-9-5-12 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-12 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-10
+set opp-10 heading 'Amendments And Additions To Operating Policies And Procedures'
+set opp-10 number '10'
+set opp-10 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-10 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-10-1
+set opp-10-1 heading 'Temporarily Suspended'
+set opp-10-1 number '10.1'
+set opp-10-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-10-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-10-1-1
+set opp-10-1-1 heading 'Suspended by Vote'
+set opp-10-1-1 number '10.1.1'
+set opp-10-1-1 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-10-1-1 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new provision opp-10-1-2
+set opp-10-1-2 heading 'Amendments'
+set opp-10-1-2 number '10.1.2'
+set opp-10-1-2 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-10-1-2 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-1-rev-2025-10-06
+set opp-1-rev-2025-10-06 summary '1 as published 2025-10-06'
+set opp-1-rev-2025-10-06 text 'hese operating policies and procedures are established and adopted under the authority granted in the Springfield Charter, Chapter IV, Section 12.'
+set opp-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-1-rev-2025-10-06 from '2025-10-06'
+set opp-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-2-1-rev-2025-10-06
+set opp-2-1-rev-2025-10-06 summary '2.1 as published 2025-10-06'
+set opp-2-1-rev-2025-10-06 text 'first regular meeting of the Council in January of each odd - numbered year, the Council shall elect one of its members as President of the Common Council. The duties of President shall be those specified in the City Charter and any others expressly directed herein.'
+set opp-2-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-2-1-rev-2025-10-06 from '2025-10-06'
+set opp-2-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-2-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-2-2-rev-2025-10-06
+set opp-2-2-rev-2025-10-06 summary '2.2 as published 2025-10-06'
+set opp-2-2-rev-2025-10-06 text ', City Recorder, and City Attorney are hereby entitled to seats with the Common Council.'
+set opp-2-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-2-2-rev-2025-10-06 from '2025-10-06'
+set opp-2-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-2-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-2-3-rev-2025-10-06
+set opp-2-3-rev-2025-10-06 summary '2.3 as published 2025-10-06'
+set opp-2-3-rev-2025-10-06 text 'will declare that a vacancy has occurred at a regular meeting . Before filling a vacancy in an elective office as defined in the Springfield Charter and notwithstanding a situation where the Council appoints a councilor - elect to fill a vacancy in the seat to which they were elected before their term starts , the Council shall adopt a process that may include procedures such as determining qualifications, advertising and outreach regarding the vacancy, a standard application form, the interview process and public participation. The Council cannot adopt the process until the public has had an opportunity to provide comment about the process at a public hearing. The adopted process will not commence until after the vacating Councilor has vacated their position and ceased their role.'
+set opp-2-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-2-3-rev-2025-10-06 from '2025-10-06'
+set opp-2-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-2-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-1-rev-2025-10-06
+set opp-3-1-rev-2025-10-06 summary '3.1 as published 2025-10-06'
+set opp-3-1-rev-2025-10-06 text 'regular meetings of the Common Council shall be held in the Springfield City Hall, Council Chambers, 225 Fifth Street. Changes of location must be in accordance with City Code Section 2.050. 2'
+set opp-3-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-1-rev-2025-10-06 from '2025-10-06'
+set opp-3-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-2-rev-2025-10-06
+set opp-3-2-rev-2025-10-06 summary '3.2 as published 2025-10-06'
+set opp-3-2-rev-2025-10-06 text 'regular meetings shall begin at 7:00 p.m. on the first and third Mondays of each month, except when that day falls on a legal holiday in which event the Council shall meet on the next following regular business day at the same time and location. If adv ised by the City Manager or when approved by the Mayor or three members of the Council, special meetings may be scheduled. Regular meetings may be canceled sometime during the months of March, June, July and August in order to provide a time for spring bre ak or summer recess, and during the months of December and January to provide a time for a winter recess.'
+set opp-3-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-2-rev-2025-10-06 from '2025-10-06'
+set opp-3-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-3-1-rev-2025-10-06
+set opp-3-3-1-rev-2025-10-06 summary '3.3.1 as published 2025-10-06'
+set opp-3-3-1-rev-2025-10-06 text '. Councilors are expected to attend all Council work sessions and regular meetings. The City Charter provides that the position of Mayor or a Council consecutive regular Council meetings (Springfield Charter Section 19(10)).'
+set opp-3-3-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-3-1-rev-2025-10-06 from '2025-10-06'
+set opp-3-3-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-3-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-3-2-rev-2025-10-06
+set opp-3-3-2-rev-2025-10-06 summary '3.3.2 as published 2025-10-06'
+set opp-3-3-2-rev-2025-10-06 text '. Excused absences from Council meetings include: 3. 3 . 2. 1 Death in the family 3. 3. 2.2 Illness 3. 3.2. 3 Family emergency 3. 3. 2.4 Scheduled vacations; however, Councilors are encouraged, when possible, to schedule vacations during scheduled Council recesses. 3. 3. 2.5 On city business 3. 3. 2.6 Employment conflict 3. 3. 2.7 Other absences as excused by the Mayor or three members of the Council when the Mayor is not available.'
+set opp-3-3-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-3-2-rev-2025-10-06 from '2025-10-06'
+set opp-3-3-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-3-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-3-3-rev-2025-10-06
+set opp-3-3-3-rev-2025-10-06 summary '3.3.3 as published 2025-10-06'
+set opp-3-3-3-rev-2025-10-06 text '. Councilors may, at their discretion, attend meetings, regular sessions, and work sessions in - person or virtually.'
+set opp-3-3-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-3-3-rev-2025-10-06 from '2025-10-06'
+set opp-3-3-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-3-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-4-rev-2025-10-06
+set opp-3-4-rev-2025-10-06 summary '3.4 as published 2025-10-06'
+set opp-3-4-rev-2025-10-06 text '3. 4. 1 Open to the Public . All meetings of the Council or the Boards, Committees, and Commissions of the City shall be open to the public and in conformance with Chapter 192, Oregon revised Statutes, Public Meetings.'
+set opp-3-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-4-rev-2025-10-06 from '2025-10-06'
+set opp-3-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-4-2-rev-2025-10-06
+set opp-3-4-2-rev-2025-10-06 summary '3.4.2 as published 2025-10-06'
+set opp-3-4-2-rev-2025-10-06 text 'with Disabilities . The meeting location shall be accessible to persons with disabilities . Up on request of a person who is deaf or heard of hearing, the City will make a good faith effort to provide an interpreter at a regularly scheduled meeting. The request shall be made at least 48 hours in advance and include the name of the requester and sign language preference. 3'
+set opp-3-4-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-4-2-rev-2025-10-06 from '2025-10-06'
+set opp-3-4-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-4-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-4-3-rev-2025-10-06
+set opp-3-4-3-rev-2025-10-06 summary '3.4.3 as published 2025-10-06'
+set opp-3-4-3-rev-2025-10-06 text '. For meetings in the Council well as the Induction Loop for the benefit of hearing aid users.'
+set opp-3-4-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-4-3-rev-2025-10-06 from '2025-10-06'
+set opp-3-4-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-4-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-1-rev-2025-10-06
+set opp-3-5-1-rev-2025-10-06 summary '3.5.1 as published 2025-10-06'
+set opp-3-5-1-rev-2025-10-06 text '. Matters to be considered by the Council at its regular meetings shall be placed on an agenda to be prepared by the City Manager from the following materials:'
+set opp-3-5-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-1-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-1-1-rev-2025-10-06
+set opp-3-5-1-1-rev-2025-10-06 summary '3.5.1.1 as published 2025-10-06'
+set opp-3-5-1-1-rev-2025-10-06 text 'items considered by the Council from work sessions which require official action of the Council.'
+set opp-3-5-1-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-1-1-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-1-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-1-2-rev-2025-10-06
+set opp-3-5-1-2-rev-2025-10-06 summary '3.5.1.2 as published 2025-10-06'
+set opp-3-5-1-2-rev-2025-10-06 text 'items directed by the Mayor or a member of the Council to be listed on the agenda. Items recommended for discussion by the Mayor require approval of the Council President. Items recommended by the Council President require approval of the Mayor. If agr eement is not reached, Council consensus is required in order to add the item to the agenda. Items recommended for discussion by a Council member require approval of the Mayor and Council President. If agreement is not reached, a majority of the Council is required in order to add the item to the agenda.'
+set opp-3-5-1-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-1-2-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-1-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-1-3-rev-2025-10-06
+set opp-3-5-1-3-rev-2025-10-06 summary '3.5.1.3 as published 2025-10-06'
+set opp-3-5-1-3-rev-2025-10-06 text 'items deemed appropriate to the City Manager.'
+set opp-3-5-1-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-1-3-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-1-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-1-4-rev-2025-10-06
+set opp-3-5-1-4-rev-2025-10-06 summary '3.5.1.4 as published 2025-10-06'
+set opp-3-5-1-4-rev-2025-10-06 text 'items which are required by law to be presented to the Council.'
+set opp-3-5-1-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-1-4-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-1-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-1-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-2-rev-2025-10-06
+set opp-3-5-2-rev-2025-10-06 summary '3.5.2 as published 2025-10-06'
+set opp-3-5-2-rev-2025-10-06 text '. The Council may also consider any other item, proposed by the Mayor, a member of the Council or the City Manager, not included upon the written agenda.'
+set opp-3-5-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-2-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-2-1-rev-2025-10-06
+set opp-3-5-2-1-rev-2025-10-06 summary '3.5.2.1 as published 2025-10-06'
+set opp-3-5-2-1-rev-2025-10-06 text '. Organizations or citizens requesting proclamations that proclaim a specified date or dates to recognize the efforts of various community groups and individuals on certain projects, shall be filed with the City Recorder. Upon receipt, the City Recorder will notify the Mayor of the request. If the Mayor approves the request, the City Recorder'
+set opp-3-5-2-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-2-1-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-2-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-2-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-2-2-rev-2025-10-06
+set opp-3-5-2-2-rev-2025-10-06 summary '3.5.2.2 as published 2025-10-06'
+set opp-3-5-2-2-rev-2025-10-06 text '. It will be at the discretion of the Mayor if a proclamation will be read at a City Council meeting or presented to the organization or group. It is preferred that a representative of the requesting organization be present to receive the proclamation.'
+set opp-3-5-2-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-2-2-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-2-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-2-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-5-3-rev-2025-10-06
+set opp-3-5-3-rev-2025-10-06 summary '3.5.3 as published 2025-10-06'
+set opp-3-5-3-rev-2025-10-06 text '. Items appearing on the Council agenda shall be assigned a time limit and the Mayor shall hold discussion to within the time limit, unless the 4 consensus of the Council is to extend the time limit until an issue or item is discussed and resolved.'
+set opp-3-5-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-5-3-rev-2025-10-06 from '2025-10-06'
+set opp-3-5-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-5-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-6-rev-2025-10-06
+set opp-3-6-rev-2025-10-06 summary '3.6 as published 2025-10-06'
+set opp-3-6-rev-2025-10-06 text ', Petitions, Etc . Unsolicited written communications such as correspondence and petitions may be'
+set opp-3-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-6-rev-2025-10-06 from '2025-10-06'
+set opp-3-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-6-1-rev-2025-10-06
+set opp-3-6-1-rev-2025-10-06 summary '3.6.1 as published 2025-10-06'
+set opp-3-6-1-rev-2025-10-06 text 'the Agenda . Unsolicited communications to the mayor and/or Council concerning matters on an agenda received by 12:00 noon on the Wednesday preceding the Council meeting for which they are intended shall be forwarded to the Council in the agenda packet. Any communi name may be put on an agenda but will not normally be accepted by the Council.'
+set opp-3-6-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-6-1-rev-2025-10-06 from '2025-10-06'
+set opp-3-6-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-6-2-rev-2025-10-06
+set opp-3-6-2-rev-2025-10-06 summary '3.6.2 as published 2025-10-06'
+set opp-3-6-2-rev-2025-10-06 text 'the Agenda . Unsolicited communications to the mayor and/or Council concerning matters that are not on an agenda shall be forwarded to the mayor and/or Council but shall not be included in an agenda packet.'
+set opp-3-6-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-6-2-rev-2025-10-06 from '2025-10-06'
+set opp-3-6-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-6-3-rev-2025-10-06
+set opp-3-6-3-rev-2025-10-06 summary '3.6.3 as published 2025-10-06'
+set opp-3-6-3-rev-2025-10-06 text '. The City Manager may, in their discretion, bring any matter raised by an unsolicited communication to the attention of the Council as an agenda item, provided that such communication is accompanied by an Agenda Item Summary.'
+set opp-3-6-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-6-3-rev-2025-10-06 from '2025-10-06'
+set opp-3-6-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-6-4-rev-2025-10-06
+set opp-3-6-4-rev-2025-10-06 summary '3.6.4 as published 2025-10-06'
+set opp-3-6-4-rev-2025-10-06 text '. The City Manager may withhold any such item from an agenda so that they can study the issue, question or request.'
+set opp-3-6-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-6-4-rev-2025-10-06 from '2025-10-06'
+set opp-3-6-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-6-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-7-rev-2025-10-06
+set opp-3-7-rev-2025-10-06 summary '3.7 as published 2025-10-06'
+set opp-3-7-rev-2025-10-06 text 'order of business of the Council meetings, unless the Mayor with the consent of a majority of the Council shall otherwise direct, shall be as follows: I Call to Order II Roll Call III Pledge of Allegiance IV Springfield Upbeat a. b. Other V Consent Calendar a. Claims b. Minutes c. Resolutions d. Ordinance (Second readings) e. Other Routine Matters VI Items Removed From the Consent Calendar VII Public Hearing a. Consideration of ordinances or resolutions related to public hearings. 5 VIII Business From the Audience (limited to 20 minutes total) IX Council Response X Correspondence and Petitioners XI Ordinances (First readings and emergencies) XII Bids XIII Business From the Council a. Committee Appointments b. Committee Reports c. Other Business XIV Business From the City Manager XV Business From the City Attorney'
+set opp-3-7-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-7-rev-2025-10-06 from '2025-10-06'
+set opp-3-7-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-7-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-3-8-rev-2025-10-06
+set opp-3-8-rev-2025-10-06 summary '3.8 as published 2025-10-06'
+set opp-3-8-rev-2025-10-06 text 'may recess regular meetings of the City Council for approximately 10 minutes as needed. The meeting will normally adjourn by 10:00 p.m. except upon vote of a majority of the Council members present to extend the meeting to a time certain or until an issue or item is discussed and resolved. 3. 9 Presiding Officer 3. 9 .1 Call Meetings . The Mayor shall have the power to call meetings of the Council and shall preside over the deliberations of the Council which the Mayor attends and vote only in case of a tie. 3. 9 .2 Mayor Absence . The President of the Council shall preside over the meetings of the Council and perform the duties of Mayor when the Mayor is absent from a Council meeting or the Mayor is unable to function as Mayor. The President of the Council shall not lose a vote while presiding but shall not gain an additional vote by reason of presiding. 3. 9 .3 Mayor and President Absence . In the absence of the Mayor and the President, if a quorum of the Council is present, the senior member of the Council shall preside over the meeting as President Pro - Tem. If there is no one senior member of the Council, Council shall choose, by vote, a President Pro - Tem to preside at that meeting. 3. 9 .4 Limitations . The Council President or the Council President Pro - Tem, while serving as presiding officer, may move, second, and debate from the chair, subject only to the limitations of debate as are imposed on all members and shall not be deprived of any of the rights and privileges of a Councilor by reason of acting as presiding officer. 6 3.1 0 Appeal Hearings 3.1 0 .1 Procedure . Appeals may be filed before the City Council on the action of any appointed body of the Council or staff as provided in the appropriate Code section governing such actions. In the absence of any procedures, an appeal must be filed within 10 days of the action. 3.1 0 .2 Notice . All appeal hearings before the city Council shall be scheduled as soon as possible after the Council is notified of the appeal, allowing sufficient time for providing the required public notices. 3.1 1 Enactment of Ordinance 3.1 1 .1 Procedure . The procedure and requirements for the enactment of ordinances shall be as provided in the Charter and in Section 2.105 of the Springfield Code. The City Manager or their designee will read ordinances by title only unless otherwise requested by Council. 3.1 1 .2 Process . As provided in Section 2.105, the reading of an ordinance is considered to have taken place by it being placed on the Council agenda. Ordinances without the emergency clause will appear on the Council agenda at two consecutive regular meetings unless otherwise directed by the City Manager . Ordinances containing an emergency clause are considered to have received two readings by being placed on the Council agenda at a single meeting. The Council may, by motion, e shall be recorded for every ordinance.'
+set opp-3-8-rev-2025-10-06 adopted '2025-10-06'
+set opp-3-8-rev-2025-10-06 from '2025-10-06'
+set opp-3-8-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-3-8-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-4-1-rev-2025-10-06
+set opp-4-1-rev-2025-10-06 summary '4.1 as published 2025-10-06'
+set opp-4-1-rev-2025-10-06 text 'conduct of all meetings of the Council or of any committee appointed by it shall be'
+set opp-4-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-4-1-rev-2025-10-06 from '2025-10-06'
+set opp-4-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-4-2-rev-2025-10-06
+set opp-4-2-rev-2025-10-06 summary '4.2 as published 2025-10-06'
+set opp-4-2-rev-2025-10-06 text 'will be clear and simple in its procedures and the consideration of matters coming before it. It should avoid invoking the finer points of parliamentary rules which may serve only to obscure the issues and to cause audience or citizen misunders tanding of or misapprehension about actions taken at the meeting.'
+set opp-4-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-4-2-rev-2025-10-06 from '2025-10-06'
+set opp-4-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-4-3-rev-2025-10-06
+set opp-4-3-rev-2025-10-06 summary '4.3 as published 2025-10-06'
+set opp-4-3-rev-2025-10-06 text 'is designated as parliamentarian for the Council. Questions of parliamentary rules may be referred, through the presiding officer, to the City Attorney for interpretation. However, the final ruling rests with the presiding officer. 7'
+set opp-4-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-4-3-rev-2025-10-06 from '2025-10-06'
+set opp-4-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-4-4-rev-2025-10-06
+set opp-4-4-rev-2025-10-06 summary '4.4 as published 2025-10-06'
+set opp-4-4-rev-2025-10-06 text 'as provided for in paragraph 5 below, the President of the Council should ordinarily present all main motions on business to come before the Council. The second may come from any member. All members may, however, present motions when appropriate.'
+set opp-4-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-4-4-rev-2025-10-06 from '2025-10-06'
+set opp-4-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-4-5-rev-2025-10-06
+set opp-4-5-rev-2025-10-06 summary '4.5 as published 2025-10-06'
+set opp-4-5-rev-2025-10-06 text 'bids and claims shall ordinarily appear on the consent calendar. However, the Chair of the Finance and Judiciary Committee of the Council may review bids and claims prior to adoption of these matters.'
+set opp-4-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-4-5-rev-2025-10-06 from '2025-10-06'
+set opp-4-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-4-6-rev-2025-10-06
+set opp-4-6-rev-2025-10-06 summary '4.6 as published 2025-10-06'
+set opp-4-6-rev-2025-10-06 text 'is the policy of the Common Council of the City of Springfield to ensure an informed public, aware of the deliberations and decisions of this body and its sub - bodies, and of the information upon which decisions were made. It is further the policy of th e City of Springfield that those decisions be arrived at openly. With the exception of items approved on the consent calendar, the Mayor and Council members shall be willing to explain the rationale for each vote during the Council meeting.'
+set opp-4-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-4-6-rev-2025-10-06 from '2025-10-06'
+set opp-4-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-4-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-5-1-rev-2025-10-06
+set opp-5-1-rev-2025-10-06 summary '5.1 as published 2025-10-06'
+set opp-5-1-rev-2025-10-06 text 'may have work sessions at which they shall have discussion on topics of importance to them. The work sessions shall normally be held on the second and fourth Monday of each month beginning at 5:30 p.m. and may also occur on the first and third Monday at 6:00 p.m.'
+set opp-5-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-5-1-rev-2025-10-06 from '2025-10-06'
+set opp-5-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-5-1-1-rev-2025-10-06
+set opp-5-1-1-rev-2025-10-06 summary '5.1.1 as published 2025-10-06'
+set opp-5-1-1-rev-2025-10-06 text '. The Council shall meet at the same location as the regular Council meeting, unless otherwise provided by notice.'
+set opp-5-1-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-5-1-1-rev-2025-10-06 from '2025-10-06'
+set opp-5-1-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-5-1-2-rev-2025-10-06
+set opp-5-1-2-rev-2025-10-06 summary '5.1.2 as published 2025-10-06'
+set opp-5-1-2-rev-2025-10-06 text '. The agenda for the work session shall be prepared by the City Manager from items: a. All items directed by the Mayor or any member of the Council to be listed on the agenda. b. All items deemed appropriate by the City Manager.'
+set opp-5-1-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-5-1-2-rev-2025-10-06 from '2025-10-06'
+set opp-5-1-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-5-1-3-rev-2025-10-06
+set opp-5-1-3-rev-2025-10-06 summary '5.1.3 as published 2025-10-06'
+set opp-5-1-3-rev-2025-10-06 text '. Work sessions of the City Council will normally adjourn by 10:00 p.m. except upon consent of a majority of the Council members present to extend the meeting to a time certain or until an issue or item is discussed or resolved.'
+set opp-5-1-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-5-1-3-rev-2025-10-06 from '2025-10-06'
+set opp-5-1-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-5-1-4-rev-2025-10-06
+set opp-5-1-4-rev-2025-10-06 summary '5.1.4 as published 2025-10-06'
+set opp-5-1-4-rev-2025-10-06 text '. No regular work sessions shall be scheduled on the fifth Monday of any month or on the fourth Monday during 8 December. If advised by the City Manager and Council Leadership, special work sessions may be schedule. Work sessions may also be canceled sometime during the months of March, June, July and August in order to provide a time for spring break or summer re cess, and during the months of December and January to provide a time for a winter recess.'
+set opp-5-1-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-5-1-4-rev-2025-10-06 from '2025-10-06'
+set opp-5-1-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-5-1-5-rev-2025-10-06
+set opp-5-1-5-rev-2025-10-06 summary '5.1.5 as published 2025-10-06'
+set opp-5-1-5-rev-2025-10-06 text 'at Work Sessions . Decisions made and actions taken at the work session are informal and must be ratified at a subsequent regular meeting.'
+set opp-5-1-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-5-1-5-rev-2025-10-06 from '2025-10-06'
+set opp-5-1-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-5-1-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-1-rev-2025-10-06
+set opp-6-1-rev-2025-10-06 summary '6.1 as published 2025-10-06'
+set opp-6-1-rev-2025-10-06 text 'the Common Council shall be called and conducted in accordance with Chapter 192, Oregon Revised Statutes.'
+set opp-6-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-1-rev-2025-10-06 from '2025-10-06'
+set opp-6-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-2-rev-2025-10-06
+set opp-6-2-rev-2025-10-06 summary '6.2 as published 2025-10-06'
+set opp-6-2-rev-2025-10-06 text 'may be held for the purpose of taking any final action or making any final decision. Final actions and final decisions must be done in open, public meetings of the Council.'
+set opp-6-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-2-rev-2025-10-06 from '2025-10-06'
+set opp-6-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-3-rev-2025-10-06
+set opp-6-3-rev-2025-10-06 summary '6.3 as published 2025-10-06'
+set opp-6-3-rev-2025-10-06 text 'session attendance shall be determined by the Mayor (as the presiding officer) or the Council. The City Manager may select staff members to be present who have a demonstrable need for attendance.'
+set opp-6-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-3-rev-2025-10-06 from '2025-10-06'
+set opp-6-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-4-1-rev-2025-10-06
+set opp-6-4-1-rev-2025-10-06 summary '6.4.1 as published 2025-10-06'
+set opp-6-4-1-rev-2025-10-06 text '. Representatives of recognized news media may attend executive sessions, other than those sessions during which the Council conducts deliberations with persons designated to carry on labor negotiations, or where the matter involves litigation, and the news media is a party to the litigation.'
+set opp-6-4-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-4-1-rev-2025-10-06 from '2025-10-06'
+set opp-6-4-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-4-2-rev-2025-10-06
+set opp-6-4-2-rev-2025-10-06 summary '6.4.2 as published 2025-10-06'
+set opp-6-4-2-rev-2025-10-06 text '. The following entities are recognized as news media organizations eligible to attend executive sessions: a. Daily newspapers, non - daily, and small - market newspapers/publications, as well as those publications that are released as digital and multiplatform products; or b. Anewspaper or publication that the City uses for publication of public notices and that meets the requirements of ORS 193.020; or c. An entity that is organized and operated to regularly and continuously publish, broadcast, transmit via television, radio or the internet or otherwise 9 disseminate news to the public, and that regularly reports on activities of public concern.'
+set opp-6-4-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-4-2-rev-2025-10-06 from '2025-10-06'
+set opp-6-4-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-4-3-rev-2025-10-06
+set opp-6-4-3-rev-2025-10-06 summary '6.4.3 as published 2025-10-06'
+set opp-6-4-3-rev-2025-10-06 text 'at Executive Sessions . Representatives of news media organizations recognized pursuant to Section 6.4.2 shall be allowed to attend executive sessions, except as described section 6.4.1 pursuant to the following process: a. The representative must provide substantial evidence persuading the City that he or she is a news reporter for the recognized news media organization. In making its determination whether to recognize the person as a representative of the news media organization, the City may require: ( i ) Apress badge or identification issued by the recognized news media ( ii ) Arecently published news article in the recognized news media organization masthead showing the staff of the news media organization, plus proof of identity; or ( iii ) Aletter on letterhead from an editor of the recognized news media organization in which the editor states that the reporter is covering the meeting for the news media organization, plus proof of identity ; or ( iv ) Any other credentials or evidence sufficient to demonstrate that the individual is a representative of the news media.'
+set opp-6-4-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-4-3-rev-2025-10-06 from '2025-10-06'
+set opp-6-4-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-4-4-rev-2025-10-06
+set opp-6-4-4-rev-2025-10-06 summary '6.4.4 as published 2025-10-06'
+set opp-6-4-4-rev-2025-10-06 text '. The City requires that requests to be recognized as a representative of a news media organization be made in writing on a form provided by the City. The form shall require for which he or she is a representative and shall require submission of evidence described in section 6.4.3(a) . The form shall also include a certification that the person is a representative of a recognized news media organization, that the information given is true, and that the person agrees to comply with ORS 192.660(4). The form will be made available on the Crequest by any individual.'
+set opp-6-4-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-4-4-rev-2025-10-06 from '2025-10-06'
+set opp-6-4-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-4-5-rev-2025-10-06
+set opp-6-4-5-rev-2025-10-06 summary '6.4.5 as published 2025-10-06'
+set opp-6-4-5-rev-2025-10-06 text '. The City Council is prohibited from making final decisions on any matter in executive session. Therefore, representatives are requested to provide the above evidence to persuade the City that they are a representative of the recognized new s media organization in advance of the schedule d executive session. In the event that a person claiming to be a representative of the news media fails to provide advance evidence of their credentials, the representative should either be allowed to attend the executive session, or the executive session shall be postponed until a later time.'
+set opp-6-4-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-4-5-rev-2025-10-06 from '2025-10-06'
+set opp-6-4-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-4-6-rev-2025-10-06
+set opp-6-4-6-rev-2025-10-06 summary '6.4.6 as published 2025-10-06'
+set opp-6-4-6-rev-2025-10-06 text '. Cameras, tape recorders and other recording devices shall not be used in executive sessions, except for the official executive session recordings made by City staff. 10'
+set opp-6-4-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-4-6-rev-2025-10-06 from '2025-10-06'
+set opp-6-4-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-6-4-7-rev-2025-10-06
+set opp-6-4-7-rev-2025-10-06 summary '6.4.7 as published 2025-10-06'
+set opp-6-4-7-rev-2025-10-06 text '. These policies and procedures shall apply to the City Council and all of its boards and commissions.'
+set opp-6-4-7-rev-2025-10-06 adopted '2025-10-06'
+set opp-6-4-7-rev-2025-10-06 from '2025-10-06'
+set opp-6-4-7-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-6-4-7-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-1-rev-2025-10-06
+set opp-7-1-rev-2025-10-06 summary '7.1 as published 2025-10-06'
+set opp-7-1-rev-2025-10-06 text 'presiding officer of the Council shall be responsible for ensuring that order and decorum are maintained during all meetings of the Council . and the City Manager or designee shall be responsible for providing security at all meetings of the Council and is responsible for enforcing the rules of conduct as directed by the presiding officer.'
+set opp-7-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-1-rev-2025-10-06 from '2025-10-06'
+set opp-7-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-1-rev-2025-10-06
+set opp-7-2-1-rev-2025-10-06 summary '7.2.1 as published 2025-10-06'
+set opp-7-2-1-rev-2025-10-06 text '. Any of the following shall be sufficient cause for the presiding officer to remove any person from a Council Meeting or City Hall, for the duration of the meeting:'
+set opp-7-2-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-1-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-1-1-rev-2025-10-06
+set opp-7-2-1-1-rev-2025-10-06 summary '7.2.1.1 as published 2025-10-06'
+set opp-7-2-1-1-rev-2025-10-06 text 'use of unreasonably loud, disruptive or profane language.'
+set opp-7-2-1-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-1-1-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-1-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-1-2-rev-2025-10-06
+set opp-7-2-1-2-rev-2025-10-06 summary '7.2.1.2 as published 2025-10-06'
+set opp-7-2-1-2-rev-2025-10-06 text 'making of loud or disruptive noise.'
+set opp-7-2-1-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-1-2-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-1-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-1-3-rev-2025-10-06
+set opp-7-2-1-3-rev-2025-10-06 summary '7.2.1.3 as published 2025-10-06'
+set opp-7-2-1-3-rev-2025-10-06 text 'engaging in violent or distracting action.'
+set opp-7-2-1-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-1-3-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-1-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-1-4-rev-2025-10-06
+set opp-7-2-1-4-rev-2025-10-06 summary '7.2.1.4 as published 2025-10-06'
+set opp-7-2-1-4-rev-2025-10-06 text 'willful damage of furnishings or of the interior of the Council Chamber or City Hall.'
+set opp-7-2-1-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-1-4-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-1-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-1-5-rev-2025-10-06
+set opp-7-2-1-5-rev-2025-10-06 summary '7.2.1.5 as published 2025-10-06'
+set opp-7-2-1-5-rev-2025-10-06 text 'refusal to obey any of the rules of conduct provided within this Section, including the limitations on occupancy and seating capacity.'
+set opp-7-2-1-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-1-5-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-1-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-1-6-rev-2025-10-06
+set opp-7-2-1-6-rev-2025-10-06 summary '7.2.1.6 as published 2025-10-06'
+set opp-7-2-1-6-rev-2025-10-06 text 'refusal to obey an order of the presiding officer or an order issued by any Council member which has been approved by a majority of the Council members present.'
+set opp-7-2-1-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-1-6-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-1-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-1-7-rev-2025-10-06
+set opp-7-2-1-7-rev-2025-10-06 summary '7.2.1.7 as published 2025-10-06'
+set opp-7-2-1-7-rev-2025-10-06 text 'conduct which obstructs the work or the conducting of business of the Council.'
+set opp-7-2-1-7-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-1-7-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-1-7-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-1-7-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-2-rev-2025-10-06
+set opp-7-2-2-rev-2025-10-06 summary '7.2.2 as published 2025-10-06'
+set opp-7-2-2-rev-2025-10-06 text '. Before any person is removed from the meeting for conduct described in subparagraph 7. 2.1 , that person shall be given a warning by the presiding officer to cease that conduct.'
+set opp-7-2-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-2-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-2-3-rev-2025-10-06
+set opp-7-2-3-rev-2025-10-06 summary '7.2.3 as published 2025-10-06'
+set opp-7-2-3-rev-2025-10-06 text '. If a meeting is disrupted by members of the audience, the presiding officer or a majority of the Council members present may order that the Council Chambers or City Hall be cleared. 11'
+set opp-7-2-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-2-3-rev-2025-10-06 from '2025-10-06'
+set opp-7-2-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-2-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-3-rev-2025-10-06
+set opp-7-3-rev-2025-10-06 summary '7.3 as published 2025-10-06'
+set opp-7-3-rev-2025-10-06 text ', Signs, Posters No flags, posters, placards, signs or animals, unless authorized by the presiding officer, may be carried or placed in the Council Chamber, or any meeting hall in which a public hearing is being held. This restriction shall not apply to armbands, emblems, badges or other ar ticles worn on personal clothing or individuals, provided that such devices are of such a size and nature as not to interfere with the vision or hearing of other persons at the meeting, and providing that such devices do not extend from the body in a manne r likely to cause injury to another.'
+set opp-7-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-3-rev-2025-10-06 from '2025-10-06'
+set opp-7-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-4-rev-2025-10-06
+set opp-7-4-rev-2025-10-06 summary '7.4 as published 2025-10-06'
+set opp-7-4-rev-2025-10-06 text 'taking of photographs in the Council Chamber or City Hall shall be allowed except when done in violation of Nos. 7.3 and 7.4 of this s ection.'
+set opp-7-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-4-rev-2025-10-06 from '2025-10-06'
+set opp-7-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-5-1-rev-2025-10-06
+set opp-7-5-1-rev-2025-10-06 summary '7.5.1 as published 2025-10-06'
+set opp-7-5-1-rev-2025-10-06 text '. Time for testimony by members of the audience at public hearings or any Council meeting at which the public is invited or allowed to address the Council may be limited for each speaker and for each subject by the presiding officer or by majority vote of th e Council. In the interest of time, persons addressing the Council shall limit their remarks to three minutes or less. Aperson may request Office by 12 noon of the Wednesday preceding the Council meeting for which it is intended and approved by the Mayor.'
+set opp-7-5-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-5-1-rev-2025-10-06 from '2025-10-06'
+set opp-7-5-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-5-2-rev-2025-10-06
+set opp-7-5-2-rev-2025-10-06 summary '7.5.2 as published 2025-10-06'
+set opp-7-5-2-rev-2025-10-06 text 'from Audience . All questions and discussions by members of the audience shall be directed to the presiding officer.'
+set opp-7-5-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-5-2-rev-2025-10-06 from '2025-10-06'
+set opp-7-5-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-5-3-rev-2025-10-06
+set opp-7-5-3-rev-2025-10-06 summary '7.5.3 as published 2025-10-06'
+set opp-7-5-3-rev-2025-10-06 text '. Directed discussion between members of the audience and Council members or city employees shall be permitted only at the discretion of the presiding officer.'
+set opp-7-5-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-5-3-rev-2025-10-06 from '2025-10-06'
+set opp-7-5-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-5-4-rev-2025-10-06
+set opp-7-5-4-rev-2025-10-06 summary '7.5.4 as published 2025-10-06'
+set opp-7-5-4-rev-2025-10-06 text '. Persons attending a Council meeting in person shall give a completed Persons attending a Council meeting virtually shall notify the City Recorder that they wish to speak by meeting platform application.'
+set opp-7-5-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-5-4-rev-2025-10-06 from '2025-10-06'
+set opp-7-5-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-5-5-rev-2025-10-06
+set opp-7-5-5-rev-2025-10-06 summary '7.5.5 as published 2025-10-06'
+set opp-7-5-5-rev-2025-10-06 text 'from the Audience . All public testimony at regular sessions and presiding officer .'
+set opp-7-5-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-5-5-rev-2025-10-06 from '2025-10-06'
+set opp-7-5-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-5-6-rev-2025-10-06
+set opp-7-5-6-rev-2025-10-06 summary '7.5.6 as published 2025-10-06'
+set opp-7-5-6-rev-2025-10-06 text '. All persons addressing the Council shall do so after being acknowledged by the Presiding Officer. They shall clearly state their name and ward or location in the UGB, except for land use hearings where providing an address is necessary to receive notic e of a decision for appeal rights. When speaking at public hearings, persons shall confine their comments to the issue under consideration. 12'
+set opp-7-5-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-5-6-rev-2025-10-06 from '2025-10-06'
+set opp-7-5-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-5-7-rev-2025-10-06
+set opp-7-5-7-rev-2025-10-06 summary '7.5.7 as published 2025-10-06'
+set opp-7-5-7-rev-2025-10-06 text '. For land use matters, the order of testimony shall be as prescribed by law. For all other matters, the presiding officer will recognize those attending the meeting in - person first and then those attending virtually who have notified the City Recorder that they wish to speak . The presiding officer may also recognize others in the audience.'
+set opp-7-5-7-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-5-7-rev-2025-10-06 from '2025-10-06'
+set opp-7-5-7-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-5-7-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-6-1-rev-2025-10-06
+set opp-7-6-1-rev-2025-10-06 summary '7.6.1 as published 2025-10-06'
+set opp-7-6-1-rev-2025-10-06 text '. The safe occupancy and seating capacity of the Council Chambers as determined by the Fire Marshal shall be posted within the Council Chamber. The limitations on occupancy and seating capacity so determined and posted shall be complied with at all times.'
+set opp-7-6-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-6-1-rev-2025-10-06 from '2025-10-06'
+set opp-7-6-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-6-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-6-2-rev-2025-10-06
+set opp-7-6-2-rev-2025-10-06 summary '7.6.2 as published 2025-10-06'
+set opp-7-6-2-rev-2025-10-06 text '. Aisles shall be kept clear at all times and persons shall not obstruct the doorways.'
+set opp-7-6-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-6-2-rev-2025-10-06 from '2025-10-06'
+set opp-7-6-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-6-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-7-1-rev-2025-10-06
+set opp-7-7-1-rev-2025-10-06 summary '7.7.1 as published 2025-10-06'
+set opp-7-7-1-rev-2025-10-06 text '. The provisions of this Section shall not be construed to prevent news media representatives from performing their duties so long as the manner of performance is not unreasonably disruptive of the meeting.'
+set opp-7-7-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-7-1-rev-2025-10-06 from '2025-10-06'
+set opp-7-7-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-7-2-rev-2025-10-06
+set opp-7-7-2-rev-2025-10-06 summary '7.7.2 as published 2025-10-06'
+set opp-7-7-2-rev-2025-10-06 text '. Representatives of news media organizations utilizing electronic recording equipment shall use the recording jacks made available in the Council Chamber for that purpose. Those persons shall not approach the Council table for the purpose of recording without permission of the presiding officer.'
+set opp-7-7-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-7-2-rev-2025-10-06 from '2025-10-06'
+set opp-7-7-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-7-3-rev-2025-10-06
+set opp-7-7-3-rev-2025-10-06 summary '7.7.3 as published 2025-10-06'
+set opp-7-7-3-rev-2025-10-06 text '. Persons using television or video tape equipment shall set up such equipment and remove the equipment in such a manner as to cause no disruption or distraction in the meeting. The placement of video equipment shall be allowed anywhere in the Council Chamb er with the exception of the Council platform.'
+set opp-7-7-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-7-3-rev-2025-10-06 from '2025-10-06'
+set opp-7-7-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-7-7-4-rev-2025-10-06
+set opp-7-7-4-rev-2025-10-06 summary '7.7.4 as published 2025-10-06'
+set opp-7-7-4-rev-2025-10-06 text '. Persons using still cameras may take photographs from anywhere in the Council Chamber. Only one photographer may be on the Council platform at a time; additionally, while photographing from the Council platform, photographers will be discouraged from usin g automatic film advancing devices or flash units. 13'
+set opp-7-7-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-7-7-4-rev-2025-10-06 from '2025-10-06'
+set opp-7-7-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-7-7-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-1-rev-2025-10-06
+set opp-8-1-rev-2025-10-06 summary '8.1 as published 2025-10-06'
+set opp-8-1-rev-2025-10-06 text 'the City Council requesting a legal opinion from the City Attorney may do so directly provided the Mayor is aware of the inquiry or to the City Attorney at any official meeting of the Council.'
+set opp-8-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-1-rev-2025-10-06 from '2025-10-06'
+set opp-8-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-2-rev-2025-10-06
+set opp-8-2-rev-2025-10-06 summary '8.2 as published 2025-10-06'
+set opp-8-2-rev-2025-10-06 text 'member shall refrain from using staff time and incurring unnecessary cost to the City.'
+set opp-8-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-2-rev-2025-10-06 from '2025-10-06'
+set opp-8-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-rev-2025-10-06
+set opp-8-3-rev-2025-10-06 summary '8.3 as published 2025-10-06'
+set opp-8-3-rev-2025-10-06 text 'is needed from the Mayor prior to a Council member taking a trip and incurring expenses on City - related business. To receive authorization for attendance at a training or conference (with the exception of the League of Oregon Cities Conference) the Council member will contact the City aining. The City Manager or their designee, will present the request to the Mayor for review and approval.'
+set opp-8-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-1-rev-2025-10-06
+set opp-8-3-1-rev-2025-10-06 summary '8.3.1 as published 2025-10-06'
+set opp-8-3-1-rev-2025-10-06 text '. The Mayor and Council members are encouraged to request reimbursement for actual expenses incurred in their duties as elected officials. Two methods of reimbursement are available for expenses incurred related to city business. See Section 8. 3.2 . The following expenditure categories qualify for reimbursement: a. Out of town travel expenses including mileage, meals and lodging (not included in automatic reimbursement process). b. Long distance telephone costs (if not issued a city cell phone or cell phone reimbursement). c. Additional cellular phone costs related to calls made regarding City of Springfield business (if not receiving a city cell phone or cell phone reimbursement). d. Postage e. Local mileage and meal expense. *None of the above items may be paid for by the City in connection with elections or campaigning for a specific office. 14'
+set opp-8-3-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-1-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-2-rev-2025-10-06
+set opp-8-3-2-rev-2025-10-06 summary '8.3.2 as published 2025-10-06'
+set opp-8-3-2-rev-2025-10-06 text '. a. The Mayor and Council may submit receipts or documentation for reimbursement related to city business. Receipts and documentation must be submitted within 60 days of when the city business expense occurred. b. Monthly Automatic Payments. The Mayor and Council may receive automatic payments for cell phone and internet services.'
+set opp-8-3-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-2-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-3-rev-2025-10-06
+set opp-8-3-3-rev-2025-10-06 summary '8.3.3 as published 2025-10-06'
+set opp-8-3-3-rev-2025-10-06 text '. As of 2015, state ethics law allows public agencies to pay for the cost of admission to, or food or beverage for relatives of a public official accompanying the public official at a reception, meal or meeting held by an organization when the public offi cial is there in their official capacity. For elected officials for the City of Springfield, the following provisions will be allow ed : a. The City will pay for the spouse or relative of an elected official to attend an event with the elected official two times per fiscal year/per elected official for an amount not to exceed $100 per event.'
+set opp-8-3-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-3-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-4-rev-2025-10-06
+set opp-8-3-4-rev-2025-10-06 summary '8.3.4 as published 2025-10-06'
+set opp-8-3-4-rev-2025-10-06 text '. The Mayor will review and approve expense claims submitted by Council members. The Council President should review and approve expenditures submitted by the Mayor.'
+set opp-8-3-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-4-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-5-rev-2025-10-06
+set opp-8-3-5-rev-2025-10-06 summary '8.3.5 as published 2025-10-06'
+set opp-8-3-5-rev-2025-10-06 text '. The City will issue the Mayor and City Council each a parking pass to allow them to park in City owned permitted parking lots while acting in their official capacities as Mayor or members of the Council.'
+set opp-8-3-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-5-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-6-rev-2025-10-06
+set opp-8-3-6-rev-2025-10-06 summary '8.3.6 as published 2025-10-06'
+set opp-8-3-6-rev-2025-10-06 text '. The City should purchase office supplies for the Mayor and City Council. Such purchases should, when practical, occur through the normal city purchasing procedures.'
+set opp-8-3-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-6-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-7-rev-2025-10-06
+set opp-8-3-7-rev-2025-10-06 summary '8.3.7 as published 2025-10-06'
+set opp-8-3-7-rev-2025-10-06 text '. The Mayor and Council may receive reimbursement for cellular and/or internet services, for city business, or the City may provide a cellular phone with service, for city use only. The Mayor and Council also have the option of receiving neither.'
+set opp-8-3-7-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-7-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-7-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-7-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-7-1-rev-2025-10-06
+set opp-8-3-7-1-rev-2025-10-06 summary '8.3.7.1 as published 2025-10-06'
+set opp-8-3-7-1-rev-2025-10-06 text ': The Mayor and Council may receive reimbursement for internet services. Reimbursement will be at the rate of $40.00 per month. This amount may be re - evaluated at any time staff or council leadership deems review is necessary (e.g., rate increases). Policy Guidelines are applicable as noted in (1) City of Springfield Administrative Regulation No. 04 - 01.01, Acceptable Use of City Network Services and Computing Devices; and (2) State Archives Division guidelines regarding email and retention. Your emai l system may be subject to review by someone in the event of a public records request to determine what can be disclosed. 15'
+set opp-8-3-7-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-7-1-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-7-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-7-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-7-2-rev-2025-10-06
+set opp-8-3-7-2-rev-2025-10-06 summary '8.3.7.2 as published 2025-10-06'
+set opp-8-3-7-2-rev-2025-10-06 text ': The Mayor and Council can be provided with a city cell phone, for city use only. The phone is purchased by the City and the monthly plan fees are processed directly through the City, by the service provider. Asecondary option for the Mayor and Council is to use their own cell phone rather than a city issued telephone. Areimbursement amount of $45 per month is available for use of personal cell phones. The amount may be re - evaluated at any time staff or the council leadership deems review is necessary (e.g., rate increase).'
+set opp-8-3-7-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-7-2-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-7-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-7-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-3-7-3-rev-2025-10-06
+set opp-8-3-7-3-rev-2025-10-06 summary '8.3.7.3 as published 2025-10-06'
+set opp-8-3-7-3-rev-2025-10-06 text ': Mileage reimbursement will be based on the IRS approved rate. The Mayor/Council will be provided with a monthly travel report template which they may use to document their mileage, or they may create their own document listing mileage to and from meetings or events they attend in their capacity as an elected official. Once the mileage report is submitted by the Mayor/Coun cil member and approved (see subsection 3.4 for approval process) the payment will be processed and provided either through direct 8 . 4 Mayor and Council Members Speaking to Media or at Events 8 . 4 .1 Interview or Press Conference . The Mayor and City Council members shall, if and the Mayor if they are asked to do an interview or initiate a press conference relating to city business or policy prior to its occurrence. The Mayor or Council member shall clarify what, if any, official capacity they are representing when speaking to the media. 8 . 4 .2 Speaking Engagement . City Council members shall notify the Council President if they plan to attend and speak at a community event in their role as a Council member. At the outset of the event, the Council member shall clarify that their comments are their own and do not r epresent that of the full Council. 8 . 5 Public Official Ethics, Public Records , Public Meetings and Unlawful Discrimination Law s'
+set opp-8-3-7-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-3-7-3-rev-2025-10-06 from '2025-10-06'
+set opp-8-3-7-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-3-7-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-5-1-rev-2025-10-06
+set opp-8-5-1-rev-2025-10-06 summary '8.5.1 as published 2025-10-06'
+set opp-8-5-1-rev-2025-10-06 text '. All members of the Common Council shall review and observe the requirements of state laws regarding public official ethics, public records, public meetings and unlawful discrimination against others because of race, color, religion, sex, sexual orientation , gender identity, national, origin marital status, age, disability or other protected class status as defined under Oregon law. 8.5 . 2 Statement of Economic Interest . Additionally, certain public officials are 16 Ethics Commission by April 15 annually (ORS Chapter 244). In Springfield, this currently applies to the following: Mayor and City Council Planning Commission Springfield Utility Board Municipal Judges City Manager 8 . 6 Letter of Support or Opposition The Mayor and Council often receive requests for a letter of support or opposition on a particular issue. These requests should be addressed as follows: 8 . 6 .1 Council Input . If the Mayor or a Councilor is being asked to provide the letter as the Mayor, an individual Councilor or simply as a citizen, they may choose to forward the request to the other Councilors for their input before submitting their response or providing the letter; however, it is not required. 8 . 6 .2 Agenda Review . If the request is asking for a position by the entire Council, for review at the next available Agenda Review meeting for review by Council leadership who will provide a proposed response.'
+set opp-8-5-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-5-1-rev-2025-10-06 from '2025-10-06'
+set opp-8-5-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-5-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-8-6-3-rev-2025-10-06
+set opp-8-6-3-rev-2025-10-06 summary '8.6.3 as published 2025-10-06'
+set opp-8-6-3-rev-2025-10-06 text '. The proposed response letter is to be brought to the next Council meeting by the City Manager with any objections or comments for discussion. Council will make a motion to approve/approve with changes/not approve the response letter. a. If the letter is unanimously approved by the Council as written or as amended, i t is signed by the Mayor on behalf of the Council. b. If the letter is approved by the majority of the Council as written or each of the votes. c. If Council chooses not to submit a response letter, a Councilor (preferably the one receiving the original request) will contact the requestor to let them know the Council does not wish to take a position on the matter. This would not preclude a Councilor from taking a position as an individual Councilor or citizen. 8 . 6 . 4 Council Discussion/Response . If there is not sufficient time for the process above, the letter will be brought directly to the Council for discussion and action on a response. 17 8 . 6 . 5 No Position on Quasi - Judicial Land Use Decisions . The Council shall not take any position on quasi - judicial land use matters which will be considered by the Planning Commission or City Council. 8 . 7 Condolences Council may choose to authorize the purchase of flowers in circumstances where a a. The cost of the flowers will have a not to exceed amount of $ 10 0 , or as may be limited by the Oregon Government Ethics law and will be sent on behalf of the Mayor and Council. b. In lieu of flowers, a donation could be made on behalf of the Mayor and Council, with a not to exceed amount of $ 10 0 , or as may be limited by the Oregon Government Ethics law, to a non - profit organization with a 501(c)(3) designation.'
+set opp-8-6-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-8-6-3-rev-2025-10-06 from '2025-10-06'
+set opp-8-6-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-8-6-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-rev-2025-10-06
+set opp-9-rev-2025-10-06 summary '9 as published 2025-10-06'
+set opp-9-rev-2025-10-06 text ', COMMISSIONS, COMMITTEES AND TASK FORCES'
+set opp-9-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-rev-2025-10-06 from '2025-10-06'
+set opp-9-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-1-rev-2025-10-06
+set opp-9-1-rev-2025-10-06 summary '9.1 as published 2025-10-06'
+set opp-9-1-rev-2025-10-06 text ', Commissions and Committees'
+set opp-9-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-1-rev-2025-10-06 from '2025-10-06'
+set opp-9-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-1-1-rev-2025-10-06
+set opp-9-1-1-rev-2025-10-06 summary '9.1.1 as published 2025-10-06'
+set opp-9-1-1-rev-2025-10-06 text 'forces (BCCs) provide an invaluable service to the City and effective citizen participation is an invaluable tool for local government.'
+set opp-9-1-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-1-1-rev-2025-10-06 from '2025-10-06'
+set opp-9-1-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-1-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-1-2-rev-2025-10-06
+set opp-9-1-2-rev-2025-10-06 summary '9.1.2 as published 2025-10-06'
+set opp-9-1-2-rev-2025-10-06 text '. BCCs originate from different sources such as a state statute, the Springfield Charter or ordinance. Others are established by direction of the Council or the Mayor. It is Council discretion as to whether any BCC should be set forth in the Code by ordi nance.'
+set opp-9-1-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-1-2-rev-2025-10-06 from '2025-10-06'
+set opp-9-1-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-1-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-2-1-rev-2025-10-06
+set opp-9-2-1-rev-2025-10-06 summary '9.2.1 as published 2025-10-06'
+set opp-9-2-1-rev-2025-10-06 text '. Council subcommittees are appointed by the Mayor. They consist of three members of the Council and may include other citizen representation. Examples of Council subcommittees include the Judiciary & Finance and Legislative Committees.'
+set opp-9-2-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-2-1-rev-2025-10-06 from '2025-10-06'
+set opp-9-2-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-2-2-rev-2025-10-06
+set opp-9-2-2-rev-2025-10-06 summary '9.2.2 as published 2025-10-06'
+set opp-9-2-2-rev-2025-10-06 text '. Any BCC that is appointed by the Council. Examples of Council BCCs include the Springfield Police Advisory Committee, Springfield Arts Commission, the Budget Committee and the Planning Commission.'
+set opp-9-2-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-2-2-rev-2025-10-06 from '2025-10-06'
+set opp-9-2-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-2-3-rev-2025-10-06
+set opp-9-2-3-rev-2025-10-06 summary '9.2.3 as published 2025-10-06'
+set opp-9-2-3-rev-2025-10-06 text '. Acommittee appointed by the Mayor to carry out a particular project or task. The Mayor may dissolve the committee or request the Council to accept it as a permanent committee.'
+set opp-9-2-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-2-3-rev-2025-10-06 from '2025-10-06'
+set opp-9-2-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-2-4-rev-2025-10-06
+set opp-9-2-4-rev-2025-10-06 summary '9.2.4 as published 2025-10-06'
+set opp-9-2-4-rev-2025-10-06 text '. Acommittee formed as a joint effort of more than one government agency often created through an intergovernmental agreement. 18 Examples of intergovernmental committees include the Human Services Commission, Metropolitan Wastewater Management Commission and the Lane Regional Air Protection Agency.'
+set opp-9-2-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-2-4-rev-2025-10-06 from '2025-10-06'
+set opp-9-2-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-2-5-rev-2025-10-06
+set opp-9-2-5-rev-2025-10-06 summary '9.2.5 as published 2025-10-06'
+set opp-9-2-5-rev-2025-10-06 text '. The Council may nominate and appoint certain ad hoc committees to carry out a particular project or task.'
+set opp-9-2-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-2-5-rev-2025-10-06 from '2025-10-06'
+set opp-9-2-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-2-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-1-rev-2025-10-06
+set opp-9-3-1-rev-2025-10-06 summary '9.3.1 as published 2025-10-06'
+set opp-9-3-1-rev-2025-10-06 text '. Every BCC will have a specific statement of purpose, which will be re - examined periodically by the Mayor and Council to determine its effectiveness.'
+set opp-9-3-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-1-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-2-rev-2025-10-06
+set opp-9-3-2-rev-2025-10-06 summary '9.3.2 as published 2025-10-06'
+set opp-9-3-2-rev-2025-10-06 text '. Unless otherwise provided by state law or the Springfield Charter,'
+set opp-9-3-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-2-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-3-rev-2025-10-06
+set opp-9-3-3-rev-2025-10-06 summary '9.3.3 as published 2025-10-06'
+set opp-9-3-3-rev-2025-10-06 text '. The Mayor will appoint a Councilor Liaison to specific BCCs at the first regular meeting in January following a November general election. The Councilor Liaison is responsible for coordinating with the respective BCC liaison to establish a regular commun ication channel between the Council and the respective BCC.'
+set opp-9-3-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-3-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-4-rev-2025-10-06
+set opp-9-3-4-rev-2025-10-06 summary '9.3.4 as published 2025-10-06'
+set opp-9-3-4-rev-2025-10-06 text '. Most BCCs will appoint a BCC Liaison to coordinate with the Council and Staff Liaisons. The BCC Liaison can be the BCC chair or someone else selected by the BCC.'
+set opp-9-3-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-4-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-5-rev-2025-10-06
+set opp-9-3-5-rev-2025-10-06 summary '9.3.5 as published 2025-10-06'
+set opp-9-3-5-rev-2025-10-06 text '. Most BCCs will also have an assigned staff person whose role is to provide administrative support for the BCC and to coordinate with the Council and BCC Liaisons. Staff Liaison members are not employees of a BCC and are directly responsible to their depa rtment director and the City Manager.'
+set opp-9-3-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-5-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-6-rev-2025-10-06
+set opp-9-3-6-rev-2025-10-06 summary '9.3.6 as published 2025-10-06'
+set opp-9-3-6-rev-2025-10-06 text 'website.'
+set opp-9-3-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-6-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-7-rev-2025-10-06
+set opp-9-3-7-rev-2025-10-06 summary '9.3.7 as published 2025-10-06'
+set opp-9-3-7-rev-2025-10-06 text '. Unless otherwise provided by law or BCC Bylaws, terms are four - year, overlapping terms of office with no individual allowed to be appointed to more than two consecutive full terms. If someone is appointed to fill a partial term, that term will not be con sidered a full term as it applies to this section and they will be eligible to serve two additional full terms. Individuals may re - apply after being off a BCC for one year.'
+set opp-9-3-7-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-7-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-7-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-7-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-8-rev-2025-10-06
+set opp-9-3-8-rev-2025-10-06 summary '9.3.8 as published 2025-10-06'
+set opp-9-3-8-rev-2025-10-06 text '. There shall be no designation or appointment of alternate voting members. 19'
+set opp-9-3-8-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-8-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-8-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-8-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-3-9-rev-2025-10-06
+set opp-9-3-9-rev-2025-10-06 summary '9.3.9 as published 2025-10-06'
+set opp-9-3-9-rev-2025-10-06 text '. Unless otherwise provided by law, the appointing authority may dissolve a BCC that, in their opinion, has completed its working function.'
+set opp-9-3-9-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-3-9-rev-2025-10-06 from '2025-10-06'
+set opp-9-3-9-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-3-9-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-4-rev-2025-10-06
+set opp-9-4-rev-2025-10-06 summary '9.4 as published 2025-10-06'
+set opp-9-4-rev-2025-10-06 text ', Commission and Committee Qualifications, Appointment and Removal'
+set opp-9-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-4-rev-2025-10-06 from '2025-10-06'
+set opp-9-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-4-1-rev-2025-10-06
+set opp-9-4-1-rev-2025-10-06 summary '9.4.1 as published 2025-10-06'
+set opp-9-4-1-rev-2025-10-06 text '. Unless otherwise noted in the Bylaws for specific expertise or residency requirements, all BCC members persons appointed shall be residents or property owners within Springfield. With the exception of student s, all BCC members must also be registered voters .'
+set opp-9-4-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-4-1-rev-2025-10-06 from '2025-10-06'
+set opp-9-4-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-4-2-rev-2025-10-06
+set opp-9-4-2-rev-2025-10-06 summary '9.4.2 as published 2025-10-06'
+set opp-9-4-2-rev-2025-10-06 text '. BCC vacancies will be filled as needed. Notice of vacancies will be publicized as widely as practical throughout the community through means such as media releases, website and social media postings, and local advertising.'
+set opp-9-4-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-4-2-rev-2025-10-06 from '2025-10-06'
+set opp-9-4-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-4-3-rev-2025-10-06
+set opp-9-4-3-rev-2025-10-06 summary '9.4.3 as published 2025-10-06'
+set opp-9-4-3-rev-2025-10-06 text '. All BCC applicants must submit a written application on Council.'
+set opp-9-4-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-4-3-rev-2025-10-06 from '2025-10-06'
+set opp-9-4-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-4-4-rev-2025-10-06
+set opp-9-4-4-rev-2025-10-06 summary '9.4.4 as published 2025-10-06'
+set opp-9-4-4-rev-2025-10-06 text '. The Mayor and Council will hold interviews of all Council BCC applicants for positions on all BCCs unless they are reapplying for a second consecutive term. In that case, the Mayor may determine that an interview is unnecessary and forward the applicants directly to the Council for approval.'
+set opp-9-4-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-4-4-rev-2025-10-06 from '2025-10-06'
+set opp-9-4-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-4-5-rev-2025-10-06
+set opp-9-4-5-rev-2025-10-06 summary '9.4.5 as published 2025-10-06'
+set opp-9-4-5-rev-2025-10-06 text '. The Council will be provided with the applications and interview questions before the interview which will generally be conducted during work sessions. Following the interviews, the Council will deliberate and attempt to arrive at a consensus for all BCC member appointments . The Council will appoint the new BCC members at a subsequent regular meeting by majority vote .'
+set opp-9-4-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-4-5-rev-2025-10-06 from '2025-10-06'
+set opp-9-4-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-4-6-rev-2025-10-06
+set opp-9-4-6-rev-2025-10-06 summary '9.4.6 as published 2025-10-06'
+set opp-9-4-6-rev-2025-10-06 text '. When appointing applicants, the Council will take into account whether the applicant is being reappointed for a subsequent term, is currently serving on another governing body or currently appointed to another BCC. When possible, the Council will appoint applicants to serve only on one BCC and not appoint members of other governing bodies of another public body to serve on the Planning Commission or Budget Committee.'
+set opp-9-4-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-4-6-rev-2025-10-06 from '2025-10-06'
+set opp-9-4-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-4-7-rev-2025-10-06
+set opp-9-4-7-rev-2025-10-06 summary '9.4.7 as published 2025-10-06'
+set opp-9-4-7-rev-2025-10-06 text '. All BCC members appointees serve at the pleasure of the appointing authority. Aposition may be vacated by the Council when the appointee has two or more consecutive unexcused absences from BCC meetings in any twelve consecutive month period. The BCC Chair may also recommend to the Council that a BCC member be removed that person is found not to m Conduct or Guidelines . 20'
+set opp-9-4-7-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-4-7-rev-2025-10-06 from '2025-10-06'
+set opp-9-4-7-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-4-7-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-1-rev-2025-10-06
+set opp-9-5-1-rev-2025-10-06 summary '9.5.1 as published 2025-10-06'
+set opp-9-5-1-rev-2025-10-06 text '. These policies shall supersede contrary provisions of any previous resolutions or adopting bylaws of the various BCCs and shall be controlling policies for any subsequently adopted BCC until such time as expressly repealed, modified, or overruled. except for Intergovernmental BCCs who are subject to the terms of the applicable intergovernmental agreements and/or bylaws, where there is any conflict with these Council Operating Policies and Procedures.'
+set opp-9-5-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-1-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-2-rev-2025-10-06
+set opp-9-5-2-rev-2025-10-06 summary '9.5.2 as published 2025-10-06'
+set opp-9-5-2-rev-2025-10-06 text '. BCCs may adopt bylaws or may be subject to more specific guidelines in state law, municipal code, ordinance, or resolution. All BCC b ylaws and related amendments will be approved by the Council.'
+set opp-9-5-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-2-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-3-rev-2025-10-06
+set opp-9-5-3-rev-2025-10-06 summary '9.5.3 as published 2025-10-06'
+set opp-9-5-3-rev-2025-10-06 text '. All BCC s described in these policies are subject to public meetings laws of the State of Oregon.'
+set opp-9-5-3-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-3-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-3-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-3-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-4-rev-2025-10-06
+set opp-9-5-4-rev-2025-10-06 summary '9.5.4 as published 2025-10-06'
+set opp-9-5-4-rev-2025-10-06 text '. Unless otherwise provided by law, the number of meetings related to business needs of a BCC may be set by the individual body. Notices of all meetings, including date, time, place, and principal subjects to be discussed will be published in accordance w ith the public meetings laws of the State of Oregon.'
+set opp-9-5-4-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-4-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-4-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-4-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-5-rev-2025-10-06
+set opp-9-5-5-rev-2025-10-06 summary '9.5.5 as published 2025-10-06'
+set opp-9-5-5-rev-2025-10-06 text '. The Chair and/or Staff Liaison will be responsible for the agenda of all BCC meetings. Minutes will be kept in accordance with the public meetings laws of the State of Oregon and provided to the Mayor and Council.'
+set opp-9-5-5-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-5-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-5-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-5-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-6-rev-2025-10-06
+set opp-9-5-6-rev-2025-10-06 summary '9.5.6 as published 2025-10-06'
+set opp-9-5-6-rev-2025-10-06 text '. Unless otherwise provided by law, a quorum for conducting business is a simple majority of the membership of the BCC.'
+set opp-9-5-6-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-6-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-6-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-6-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-7-rev-2025-10-06
+set opp-9-5-7-rev-2025-10-06 summary '9.5.7 as published 2025-10-06'
+set opp-9-5-7-rev-2025-10-06 text '. All BCC members must comply with Public Official Ethics laws.'
+set opp-9-5-7-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-7-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-7-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-7-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-8-rev-2025-10-06
+set opp-9-5-8-rev-2025-10-06 summary '9.5.8 as published 2025-10-06'
+set opp-9-5-8-rev-2025-10-06 text 'the BCC or City . Unless specifically directed by the matters, BCC members shall not lobby other elected bodies or their subcommittees. An individual member is free to voice a position o n an issue as long as they make clear they are speaking on their own behalf. Violation of this provision may be cause for removal from a BCC.'
+set opp-9-5-8-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-8-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-8-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-8-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-9-rev-2025-10-06
+set opp-9-5-9-rev-2025-10-06 summary '9.5.9 as published 2025-10-06'
+set opp-9-5-9-rev-2025-10-06 text '. Newly appointed members will receive a briefing regarding their duties and responsibilities as members of the body and a review of Oregon Public Official Ethics and Public Meetings laws.'
+set opp-9-5-9-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-9-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-9-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-9-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-10-rev-2025-10-06
+set opp-9-5-10-rev-2025-10-06 summary '9.5.10 as published 2025-10-06'
+set opp-9-5-10-rev-2025-10-06 text '. The Board Member Liaison for the Arts Commission, Historic Commission, Library Board, and Springfield Police Advisory Committee shall be 21 responsible for scheduling a joint meeting of the respective board and the Council every two years.'
+set opp-9-5-10-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-10-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-10-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-10-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-11-rev-2025-10-06
+set opp-9-5-11-rev-2025-10-06 summary '9.5.11 as published 2025-10-06'
+set opp-9-5-11-rev-2025-10-06 text '. BCCs must communicate any budget requests to the Council through the City Manager consistent with the yearly budget preparation.'
+set opp-9-5-11-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-11-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-11-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-11-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-9-5-12-rev-2025-10-06
+set opp-9-5-12-rev-2025-10-06 summary '9.5.12 as published 2025-10-06'
+set opp-9-5-12-rev-2025-10-06 text '. BCC liaisons are encouraged to attend Council meetings to keep informed about Council actions. Board Member Liaisons are responsible for attending Council meetings when input from the respective BCC is requested.'
+set opp-9-5-12-rev-2025-10-06 adopted '2025-10-06'
+set opp-9-5-12-rev-2025-10-06 from '2025-10-06'
+set opp-9-5-12-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-9-5-12-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-10-1-1-rev-2025-10-06
+set opp-10-1-1-rev-2025-10-06 summary '10.1.1 as published 2025-10-06'
+set opp-10-1-1-rev-2025-10-06 text '. Unless otherwise superseded by law, any part of these operating procedures and policies may be temporarily suspended by a two - thirds vote of those members of the Council present and voting.'
+set opp-10-1-1-rev-2025-10-06 adopted '2025-10-06'
+set opp-10-1-1-rev-2025-10-06 from '2025-10-06'
+set opp-10-1-1-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-10-1-1-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+rune new revision opp-10-1-2-rev-2025-10-06
+set opp-10-1-2-rev-2025-10-06 summary '10.1.2 as published 2025-10-06'
+set opp-10-1-2-rev-2025-10-06 text '. These operating policies and procedures may be permanently amended at any meeting at which prior notice of the proposed change was provided to each member of the Council. Atwo - thirds vote of those members of the Council present, and voting is needed to affect an amendment or an addition to these operating policies and procedures. Adopted by the Common Council on _________________ _____ ________. ___________________________________ Mayor ATTEST: ___________________________________ City Recorder October 6, 2025'
+set opp-10-1-2-rev-2025-10-06 adopted '2025-10-06'
+set opp-10-1-2-rev-2025-10-06 from '2025-10-06'
+set opp-10-1-2-rev-2025-10-06 source_url 'Springfield OR City Council Operating Policies and Procedures, Oct 2025 (supplied by author; published by the City)'
+set opp-10-1-2-rev-2025-10-06 snapshot 'bbe386fef22770dcfe024ef9111557b6cf9aa7973d7509cdfc668f460fd9cf4b'
+link opp-1 opp --relation part-of
+link opp-2 opp --relation part-of
+link opp-2-1 opp-2 --relation part-of
+link opp-2-2 opp-2 --relation part-of
+link opp-2-3 opp-2 --relation part-of
+link opp-3 opp --relation part-of
+link opp-3-1 opp-3 --relation part-of
+link opp-3-2 opp-3 --relation part-of
+link opp-3-3 opp-3 --relation part-of
+link opp-3-3-1 opp-3-3 --relation part-of
+link opp-3-3-2 opp-3-3 --relation part-of
+link opp-3-3-3 opp-3-3 --relation part-of
+link opp-3-4 opp-3 --relation part-of
+link opp-3-4-2 opp-3-4 --relation part-of
+link opp-3-4-3 opp-3-4 --relation part-of
+link opp-3-5 opp-3 --relation part-of
+link opp-3-5-1 opp-3-5 --relation part-of
+link opp-3-5-1-1 opp-3-5-1 --relation part-of
+link opp-3-5-1-2 opp-3-5-1 --relation part-of
+link opp-3-5-1-3 opp-3-5-1 --relation part-of
+link opp-3-5-1-4 opp-3-5-1 --relation part-of
+link opp-3-5-2 opp-3-5 --relation part-of
+link opp-3-5-2-1 opp-3-5-2 --relation part-of
+link opp-3-5-2-2 opp-3-5-2 --relation part-of
+link opp-3-5-3 opp-3-5 --relation part-of
+link opp-3-6 opp-3 --relation part-of
+link opp-3-6-1 opp-3-6 --relation part-of
+link opp-3-6-2 opp-3-6 --relation part-of
+link opp-3-6-3 opp-3-6 --relation part-of
+link opp-3-6-4 opp-3-6 --relation part-of
+link opp-3-7 opp-3 --relation part-of
+link opp-3-8 opp-3 --relation part-of
+link opp-4 opp --relation part-of
+link opp-4-1 opp-4 --relation part-of
+link opp-4-2 opp-4 --relation part-of
+link opp-4-3 opp-4 --relation part-of
+link opp-4-4 opp-4 --relation part-of
+link opp-4-5 opp-4 --relation part-of
+link opp-4-6 opp-4 --relation part-of
+link opp-5 opp --relation part-of
+link opp-5-1 opp-5 --relation part-of
+link opp-5-1-1 opp-5-1 --relation part-of
+link opp-5-1-2 opp-5-1 --relation part-of
+link opp-5-1-3 opp-5-1 --relation part-of
+link opp-5-1-4 opp-5-1 --relation part-of
+link opp-5-1-5 opp-5-1 --relation part-of
+link opp-6 opp --relation part-of
+link opp-6-1 opp-6 --relation part-of
+link opp-6-2 opp-6 --relation part-of
+link opp-6-3 opp-6 --relation part-of
+link opp-6-4 opp-6 --relation part-of
+link opp-6-4-1 opp-6-4 --relation part-of
+link opp-6-4-2 opp-6-4 --relation part-of
+link opp-6-4-3 opp-6-4 --relation part-of
+link opp-6-4-4 opp-6-4 --relation part-of
+link opp-6-4-5 opp-6-4 --relation part-of
+link opp-6-4-6 opp-6-4 --relation part-of
+link opp-6-4-7 opp-6-4 --relation part-of
+link opp-7 opp --relation part-of
+link opp-7-1 opp-7 --relation part-of
+link opp-7-2 opp-7 --relation part-of
+link opp-7-2-1 opp-7-2 --relation part-of
+link opp-7-2-1-1 opp-7-2-1 --relation part-of
+link opp-7-2-1-2 opp-7-2-1 --relation part-of
+link opp-7-2-1-3 opp-7-2-1 --relation part-of
+link opp-7-2-1-4 opp-7-2-1 --relation part-of
+link opp-7-2-1-5 opp-7-2-1 --relation part-of
+link opp-7-2-1-6 opp-7-2-1 --relation part-of
+link opp-7-2-1-7 opp-7-2-1 --relation part-of
+link opp-7-2-2 opp-7-2 --relation part-of
+link opp-7-2-3 opp-7-2 --relation part-of
+link opp-7-3 opp-7 --relation part-of
+link opp-7-4 opp-7 --relation part-of
+link opp-7-5 opp-7 --relation part-of
+link opp-7-5-1 opp-7-5 --relation part-of
+link opp-7-5-2 opp-7-5 --relation part-of
+link opp-7-5-3 opp-7-5 --relation part-of
+link opp-7-5-4 opp-7-5 --relation part-of
+link opp-7-5-5 opp-7-5 --relation part-of
+link opp-7-5-6 opp-7-5 --relation part-of
+link opp-7-5-7 opp-7-5 --relation part-of
+link opp-7-6 opp-7 --relation part-of
+link opp-7-6-1 opp-7-6 --relation part-of
+link opp-7-6-2 opp-7-6 --relation part-of
+link opp-7-7 opp-7 --relation part-of
+link opp-7-7-1 opp-7-7 --relation part-of
+link opp-7-7-2 opp-7-7 --relation part-of
+link opp-7-7-3 opp-7-7 --relation part-of
+link opp-7-7-4 opp-7-7 --relation part-of
+link opp-8 opp --relation part-of
+link opp-8-1 opp-8 --relation part-of
+link opp-8-2 opp-8 --relation part-of
+link opp-8-3 opp-8 --relation part-of
+link opp-8-3-1 opp-8-3 --relation part-of
+link opp-8-3-2 opp-8-3 --relation part-of
+link opp-8-3-3 opp-8-3 --relation part-of
+link opp-8-3-4 opp-8-3 --relation part-of
+link opp-8-3-5 opp-8-3 --relation part-of
+link opp-8-3-6 opp-8-3 --relation part-of
+link opp-8-3-7 opp-8-3 --relation part-of
+link opp-8-3-7-1 opp-8-3-7 --relation part-of
+link opp-8-3-7-2 opp-8-3-7 --relation part-of
+link opp-8-3-7-3 opp-8-3-7 --relation part-of
+link opp-8-5-1 opp-8 --relation part-of
+link opp-8-6-3 opp-8 --relation part-of
+link opp-9 opp --relation part-of
+link opp-9-1 opp-9 --relation part-of
+link opp-9-1-1 opp-9-1 --relation part-of
+link opp-9-1-2 opp-9-1 --relation part-of
+link opp-9-2 opp-9 --relation part-of
+link opp-9-2-1 opp-9-2 --relation part-of
+link opp-9-2-2 opp-9-2 --relation part-of
+link opp-9-2-3 opp-9-2 --relation part-of
+link opp-9-2-4 opp-9-2 --relation part-of
+link opp-9-2-5 opp-9-2 --relation part-of
+link opp-9-3 opp-9 --relation part-of
+link opp-9-3-1 opp-9-3 --relation part-of
+link opp-9-3-2 opp-9-3 --relation part-of
+link opp-9-3-3 opp-9-3 --relation part-of
+link opp-9-3-4 opp-9-3 --relation part-of
+link opp-9-3-5 opp-9-3 --relation part-of
+link opp-9-3-6 opp-9-3 --relation part-of
+link opp-9-3-7 opp-9-3 --relation part-of
+link opp-9-3-8 opp-9-3 --relation part-of
+link opp-9-3-9 opp-9-3 --relation part-of
+link opp-9-4 opp-9 --relation part-of
+link opp-9-4-1 opp-9-4 --relation part-of
+link opp-9-4-2 opp-9-4 --relation part-of
+link opp-9-4-3 opp-9-4 --relation part-of
+link opp-9-4-4 opp-9-4 --relation part-of
+link opp-9-4-5 opp-9-4 --relation part-of
+link opp-9-4-6 opp-9-4 --relation part-of
+link opp-9-4-7 opp-9-4 --relation part-of
+link opp-9-5 opp-9 --relation part-of
+link opp-9-5-1 opp-9-5 --relation part-of
+link opp-9-5-2 opp-9-5 --relation part-of
+link opp-9-5-3 opp-9-5 --relation part-of
+link opp-9-5-4 opp-9-5 --relation part-of
+link opp-9-5-5 opp-9-5 --relation part-of
+link opp-9-5-6 opp-9-5 --relation part-of
+link opp-9-5-7 opp-9-5 --relation part-of
+link opp-9-5-8 opp-9-5 --relation part-of
+link opp-9-5-9 opp-9-5 --relation part-of
+link opp-9-5-10 opp-9-5 --relation part-of
+link opp-9-5-11 opp-9-5 --relation part-of
+link opp-9-5-12 opp-9-5 --relation part-of
+link opp-10 opp --relation part-of
+link opp-10-1 opp-10 --relation part-of
+link opp-10-1-1 opp-10-1 --relation part-of
+link opp-10-1-2 opp-10-1 --relation part-of
+link opp-1-rev-2025-10-06 opp-1 --relation amends
+link opp-2-1-rev-2025-10-06 opp-2-1 --relation amends
+link opp-2-2-rev-2025-10-06 opp-2-2 --relation amends
+link opp-2-3-rev-2025-10-06 opp-2-3 --relation amends
+link opp-3-1-rev-2025-10-06 opp-3-1 --relation amends
+link opp-3-2-rev-2025-10-06 opp-3-2 --relation amends
+link opp-3-3-1-rev-2025-10-06 opp-3-3-1 --relation amends
+link opp-3-3-2-rev-2025-10-06 opp-3-3-2 --relation amends
+link opp-3-3-3-rev-2025-10-06 opp-3-3-3 --relation amends
+link opp-3-4-rev-2025-10-06 opp-3-4 --relation amends
+link opp-3-4-2-rev-2025-10-06 opp-3-4-2 --relation amends
+link opp-3-4-3-rev-2025-10-06 opp-3-4-3 --relation amends
+link opp-3-5-1-rev-2025-10-06 opp-3-5-1 --relation amends
+link opp-3-5-1-1-rev-2025-10-06 opp-3-5-1-1 --relation amends
+link opp-3-5-1-2-rev-2025-10-06 opp-3-5-1-2 --relation amends
+link opp-3-5-1-3-rev-2025-10-06 opp-3-5-1-3 --relation amends
+link opp-3-5-1-4-rev-2025-10-06 opp-3-5-1-4 --relation amends
+link opp-3-5-2-rev-2025-10-06 opp-3-5-2 --relation amends
+link opp-3-5-2-1-rev-2025-10-06 opp-3-5-2-1 --relation amends
+link opp-3-5-2-2-rev-2025-10-06 opp-3-5-2-2 --relation amends
+link opp-3-5-3-rev-2025-10-06 opp-3-5-3 --relation amends
+link opp-3-6-rev-2025-10-06 opp-3-6 --relation amends
+link opp-3-6-1-rev-2025-10-06 opp-3-6-1 --relation amends
+link opp-3-6-2-rev-2025-10-06 opp-3-6-2 --relation amends
+link opp-3-6-3-rev-2025-10-06 opp-3-6-3 --relation amends
+link opp-3-6-4-rev-2025-10-06 opp-3-6-4 --relation amends
+link opp-3-7-rev-2025-10-06 opp-3-7 --relation amends
+link opp-3-8-rev-2025-10-06 opp-3-8 --relation amends
+link opp-4-1-rev-2025-10-06 opp-4-1 --relation amends
+link opp-4-2-rev-2025-10-06 opp-4-2 --relation amends
+link opp-4-3-rev-2025-10-06 opp-4-3 --relation amends
+link opp-4-4-rev-2025-10-06 opp-4-4 --relation amends
+link opp-4-5-rev-2025-10-06 opp-4-5 --relation amends
+link opp-4-6-rev-2025-10-06 opp-4-6 --relation amends
+link opp-5-1-rev-2025-10-06 opp-5-1 --relation amends
+link opp-5-1-1-rev-2025-10-06 opp-5-1-1 --relation amends
+link opp-5-1-2-rev-2025-10-06 opp-5-1-2 --relation amends
+link opp-5-1-3-rev-2025-10-06 opp-5-1-3 --relation amends
+link opp-5-1-4-rev-2025-10-06 opp-5-1-4 --relation amends
+link opp-5-1-5-rev-2025-10-06 opp-5-1-5 --relation amends
+link opp-6-1-rev-2025-10-06 opp-6-1 --relation amends
+link opp-6-2-rev-2025-10-06 opp-6-2 --relation amends
+link opp-6-3-rev-2025-10-06 opp-6-3 --relation amends
+link opp-6-4-1-rev-2025-10-06 opp-6-4-1 --relation amends
+link opp-6-4-2-rev-2025-10-06 opp-6-4-2 --relation amends
+link opp-6-4-3-rev-2025-10-06 opp-6-4-3 --relation amends
+link opp-6-4-4-rev-2025-10-06 opp-6-4-4 --relation amends
+link opp-6-4-5-rev-2025-10-06 opp-6-4-5 --relation amends
+link opp-6-4-6-rev-2025-10-06 opp-6-4-6 --relation amends
+link opp-6-4-7-rev-2025-10-06 opp-6-4-7 --relation amends
+link opp-7-1-rev-2025-10-06 opp-7-1 --relation amends
+link opp-7-2-1-rev-2025-10-06 opp-7-2-1 --relation amends
+link opp-7-2-1-1-rev-2025-10-06 opp-7-2-1-1 --relation amends
+link opp-7-2-1-2-rev-2025-10-06 opp-7-2-1-2 --relation amends
+link opp-7-2-1-3-rev-2025-10-06 opp-7-2-1-3 --relation amends
+link opp-7-2-1-4-rev-2025-10-06 opp-7-2-1-4 --relation amends
+link opp-7-2-1-5-rev-2025-10-06 opp-7-2-1-5 --relation amends
+link opp-7-2-1-6-rev-2025-10-06 opp-7-2-1-6 --relation amends
+link opp-7-2-1-7-rev-2025-10-06 opp-7-2-1-7 --relation amends
+link opp-7-2-2-rev-2025-10-06 opp-7-2-2 --relation amends
+link opp-7-2-3-rev-2025-10-06 opp-7-2-3 --relation amends
+link opp-7-3-rev-2025-10-06 opp-7-3 --relation amends
+link opp-7-4-rev-2025-10-06 opp-7-4 --relation amends
+link opp-7-5-1-rev-2025-10-06 opp-7-5-1 --relation amends
+link opp-7-5-2-rev-2025-10-06 opp-7-5-2 --relation amends
+link opp-7-5-3-rev-2025-10-06 opp-7-5-3 --relation amends
+link opp-7-5-4-rev-2025-10-06 opp-7-5-4 --relation amends
+link opp-7-5-5-rev-2025-10-06 opp-7-5-5 --relation amends
+link opp-7-5-6-rev-2025-10-06 opp-7-5-6 --relation amends
+link opp-7-5-7-rev-2025-10-06 opp-7-5-7 --relation amends
+link opp-7-6-1-rev-2025-10-06 opp-7-6-1 --relation amends
+link opp-7-6-2-rev-2025-10-06 opp-7-6-2 --relation amends
+link opp-7-7-1-rev-2025-10-06 opp-7-7-1 --relation amends
+link opp-7-7-2-rev-2025-10-06 opp-7-7-2 --relation amends
+link opp-7-7-3-rev-2025-10-06 opp-7-7-3 --relation amends
+link opp-7-7-4-rev-2025-10-06 opp-7-7-4 --relation amends
+link opp-8-1-rev-2025-10-06 opp-8-1 --relation amends
+link opp-8-2-rev-2025-10-06 opp-8-2 --relation amends
+link opp-8-3-rev-2025-10-06 opp-8-3 --relation amends
+link opp-8-3-1-rev-2025-10-06 opp-8-3-1 --relation amends
+link opp-8-3-2-rev-2025-10-06 opp-8-3-2 --relation amends
+link opp-8-3-3-rev-2025-10-06 opp-8-3-3 --relation amends
+link opp-8-3-4-rev-2025-10-06 opp-8-3-4 --relation amends
+link opp-8-3-5-rev-2025-10-06 opp-8-3-5 --relation amends
+link opp-8-3-6-rev-2025-10-06 opp-8-3-6 --relation amends
+link opp-8-3-7-rev-2025-10-06 opp-8-3-7 --relation amends
+link opp-8-3-7-1-rev-2025-10-06 opp-8-3-7-1 --relation amends
+link opp-8-3-7-2-rev-2025-10-06 opp-8-3-7-2 --relation amends
+link opp-8-3-7-3-rev-2025-10-06 opp-8-3-7-3 --relation amends
+link opp-8-5-1-rev-2025-10-06 opp-8-5-1 --relation amends
+link opp-8-6-3-rev-2025-10-06 opp-8-6-3 --relation amends
+link opp-9-rev-2025-10-06 opp-9 --relation amends
+link opp-9-1-rev-2025-10-06 opp-9-1 --relation amends
+link opp-9-1-1-rev-2025-10-06 opp-9-1-1 --relation amends
+link opp-9-1-2-rev-2025-10-06 opp-9-1-2 --relation amends
+link opp-9-2-1-rev-2025-10-06 opp-9-2-1 --relation amends
+link opp-9-2-2-rev-2025-10-06 opp-9-2-2 --relation amends
+link opp-9-2-3-rev-2025-10-06 opp-9-2-3 --relation amends
+link opp-9-2-4-rev-2025-10-06 opp-9-2-4 --relation amends
+link opp-9-2-5-rev-2025-10-06 opp-9-2-5 --relation amends
+link opp-9-3-1-rev-2025-10-06 opp-9-3-1 --relation amends
+link opp-9-3-2-rev-2025-10-06 opp-9-3-2 --relation amends
+link opp-9-3-3-rev-2025-10-06 opp-9-3-3 --relation amends
+link opp-9-3-4-rev-2025-10-06 opp-9-3-4 --relation amends
+link opp-9-3-5-rev-2025-10-06 opp-9-3-5 --relation amends
+link opp-9-3-6-rev-2025-10-06 opp-9-3-6 --relation amends
+link opp-9-3-7-rev-2025-10-06 opp-9-3-7 --relation amends
+link opp-9-3-8-rev-2025-10-06 opp-9-3-8 --relation amends
+link opp-9-3-9-rev-2025-10-06 opp-9-3-9 --relation amends
+link opp-9-4-rev-2025-10-06 opp-9-4 --relation amends
+link opp-9-4-1-rev-2025-10-06 opp-9-4-1 --relation amends
+link opp-9-4-2-rev-2025-10-06 opp-9-4-2 --relation amends
+link opp-9-4-3-rev-2025-10-06 opp-9-4-3 --relation amends
+link opp-9-4-4-rev-2025-10-06 opp-9-4-4 --relation amends
+link opp-9-4-5-rev-2025-10-06 opp-9-4-5 --relation amends
+link opp-9-4-6-rev-2025-10-06 opp-9-4-6 --relation amends
+link opp-9-4-7-rev-2025-10-06 opp-9-4-7 --relation amends
+link opp-9-5-1-rev-2025-10-06 opp-9-5-1 --relation amends
+link opp-9-5-2-rev-2025-10-06 opp-9-5-2 --relation amends
+link opp-9-5-3-rev-2025-10-06 opp-9-5-3 --relation amends
+link opp-9-5-4-rev-2025-10-06 opp-9-5-4 --relation amends
+link opp-9-5-5-rev-2025-10-06 opp-9-5-5 --relation amends
+link opp-9-5-6-rev-2025-10-06 opp-9-5-6 --relation amends
+link opp-9-5-7-rev-2025-10-06 opp-9-5-7 --relation amends
+link opp-9-5-8-rev-2025-10-06 opp-9-5-8 --relation amends
+link opp-9-5-9-rev-2025-10-06 opp-9-5-9 --relation amends
+link opp-9-5-10-rev-2025-10-06 opp-9-5-10 --relation amends
+link opp-9-5-11-rev-2025-10-06 opp-9-5-11 --relation amends
+link opp-9-5-12-rev-2025-10-06 opp-9-5-12 --relation amends
+link opp-10-1-1-rev-2025-10-06 opp-10-1-1 --relation amends
+link opp-10-1-2-rev-2025-10-06 opp-10-1-2 --relation amends

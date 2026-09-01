@@ -1,0 +1,114 @@
+{
+  "manifest": "void/0.1",
+  "name": "voidhormiga",
+  "display_name": "Void Hormiga",
+  "kind": "application",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": "https://github.com/migriv24/VoidHormiga",
+  "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
+
+  "requires": [
+    {
+      "name": "voidcore",
+      "kind": "runtime",
+      "version": ">=0.2.7",
+      "sibling": "../VoidCore",
+      "cmake_var": "VOIDCORE_ROOT",
+      "link": "shared",
+      "note": "the engine and the dispatcher; ships as libvoidcore.dll beside our binaries"
+    },
+    {
+      "name": "voidmaiz",
+      "kind": "runtime",
+      "version": "*",
+      "sibling": "../VoidMaiz",
+      "cmake_var": "VOIDMAIZ_ROOT",
+      "link": "static",
+      "note": "the view and node-graph library; we are its client #2"
+    },
+    {
+      "name": "voidallomone",
+      "kind": "runtime",
+      "version": "*",
+      "sibling": "../VoidAllomone",
+      "cmake_var": "VOIDALLOMONE_ROOT",
+      "link": "static",
+      "via": "voidmaiz",
+      "note": "the rules language; reached through Void Maiz's forwarding headers under the maiz:: names"
+    },
+    {
+      "name": "voidpalabra",
+      "kind": "runtime",
+      "version": "*",
+      "sibling": "../VoidPalabra",
+      "cmake_var": "VOIDPALABRA_ROOT",
+      "link": "static",
+      "note": "canonical encoding and the CRDT merge; compiled from source into our own target"
+    }
+  ],
+
+  "interacts_with": [
+    {
+      "name": "voidreyna",
+      "kind": "application",
+      "seam": "transcript",
+      "direction": "inbound",
+      "note": "Reyna harvests civic documents and emits a dispatcher transcript; Hormiga replays it. No link, no shared binary — the seam is the transcript format, and tests/data holds a real one."
+    }
+  ],
+
+  "provides": {
+    "gui": "voidhormiga",
+    "cli": "voidhormiga-cli",
+    "describe": "voidhormiga-cli --describe",
+    "documents": {
+      "state": "*.state.json",
+      "bundle": "*.miga",
+      "mirror": "*.db"
+    },
+    "effects": [
+      "render",
+      "render-site",
+      "pack-database",
+      "backup-database",
+      "restore-database",
+      "check-store",
+      "push-store",
+      "publish-index",
+      "sync-version",
+      "sync-merge",
+      "lan-peers"
+    ],
+    "ships_beside_binary": [
+      "AGENT-GUIDE.md",
+      "okf/",
+      "fonts/"
+    ]
+  },
+
+  "data": {
+    "layout": "one database, one folder",
+    "root": "the folder holding the state document (--state sets it)",
+    "folders": [
+      "assets",
+      "tiles",
+      "site",
+      "exports",
+      "backups",
+      "documents",
+      "templates",
+      "fonts"
+    ],
+    "relocatable": "config set paths.<name> <path>"
+  },
+
+  "platforms": ["windows-x64"],
+
+  "update": {
+    "channel": "desktop",
+    "side_by_side": true,
+    "signed": "ed25519",
+    "note": "no silent updates: the user is told an update exists and chooses it. On mobile the store is the updater and this section does not apply."
+  }
+}

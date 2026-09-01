@@ -1,0 +1,365 @@
+/* glyphs_blocks.hpp - the BLOCK glyphs: what a document is made of.
+ *
+ * Split out of `seed.hpp` on 2026-08-20, when the file crossed its length
+ * budget and `tools/find_long.py` said so. The seam was already there — these
+ * were three `register_*` functions in one header — which is what a good split
+ * looks like: the file was long because three things had been put in it, not
+ * because any one of them was.
+ *
+ * A glyph declaration is DATA. It is long because an outreach organization has
+ * a lot of kinds of thing, and that length is honest; what was wrong was
+ * keeping every family in one place.
+ */
+#pragma once
+
+#pragma once
+#include "domain/civic.hpp"            // the civic record owns its own glyphs too
+#include "domain/hormiga_allomone.hpp" // the domain Allomone owns its own glyphs
+#include "voidmaiz/embed.hpp"
+#include "json.hpp"
+#include <algorithm>
+#include <cstdio>
+#include <random>
+#include <string>
+#include <vector>
+
+namespace hormiga {
+
+/* ── THE PALETTE IS DECLARED WHERE THE GLYPH IS (2026-08-20) ─────────────────
+ *
+ * The Builder's palette used to be a hand-written list in `app.cpp`, kept in
+ * sync with these declarations by memory. It was not in sync: `directory`
+ * (2026-08-19), `event_feature` and `event_flier` (2026-08-20) were all
+ * registered, renderable, documented and reachable from a script — and absent
+ * from the palette, so the only way to place one was to type a command.
+ *
+ * Worse, this had been asserted to the author as already working. A list that
+ * must be updated in a second file is a list that will be wrong, and the
+ * failure is silent in exactly the direction that matters: the GUI quietly
+ * offers less than the CLI, which is founding commitment 1 breaking in the
+ * direction it always breaks.
+ *
+ * So `block()` records every glyph it declares, and the shell reads that. One
+ * declaration, one palette, and a new block appears in the GUI by existing. */
+struct BlockPaletteEntry {
+    std::string glyph, label, category;
+};
+
+inline std::vector<BlockPaletteEntry>& block_palette() {
+    static std::vector<BlockPaletteEntry> v;
+    return v;
+}
+
+inline void register_block_glyphs(maiz::Core& core) {
+    const char* chain_in =
+        R"({"name":"prev","dir":"in","type":"flow","render":"adjacency"})";
+    const char* chain_out =
+        R"({"name":"next","dir":"out","type":"flow","render":"adjacency"})";
+    auto block = [&](const char* glyph, const char* label, const char* fields,
+                     const char* color, int face_h, bool hat, const char* category,
+                     const char* editors, const char* labels) {
+        std::string ports =
+            hat ? std::string(chain_out) : std::string(chain_in) + "," + chain_out;
+        // every component carries GRID placement (builder.md QA: stored as
+        // 12-unit spans, edited as slots) — declared here or projection drops
+        // them (the declare-or-vanish rule)
+        // builder-internal fields (layout/nav/band) are editor:"hidden" — they
+        // drop out of the generic inspector; the Builder manages them with its
+        // own dropdowns/handles (author 2026-07-23: raw AND/OR + raw band/nav
+        // fields were clunky). meta_desc etc. stay visible.
+        std::string ed_full = std::string(editors);
+        if (!ed_full.empty()) ed_full += ",";
+        ed_full +=
+            R"("row":"hidden","col":"hidden","span":"hidden","page":"hidden",)"
+            R"("link_to":"hidden","band_bg":"hidden","band_full":"hidden",)"
+            R"("band_image":"hidden",)"
+            R"("band_filter":"combo:theme,none,mute,mono,warm,cool,soft")";
+        std::string g = std::string(R"({"glyph":")") + glyph + R"(","label":")" +
+                        label + R"(","fields":[)" + fields +
+                        R"(,"row","col","span","page","link_to","band_bg",)"
+                        R"("band_full","band_image","band_filter"],)"
+                        R"("hints":{"color":")" + color +
+                        R"(","shape":{"kind":"block"},"face":{"w":260,"h":)" +
+                        std::to_string(face_h) + R"(},"category":")" + category +
+                        R"(","editors":{)" + ed_full + R"(},"labels":{)" + labels +
+                        R"__(,"row":"Grid row (0 = top)","col":"Grid column (0-11)",)__"
+                        R"__("span":"Width (1-12 units)","page":"Page (website; empty = home)",)__"
+                        R"__("link_to":"Navigates to (page slug or URL; makes it a button)",)__"
+                        R"__("band_bg":"Band background (none/tint/accent/card/dark/gradient)",)__"
+                        R"__("band_full":"Full-bleed band (1 = edge to edge)",)__"
+                        R"__("band_image":"Band background image (path)",)__"
+                        R"__("band_filter":"Treatment over the band image (theme = the site default)"},)__"
+                        R"__("ports":[)__" +
+                        ports + "]}}";
+        core.register_glyph(g);
+        /* …and remember it for the Builder's palette. Guarded because glyph
+         * registration runs once per session per front-end, and a palette that
+         * grows on every re-registration would show each block twice. */
+        for (const auto& e : block_palette())
+            if (e.glyph == glyph) return;
+        block_palette().push_back({glyph, label, category});
+    };
+    // a PAGE of a website (W2, author 2026-07-23): title + slug + order + nav
+    // visibility. Components name their page via their `page` field; empty =
+    // the home page. Newsletters ignore pages (single document by nature).
+    core.register_glyph(
+        R"({"glyph":"page","label":"Page",)"
+        R"("fields":["title_en","title_es","slug","order","in_nav","meta_desc"],)"
+        R"("hints":{"color":"#2e6b4f","face":{"w":200,"h":52},"category":"Content",)"
+        R"("editors":{"in_nav":"combo:1,0","meta_desc":"multiline:70"},)"
+        R"__("labels":{"title_en":"Title (English)","title_es":"Titulo (espanol)",)__"
+        R"__("slug":"URL slug (e.g. about)","order":"Order (0 = home)",)__"
+        R"__("in_nav":"Show in nav (1)",)__"
+        R"__("meta_desc":"SEO description (search + social preview)"}}})__");
+    block("hero", "hero",
+          R"("title_en","title_es","subtitle_en","subtitle_es","image",)"
+          R"("image_filter","image_dim")",
+          "#d4a017", 90, true, "Content",
+          R"("image":"image",)"
+          R"("image_filter":"combo:theme,none,mute,mono,warm,cool,soft")",
+          R"__("title_en":"Title (English)","title_es":"Titulo (espanol)",)__"
+          R"__("subtitle_en":"Subtitle (English; the line under the title)",)__"
+          R"__("subtitle_es":"Subtitulo (espanol)",)__"
+          R"__("image_filter":"Treatment over the photo (theme = the site default)",)__"
+          R"__("image_dim":"Scrim strength 0-100 (blank = the site default)",)__"
+          R"("image":"Banner image")");
+    // (hero face height covers an optional banner strip)
+    block("narrative", "narrative", R"("text_en","text_es")", "#4c97ff", 96, false,
+          "Content", R"("text_en":"multiline:70","text_es":"multiline:70")",
+          R"__("text_en":"Text (English)","text_es":"Texto (espanol)")__");
+    block("section_header", "section header", R"("title_en","title_es")", "#8a6d3b",
+          44, false, "Content", R"()",
+          R"__("title_en":"Heading (English)","title_es":"Encabezado (espanol)")__");
+    block("event_grid", "event grid",
+          R"("query","detail","limit","sort","search","caption_en","caption_es")",
+          "#9966cc", 84, false, "Data",
+          R"("query":"hidden","detail":"combo:compact,title,full",)"
+          R"("search":"combo:auto,on,off")",
+          R"__("query":"Event query: tags with AND/OR/NOT, plus date:future | )__"
+          R"__(date:past | date:today | date:recurring | date:undated. Check it )__"
+          R"__(with `effect query` - `ls --tag` cannot see the date ones.",)__"
+          R"__("detail":"How much of each event to show",)__"
+          R"__("limit":"Most events to show (blank = all)",)__"
+          R"__("sort":"date | date-desc | name (default date)",)__"
+          R"__("search":"Search box: auto (only when it helps) | on | off",)__"
+          R"__("caption_en":"Caption (English)",)__"
+          R"__("caption_es":"Titulo (espanol)")__");
+
+    /* ── event_feature: ONE event, showcased (2026-08-20) ────────────────────
+     *
+     * The author: *"a separate highlighted event, not just the event grid …
+     * similar to a section header, except the image is in the background with
+     * the event information and text over it."*
+     *
+     * A grid answers "what is coming up". This answers "come to THIS" — the one
+     * thing an organization most wants a visitor to see, at a size a grid cell
+     * cannot give it. Different job, different block, rather than a `featured`
+     * flag on `event_grid` that would have made the grid mean two things.
+     *
+     * The background image is the event's own flier when it has one (found
+     * through its `flyer-of` edge), so the common case needs no authoring at
+     * all — which is the payoff for reading relations at the render seam. */
+    block("event_feature", "featured event",
+          R"("event","image","height","image_filter","image_dim","cta_en","cta_es",)"
+          R"("cta_link")",
+          "#c2410c", 96, false, "Data",
+          R"("event":"hidden","image":"image",)"
+          R"("height":"combo:compact,tall,full",)"
+          R"("image_filter":"combo:theme,none,mute,mono,warm,cool,soft")",
+          R"__("event":"Which event (rune name)",)__"
+          R"__("image":"Background image (blank = the event's own flier)",)__"
+          R"__("height":"How much room it takes",)__"
+          R"__("image_filter":"Treatment over the photo",)__"
+          R"__("image_dim":"Scrim strength 0-100 (blank = the site default)",)__"
+          R"__("cta_en":"Button label (English)","cta_es":"Boton (espanol)",)__"
+          R"__("cta_link":"Button target (blank = the event's virtual link)")__");
+
+    /* ── event_flier: the event AND its flier, side by side ──────────────────
+     *
+     * Distinct from `event_feature` on the author's own distinction: *"this
+     * will be different than the previous event highlight because it's a flier
+     * we should still be able to click."* A flier is a document a person wants
+     * to open full size, save, and share — not wallpaper behind a headline. So
+     * here the image is a real tile that opens the lightbox, and the event's
+     * details sit beside it.
+     *
+     * BILINGUAL BY CONSTRUCTION: a flier exists in two languages as two `image`
+     * runes carrying `lang:` tags, and the block picks the one matching the
+     * page. That is the project's own rule (per-language THINGS get sibling
+     * runes) finally being consumed rather than just stated. */
+    block("event_flier", "event + flier",
+          R"("event","flier","display","caption_en","caption_es")",
+          "#7d5bb0", 84, false, "Data",
+          R"("event":"hidden","flier":"hidden",)"
+          R"("display":"combo:side,stacked")",
+          R"__("event":"Which event (rune name)",)__"
+          R"__("flier":"Which flier (blank = the event's own, in this language)",)__"
+          R"__("display":"Flier beside the details, or above them",)__"
+          R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
+    // query-backed image grid: the auto-updating flier wall — add a summer
+    // flier tagged @summer and it appears here on the next render, no edit
+    // display modes (author 2026-07-23): an image grid presents many ways —
+    // grid (even cells), masonry (Pinterest wall), carousel (swipe left/right,
+    // the "content-horizontal" the author described). Email always renders a
+    // simple table grid (no JS/columns); the mode is a WEB property.
+    block("image_grid", "image grid",
+          R"("query","columns","display","limit","caption_en","caption_es")",
+          "#7d5bb0", 84, false, "Data",
+          R"("query":"hidden","columns":"combo:2,3,4",)"
+          R"("display":"combo:grid,masonry,carousel")",
+          R"__("query":"Image query: tags with AND/OR/NOT, plus date:future | )__"
+          R"__(date:past | date:today | date:undated - a flier takes its date )__"
+          R"__(from the event it is linked to, so an unlinked one is undated.",)__"
+          R"__("columns":"Columns",)__"
+          R"__("display":"Display mode (web)",)__"
+          R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
+    /* `detail`/`limit`/`sort` arrive 2026-08-20, matching `event_grid`. Until
+     * then this was the only grid with NO clipping at all — one real posting
+     * ran 1,150 characters in a card and the operator's one-word review was
+     * "yikes". A grid that can only render everything is a grid that cannot be
+     * used with real data. */
+    block("job_grid", "job grid",
+          R"("query","detail","limit","sort","caption_en","caption_es")",
+          "#5d7d3b", 84, false, "Data",
+          R"("query":"hidden","detail":"combo:compact,title,full")",
+          R"__("query":"Job query: tags with AND/OR/NOT, plus date:future | )__"
+          R"__(date:past - a posting's date is its `deadline`, so date:future )__"
+          R"__(means still open.",)__"
+          R"__("detail":"How much of each posting to show",)__"
+          R"__("limit":"Most postings to show (blank = all)",)__"
+          R"__("sort":"deadline | name (default document order)",)__"
+          R"__("caption_en":"Caption (English)",)__"
+          R"__("caption_es":"Titulo (espanol)")__");
+    /* THE DIRECTORY (2026-08-19): the block that puts a PERSON or an
+     * ORGANIZATION on a page. It is the only query-backed block whose query is
+     * not sufficient — every rune it publishes must also carry
+     * `clearance:public`, and `clearance:contact` is a second, independent
+     * annotation that releases an email or a phone. The rule is in the renderer
+     * (section_web.cpp) because that is the seam where data leaves, which is
+     * the only place a privacy rule is worth enforcing; see security.md §3 and
+     * web-platform.md §4.
+     *
+     * `query` stays hidden from the generic inspector like every other block
+     * query — the Builder gives it a picker — but `kind` and `display` are
+     * combos, so the inspector renders them with no GUI code written. */
+    /* `live` (2026-08-21): the directory refreshes itself from a small file
+     * instead of being frozen at build time. See okf/concepts/platform/data-planes.md —
+     * the operator's complaint was having to redeploy the whole site whenever a
+     * contact changed. Off by default: a site that needs no freshness should
+     * not pay for a fetch, and the built-in cards are what a visitor with no
+     * JavaScript sees either way. */
+    block("directory", "directory",
+          R"("query","kind","display","limit","live","caption_en","caption_es")",
+          "#b3592e", 84, false, "Data",
+          R"("query":"hidden","kind":"combo:contact,organization,both",)"
+          R"("live":"combo:off,on",)"
+          R"("display":"combo:card,list,carousel")",
+          R"__("query":"Who to list (tags; AND/OR/NOT). Only runes tagged )__"
+          R"__(clearance:public are ever published.",)__"
+          R"__("kind":"People, organizations, or both",)__"
+          R"__("display":"Card wall, compact list, or swipe carousel",)__"
+          R"__("limit":"Most entries to show (blank = all)",)__"
+          R"__("live":"Refresh from site/index/ on load, so updating a contact )__"
+          R"__(needs only that small file republished - not the whole site",)__"
+          R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
+    /* ── video: THE ONE BLOCK THAT REACHES OFF THE SITE (2026-08-28) ──────
+     *
+     * The operator: *"I want to have a mini section for the Youth HUB… it'd be
+     * nice to include the youtube video from the email."* Nothing here took a
+     * video: `image_grid` takes images, the embeds take widgets, and `link`
+     * makes a button that navigates away.
+     *
+     * `url` IS A URL, not an embed code — see render/video.hpp for why that
+     * distinction is a security property and not a convenience. `poster` is the
+     * organization's OWN still, staged like any other asset: the block will not
+     * fetch a thumbnail from the provider, because doing so would report every
+     * visitor to that provider before anyone had asked to watch anything, which
+     * is the whole thing the click-to-play facade exists to avoid.
+     *
+     * `caption_en`/`caption_es` rather than a shared `caption`, because every
+     * other block on this list learned that lesson already. */
+    block("video", "video",
+          R"("url","poster","ratio","caption_en","caption_es")",
+          "#b3592e", 84, false, "Content",
+          R"("poster":"image","ratio":"combo:16:9,4:3,1:1,9:16")",
+          R"__("url":"Video link (YouTube or Vimeo; paste the address, not an )__"
+          R"__(embed code)","poster":"Still image shown before play (blank = a )__"
+          R"__(plain card; nothing is ever fetched from the video host)",)__"
+          R"__("ratio":"Shape of the player",)__"
+          R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
+    block("footer", "footer", R"("text_en","text_es")", "#5cb1d6", 72, false,
+          "Content", R"("text_en":"multiline:70","text_es":"multiline:70")",
+          R"__("text_en":"Text (English)","text_es":"Texto (espanol)")__");
+    // the LINK / BUTTON (author 2026-07-23): explicit navigation — a placeable
+    // element that points to a page (slug) or an external URL. Navigation is
+    // AUTHORED, not auto-generated; anything else can also navigate via its
+    // link_to field ("anything could be a button").
+    block("link", "link / button", R"("label_en","label_es","target","link_style")",
+          "#2e6b4f", 44, false, "Content",
+          R"("link_style":"combo:button,text")",
+          R"__("label_en":"Label (English)","label_es":"Etiqueta (espanol)",)__"
+          R"__("target":"Target (page slug or URL)","link_style":"Style")__");
+    // ── richer modern sections (W3, author 2026-07-23): quote/stat/divider —
+    // building blocks of a modern site; each a render-pack style, model stays
+    // declarative. Often placed side-by-side in a band (e.g. three stats). ──
+    block("quote", "quote", R"("text_en","text_es","author")", "#8a6d3b", 84,
+          false, "Content", R"("text_en":"multiline:70","text_es":"multiline:70")",
+          R"__("text_en":"Quote (English)","text_es":"Cita (espanol)",)__"
+          R"__("author":"Attribution (who said it)")__");
+    block("stat", "stat / metric", R"("number","label_en","label_es")", "#4c97ff",
+          56, false, "Content", R"()",
+          R"__("number":"Number (e.g. 500+)","label_en":"Label (English)",)__"
+          R"__("label_es":"Etiqueta (espanol)")__");
+    block("divider", "divider", R"("divider_style")", "#6f6f78", 32, false,
+          "Content", R"("divider_style":"combo:line,dots,space")",
+          R"__("divider_style":"Style")__");
+    // the MAP block (author, 2026-07-22): references a saved map VIEW. Web
+    // domain → a READ-ONLY interactive JS widget (pan/zoom/markers; it can
+    // never write); email domain → a static PNG at the view's home viewport.
+    // PRIVACY SEAM: contacts never render into either (personal coordinates
+    // don't leave the machine; okf/concepts/sections/territory.md boundaries).
+    block("map_embed", "map", R"("view","caption_en","caption_es")", "#2e6b4f",
+          72, false, "Data", R"("view":"hidden")", // picker in the builder UI
+          R"__("view":"Map view (name of a saved view)",)__"
+          R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
+    // the CALENDAR block: web → an interactive month/week/3-day JS widget
+    // (read-only) with .ics download + add-to-Google links; email → an
+    // email-safe HTML table month. Default query is EVENTS ONLY — incidents
+    // are opt-in by query (they can be sensitive; publishing is a choice).
+    block("calendar_embed", "calendar",
+          R"("query","mode","caption_en","caption_es")",
+          "#b3592e", 72, false, "Data",
+          R"("query":"hidden","mode":"combo:agenda,month")",
+          R"__("query":"Entry query (tags; empty = events only)",)__"
+          R"__("mode":"agenda (a list) or month (a grid); default agenda",)__"
+          R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
+    // the DOCUMENT rune (builder.md): one per document — its kind names the
+    // builder (newsletter = HTML components, website = JS components); the
+    // THEME socket lives here from day one (the Style tab grows into it)
+    core.register_glyph(
+        R"({"glyph":"document","label":"Document",)"
+        R"("fields":["kind","title","theme_accent","theme_bg"],)"
+        R"("hints":{"color":"#6f6f78","face":{"w":220,"h":56},"category":"Content",)"
+        R"("editors":{"kind":"combo:newsletter,website"},)"
+        R"("labels":{"kind":"Document kind","title":"Title",)"
+        R"__("theme_accent":"Theme accent (hex)","theme_bg":"Theme background (hex)"}}})__");
+}
+
+/* The Antfarm glyphs (okf/concepts/platform/antfarm.md, now a real canvas): one CORE
+ * hub whose out-sockets are the protocol interfaces — connector-shape-as-
+ * type, a `data` plug only fits a `data` socket — and one glyph per holiday
+ * provider with a single typed plug. Wiring IS configuration: the edge from
+ * core.data to a provider is "this is where the org's data lives". The old
+ * ANTFARM.md drew exactly this hub-consumer picture; the graph is now real.
+ * NOTE: secrets are NEVER fields (fields are exported state) — nodes show
+ * key PRESENCE; keys live in gitignored files until .miga v2. */
+/* The Antfarm glyphs — the I/O boundary as a TYPED DATAFLOW GRAPH (redesign,
+ * Q25, author 2026-08-05). The old model typed ports by a coarse input/output
+ * bucket, which lumped unrelated agents (Supabase+Sheets on "import";
+ * out-html+out-imgbb on "output"). Now ports are typed by the PAYLOAD that
+ * flows — `records` (the runes), `assets` (blobs), `site` (a rendered
+ * publication) — so incompatible agents can't be confused, and publishing is a
+ * PIPELINE (core → publisher → server/deployer), not siblings on one socket.
+ * Locality (local vs cloud) is badged in the label + color. */
+
+} // namespace hormiga

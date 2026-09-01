@@ -1,0 +1,52 @@
+# .gitattributes — what a byte means, decided once (2026-09-01)
+#
+# WHY THIS EXISTS, and why it is dated the day before the first commit. This
+# tree grew on Windows with mixed endings: most sources are LF, a handful
+# (app.cpp, email.cpp, site.cpp, builder.cpp, find_long.py) are CRLF. Nothing
+# enforced either, so an ordinary `sed -i` silently rewrote all 1866 lines of
+# render/site.cpp from CRLF to LF while changing two of them. That was caught
+# by eye. After the first push the same slip is a 1866-line diff in somebody
+# else's review, every time, forever.
+#
+# `text=auto` settles it: git stores text as LF and checks it out however the
+# platform wants. The working tree keeps behaving the way Windows expects; the
+# repository stops carrying the question.
+
+* text=auto
+
+# ── FILES WHOSE ENDINGS ARE PART OF THEIR CONTRACT ──────────────────────────
+# Shell scripts are executed by bash (tests/headless_smoke.sh is a ctest case,
+# tools/golden_render.sh is the render golden). A CR at the end of a `then` or
+# a heredoc terminator is a syntax error, so these are LF wherever they land.
+*.sh        text eol=lf
+
+# The Windows launcher is read by cmd.exe, which wants CRLF.
+*.bat       text eol=crlf
+
+# ── EXPLICIT TEXT, so nothing here is ever guessed at ────────────────────────
+*.c         text
+*.h         text
+*.cpp       text
+*.hpp       text
+*.py        text
+*.md        text
+*.txt       text
+*.json      text
+*.css       text
+*.js        text
+*.cmake     text
+CMakeLists.txt text
+*.sha256    text
+*.voidscript text
+
+# ── BINARY, never touched, never diffed as text ─────────────────────────────
+*.jpg       binary
+*.jpeg      binary
+*.png       binary
+*.ttf       binary
+*.woff2     binary
+*.pdf       binary
+*.a         binary
+*.db        binary
+*.miga      binary
+*.ico       binary

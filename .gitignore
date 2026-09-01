@@ -1,0 +1,89 @@
+# build output
+build/
+
+# runtime artifacts the app writes beside itself during development —
+# never committed (the repo root is a public artifact; CLAUDE.md rule 2)
+demo-org.json
+demo-org.db
+assets/
+tiles/
+preview-*.html
+site/
+*.miga
+imgui.ini
+exports/
+templates/
+documents/
+databases/
+backups/
+
+# holiday credentials — NEVER committed. imgbb.key is plaintext (dev only);
+# org.miga is the encrypted vault (still never committed — it's org data)
+imgbb.key
+*.miga
+
+# demo-assets/ is the EXCEPTION: the shipped Cat Colony photos (fictional cats
+# from cataas.com) — committed on purpose so the default dataset ships with the
+# app. The runtime assets/ above stays ignored (user/real-org images).
+!demo-assets/
+!demo-assets/**
+
+# temp-assets/ — the scratch drop for source material under examination (the
+# Springfield policy PDF, sample transcripts). Public documents today, but the
+# next thing dropped here might not be, and rule 2 says the repo root is a
+# public artifact. Ignored by default so that is never a judgement call.
+temp-assets/
+
+# ── SYNC: this device's identity, and the merge scratch file (2026-08-27) ────
+#
+# `<database>.peerkey` holds an X25519 keypair — the SECRET half included. It is
+# how another device recognises this one, and it is exactly what the short
+# authentication string exists to protect. It never travels: not over the wire,
+# not in the `.miga`, and above all not into a repo that is public from day one
+# (ground rule 2). A leaked device key does not decrypt past traffic, but it
+# does let someone else present as this device on a LAN, which is the whole
+# thing the pairing code is arranged to make visible.
+#
+# `*.merging` is the write-temp file a merge renames into place. It only exists
+# if a merge was interrupted between write and rename, and if one is sitting
+# here it contains a copy of the organization's database.
+*.peerkey
+*.merging
+
+# ── RUNTIME SIDECARS THE PROBE CAUGHT (2026-08-31) ──────────────────────────
+#
+# `demo-org.json` was ignored; the files the app writes BESIDE it were not, so
+# a dry-run `git add -An` still staged the session log and the advisory lock.
+# The lock carries an actor token and the log carries absolute local paths —
+# neither is secret, both are noise, and neither is anybody's business.
+demo-org.json.*
+*.lock
+*.migameta
+
+# CTest's scratch directory (`Testing/Temporary/LastTest.log`), written into the
+# source tree whenever ctest runs from the repo root rather than from build/.
+Testing/
+
+# Cloudflare Wrangler's local state, if a deploy was rehearsed from here.
+.wrangler/
+
+# ── VENDORED LIBSODIUM: the two files that carry the BUILDER's paths ─────────
+#
+# `libsodium.la` and `libsodium.pc` are libtool/pkg-config metadata emitted by
+# whoever compiled the library, and both hard-code an absolute prefix — here,
+# /c/Users/<name>/Documents/Projects/VoidHormiga/vendor/... . Nothing in
+# CMakeLists.txt reads either file; we link `lib/libsodium.a` directly. They are
+# dead weight that publishes the author's home directory, so they stay local.
+vendor/libsodium/lib/libsodium.la
+vendor/libsodium/lib/pkgconfig/
+
+# ── AGENT CONFIG: personal, not project (2026-09-01) ────────────────────────
+#
+# `.claude/settings.json` here is 292 lines of THIS machine's permission
+# allowlist, 125 of them naming absolute paths under the author's home
+# directory and one-off test invocations. It is workflow, not project: it tells
+# a stranger nothing about Void Hormiga and everything about one laptop.
+#
+# If a curated, path-free agent config is ever worth sharing, it can be added
+# deliberately with `git add -f .claude/settings.json`. The default is out.
+.claude/
