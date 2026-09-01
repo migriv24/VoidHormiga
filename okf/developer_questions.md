@@ -11,6 +11,113 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q47 — the advisory engine: how does Hormiga help with a mistake instead of
+  accepting it or refusing it?** (opened 2026-09-01, from agent feedback.)
+  **Lean: build it, as a third thing beside the dispatcher and Allomone.**
+
+  The complaint, fairly put: `set` accepts any field name and reports success,
+  so an agent can type `locaiton` instead of `venue`, run a whole script, see
+  `ok` on every line, and discover thirty minutes later that the data is
+  invisible. *"That is a data integrity crisis, not a convenience."*
+
+  The obvious fix — reject undeclared fields — is the wrong one, and the reason
+  is worth stating because it will be proposed again. **We cannot know that
+  `venue` and `location` mean the same thing.** A hard block is too strict: it
+  stops a person doing the thing they came to do, and it offers nothing in
+  return. But the author's judgement is that a bare warning is *equally* lazy:
+
+  > simply telling the user "that was wrong" and not offering anything is just
+  > lazy and it doesn't have the user in mind at all. a user just wants to do
+  > things. […] letting everything be a warning, and creating a hard stop, are
+  > both equally lazy in design.
+
+  The real answer is a system that *notices*: this database has used `venue`
+  ninety times and has never seen `location`; the two are close; ask. That
+  needs the graph we already have plus something language-shaped — an NLP layer
+  over field names, tag vocabulary and prior usage.
+
+  It is **not Allomone.** Allomone derives properties from rules the operator
+  wrote. This observes what the database already looks like and proposes.
+  Closest existing relative: `../FaultSack` (a different language, but the
+  observation behaviour is the thing to study).
+
+  Sequenced after the first release. It is the largest open design item here.
+
+- **Q48 — numbers, axes and infinity in a graph model.** (opened 2026-09-01, by
+  the author.) **Lean: wait for Void Core; do not solve it in Hormiga.**
+
+  Everything in a Void Core document is a rune on a graph, and Hormiga stores
+  numbers as strings because it barely has any — a zoom level, a span, a
+  weight. That sacrifice is invisible here and is **not** affordable elsewhere:
+  Void Unity needs character stats that go up and down, which means real
+  numeric semantics, ordering, and something coherent to say about infinity.
+
+  The author's note: numeric values as a concept may shift in Void Core. When
+  they do, Hormiga's string-typed numbers become a migration, not a redesign —
+  which is the argument for not inventing a private answer first.
+
+- **Q49 — should a bare run refuse when there is no database?** (opened
+  2026-09-01, from agent feedback.) **Lean: not yet; the note may be enough.**
+
+  A run with no `--state` used to invent `demo-org.json` in the working
+  directory in complete silence. That is the root of the worst bug this project
+  has had — two copies of one database, edited for two days. **Fixed 2026-09-01
+  to the extent that it now announces itself and names `--state`.**
+
+  What remains open is whether it should refuse outright. The argument for: a
+  missing database is the bedrock, and a wrong one poisons everything after it.
+  The argument against: a genuine first run has to start somewhere, and every
+  "cd somewhere new and begin" flow breaks. If it does refuse, it must offer the
+  alternatives in the same breath — an error with no way forward is the lazy
+  half of Q47 wearing a different hat.
+
+- **Q50 — two upstream defects in the relation verbs.** (opened 2026-09-01,
+  measured against the current build.) **Lean: report and wait; neither blocks
+  anything.**
+
+  1. `link` is absent from the `verbs` string that `--describe` prints. The rest
+     of the briefing is introspected from live registries and is trustworthy;
+     this one flat list is hand-maintained and has a hole in it.
+  2. `relate` accepts `--relation <name>` and ignores it — the association is
+     written, the name is not.
+
+  Both are Void Core's. The guide previously claimed `relate` wrote nothing at
+  all, which was **wrong** and was corrected the same day; a doc that overstates
+  a defect costs more trust than the defect.
+
+- **Q51 — does bilingual output need its own translation engine?** (opened
+  2026-09-01, by the author.) **Lean: yes, eventually, and it is not Palabra.**
+
+  Void Palabra is the *system layer* — history, versions, merge, persistence,
+  sync. The name misleads (it has misled this repository's own README), but it
+  has nothing to do with language. Hormiga's bilingual requirement is real and
+  currently manual: parallel `_en`/`_es` fields, authored by hand. Q5 already
+  said bilingual "must be an ENGINE." Nothing has been built.
+
+- **Q52 — `deploy_cmd` is readable in the state document.** (opened 2026-09-01,
+  from agent feedback.) **Lean: accept, and say so.**
+
+  Tokens go to the vault and never reach `argv`. But the *command* is a field:
+  anyone reading a stolen `.state.json` learns which provider and CLI version an
+  organization uses. That is reconnaissance, not a credential. Worth writing
+  down as accepted rather than leaving it to be rediscovered as a finding.
+
+- **Q53 — is "distrustful of its operator" a stance we keep?** (opened
+  2026-09-01, from agent feedback.) **Lean: keep it, and say it out loud.**
+
+  The feedback: the tool is *"defensive, noisy, and distrustful of its own
+  operators,"* and a reader would verify every `set` with a `get`. Offered as a
+  design smell; the author's answer is that it is the design:
+
+  > we cannot assume the intelligence of an ai agent. […] i am trying to design
+  > this for GPT 3 and the latest Fable 5. […] the user might not know
+  > themselves.
+
+  An operator may be a state-of-the-art model, a weak self-hosted one, or a
+  volunteer, and the database holds real people's information. The cost is
+  tokens spent on verification; the trade is deliberate. It belongs in a
+  concept page so a future contributor does not "fix" it.
+
 - **Q43 — does a headless Hormiga run in the cloud, holding the `.miga`?**
   (opened 2026-08-21.) **Lean: yes eventually, no for H1–H3, and it is the gate
   on posts.** Full argument in

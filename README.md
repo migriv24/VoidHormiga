@@ -3,7 +3,8 @@
 **The outreach organization's application.** Native C++20 desktop, founded
 2026-07-15, built on four sibling projects: **Void Core** (the engine, C ABI),
 **Void Maiz** (the view and node-graph library — we are its client #2),
-**Void Allomone** (the rules language) and **Void Palabra** (translation).
+**Void Allomone** (the rules language) and **Void Palabra** (the system layer:
+history, versions, merge, persistence and device-to-device sync).
 
 Void Hormiga keeps a community-outreach organization's people, events, images,
 and resources as **tagged runes** — and composes newsletters and static
@@ -92,9 +93,3 @@ Void repository carries one at its root.
 MIT — see [LICENSE](LICENSE). Third-party components are vendored, never
 fetched, and each ships its license beside the code it covers; they are indexed
 in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
-
-## A note on what lives in this repo
-
-**The repo root is a public artifact.** No member data, no exports, no
-credentials beside the code, ever. Organization data lives where the app
-puts it — locally, on the machine that runs it.

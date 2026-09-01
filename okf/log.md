@@ -294,7 +294,9 @@ absolute or relative to the database. See `src/app/paths.cpp`.
 - **Void Maiz** — the view. Client #2; the blessed host pattern comes from
   `../InteractionCombinators`.
 - **Void Allomone** — the language, extracted 2026-08-29 (above).
-- **Void Palabra** — translation. The merge was consumed 2026-08-27.
+- **Void Palabra** — the system layer for Void Core: how state is remembered
+  (history), named (versions), merged (convergence), stored (persistence) and
+  spoken between devices (sync). Its merge was consumed 2026-08-27.
 - **Void Reyna** — founded 2026-08-12 as a sibling out of the Civic Record work
   (below), when the research showed the problem was not Hormiga's.
 

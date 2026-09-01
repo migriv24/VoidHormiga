@@ -23,15 +23,43 @@ launch it.**
 
 ## 2. Setup
 
-    voidhormiga-cli --describe
+**A database is a folder.** Inside it sits one state document — `<name>.state.json`
+— and everything the organization owns hangs off that folder beside it:
+`assets/`, `site/`, `exports/`, `backups/` and the rest.
 
-Run it **in the folder that holds the database** — the one containing
-`demo-org.json` / `demo-org.db`. That working directory is how the tool finds
-everything.
+**Always name the document. It is the whole of the setup:**
 
-The binary is at `<hormiga-repo>/build/bin/voidhormiga-cli.exe`. If nobody has
-told you where the database lives, **ask.** Writing into the wrong folder
-silently creates a second, empty database, and that is a tedious mess to unpick.
+    voidhormiga-cli --state /path/to/TheirOrg/theirorg.state.json --describe
+
+`--state` sets both the document *and* the folder, so it does not matter where
+you run from. The binary is at `<hormiga-repo>/build/bin/voidhormiga-cli.exe`.
+
+**If nobody told you where the database lives, ask.** Do not guess: with no
+`--state`, the tool falls back to `demo-org.json` in your current directory,
+and if that does not exist it creates an empty one. It now says so —
+
+    note: no database in this folder - creating an EMPTY demo-org.json in
+            C:\wherever\you\happened\to\be
+          To open an existing one instead, name it:  --state <path-to>.state.json
+
+— but a note you did not read is the same as no note. Working in a second,
+empty copy of somebody's database is the most expensive mistake available here;
+it once cost two days of edits made against the wrong file.
+
+**To start a new database**, point `--state` at a path that does not exist yet
+and build it up. The folder is created for you:
+
+    cd anywhere
+    CLI="voidhormiga-cli --state /path/to/NewOrg/neworg.state.json"
+    $CLI mantle new neworg          # the org's data mantle
+    $CLI use neworg
+    $CLI rune new contact ana
+    $CLI set ana display_name "Ana Ruiz"
+
+That leaves `neworg.state.json` and its log in `/path/to/NewOrg/`, and every
+folder Hormiga later writes — `site/`, `exports/`, `assets/` — lands there too.
+There is no separate "create database" verb: a document is the mantles you put
+in it.
 
 `--describe` prints a JSON briefing: every verb, every glyph with its real
 fields, the mantles that exist, the actions, the Allomone predicates, the
@@ -61,14 +89,29 @@ Any one of those folders can also be moved on its own (2026-09-01):
 
 An absolute path is used as given; a relative one is relative to **the
 database**, never to your working directory, so the setting means the same
-thing however the tool was launched. Unset means the plain default — the name
-under the database folder.
+thing however the tool was launched.
 
-Worth knowing which is which before you move anything: **`assets/` holds
-originals that exist nowhere else** and is the only one bundled into a `.miga`
-backup. **`tiles/` and `site/` and `exports/` are derived** — a re-fetchable map
-cache and re-rendered output — which is why they are not backed up and why
-pointing `tiles/` at a scratch disk costs you nothing.
+**Unset means `<database folder>/<the name itself>`** — that is the whole rule,
+and it is why the defaults need no configuration. For a database at
+`/path/to/TheirOrg/theirorg.state.json`:
+
+| key | default when unset | holds | backed up into a `.miga`? |
+|---|---|---|---|
+| `paths.assets` | `/path/to/TheirOrg/assets` | originals that exist nowhere else | **yes** — the only one |
+| `paths.tiles` | `/path/to/TheirOrg/tiles` | map tile cache | no — re-fetchable |
+| `paths.site` | `/path/to/TheirOrg/site` | the built website | no — re-rendered |
+| `paths.exports` | `/path/to/TheirOrg/exports` | rendered newsletters, map PNGs | no — re-rendered |
+| `paths.backups` | `/path/to/TheirOrg/backups` | `.miga` bundles | no |
+| `paths.documents` | `/path/to/TheirOrg/documents` | exported document scripts | no |
+| `paths.templates` | `/path/to/TheirOrg/templates` | user starter templates | no |
+| `paths.fonts` | `/path/to/TheirOrg/fonts` | the org's own webfonts | no |
+
+Folders are created when something first writes to them, so a database folder
+that shows only a `.state.json` is normal, not broken.
+
+The column that matters: **`assets/` is irreplaceable and everything else is
+derived.** That is why pointing `tiles/` at a scratch disk costs nothing, and
+why moving `assets/` somewhere the backup cannot reach costs everything.
 
 ## 3. The shape of the data
 
@@ -80,20 +123,34 @@ pointing `tiles/` at a scratch disk costs you nothing.
 | **tag** | a label. **Namespaced by convention**: `type:contact`, `lang:es`, `status:active` |
 | **link** | a relation between two runes |
 
-**The verb that writes an edge is `link`, not `relate`.**
+**`link` and `relate` are two different verbs writing two different things.**
+Both work. Neither is a trap. The confusion is that one inspector only shows
+one of them.
 
-    link org-dns org-pages --relation 3:1     # writes the edge
-    relate a b --relation flyer-of            # reports success, writes NOTHING
+    link a b --relation 3:1        # a directed EDGE in the mantle's graph
+    relate a b                     # an undirected association between two runes
 
-`relate` is a tag verb from Void Core and it is reported upstream; until it is
-fixed it will tell you it worked. `link` is missing from `--describe`'s `verbs`
-string, which is the other half of the same problem — the discoverable verb is
-broken and the working verb is undiscoverable. Use `link`, and check with
-`related <rune>` **plus** a look at the document, not the return value.
+| | writes | shown by `related <rune>` | use it for |
+|---|---|---|---|
+| `link` | a directed edge — `{from, to, relation, weight, directed}` | **no** | the graph: Antfarm wiring, anything with ports |
+| `relate` | an undirected association | **yes** | plain "these two go together" |
 
-The `--relation` value is a **port pair**, `i:j` — output port *i* of the first
-rune into input port *j* of the second. `3:1` is what the Antfarm's own nodes
-use; a plain name like `flyer-of` also works for a data relation.
+So: **`related` reports `relate`, not `link`.** A `link` that does not appear in
+`related` has still been written — verify it in the document (`cat <rune>`, or
+read the state file's `layout.edges`), not by the absence of a line in
+`related`. `relate` also ignores a `--relation` name today; if the *kind* of
+association matters, use `link`.
+
+**One real gap, and its exact size:** `link` is missing from the `verbs` string
+that `--describe` prints. That string is a flat list of verb names — one entry
+is absent from it. It does not affect the rest of the briefing, which is
+generated by walking the running application's own registries: the glyphs,
+their declared fields, the actions, the predicates and the effects are all
+introspected, and those are what you should take field names from. Reported
+upstream; use `link` regardless.
+
+The `--relation` value on `link` is a **port pair**, `i:j` — output port *i* of
+the first rune into input port *j* of the second. `3:1` is what the Antfarm’s own nodes use.
 
 ### Two traps that cost real time
 
@@ -102,6 +159,17 @@ use; a plain name like `flyer-of` also works for a data relation.
 nothing if you tagged the runes `+event`. Tags are cheap — apply both if unsure:
 
     tag posada-2026 +type:event +community-outreach
+
+> ## ⚠ Use `effect query` to check any expression
+>
+>     voidhormiga-cli --allow-effects=query effect query '<expr>'
+>
+> It is right for **every** expression, it is the same evaluation the renderer
+> runs, and it changes nothing. `ls --tag` is right only for expressions with no
+> `date:` term in them, and **it does not say so when it is wrong** — it returns
+> a confident, quietly different answer. `find` is not a query language at all.
+>
+> If you read nothing else in this section: check with `effect query`.
 
 **`ls --tag` is the query language. `find` is not.** This distinction cost a real
 run an hour and produced a worse newsletter, so it is worth being blunt:

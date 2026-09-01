@@ -1075,10 +1075,29 @@ int main(int argc, char** argv) {
      * (a real first run has to start somewhere) so we say so, loudly, on
      * stderr — where it does not corrupt a --json caller's stdout. */
     std::error_code sec;
-    if (!given_state.empty() && !std::filesystem::exists(state, sec))
-        std::cerr << "note: " << state.string()
-                  << " does not exist; starting an EMPTY document.\n"
-                     "      If you meant an existing database, check the path.\n";
+    if (!std::filesystem::exists(state, sec)) {
+        if (!given_state.empty())
+            std::cerr << "note: " << state.string()
+                      << " does not exist; starting an EMPTY document.\n"
+                         "      If you meant an existing database, check the path.\n";
+        else
+            /* THE BARE RUN WAS THE SILENT ONE, and it was the dangerous half:
+             * `--state` at least names a path somebody typed. With no argument
+             * we invent `demo-org.json` in whatever folder the process happens
+             * to be in — which is how an organization's real database ended up
+             * with a second, empty twin beside a source tree, edited for two
+             * days before anyone noticed (see `state_name` in app.hpp).
+             *
+             * Not an error: a genuine first run has to start somewhere, and
+             * refusing would break every "cd somewhere new and begin" flow.
+             * But it says what it is doing and names the way out, because a
+             * warning with no alternative is no better than silence. */
+            std::cerr << "note: no database in this folder - creating an EMPTY "
+                      << g_state_name << " in\n        "
+                      << g_base_dir.string()
+                      << "\n      To open an existing one instead, name it:  "
+                         "--state <path-to>.state.json\n";
+    }
 
     const int rc = maiz::run_cli(build_app(), (int)args.size(), args.data());
 

@@ -87,7 +87,10 @@ BUDGET = {
     # us as a build regression. (2) `effect pack-database` — the .miga bundle
     # could only be made from the GUI, so an agent-run database could not
     # produce one; the Cat Colony demo folder needed exactly that.
-    'src/main/headless.cpp': 1120,
+    # 1120 -> 1140 (2026-09-01): the bare run announces that it is creating an
+    # empty database. It was the silent half of the two-copies-of-one-database
+    # bug — `--state` at least names a path somebody typed.
+    'src/main/headless.cpp': 1140,
 }
 
 
