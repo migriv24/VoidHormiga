@@ -1,0 +1,170 @@
+# Release builds for the platforms this machine cannot compile.
+#
+# WHY THIS EXISTS. The author has a Mac and a Linux device and wants to run
+# Hormiga on them. Development happens on Windows, and a Windows machine cannot
+# cross-compile either target -- macOS needs Apple's SDK and toolchain, and a
+# Linux GUI build needs the target's X11/Wayland headers and a Linux toolchain.
+# **A runner is the second computer**, which is Void Maiz's phrase and the whole
+# reason `ci.yml` exists; this is the same idea taken one step further. The
+# runners are real Mac and Linux machines, so what they produce is a real binary
+# rather than a cross-compiled guess.
+#
+# WHAT THIS PUBLISHES IS NOT A SUPPORTED BUILD, and the naming is deliberate.
+# These are archives, not installers: Void Mago's `wizard` emits NSIS and
+# nothing else, so there is no `.dmg` and no AppImage, and `void.json`'s
+# `platforms` array stays `["windows-x64"]` -- it is a SHIPPING RECORD, and a
+# platform enters it when a person has watched the application open a window.
+# Nobody has. The download page keeps saying "no build yet" on those two cards
+# until somebody has.
+#
+# THREE LEGS, NOT TWO. `macos-14` is Apple Silicon and `macos-13` is Intel, and
+# a runner builds for the architecture it is. A single macOS artifact would have
+# to either lie about which Macs it runs on or be a universal binary -- and a
+# universal build requires every vendored dependency and Void Core itself to be
+# built the same way, which is a larger bet than publishing both.
+name: release-builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the archives to (e.g. v0.1.0)"
+        required: true
+        default: "v0.1.0"
+  push:
+    tags: ["v*"]
+
+# `gh release upload` writes to the repository's own releases.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: macos-14
+            platform: macos-arm64
+          - os: macos-13
+            platform: macos-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      # Siblings on disk: our CMake defaults are `../VoidMaiz` and
+      # `../VoidPalabra`, and Void Maiz finds `../VoidCore/core`.
+      - uses: actions/checkout@v4
+        with:
+          path: VoidHormiga
+
+      - name: Check out the siblings
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/migriv24/void-core.git    VoidCore
+          git clone --depth 1 https://github.com/migriv24/VoidMaiz.git     VoidMaiz
+          git clone --depth 1 https://github.com/migriv24/VoidAllomone.git VoidAllomone
+          git clone --depth 1 https://github.com/migriv24/VoidPalabra.git  VoidPalabra
+
+      # GLFW 3.4 builds both an X11 and a Wayland backend by default, so
+      # configure needs both sets of headers even on a machine with no display.
+      - name: Linux window-system headers
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols
+
+      - name: Build Void Core
+        shell: bash
+        run: |
+          cmake -S VoidCore/core -B VoidCore/core/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build VoidCore/core/build --config Release
+
+      - name: Build Void Hormiga
+        shell: bash
+        run: |
+          cmake -S VoidHormiga -B VoidHormiga/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build VoidHormiga/build --config Release
+
+      # The one thing a runner with no display CAN check: that the binary runs
+      # at all, and knows which computer it is for. `HORMIGA_PLATFORM` is the key
+      # the update client looks itself up under in the feed, and it answered
+      # "unknown" off Windows until 2026-09-08.
+      - name: The binary starts and knows its platform
+        shell: bash
+        working-directory: VoidHormiga/build
+        run: |
+          ./bin/voidhormiga-cli update
+          ./bin/voidhormiga-cli update | grep -q "${{ matrix.platform }}"
+
+      # The build already stages everything that must travel beside the binary:
+      # AGENT-GUIDE.md, okf/, vendor/fonts/ (the UI faces), fonts/web/ (the
+      # webfonts a deployed site carries so it reaches no CDN) and Void Core's
+      # shared library. So the package is `bin/` minus the things a user has no
+      # use for. The binaries carry an $ORIGIN / @loader_path rpath, which is
+      # what makes the shared library beside them the one that loads.
+      - name: Package
+        shell: bash
+        run: |
+          set -eux
+          VERSION=$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' VoidHormiga/void.json | head -1)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          STAGE="VoidHormiga-${VERSION}-${{ matrix.platform }}"
+          mkdir -p "dist/$STAGE"
+          cp -R VoidHormiga/build/bin/. "dist/$STAGE/"
+          # test executables, the dataset generator, and CMake leftovers are not
+          # part of what somebody downloads
+          rm -f  "dist/$STAGE"/*smoke* "dist/$STAGE"/catgen* || true
+          rm -rf "dist/$STAGE"/CMakeFiles || true
+          cp VoidHormiga/LICENSE VoidHormiga/THIRD-PARTY-NOTICES.md "dist/$STAGE/" || true
+          cat > "dist/$STAGE/READ-ME-FIRST.txt" <<EOF
+          Void Hormiga ${VERSION} — ${{ matrix.platform }}
+
+          THIS IS AN UNTESTED BUILD. It compiled on a GitHub runner, which has no
+          display, so nobody has confirmed that this application opens a window on
+          this platform. It is published so it can be tried, not because it is
+          supported. The supported build is Windows.
+
+          To run it:
+              ./voidhormiga          the desktop application
+              ./voidhormiga-cli      the same application with no window
+
+          Keep this folder together. The binaries look for the shared library,
+          the fonts and okf/ beside themselves; moving one file out breaks it.
+
+          On macOS the first launch will be blocked because this is not signed or
+          notarized: right-click the binary, choose Open, and confirm. On Linux
+          you may need: chmod +x voidhormiga voidhormiga-cli
+
+          Nothing is signed. See AGENT-GUIDE.md and okf/ for everything else.
+          EOF
+          chmod +x "dist/$STAGE/voidhormiga" "dist/$STAGE/voidhormiga-cli" || true
+          cd dist
+          tar -czf "${STAGE}.tar.gz" "$STAGE"
+          # The version-free copy, so a download page can link one permanently
+          # correct URL — okf/concepts/platform/download-page.md §4.
+          cp "${STAGE}.tar.gz" "VoidHormiga-${{ matrix.platform }}.tar.gz"
+          shasum -a 256 ./*.tar.gz > "SHA256SUMS-${{ matrix.platform }}.txt"
+          ls -la
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoidHormiga-${{ matrix.platform }}
+          path: dist/*.tar.gz
+
+      # Attaches to the tag that triggered this, or to the one given by hand.
+      # `--clobber` so a re-run replaces rather than fails.
+      - name: Attach to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: dist
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
+          gh release view "$TAG" --repo "${{ github.repository }}" \
+            || gh release create "$TAG" --repo "${{ github.repository }}" \
+                 --title "Void Hormiga ${VERSION}" \
+                 --notes "Windows is the supported build. The macOS and Linux archives are untested: they compiled on a runner with no display, so nobody has confirmed a window opens. Published so they can be tried."
+          gh release upload "$TAG" --repo "${{ github.repository }}" --clobber \
+            ./*.tar.gz "SHA256SUMS-${{ matrix.platform }}.txt"

@@ -1,0 +1,134 @@
+# CI for Void Hormiga — and specifically: does the application compile off Windows?
+#
+# WHY THIS EXISTS. The author asked on 2026-09-08 for working Linux and macOS
+# builds. The audit found the code far more portable than the platform list
+# suggested — every Windows-touching file in `src/` carried a `#else` but one,
+# the HTTP layer shells out to `curl`, the update client already knew
+# `XDG_CONFIG_HOME` and `xdg-open` — and then found that the real gate was
+# upstream: Void Maiz declared `["windows-x64", "android-arm64"]` and both our
+# binaries link it.
+#
+# Their answer was "it should build, and nobody had ever tried", and they did
+# not stop at answering: they added the three-platform runner to their own
+# repository and pointed out that **a runner is the second computer.** Neither
+# project owns a Linux or macOS machine, and that constraint has been in front
+# of our phase F exit test since 2026-08-27. For *compiling*, it turns out not
+# to have needed a machine. It needed a workflow file.
+#
+# Their `journal.c` lesson is the reason this is not optional. They found an
+# Android CMake that had been missing a Void Core source file for weeks, because
+# the desktop build links the prebuilt DLL and never walks that list — only the
+# platform nobody built could have caught it. Our own `ws2_32` and
+# `HORMIGA_PLATFORM` fixes are the same species: **a code path no build
+# exercises is a claim, not a behaviour.** This is what makes them stay fixed.
+#
+# WHAT IT PROVES AND WHAT IT DOES NOT. It proves the library, the CLI, the GUI
+# and the tests COMPILE and that the suite RUNS, on all three. It does not prove
+# a window opens: no runner has a display, and "it ran there" for a GUI means a
+# person watched it. So `void.json`'s `platforms` array stays one entry long,
+# and the download page keeps saying "no build yet" on two of its three cards,
+# until somebody looks at a screen. That distinction is the whole reason the
+# page is worth anything — see okf/concepts/platform/download-page.md §5(d).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      # Never fail-fast: the point is to see all three verdicts, and a red
+      # Windows leg must not hide a green Linux one.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+          - os: macos-latest
+          - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      # The family is SIBLINGS on disk — our CMake defaults are `../VoidMaiz`
+      # and `../VoidPalabra`, and Void Maiz in turn finds `../VoidCore/core`.
+      # The checkout has to reproduce that layout, not the usual single-repo one.
+      - uses: actions/checkout@v4
+        with:
+          path: VoidHormiga
+
+      # Note the folder names: Void Core's GitHub repo is `void-core`, and the
+      # sibling directory the family uses is `VoidCore`.
+      - name: Check out the siblings
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/migriv24/void-core.git VoidCore
+          git clone --depth 1 https://github.com/migriv24/VoidMaiz.git VoidMaiz
+          git clone --depth 1 https://github.com/migriv24/VoidAllomone.git VoidAllomone
+          git clone --depth 1 https://github.com/migriv24/VoidPalabra.git VoidPalabra
+
+      # GLFW 3.4 builds BOTH an X11 and a Wayland backend on Linux by default, so
+      # configure needs both sets of development headers even though a runner
+      # will never open a window. This is the step a first-time Linux builder is
+      # most likely to be missing, and it is a system-package prerequisite
+      # rather than anything wrong with the source. Void Maiz hit it first.
+      - name: Linux window-system headers (GLFW build dependency)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols
+
+      # Void Core is linked as a prebuilt shared library on desktop, so it has
+      # to exist before we configure. Same command its own CI uses.
+      - name: Build Void Core
+        shell: bash
+        run: cmake -S VoidCore/core -B VoidCore/core/build -DCMAKE_BUILD_TYPE=Release && cmake --build VoidCore/core/build --config Release
+
+      - name: Configure Void Hormiga
+        shell: bash
+        run: cmake -S VoidHormiga -B VoidHormiga/build -DCMAKE_BUILD_TYPE=Release
+
+      # Builds everything, the GUI included. `voidhormiga` links voidmaiz_view,
+      # GLFW and ImGui, so a compile failure in the window layer fails here even
+      # though nothing is displayed — which is the only way the macOS GL context
+      # fix in `src/main/desktop.cpp` gets checked at all.
+      - name: Build
+        shell: bash
+        run: cmake --build VoidHormiga/build --config Release
+
+      # `reduce_conformance` is EXCLUDED, and not to buy a green badge. It is
+      # knowingly at 17/25 because Void Core extended the portable reduce
+      # contract on 2026-09-01 with boxes, a reserved separator and a `patch`
+      # rule that the port does not implement yet. It is Void Maiz's backlog
+      # item, not a regression, and NOT a portability signal — so it must not
+      # mask one. It runs on its own below, where its number is visible and
+      # cannot be mistaken for a platform verdict.
+      - name: Test
+        shell: bash
+        working-directory: VoidHormiga/build
+        run: ctest --output-on-failure -C Release -E reduce_conformance
+
+      - name: Reduce conformance (known 17/25 — reported, not gating)
+        shell: bash
+        working-directory: VoidHormiga/build
+        continue-on-error: true
+        run: ctest --output-on-failure -C Release -R reduce_conformance
+
+      # The one thing a runner CAN witness about a platform it cannot display:
+      # that the binary starts, and that it knows which computer it is for.
+      # `HORMIGA_PLATFORM` is the key the update client looks itself up under in
+      # the feed, and it answered "unknown" off Windows until 2026-09-08 — a
+      # binary that matches no release ever published and reports "up to date"
+      # forever. This is the assertion that keeps that fix true.
+      - name: The binary knows which computer it is for
+        shell: bash
+        working-directory: VoidHormiga/build
+        run: |
+          out=$(./bin/voidhormiga-cli update || ./bin/Release/voidhormiga-cli.exe update)
+          echo "$out"
+          echo "$out" | grep -qv "unconfigured-platform"
+          case "${{ matrix.os }}" in
+            windows-latest) echo "$out" | grep -q "windows-x64" ;;
+            macos-latest)   echo "$out" | grep -q "macos-universal" ;;
+            ubuntu-latest)  echo "$out" | grep -q "linux-x64" ;;
+          esac
