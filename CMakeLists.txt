@@ -12,6 +12,24 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# ── THE STATIC RUNTIME FLAGS, IN ONE PLACE (2026-09-10) ─────────────────────
+#
+# `-static-libstdc++ -static-libgcc` has been in this file since 2026-07-19 and
+# had spread to nine call sites, which is eight places to forget. **clang
+# rejects `-static-libgcc` outright**, so every one of those sites failed the
+# first macOS build — and fixing them one at a time meant finding them one at a
+# time, which is how `hormiga_civic_smoke` survived the first pass and failed
+# the second.
+#
+# The flags are a GNU/MinGW concern to begin with: they exist because a stale
+# runtime on PATH gives 0xc0000139 with no message, and because Void Mago found
+# `libwinpthread-1.dll` in the PE import directory of both binaries. Neither is
+# a thing on macOS, where the platform ships its libc++.
+set(HORMIGA_STATIC_RUNTIME "")
+if(NOT MSVC AND NOT APPLE)
+  set(HORMIGA_STATIC_RUNTIME -static-libstdc++ -static-libgcc)
+endif()
+
 # Void Maiz (which itself locates Void Core via its VOIDCORE_ROOT).
 #
 # ── X11 ONLY ON LINUX, AND IT IS NOT A PREFERENCE (2026-09-10) ──────────────
@@ -306,7 +324,7 @@ if(NOT MSVC)
   target_compile_options(voidhormiga PRIVATE -Wall -Wextra)
   # ---- SELF-CONTAINED BINARIES, and the third runtime that got away --------
   #
-  # `-static-libstdc++ -static-libgcc` has been here since 2026-07-19 (a stale
+  # `${HORMIGA_STATIC_RUNTIME}` has been here since 2026-07-19 (a stale
   # runtime on PATH = 0xc0000139, no message, okf/log.md). It was not enough,
   # and nothing in this repository could have told us: Void Mago's first
   # staging run read the PE import directory of the built executables and found
@@ -325,9 +343,7 @@ if(NOT MSVC)
   if(MINGW)
     target_link_options(voidhormiga PRIVATE -static)
   else()
-    if(NOT APPLE)
-      target_link_options(voidhormiga PRIVATE -static-libstdc++ -static-libgcc)
-    endif()
+    target_link_options(voidhormiga PRIVATE ${HORMIGA_STATIC_RUNTIME})
   endif()
 endif()
 
@@ -502,9 +518,7 @@ if(NOT MSVC)
   if(MINGW)
     target_link_options(voidhormiga-cli PRIVATE -static) # see voidhormiga above
   else()
-    if(NOT APPLE)
-      target_link_options(voidhormiga-cli PRIVATE -static-libstdc++ -static-libgcc)
-    endif()
+    target_link_options(voidhormiga-cli PRIVATE ${HORMIGA_STATIC_RUNTIME})
   endif()
 endif()
 
@@ -729,22 +743,12 @@ target_link_libraries(catgen PRIVATE hormiga_allomone)
 target_include_directories(catgen PRIVATE src vendor/json) # seed.hpp uses nlohmann
 
 if(NOT MSVC)
-  if(NOT APPLE)
-    target_link_options(hormiga_replay_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  endif()
-  if(NOT APPLE)
-    target_link_options(hormiga_spine_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  endif()
-  if(NOT APPLE)
-    target_link_options(hormiga_vault_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  endif()
-  if(NOT APPLE)
-    target_link_options(hormiga_miga_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  endif()
-  if(NOT APPLE)
-    target_link_options(hormiga_allomone_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  endif()
-  target_link_options(hormiga_civic_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  target_link_options(hormiga_reyna_import_smoke PRIVATE -static-libstdc++ -static-libgcc)
+  target_link_options(hormiga_replay_smoke PRIVATE ${HORMIGA_STATIC_RUNTIME})
+  target_link_options(hormiga_spine_smoke PRIVATE ${HORMIGA_STATIC_RUNTIME})
+  target_link_options(hormiga_vault_smoke PRIVATE ${HORMIGA_STATIC_RUNTIME})
+  target_link_options(hormiga_miga_smoke PRIVATE ${HORMIGA_STATIC_RUNTIME})
+  target_link_options(hormiga_allomone_smoke PRIVATE ${HORMIGA_STATIC_RUNTIME})
+  target_link_options(hormiga_civic_smoke PRIVATE ${HORMIGA_STATIC_RUNTIME})
+  target_link_options(hormiga_reyna_import_smoke PRIVATE ${HORMIGA_STATIC_RUNTIME})
 endif()
 
