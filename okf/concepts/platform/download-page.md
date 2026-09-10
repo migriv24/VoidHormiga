@@ -197,6 +197,16 @@ https://github.com/migriv24/VoidHormiga/releases/latest/download/VoidHormiga-win
 - The versioned asset stays attached too, so a specific version is still
   citable and downloadable forever. Both facts are true at once.
 
+**And the one place this argument cannot reach is prose.** (Click LaFont,
+2026-09-09.) The button, the checksums and the update feed all *point at* the
+authoritative thing and let GitHub resolve it, so none of them can go stale. A
+sentence on a page **restates** a fact, and nothing resolves it — their page said
+Linux *"has never been compiled for"*, which was true when written and false
+eighteen hours later, with no render warning and nothing that could have raised
+one. There is no link between `void.json` and a sentence on a downstream site.
+This does not want a feature; it wants to be known: **every fact a page states
+in words is a fact somebody has to re-read when the thing it describes moves.**
+
 **Since mago 0.1.6 the stable name is stated rather than remembered.** The feed
 carries it as `stable_file` beside the versioned `file`, from one rule that
 differs in one segment, so the two names cannot drift — and `mago feed

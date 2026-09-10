@@ -1917,3 +1917,110 @@ listed so a first run knows what it is looking at — a blank window (the OpenGL
 context, fixed but unwitnessed), HiDPI scaling, missing icons if `vendor/fonts/`
 did not travel, a file dialog that does nothing because the native one is
 Windows-only and guarded out.
+
+---
+
+# 2026-09-09 — the repository is public with its history, and two platforms are waiting on one checkbox
+
+## The author's instruction
+
+> create the linux and mac builds now. you cannot test these … its okay to get
+> these builds wrong, but they must exist and be released publically on github
+
+Taken as stated. The concern raised in the previous entry — that nobody has
+watched a window open — was answered directly by the author: they have a Mac and
+a Linux device and intend to be that person. So the caveat is not a reason to
+withhold a build; it is a reason to *label* one.
+
+**A Windows machine cannot cross-compile either target.** macOS needs Apple's
+SDK and toolchain, and a Linux GUI build needs the target's toolchain and its
+X11/Wayland headers. What can produce a real binary is the thing already
+producing green builds: **the runners are real Mac and Linux machines.**
+
+## `.github/workflows/release.yml`
+
+Three legs, and the third is the one worth explaining: `ubuntu-latest`,
+**`macos-14` (Apple Silicon) and `macos-13` (Intel)**. A runner builds for the
+architecture it is, so a single macOS artifact would either lie about which Macs
+it runs on or have to be a universal binary — and universal requires every
+vendored dependency *and* Void Core to be built the same way, which is a larger
+bet than publishing both. `HORMIGA_PLATFORM` was corrected the same day for the
+same reason: it said `macos-universal`, following Void Core's manifest, and an
+Apple Silicon build calling itself universal is a claim an Intel Mac would
+believe and then fail to execute. It is `macos-arm64` / `macos-x64` now.
+
+Each archive is `bin/` minus the test executables — which already contains
+everything that must travel, because the build stages `AGENT-GUIDE.md`, `okf/`,
+`vendor/fonts/` (UI faces), `fonts/web/` (the webfonts a deployed site carries so
+it reaches no CDN) and Void Core's shared library beside the binaries, and the
+binaries carry the `$ORIGIN` rpath that makes that copy the one that loads.
+Versioned and version-free names both, per §4, so a page could link one
+permanently correct URL if one ever should.
+
+**Each archive carries `READ-ME-FIRST.txt` saying it is untested**, in those
+words, with the macOS right-click-to-open instruction and the `chmod +x` a
+tarball needs. Publishing an unlabelled build would have been the thing the
+whole download page exists to refuse; publishing a labelled one is just honest.
+`void.json`'s `platforms` stays `["windows-x64"]`, and the two cards on the live
+page stay `no build yet`, until a person has looked at a screen.
+
+## The repository's real history is public now
+
+Everything through this arc — the update client, `hol_github`, the platform
+sets, `translate.cpp`, the reports folder, the portability fixes — had been
+sitting uncommitted since before 0.1.0. Two commits, pushed. Checked first that
+no member data, `.miga`, database, backup or credential file was in the set;
+`.gitignore` was already covering all of them, which is ground rule 2 having
+been designed in rather than remembered.
+
+## Blocked on a token scope, which is not a code problem
+
+`git push` is refused for the two workflow files:
+
+> refusing to allow a Personal Access Token to create or update workflow
+> `.github/workflows/ci.yml` without `workflow` scope
+
+The code is pushed; the workflows are committed locally and cannot leave this
+machine until the author's fine-grained PAT gains **Workflows: Read and write**.
+Recorded here because it will be the same wall the next time any workflow is
+touched, and because it is the sort of thing that reads like a broken push.
+
+## Click LaFont, on prose that goes stale
+
+Their third report in eight days, and the finding generalises past their page.
+They verified §1 rather than acting on it — that CI really does matrix three
+platforms, that `platforms` really does still say `windows-x64` — and left the
+two cards untouched. *"A green build is not a window"* landed as intended, and
+the OpenGL example is why: they said it would otherwise have read as licence to
+soften the card.
+
+**The finding:** their page said Linux *"has never been compiled for"*, true
+when written and **false eighteen hours later**. Nothing caught it and nothing
+could have — no link exists between `void.json` and a sentence on a downstream
+site, and the page renders and deploys happily while asserting something the
+manifest contradicts.
+
+What makes it worth recording is that the same page is careful about exactly
+this hazard everywhere else, and *by construction*: the button, the checksums
+and the update feed all **point at** the authoritative thing and let GitHub
+resolve it. Prose **restates**, and nothing resolves it. So the rule §4 already
+argues for has exactly one place it cannot reach. Added there as a paragraph
+rather than as a feature, which is their own read: *"I do not think this wants a
+feature; I think it wants to be known."*
+
+Their corrected copy is good and is what the live page now carries — no month,
+no quarter, no "coming soon", and it explains the OpenGL bug in a sentence a
+visitor can follow: *"a Mac was being asked for a graphics context it does not
+have, handing back an older one without complaining, and drawing nothing at
+all."*
+
+They also flagged, without doing it, that a container with `Xvfb` would catch the
+blank-window class cheaply — and did not attempt it because starting Docker or
+installing WSL is a change to the author's machine nobody asked for. Worth
+knowing for whoever wants a regression test for the bug that was found by
+reasoning.
+
+**And their read on Q66 moved against their own ask:** the full-width narrative
+is doing the job, the page is not worse for it, and they now think that supports
+the counter-lean more than their original request did. Left open; the author
+decides.
