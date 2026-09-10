@@ -11,6 +11,42 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q67 — libsodium is vendored as a WINDOWS BINARY. Re-vendor the sources?**
+  (Opened 2026-09-10, found by the first Linux build.) **Lean: yes, vendor the
+  sources, the way SQLite already is.**
+
+  `vendor/libsodium/` holds headers and a prebuilt `lib/libsodium.a` and **no
+  sources at all**. That `.a` is a ucrt64 build, so the first Linux link failed
+  on `__imp_EnterCriticalSection`, `__imp__errno` and `___chkstk_ms` — Windows
+  symbols inside a file this tree calls vendored.
+
+  **Why this is a rule question and not a build question.** Ground rule 5 says
+  *vendor, don't depend*, and for two months this looked like compliance. Every
+  other vendored piece — SQLite as one amalgamation `.c`, BLAKE3, the
+  single-file headers — is **source**, and source is portable by construction.
+  A vendored **binary** is a dependency on one toolchain wearing a vendor's
+  clothes: it is single-platform, it cannot be audited by reading it, and its
+  provenance is whoever built it. The rule was doing one job and appearing to do
+  two, which is the same shape as the `_vendors_note` in `void.json` — *"the
+  rule decided how third-party code is ACQUIRED and quietly decided it need not
+  be WRITTEN DOWN."*
+
+  **The interim, which is a real deviation and is stated rather than silent:**
+  off Windows the system libsodium is used (`apt install libsodium-dev`, `brew
+  install libsodium`), and the configure step says so out loud and fails with a
+  sentence naming the fix if it is absent. That is a package-manager dependency
+  on two platforms, which ground rule 5 exists to prevent.
+
+  **Against doing it now:** it is a re-vendor with a version to record and a
+  build to wire up, and it was found inside a change whose entire purpose was
+  getting an artifact onto two platforms. This project has learned once what
+  happens when a refactor rides along with a fix.
+
+  **What settles it:** whether Linux and macOS become supported platforms at
+  all. If they stay untested curiosities the interim is honest and cheap; the
+  moment either is a platform an organization runs on, a package-manager
+  dependency is not acceptable and the sources have to come in.
+
 - **Q66 — should `link` carry `caption_en` / `caption_es`?** (Opened
   2026-09-08, Click LaFont's platform-set report §3.) **Lean: yes, and only
   that — two fields, no container.**

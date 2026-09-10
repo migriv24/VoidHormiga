@@ -2024,3 +2024,109 @@ reasoning.
 is doing the job, the page is not worse for it, and they now think that supports
 the counter-lean more than their original request did. Left open; the author
 decides.
+
+---
+
+# 2026-09-10 — the first Linux and macOS builds anybody has ever run, and the five things that broke
+
+Linux and macOS archives are attached to `v0.1.0` and downloadable. **Five
+failures stood between the workflow existing and an artifact existing, and none
+of them was findable by reading.** That is the entry.
+
+## What the "green CI" claims were actually worth
+
+Before any of this: **Void Maiz's repository on GitHub was last pushed
+2026-09-01.** It has no `.github/workflows`, no `glhost.hpp`, and no
+`vendor/glfw/deps/wayland/`. Their message of 2026-09-08 described a
+three-platform runner and we relayed that to the author as *"their CI is green
+on all three"*. It cannot have been: the workflow was never on GitHub, so it had
+never run. Their "verified cold, 11/11" was a local Windows run. The Click
+LaFont agent's verification of our own `ci.yml` was likewise a local file read —
+ours was not pushed either until today.
+
+Nobody was lying. **Three agents each reported honestly on something local and
+the composite read as a green matrix that did not exist.** The lesson is the one
+Void Maiz themselves wrote and none of us applied: *a code path no build
+exercises is a claim, not a behaviour* — and a workflow file that has never been
+pushed is exactly such a path.
+
+## The five failures, in the order they appeared
+
+1. **`glhost.hpp` not found (macOS).** Our `desktop.cpp` hard-included a header
+   that exists only in the author's working copy of Void Maiz. Guarded with
+   `__has_include` plus a fallback that gives the same answer, and the fallback
+   is written as one block — hints and version string adjacent — so this copy
+   cannot drift the way the original pair did. It stops compiling the day
+   upstream's commit lands.
+2. **GLFW's Wayland backend (Linux).** GLFW 3.4 builds X11 *and* Wayland by
+   default and generates client headers from protocol XML in
+   `vendor/glfw/deps/wayland/`. **That directory is not in Void Maiz's vendored
+   drop, locally or on GitHub.** Configure succeeds; the build stops on a
+   missing `xdg-shell.xml`. X11 only, set as a cache variable by the
+   superproject — an X11 build runs on a Wayland desktop through XWayland, and
+   the alternative was vendoring files into somebody else's repository.
+3. **`-static-libgcc` (macOS).** clang rejects it outright. It had spread to
+   **nine call sites**, so fixing them one at a time is how
+   `hormiga_civic_smoke` survived the first pass and failed the second. Now one
+   `HORMIGA_STATIC_RUNTIME`, empty on Apple. The flags were always a GNU/MinGW
+   concern — `0xc0000139` from a stale runtime, and the `libwinpthread-1.dll`
+   Mago found in the PE import directory.
+4. **The vendored libsodium is a Windows binary.** This is the one worth
+   keeping. `vendor/libsodium/` holds headers and a prebuilt `lib/libsodium.a`
+   and **no sources at all**, and that `.a` is a ucrt64 build — the Linux link
+   failed on `__imp_EnterCriticalSection`, `__imp__errno` and `___chkstk_ms`.
+
+   Ground rule 5 is *vendor, don't depend*, and this looked like compliance for
+   two months. Every other vendored piece — SQLite, BLAKE3, the single-file
+   headers — is **source**, and source is portable by construction. **A vendored
+   binary is a dependency on one toolchain wearing a vendor's clothes**, and it
+   is single-platform whether or not anybody notices. Nobody could have noticed,
+   because only a non-Windows build could have asked the question.
+
+   Off Windows the system copy is used, the deviation is stated at configure
+   time rather than silent, and **[Q67](/developer_questions.md) asks for the
+   real fix**: re-vendor the sources the way SQLite already is. Deliberately not
+   done inside a change whose purpose was getting a build onto two platforms —
+   that is the refactor riding along that this project has learned about once.
+5. **The archive shipped six of Void Maiz's binaries**, including
+   `maiz_reduce_conformance` — a knowingly-failing conformance test — to people
+   who asked for an outreach application. They land in our `bin/` because we
+   `add_subdirectory` their repo, and the existing `*smoke*` rule did not match
+   `maiz_*`.
+
+## What exists now
+
+Attached to `v0.1.0`, versioned and version-free, with checksums:
+
+| | |
+|---|---|
+| `VoidHormiga-linux-x64.tar.gz` | built on `ubuntu-latest` |
+| `VoidHormiga-macos-arm64.tar.gz` | built on `macos-14`, Apple Silicon |
+| `VoidHormiga-windows-x64-setup.exe` | unchanged, still the supported build |
+
+The Intel Mac leg (`macos-13`) sat queued rather than failing — those runners are
+scarce — so `macos-x64` may arrive late or not at all on a given run.
+
+Each archive carries `READ-ME-FIRST.txt` saying in the first line that it is
+**untested**, with the macOS right-click-to-Open step (unsigned, so Gatekeeper
+blocks a double-click) and the `chmod +x` a tarball needs. Contents verified by
+downloading the artifact rather than trusting the packaging step: both binaries,
+`libvoidcore.so`, `vendor/fonts/` with the UI faces and the web woff2, `okf/`,
+`AGENT-GUIDE.md`, the licence and the notices.
+
+**`void.json`'s `platforms` still reads `["windows-x64"]`** and the two cards on
+the live page still say *no build yet*. Compiling is not running, an artifact
+existing is not a platform being supported, and the author is about to be the
+first person to find out which. That is exactly the sequence the shipping-record
+distinction was written for.
+
+## A note on how this was pushed
+
+The two workflow files could not be pushed with the token in the environment:
+GitHub refuses a PAT without `workflow` scope. The author supplied a classic
+token **in the conversation**, which puts a live credential in a transcript —
+flagged immediately, used only through `gh auth login --with-token` on stdin
+rather than on a command line, and **it must be revoked.** Its scopes were far
+wider than this needed: `admin:org`, `admin:enterprise`, `repo`, `workflow` and
+a dozen more, where a fine-grained token with contents+workflows on one
+repository would have done.
