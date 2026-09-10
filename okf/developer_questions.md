@@ -11,6 +11,583 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q66 — should `link` carry `caption_en` / `caption_es`?** (Opened
+  2026-09-08, Click LaFont's platform-set report §3.) **Lean: yes, and only
+  that — two fields, no container.**
+
+  A platform card today is a label and nothing more, and the report shows why
+  that is a real limit rather than a cosmetic one. They built §6.2b's row, put
+  three explanatory cards in the row beneath it column-aligned under the
+  buttons, and produced a page that is correct on the author's machine and wrong
+  for every visitor whose computer is not the author's — because **a set
+  reorders its own row and nothing else**, so the badge ends up over a card
+  describing a different operating system. Nothing warns.
+
+  The reason it could not be fixed by keeping the cards is the part that turns
+  this into a question:
+
+  - a card that both **moves with the set** and **explains itself** has to be
+    one block, because the unit of movement is one `.wcol`;
+  - `link` carries `platform` but no caption;
+  - `download` carries `platform` *and* `caption_*`, but its `file` is a local
+    path beside the database, so it cannot point at a GitHub release — and §3 of
+    [the download page](/concepts/platform/download-page.md) says it should not.
+
+  So the explanation and the thing being explained cannot currently be the same
+  block, and any arrangement that puts them in different blocks makes a
+  positional promise the set will break.
+
+  **What is asked for is exactly the two fields `download`, `video` and
+  `image_grid` already carry**, which is the argument for it: it is existing
+  vocabulary reaching one more block, not a new concept. It lets a platform card
+  read *"Windows 10 or 11, 64-bit, 7.4 MB"* under its own label and travel with
+  it, and it is useful well outside platform sets — every `link_style 'button'`
+  on every site has wanted a subtitle at some point.
+
+  **Two things deliberately NOT asked for**, both by the reporter, and both
+  worth keeping refused:
+
+  - a `platform_group` container — *"a new concept for a problem two fields
+    solve"*;
+  - any way to make a *different* row follow a set — *"that is a positional
+    coupling between blocks and it would be a worse thing than the bug."*
+
+  **Why it is a question and not just done:** `link` is the most-placed block in
+  the vocabulary and it is currently the one element whose entire contract is
+  *label plus target*. Growing it is cheap; growing it wrongly means every nav
+  link in every site acquires a field that means nothing there. The counter-lean
+  worth stating is that the layout warning now in §6.2b already prevents the
+  reported bug at zero cost, so this buys a nicer page rather than a correct
+  one.
+
+  The interim fix is shipped either way: §6.2b carries the warning, and the
+  reporter's own read is that a sentence is the right size of fix, since
+  §6.2b's example does not hit the trap.
+
+- **Q63 — the theme configures ONE MATERIAL, and presets are the axis that
+  already exists.** (Opened 2026-09-03, portfolio report A7.) **Lean: their
+  option 2 — presets as authored bundles — and it is the same item the Builder
+  roadmap has carried as 🔨 since July.**
+
+  The author of a portfolio, on his own built site:
+
+  > we need more options for gradient backgrounds. honestly im thinking like
+  > early 2000s frutiger aero. like lots of gradients, smooth bezier curves,
+  > complex abstract art in the background, skeuomorphism, etc. we're pretty
+  > limited in our current themes and styles available to us.
+
+  The diagnosis in the report is the useful part. Read as a set, the sixteen
+  theme axes — `accent`, `bg`, `ink`, `contrast`, `radius`, `scale`, `font`,
+  `texture`, `preset`, … — configure **one material**: flat fills, one shadow,
+  one radius. `band_bg`'s `gradient` is a single two-stop the operator cannot
+  influence. So *"an organization cannot currently look unlike another
+  organization. It can be a different colour."*
+
+  What their `custom.css` had to add, as a specification of what is missing:
+  multi-stop gradients with an angle; radial "bloom" layers (two or three soft
+  off-centre radials are the whole of the aero look and `linear-gradient` cannot
+  do them); a gloss sweep on a band; a card *material* — gradient fill, inset
+  top highlight, coloured border, coloured shadow — versus today's single
+  `--card`; and a decorative background layer that is art rather than a photo.
+
+  ## Why this is one bird with two stones
+
+  **[builder-roadmap](/concepts/sections/builder-roadmap.md) already carries
+  `🔨 presets — Clean / Soft-neumorphic / Bold-maximal`**, started and never
+  finished, and `theme.preset` is already an integer axis. The report's own
+  preferred option is that a preset become *"a named, authored bundle — palette
+  + material + gradient recipes + background art"*, at which point "Frutiger
+  Aero", "Civic", "Zine" and "Print" are things a designer writes once and every
+  organization picks.
+
+  That is the same argument the block palette already won:
+  `builder-roadmap`'s opening note is that the palette comes from the glyph
+  declarations rather than a hand-maintained list, so *uniqueness lives in the
+  palette, not in per-site code*. Twenty more scalar axes (their option 1) ends
+  as twenty knobs that still only make one look — which is exactly what the
+  sixteen we have already did.
+
+  It also touches [Q58/Q59](/developer_questions.md): a preset that carries
+  *background art* is an authored asset bundle, which is the same "declared
+  thing that ships beside the database" shape the registries need. If presets
+  are built as files, the registries get their loader for free, and vice versa.
+
+  ## The reading worth acting on first
+
+  The report's closing observation is the cheapest thing here and the most
+  useful: *"When a client's `custom.css` grows past about twenty lines it is a
+  reading on the theme system, not on the client."* Three clients now have one.
+  Their contents are a specification, and the first move is to read all three
+  rather than to design from this list alone.
+
+- **Q60 — a `role` glyph: a work history is not a job posting.** (Opened
+  2026-09-02, portfolio report A3.) **Lean: build it, and before `project`.**
+
+  `job` has one date, `deadline`, and `job_grid` renders `Closes <date>`. A held
+  role has a **start and an end** and is not an opening anyone can apply to;
+  `job_grid`'s whole frame — availability, deadline sort, `date:future` meaning
+  still open — is about vacancies.
+
+  **What makes this urgent rather than cosmetic** is where the cost landed. With
+  no glyph, six roles became six `narrative` blocks, and the résumé builder now
+  parses them back out of block prose with a line-shape convention:
+
+      <role title>
+      <org> - <dates>
+      (blank)
+      - bullet
+
+  In the report's own words, *"a parser over presentation — the exact inversion
+  of 'the model is the source of truth', in a repo whose first ground rule is
+  that concepts come first. It works because one agent writes and reads it, and
+  it breaks the day a person edits a block in the Builder and puts the org on
+  line one."*
+
+  That is the strongest argument in either document, and it is an argument this
+  project has made to itself before: an `event` has `start_time` and `end_time`
+  as fields rather than as a convention inside `summary`, for exactly this
+  reason.
+
+  **`role` is not a portfolio glyph**, which is what makes it eligible. A board
+  roster, a staff page and a term of office want the same shape — and the civic
+  set already ships `term` ("Term of office"), which suggests the concept is
+  half-present under another name. The first design question is therefore
+  whether `role` and `term` are one glyph; the second is whether `bullets` is a
+  repeated field or a newline-separated one (`narrative` now keeps line breaks,
+  so the cheap answer works).
+
+- **Q61 — a `project` glyph, or is `organization` close enough?** (Opened
+  2026-09-02, portfolio report A2.) **Lean: yes, but after `role`, and the
+  interesting part is not the fields.**
+
+  A portfolio project was modelled as an `organization` rune queried by a
+  `directory` block. It nearly fits — `display_name`/`abbreviation`/`bio`/
+  `avatar`/`url` carry title/subtitle/description/thumbnail/live-link — and it
+  fails in four places, of which only the last is structural:
+
+  1. the thumbnail renders as a round portrait (two lines of `custom.css`);
+  2. cards centre their text, right for a staff list, wrong for prose (ditto);
+  3. a project has two URLs — live and source — and `organization` has one, so
+     the repo link went into the prose;
+  4. **every GUI label lies.** The author edits a portfolio in a form headed
+     *Organization*, with *Abbreviation*, *Logo / photo* and *Kind*.
+
+  The report's sharpest observation is about the consent gate, and it is worth
+  quoting because it is a diagnostic technique rather than a complaint:
+
+  > `directory` publishes nothing without `clearance:public` — exactly right for
+  > the 84-contact database it was built for, and pure ceremony for a rune
+  > describing a Blender project. **That is not an argument against the gate.**
+  > It is a clean signal that the block is being borrowed: a privacy control
+  > that is meaningless for the data it is guarding means the data is not what
+  > the block is for.
+
+  So: a meaningless clearance check is evidence of a missing glyph. Worth
+  keeping as a test to apply elsewhere.
+
+  This sits behind `role` on the report's own ordering — *"`role` removes a
+  parser that will break; `project` removes labels that are merely wrong"* —
+  and behind [Q59](/developer_questions.md), because if organizations can
+  register their own types then `project` may be the first thing that proves it
+  rather than the next thing we hardcode.
+
+- **Q62 — clearance annotates runes, but a résumé is a third destination.**
+  (Opened 2026-09-02, portfolio report A4. Offered as an observation, not a
+  request.) **Lean: no change yet; record the shape and wait for the second
+  instance.**
+
+  A mailing address belongs on a résumé handed to an employer and on no web page
+  ever. The only field guaranteed never to reach a render is `notes`, so it
+  lives there — three labelled lines in one free-text field, parsed back out.
+
+  The report is explicit that the privacy answer is right and they would not
+  change it: `notes` is enforced at the seam rather than by convention, which is
+  the pillar working. What the episode shows is that `clearance:public` /
+  `clearance:contact` annotate **runes** while the destinations are binary —
+  published or private. A résumé is a third destination. So is a printed
+  directory, a grant report, and a roster handed to a partner organization.
+
+  This is the same argument one dimension over from the one
+  [security](/concepts/platform/security.md) already makes about clearance being
+  *annotations, not a rank*. The honest position today is that we have one
+  instance and a hypothesis; a second real destination is what should move it.
+
+- **Q58 — a registry for custom ELEMENTS: can an agent build a page component
+  and register it with Hormiga, the way a host registers a widget with Void
+  Maiz?** (opened 2026-09-02 by the author, sharpened by them the same day.)
+  **Lean: yes. The declaration and the placement are nearly free; the script is
+  the whole design problem, and the answer to it is the one `custom.css` just
+  took.**
+
+  The author's requirements, which are the specification:
+
+  > 1. it has an appearence in the document builder (doesn't need to be
+  >    accurate, just like at least a square i could theoretically position
+  >    elsewhere, or even reuse or something)
+  > 2. it still has tags, is within the void core framework, etc
+  > 3. if it needs to access the database and display something accordingly,
+  >    then that should also be allowed as well, but within a framework that's
+  >    consistent
+
+  And, on the output side: *"it'd also be nice if the representation it had in
+  the document builder was close to what it is in the final website. Also it
+  would be nice if it could translate to an email thing too, or at least be
+  'skipped over' when generating an email."*
+
+  ## What is already there, and it is most of (1) and (2)
+
+  **A glyph declaration is DATA.** It is a JSON blob naming fields, editors,
+  labels, a colour and a face size, and `register_block_glyphs()` is a function
+  that reads a pile of them. Everything the author lists under (1) and (2) —
+  placeable on the grid, positionable, spannable, taggable, movable between
+  pages, editable in the inspector, undoable, in the `.miga`, replayable from a
+  transcript — falls out of *being a rune with a declared glyph*, and needs no
+  new mechanism at all. The canvas draws from the declaration too, so "at least
+  a square I could position" is already what an unrecognised glyph would get.
+
+  So the first rung is small and worth building on its own: **let a glyph
+  declaration come from a file beside the database instead of only from a
+  `.hpp`.** That alone gives a custom element a name, fields, an inspector, a
+  place on the grid, tags, and a square on the canvas.
+
+  ## What is genuinely new, hardest last
+
+  1. **A render per (glyph × domain).** Renderer packs are per (glyph, domain)
+     by design ([blocks & domains](/concepts/sections/blocks-and-domains.md)), so a
+     registered element needs at least a web rendering. The author is right that
+     email should be optional — and **"skipped over" has to be a declared
+     property, not an accident.** A newsletter that silently omits a section is
+     exactly the class of failure this project watches for; the declaration
+     should say `email: skip` or `email: <fallback>` and the renderer should say
+     which it did.
+  2. **A canvas preview that resembles the output.** The honest options are a
+     labelled placeholder, a thumbnail rendered by the live preview server, or
+     an embedded browser view — and only the first is cheap. This is the same
+     wall item 5 of the 2026-09-02 feedback runs into (canvas text wrap), and
+     the two should be answered together.
+  3. **The script, which decides everything else.** A registered element that
+     ships JavaScript is **arbitrary code on a public page**, and every refusal
+     in this codebase points the other way: `video` refuses embed markup, the
+     render seam validates colours rather than escaping them, `custom.css` is a
+     *file* and not a field precisely so it cannot carry script, `push-store`
+     refuses a path. A registry that accepts JS *through the model* walks all of
+     that back through one door — and unlike a stylesheet, model data arrives by
+     import and by sync, from a device somebody else was using.
+
+     **The shape that survives is `custom.css`'s.** The element's code is a file
+     beside the database — a manifest plus a script the operator put there with
+     their own hands. What lives in the *model* is the rune: which element,
+     which field values, where on the grid. A `.miga` that carries element runes
+     whose code the recipient does not have should say so loudly and render a
+     placeholder, never silently fetch or execute anything.
+
+  ## (3), which is the requirement with a trap in it
+
+  *"if it needs to access the database and display something accordingly"* —
+  and the framework that has to be consistent is one that already exists:
+  **a query-backed block does not read the database, it is HANDED a result at
+  render time.** `event_grid` declares a `query`; the renderer evaluates it,
+  applies the language filter and the clearance seam, and passes the survivors
+  in. That is the consistency the author is asking for, and it is also the only
+  version that is safe: a component that could query from the browser would be a
+  hole in the one rule this project treats as non-negotiable, because the
+  clearance seam is enforced at render and cannot be enforced in a visitor's
+  browser.
+
+  So: a custom element declares a query like any other block, and receives its
+  rows as data baked into the page. It never gets a live connection, and it
+  never gets rows that did not clear the seam.
+
+  ## Should this be built first?
+
+  **The test is the one the Civic Record answered for `policy`: does a second,
+  unrelated caller want it?** The 2026-09-02 field report's A4 asked for a gated
+  block and a little per-visitor state as *built-in* blocks, which is evidence
+  that the registry may be the wrong first move — build those two, see what the
+  third request looks like, and let the registry be the thing that stops us
+  building a fourth. The author's own instinct points the same way: *"of course,
+  things officially supported by hormiga are most likely to work well."*
+
+- **Q59 — a registry for custom DATA TYPES: should an organization be able to
+  declare its own glyph, or does Hormiga ship every type it will ever have?**
+  (opened 2026-09-02 by the author, alongside Q58.) **Lean: yes, and this is the
+  more interesting half — but it is a smaller build than Q58 and should probably
+  come first.**
+
+  > **UNBLOCKED 2026-09-04.** The thing that actually stood in the way is built:
+  > Void Core 0.2.14 put glyph declarations in the state document
+  > (`state.glyphs`, `glyph declare`), so a declared type **travels inside the
+  > `.miga`** and a rune can no longer arrive somewhere without the descriptor
+  > explaining it. Before that, descriptors lived on `VC_Manager` and a bundle
+  > carried runes without their meaning, which made "an organization declares
+  > its own type" a promise the format could not keep. `tests/spine_smoke.cpp`
+  > pins the property — a core that registers nothing reads a declared glyph's
+  > fields — and `hormiga::declare_glyph` is the one door.
+  >
+  > What remains is Hormiga's, and it is the part the author decides: the
+  > generic `record_grid` renderer, the declaration UI, and how much of the
+  > three-way split from [Q64](/developer_questions.md) to expose (a declared
+  > *entity* is the safe one; a declared *act* is where the interesting and
+  > dangerous parts live). No longer waiting on anybody.
+
+  The author's argument, and it is a good one:
+
+  > something like "audio file" is a bit specific. Yes, plenty of things might
+  > eventually need "audio file" but some may not need it. Something even more
+  > specific might be a "3d object". Like do we really think that a 3D object
+  > type is as needed as a contact, event, or image? Contacts, events, and
+  > images are super universal. But 3D object is a bit more specific. Heck, what
+  > if its a unity game showcase, and the data type is webgl Unity games? that's
+  > super specific!
+
+  This reframes [Q54](/developer_questions.md) (the audio block, from the Click
+  LaFont report) from *"should we add audio?"* to *"is adding a glyph per medium
+  the right shape at all?"* — and the answer to the second question changes what
+  we do about the first. `release`, in Q54, was already flagged as the first
+  crack in a five-glyph model chosen for outreach organizations.
+
+  ## Why this is a smaller build than Q58
+
+  Q58's hard part is *arbitrary code on a public page*. A data type has no such
+  problem. A glyph declaration is already data — a JSON blob of fields, editors
+  and labels — and everything a custom type needs (create, edit, tag, query,
+  link, merge, `.miga`, replay, undo) is Void Core behaviour that does not know
+  or care which glyphs exist. **Loading a declaration from a file beside the
+  database is the whole first rung**, and it is the same rung Q58 needs.
+
+  The open questions are the ones about *what happens at the edges*:
+
+  - **Rendering.** A custom type with no renderer is a rune that cannot appear
+    on a page. Same answer as Q58: declared per domain, with an explicit skip.
+    A type that only ever appears in the Data section is a legitimate thing to
+    declare and needs no renderer at all.
+  - **A database that outlives its declaration.** Open a `.miga` on a machine
+    without the type file and the runes are still there — Void Core stores
+    content regardless. They must survive untouched, be visible as "a rune of a
+    type this install does not know", and above all **not be silently dropped by
+    a merge or a save.** This is the failure mode that matters and it is worth
+    testing before anything is shipped.
+  - **Namespacing.** Two organizations both declaring `release` with different
+    fields, meeting in a merge, is the collision to design against now rather
+    than later.
+  - **The relationship to what ships.** The author: *"eventually we will want to
+    support as many different data types and modalities as possible."* So a
+    registry is not a substitute for good built-ins — it is what lets a real use
+    exist before we know whether it generalises. A custom type that three
+    organizations independently declare is the evidence that it should become a
+    built-in, which is a better promotion path than guessing.
+
+
+  **2026-09-03 — the portfolio agent asked the same question independently, and
+  narrowed it usefully.** Their A10 is this question arriving from a client
+  rather than from the author, which is the strongest evidence a question can
+  get. They tabulate four separate gaps they had already filed — a `project`
+  glyph, a `role` glyph, `bio_es` on a data rune, `hero.portrait` — and observe
+  that all four are one shape:
+
+  > **the glyph set is fixed at compile time, and an organization that is not
+  > shaped like LON has to borrow.** Borrowing works … but each borrow costs a
+  > lie in the GUI, a workaround in CSS, or a parser over presentation.
+
+  Three things they contribute that this entry did not have:
+
+  1. **A concrete syntax**, which makes the scope visible — `glyph new project`
+     with `field title_en title_es text`, `field thumbnail image`, `category
+     Content`. A *declared record type*: typed fields, GUI labels, `--describe`
+     introspection, defined in the document rather than in C++.
+  2. **A rendering answer that does not open [Q58](/developer_questions.md).**
+     A generic `record_grid` over a query, plus a `record_detail`, would render
+     project cards, board members, publications, courses and equipment
+     inventories *without a renderer per type*. That is the observation that
+     unblocks this: the hard half of Q58 is that a block needs a renderer in two
+     output domains, and a generic grid needs one renderer total.
+  3. **The counter-argument, stated by them rather than by us**, and it is the
+     one that matters:
+
+     > a registry is how a focused tool becomes a generic database with a worse
+     > UI. `directory`'s clearance gate is only trustworthy *because* it knows
+     > it is publishing people; a generic `record_grid` over user-declared types
+     > cannot make that promise. Whatever the answer is, **the privacy seam must
+     > not become configurable** — that pillar is the reason a real
+     > organization's data is safe in this thing, and it is worth more than a
+     > `project` glyph.
+
+  So the design constraint is now explicit and it is a hard one: **a declared
+  glyph may not be publishable through a block that makes a consent promise.**
+  `directory` stays for `contact`/`organization` and keeps its gate; a
+  `record_grid` over a declared type publishes what the author placed, the way
+  `download` does, and naming it is the consent. Any answer that lets a declared
+  type flow through `directory` is the wrong answer.
+
+  **2026-09-03 — this question now has a dependency and a better
+  decomposition.** Two things moved underneath it the same day:
+
+  1. **It is blocked on Void Core.** Glyph descriptors live on `VC_Manager`, not
+     in the state document, so a `.miga` carries runes without their meaning —
+     a declared type would not survive being handed to anybody. Asked upstream
+     (`MESSAGE_FOR_VOIDCORE_hormiga-rune-kinds-and-the-glyph-split-2026-09-03.md`).
+  2. **[Q64](/developer_questions.md) splits it into three cleaner questions.**
+     If a descriptor gains a `kind`, then "declare a type" means three different
+     things: a declared **attribute** is nearly free (a named dimension), a
+     declared **entity** is the case discussed here, and a declared **action** is
+     where both the interesting and the dangerous parts live. Answering per kind
+     is likely better than answering this as one question.
+
+  Also settled on 2026-09-03, and it strengthens the lean rather than changing
+  it: a hand-written renderer per type is a **stopgap for a generative one**, so
+  adding `project` with bespoke render cases deepens the stopgap while a generic
+  `record_grid` is a rendering *derived from the declaration* — the right shape,
+  with a dumb deriver that can be swapped later. See the log.
+
+  **What they are actually asking**, which is a decision only the author can
+  make and is the reason this stays open:
+
+  > is a declared data glyph — typed fields, GUI labels, `--describe`, no custom
+  > renderer — a thing Void Hormiga wants to have, or is the right answer that
+  > the glyph set grows by hand and `project` and `role` simply get added to it?
+
+  Either answer closes [Q60](/developer_questions.md) and
+  [Q61](/developer_questions.md) for them; they want to know which, because the
+  workarounds they maintain are written differently depending on whether they
+  are temporary. **That is a fair thing to be told and it has now been asked
+  twice.**
+
+- **Q54 — can Hormiga play a sound? RUNG 1 BUILT 2026-09-02; rungs 2-3 open.**
+  (Opened 2026-09-02, from the Click LaFont report A1.) **Lean: yes, and in
+  three steps, smallest first.**
+
+  **Rung 1 shipped the same day.** An `audio` block: a file the organization
+  owns, staged into `site/assets/`, played by a native `<audio controls
+  preload="none">` with no facade — nothing leaves this site, so the standard
+  keeps the promise our JavaScript keeps for `video`. Card and Listen button in
+  the newsletter. It is placeable from the Builder palette, not just by an
+  agent. See `render/audio.hpp`.
+
+  **Rungs 2 and 3 are still open, and rung 2 is now entangled with
+  [Q59](/developer_questions.md)** — which is the better question. What follows
+  was written before Q59 existed and the middle of it is what Q59 reframes.
+
+  `--describe` lists 69 glyphs and none of them is audio. `video` takes YouTube
+  and Vimeo and correctly refuses everything else. So a music artist's website
+  cannot play the artist's music: two album covers, links to somebody else's
+  player, and forty-four minutes of masters sitting in the folder beside the
+  database.
+
+  **This is not a niche of one**, which is the whole reason it is a question
+  rather than a client accommodation. An organization with a podcast, a recorded
+  meeting, or a Spanish-language radio spot has exactly this absence — and for
+  that organization the recorded meeting is often the most accessible thing on
+  the site, because it does not require reading.
+
+  1. **An `audio` block.** File, title, duration, optional cover. The same
+     posture as `video`: no autoplay, no third-party fetch, a poster card until
+     somebody presses play. A native `<audio>` element behind that card needs no
+     library and no script we do not already ship. This alone is the difference
+     between *cannot* and *can*, and it is the smallest thing on this page.
+  2. **A `release` glyph and a `track_list` block.** The report's argument is
+     the right one: a release is a first-class thing in this domain the way an
+     `event` is in an outreach organization's — title, year, cover, an ordered
+     catalogue of tracks, links per service — and the `detail`/`limit`/`sort`
+     machinery on `event_grid` carries straight over, as do `title_en` and
+     `summary_en`. Today a release is an `image_grid` with `limit 1`
+     impersonating a card.
+
+     The open part is whether `release` belongs in the *core* glyph set or in a
+     domain pack. Hormiga's five kinds of thing were chosen for outreach
+     organizations; a sixth that only a music project uses is the first crack in
+     that. The honest test is the one the Civic Record answered for `policy`:
+     does a second, unrelated caller want it? A church with a sermon archive and
+     a school with a recital series both do, which suggests the general glyph is
+     not `release` but *an ordered collection of media with a date* — and that
+     naming it `release` would be modelling one client's word.
+  3. **A player that survives a page change.** Later, and probably a real
+     conversation about whether a static output can host one at all. Deferred
+     explicitly rather than silently: it is the one of the three that changes
+     what a Hormiga site *is*.
+
+- **Q55 — how does media reach the object store?** (opened 2026-09-02, from the
+  Click LaFont report A2.) **Lean: a third `what`, named `assets`, and a
+  `base_url` on `hol_object_store`.**
+
+  `effect push-store` takes `index` or `backup` and explicitly not a path. The
+  comment at the top of `src/publish/push.cpp` gives the reason and the reason
+  is right: an effect that uploads an arbitrary path is a way to send the
+  unencrypted database, the vault or a token file to a bucket in one command.
+  The report agrees with the reasoning and points at the consequence — there is
+  no way to get media into object storage **at all**, and media is exactly what
+  should not ride in a static-site deploy. Forty minutes of audio is ~40 MB
+  re-hashed and re-uploaded on every publish of a site whose text changes
+  weekly.
+
+  The proposed shape keeps the safety argument entirely intact: a third kind,
+  `assets`, that pushes `assets/` and nothing else. Still not a path; the caller
+  still cannot name a file; and it is the one folder Hormiga already designates
+  as irreplaceable originals. The other half is a `base_url` on
+  `hol_object_store` so `stage_site_asset` can emit a store URL instead of
+  copying the file into `site/`.
+
+  What is genuinely open is the second half, not the first. `stage_site_asset`
+  is the choke point every image passes through and it is also where the
+  downscaled gallery derivative is made; a version of it that sometimes returns
+  a remote URL has to decide what a *thumbnail* of a remote file is, whether a
+  site built on a machine that has never seen the bucket is still valid, and
+  what happens to `.miga` portability when a page points at a bucket the
+  recipient cannot read. **Every cloud host is disposable** is the acceptance
+  test, and an asset URL is the first thing on the page that would not survive
+  walking away.
+
+- **Q56 — can a rendered page do anything?** (opened 2026-09-02, from the Click
+  LaFont report A4.) **Lean: two primitives, and explicitly not the third.**
+
+  What Hormiga renders is static HTML plus a fixed `app.js` — lightbox, filter
+  box, scroll-reveal, map, calendar. There is no seam for a page that *does*
+  something. The brief that surfaced it was a site that should be "FUN and
+  INTERACTIVE" and eventually ARG-shaped, but both asks generalise well past
+  that:
+
+  - **A gated block** — content that renders only after a visitor supplies a
+    passphrase. Client-side, no server, no account. For an ARG it is a door; for
+    an organization it is a members-only page; for a newsletter archive it is an
+    unlisted issue. It **must** say plainly in its own documentation that it is
+    a doorknob and not access control, because somebody will otherwise put a
+    member list behind it — and this project's answer to "who may see this" is
+    the clearance seam, which is enforced at render and cannot be enforced in a
+    browser.
+  - **A little per-visitor state.** "You have found 3 of 7." A visitor who has
+    done something being shown something different is the minimum an ARG needs,
+    and it is also "you have read this update" everywhere else.
+
+  **Not asked for, and flagged so nobody builds it on the way: a solver
+  counter.** A count of who got through is analytics — a different product, a
+  privacy question this project has not asked, and one our posture would make
+  expensive. The report flagged it before we could.
+
+  One primitive already exists and is doing this work: `page.in_nav 0`. A live
+  site has an unlisted page that renders, is in the sitemap, and is linked from
+  exactly one text link. That single field establishes the contract the rest
+  would rest on — *this site has more in it than the menu admits* — and it cost
+  nothing.
+
+- **Q57 — should an organization's data mantle be permanently called
+  `demo-org`?** (opened 2026-09-02, from the Click LaFont report D6.)
+  **Lean: rename the default, do not make it configurable.**
+
+  `kDataMantle` is `"demo-org"`, hardcoded, and every block query, `effect
+  query` and the published index read that mantle and no other. The silent
+  failure that follows is fixed — a render now says when data-shaped runes live
+  in a mantle nothing reads, and names the one command that fixes it. What is
+  left is the smaller, real observation the report makes in a parenthesis: *an
+  organization's own data namespace being permanently called `demo-org` reads
+  strangely in a `mantles` listing on a real client.*
+
+  Making it configurable is the expensive version and it buys a new failure
+  mode: a database whose data mantle is named in config, and config that has
+  been lost or copied from another install, renders empty for a reason that is
+  harder to diagnose than the one we just fixed. Renaming the default — to
+  `org`, say — costs a migration for every existing database and a decision
+  about what an unmigrated one does. Both are the author's call; neither is
+  urgent now that the failure is loud.
+
 - **Q47 — the advisory engine: how does Hormiga help with a mistake instead of
   accepting it or refusing it?** (opened 2026-09-01, from agent feedback.)
   **Lean: build it, as a third thing beside the dispatcher and Allomone.**
@@ -71,19 +648,34 @@ fold into concepts and clear from here.
   alternatives in the same breath — an error with no way forward is the lazy
   half of Q47 wearing a different hat.
 
-- **Q50 — two upstream defects in the relation verbs.** (opened 2026-09-01,
-  measured against the current build.) **Lean: report and wait; neither blocks
-  anything.**
+- **Q50 — three upstream defects in the relation verbs. ANSWERED AND SHIPPED
+  2026-09-02 (Void Core 0.2.13).** Kept here rather than moved to Decided
+  because of what the closing taught.
 
-  1. `link` is absent from the `verbs` string that `--describe` prints. The rest
-     of the briefing is introspected from live registries and is trustworthy;
-     this one flat list is hand-maintained and has a hole in it.
-  2. `relate` accepts `--relation <name>` and ignores it — the association is
-     written, the name is not.
+  All three are fixed. What is worth remembering is that **our severity call was
+  wrong on two of them**, and the lean said *"report and wait; neither blocks
+  anything."*
 
-  Both are Void Core's. The guide previously claimed `relate` wrote nothing at
-  all, which was **wrong** and was corrected the same day; a doc that overstates
-  a defect costs more trust than the defect.
+  1. `link` missing from the `--describe` verb list — it was **four** verbs
+     (`link`, `links`, `unlink`, `journal`), including the one we had just told
+     agents to use instead of `related`. Fixed, and the list is now diffed
+     against the router by a CI test in both directions.
+  2. `relate --relation <name>` "ignored" — it was **writing weight zero**. The
+     weight is positional and there is no flag parsing, so `--relation` reached
+     `atof()` and the association was written at 0.0: "not near at all", the
+     inverse of the intent, reported as success. A silently inverted fact, not a
+     dropped name. It refuses now. We are not exposed — nothing in this
+     repository calls `relate`.
+  3. `related <rune>` answering `(no neighbors)` for a rune with edges — the
+     signpost shipped, worded as we suggested, firing only where the answer was
+     already empty and the ref names a rune with edges. `related` still returns
+     `ok: true`; nothing branching on `ok` moves.
+
+  **The lesson to carry:** a defect that does not block us can still be writing
+  wrong data, and "neither blocks anything" is a statement about our roadmap
+  rather than about the defect. Reporting it as *"not a defect, a message that
+  is correct and reads as false"* is what made it actionable — Void Core said so
+  explicitly — but the severity should have been theirs to set, not ours.
 
 - **Q51 — does bilingual output need its own translation engine?** (opened
   2026-09-01, by the author.) **Lean: yes, eventually, and it is not Palabra.**
@@ -92,7 +684,32 @@ fold into concepts and clear from here.
   sync. The name misleads (it has misled this repository's own README), but it
   has nothing to do with language. Hormiga's bilingual requirement is real and
   currently manual: parallel `_en`/`_es` fields, authored by hand. Q5 already
-  said bilingual "must be an ENGINE." Nothing has been built.
+  said bilingual "must be an ENGINE."
+
+  **2026-09-02 — the first half is built, and the author sharpened the
+  question.** The Click LaFont report asked for a way to publish ONE language;
+  the author declined it in the terms that make this question's answer
+  non-negotiable:
+
+  > instead of opting to NOT have multi language, the ask should've been "have
+  > better and more robust translation tools" … We want MORE features, not less.
+
+  What shipped: a render reports how much of the page it just built was actually
+  written in the language asked for (the fallback was silent, which is how a
+  site can be 0% translated and report `ok`), and `effect translation-report
+  [lang]` writes a **replayable script** — every gap as a `set <rune>
+  <field>_es '<the English text>'` line with the source already in place, under
+  the `use <mantle>` that makes it apply. Editing it and replaying it with
+  `--script --atomic --actor` makes translating a logged, attributed batch like
+  every other change. See `src/app/translate.cpp`.
+
+  What is still open is the ENGINE half, and it is now a narrower question:
+  given a file whose right-hand sides need filling, what fills them? A model
+  holiday (the reserved `model` node) is the obvious answer and brings its own
+  question — a machine translation of an outreach organization's own words,
+  published under its name, is a thing a person should approve rather than a
+  thing a pipeline does. The script shape was chosen partly for that: it puts a
+  human between the proposal and the dispatcher by construction.
 
 - **Q52 — `deploy_cmd` is readable in the state document.** (opened 2026-09-01,
   from agent feedback.) **Lean: accept, and say so.**
@@ -1141,6 +1758,64 @@ settled it named. They are not a place to think out loud forever.
   structure does not depend on the words.
 
 # Decided
+
+- **Q64 — three kinds of rune** and **Q65 — may an edge weight BE a value?**
+  ANSWERED 2026-09-03/04, upstream, and cleared from Open. Void Core 0.2.14
+  built both. Read
+  [the log](/log.md) for the exchange; the durable statements are:
+
+  **Q64 → `entity` / `act` / `measure`**, a `"kind"` on the glyph descriptor,
+  default `entity`, nothing migrates. The naming is ours and the reasoning that
+  carried it was evidential rather than aesthetic: the author's first proposal
+  (γ/δ/ε, after the interaction combinators) was withdrawn because
+  `../VoidMaiz/include/voidmaiz/reduce.hpp` already uses those letters in
+  Lafont's own sense *about glyphs*, and ε is the arity-**zero** eraser — close
+  to the opposite of "a concept carrying a value". Two sibling projects using
+  the same three letters for different things, both about glyphs, in one stack
+  would have been a confusion created on purpose. "Verb" was unavailable to the
+  dispatcher.
+
+  Core varied us in one place worth remembering: kinds are **not** a reserved
+  `kind:<k>` tag the way `glyph:<name>` is, because `kind:` is already an
+  ordinary application namespace and reserving it would have silently changed
+  what every existing `kind:vegetable` tag matches. The queries are
+  `ls --kind <k>` and `glyphs --kind <k>`.
+
+  Hormiga's adoption: five glyphs carry `"kind":"act"` — `statement`,
+  `revision`, `submission`, `deployment`, `incident` — each recording a
+  happening whose subject is another rune, each already reified for the arity
+  reason. `event` deliberately is not one, because an event here is the thing a
+  person attends and its fields are read by renderers rather than filled as the
+  roles of a verb; marking it would be reading the English word rather than the
+  model.
+
+  **Q65 → yes in Void Core, and NO for Hormiga's own data**, for a mathematical
+  reason rather than a conservative one. An edge whose `to` endpoint is a rune
+  of a `measure`-kind glyph is an **attribute assertion** and the weight *is*
+  the value; the `values` verb reports them. But **a weight is a magnitude, and
+  a date has no magnitude — it has a position.** Dates and coordinates are
+  points in an affine space (subtract two for a duration or a displacement, add
+  one of those to a point; never add or scale two points), while health and
+  speed are vectors. *"Half of September 3rd"* is meaningless for exactly that
+  reason while *"a quarter past twelve"* is fine. Most of Hormiga's numbers are
+  points, so most of Hormiga keeps fields, and `measure` is unused here.
+
+  The criterion for anyone choosing, which is the transferable part:
+  **if a number is read by RULES that produce new structure it belongs on an
+  edge where the rules can see it; if it is read only by renderers it belongs in
+  a field.**
+
+  Core varied us on where the unit lives — **on the RUNE, not the glyph**, via a
+  new `measure` verb writing a `quantity` object beside `content`. We had
+  written that the attribute rune supplies the unit and then asked for it on the
+  glyph anyway; `health`, `speed` and `strength` share one schema and differ
+  only in what they measure, so a glyph could not have carried it. They also
+  declined a numeric-array weight, out of two rules that were already true:
+  `concepts/links.md` says anything beyond relation/direction/weight must be
+  reified as a rune, and a position is a point, so it was never a weight.
+
+  Core wrote the **quantity** page we offered to draft
+  (`../VoidCore/okf/concepts/quantity.md`).
 
 ## By the author, 2026-07-16 (the sections restructure — second batch)
 

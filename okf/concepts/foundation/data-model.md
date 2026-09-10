@@ -37,6 +37,76 @@ only way any of it changes.
 Facets carry the six-facet story where natural (who = the contact's name,
 when = the event's date, …); a `note` glyph exists for the freeform rest.
 
+# The rune KIND — entity, act, measure
+
+**Since Void Core 0.2.14** ([Q64](/developer_questions.md), answered
+2026-09-04) a glyph descriptor carries a `"kind"`: `entity`, `act` or `measure`,
+defaulting to `entity`. It answers a question the five families above do not: an
+**entity** is an explicit thing that has representations; an **act** is a
+happening whose subject is some other rune; a **measure** is a dimension an
+entity has an amount of.
+
+The argument that carries it is **arity**. An edge label can express only a
+*binary* relation, and a sentence like *"this council member said this, at this
+point, in that meeting"* is not binary. The standard move is to reify the verb
+as a node with typed ports for its roles — RDF reification, neo-Davidsonian
+event semantics — which is also exactly an interaction net agent, the model Void
+Maiz already implements. So it is not a new mechanism; it is the existing one
+applied to verbs instead of only to nouns.
+
+**Hormiga is almost entirely entities, and the default is left alone.** Five
+glyphs are marked `act`, and each was already reified for that reason:
+
+| glyph | the happening it records |
+|---|---|
+| `statement` | a person said this, at this offset, in that meeting |
+| `revision` | a policy changed — the delta *is* the rune |
+| `submission` | a stranger sent something in |
+| `deployment` | a site was published, to this host, at this time |
+| `incident` | something occurred, here, then |
+
+**`event` is deliberately not one.** An event in Hormiga is the thing a person
+*attends* — a venue, times, a flier, a page on the website — and its fields are
+read by renderers, not filled as the roles of a verb. Marking it `act` would be
+reading the English word rather than the model.
+
+**`measure` is unused here, and that is [Q65](/developer_questions.md)'s answer
+standing.** A weight is a *magnitude*, and Hormiga's numbers are mostly
+**points**: a date has no magnitude, it has a position. Dates, coordinates and
+grid columns are points in an affine space — subtract two for a duration or a
+displacement, add one of those to a point, but never add or scale two points —
+which is exactly why *"half of September 3rd"* is meaningless while *"a quarter
+past twelve"* is fine. Points stay in fields.
+
+The transferable rule, for anybody choosing: **if a number is read by rules that
+produce new structure it belongs on an edge where the rules can see it; if it is
+read only by renderers it belongs in a field.**
+
+# An organization may declare its own type
+
+Also since 0.2.14: glyph declarations live **in the state document**
+(`state.glyphs`, written by `glyph declare`), so a type an organization declared
+travels inside its `.miga` and a rune can never arrive somewhere without the
+descriptor explaining it. Before that, descriptors lived on the manager and a
+bundle carried runes without their meaning.
+
+Two rules that matter to any caller:
+
+- **A declaration shadows a registration of the same name**, because the
+  declaration is the one that travelled with the data — and `glyphs` stamps
+  every descriptor `"source": "document"` or `"host"`, so the shadowing is never
+  silent.
+- **The reverse must not happen.** A merely *registered* glyph does not export;
+  host config that travelled would be one machine's registration becoming
+  another machine's data. `tests/spine_smoke.cpp` pins both halves.
+
+Read the schema from the core (`glyphs <name>`) and never keep a second copy —
+`hormiga::glyph_fields()` used to be that second copy and was already wrong when
+it was deleted. Declare through `hormiga::declare_glyph()`, which quotes the
+descriptor as the one SPEC §6.1 argument it is. The remaining half of
+[Q59](/developer_questions.md) — the generic renderer and the declaration UI —
+is Hormiga's and is no longer blocked on anybody.
+
 # Tags: axis-typed from day one
 
 The namespace→axis map is declared at founding, not accreted:

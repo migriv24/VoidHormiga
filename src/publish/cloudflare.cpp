@@ -4,6 +4,7 @@
 #include "publish/cloudflare.hpp"
 
 #include "blake3.hpp"
+#include "publish/http.hpp"
 #include "json.hpp"
 
 #include <algorithm>
@@ -21,37 +22,13 @@ namespace {
 constexpr const char* kApi = "https://api.cloudflare.com/client/v4";
 
 /* Cloudflare wants the file's bytes as base64, and then hashes THAT string.
- * (Not the raw bytes — see hashFile in wrangler's deploy-helpers.) */
-std::string b64(const std::string& in) {
-    static const char* T =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string out;
-    out.reserve((in.size() + 2) / 3 * 4);
-    size_t i = 0;
-    for (; i + 2 < in.size(); i += 3) {
-        const unsigned v = ((unsigned char)in[i] << 16) |
-                           ((unsigned char)in[i + 1] << 8) |
-                           (unsigned char)in[i + 2];
-        out += T[(v >> 18) & 63];
-        out += T[(v >> 12) & 63];
-        out += T[(v >> 6) & 63];
-        out += T[v & 63];
-    }
-    if (i + 1 == in.size()) {
-        const unsigned v = (unsigned char)in[i] << 16;
-        out += T[(v >> 18) & 63];
-        out += T[(v >> 12) & 63];
-        out += "==";
-    } else if (i + 2 == in.size()) {
-        const unsigned v =
-            ((unsigned char)in[i] << 16) | ((unsigned char)in[i + 1] << 8);
-        out += T[(v >> 18) & 63];
-        out += T[(v >> 12) & 63];
-        out += T[(v >> 6) & 63];
-        out += '=';
-    }
-    return out;
-}
+ * (Not the raw bytes — see hashFile in wrangler's deploy-helpers.)
+ *
+ * The transform itself moved to `publish/http.hpp` on 2026-09-02, when the
+ * GitHub Pages deployer needed the same one to send a blob. Two private copies
+ * of base64 in one folder is how two backends start disagreeing about what a
+ * byte is. */
+using hormiga::http::base64;
 
 std::string read_file(const fs::path& p) {
     std::ifstream f(p, std::ios::binary);
@@ -74,6 +51,15 @@ std::string content_type(const std::string& ext) {
         {"woff", "font/woff"},         {"ttf", "font/ttf"},
         {"txt", "text/plain"},         {"xml", "application/xml"},
         {"ics", "text/calendar"},      {"pdf", "application/pdf"},
+        /* AUDIO (2026-09-02, with the `audio` block). Served as
+           `application/octet-stream` a browser offers a download instead of
+           playing the file, so the block would have worked locally and failed
+           on the deployed site -- the worst place to find out. */
+        {"mp3", "audio/mpeg"},         {"m4a", "audio/mp4"},
+        {"aac", "audio/aac"},          {"ogg", "audio/ogg"},
+        {"oga", "audio/ogg"},          {"opus", "audio/ogg"},
+        {"wav", "audio/wav"},          {"flac", "audio/flac"},
+        {"mp4", "video/mp4"},          {"webm", "video/webm"},
         {"webmanifest", "application/manifest+json"},
         {"map", "application/json"},
     };
@@ -270,7 +256,7 @@ DeployResult deploy(const Config& cfg) {
         /* THE KEY CLOUDFLARE STORES THE ASSET UNDER. Base64 first, then the
          * extension without its dot, then blake3, then the first 32 hex
          * characters. Any deviation uploads a file the manifest cannot find. */
-        a.hash = blake3::hex(b64(read_file(p)) + ext).substr(0, 32);
+        a.hash = blake3::hex(base64(read_file(p)) + ext).substr(0, 32);
         assets.push_back(std::move(a));
     }
     if (assets.empty()) {
@@ -381,7 +367,7 @@ DeployResult deploy(const Config& cfg) {
         };
         for (const Asset& a : assets) {
             if (!is_missing(a.hash)) continue;
-            const std::string payload = b64(read_file(a.path));
+            const std::string payload = base64(read_file(a.path));
             if (bucket_bytes + payload.size() > kBucketBytes && !flush()) return r;
             nlohmann::json f;
             f["key"] = a.hash;

@@ -645,3 +645,102 @@ test that the phasing is honest rather than a waterfall with milestones.
 three.** It is also the phase that most changes what the website *is*, and it
 can be built and shipped before a single decision about identity is made. That
 is where to start.
+
+# 8. Two hosts, which is what makes "disposable" a property (2026-09-02)
+
+§0 makes one property the acceptance test for every vendor on this page: **every
+cloud host is disposable.** Until 2026-09-02 that was a *claim*. There was one
+deployer that worked — Cloudflare Pages, natively, and it works well — and a
+second node, `hol_github`, that had been in the Antfarm palette since the
+holidays were first registered, carrying a label, a colour, a `site` input port
+and a `repo` field, with nothing in the application reading any of it.
+
+That is the 2026-09-02 field report's sentence about `image_grid.columns` at the
+scale of a whole holiday: *a field that does nothing is worse than no field.*
+
+**GitHub Pages is now a real deployer** (`src/publish/github.cpp`), and the
+reason to build that one second — rather than Netlify, or a folder — is that it
+is the host an organization already has. No card on file, no account to open,
+and for a volunteer-run group the repository often exists before the website
+does. Two deployers publishing the same `site/` folder through the same
+`deploy_site` is what turns disposability from an argument into something an
+organization can exercise on a Tuesday afternoon.
+
+## Why it is a separate holiday and not a `provider` value
+
+`hol_static_host` takes an account id and a project name and *receives an
+upload*. `hol_github` takes a repository and a **branch** and *receives a
+commit*. Rollback is a vendor API call on one and a ref move on the other.
+Collapsing them into one node with a `provider` field would mean four fields on
+every node that are meaningless for whichever vendor is selected — which is how
+a node stops being readable at a glance, and being readable at a glance is what
+the Antfarm is for.
+
+What they share is the *seam*, not the shape: one `find_host` that accepts
+either glyph, one `host_token` that resolves the credential vault-first, one
+`deploy_site`, one `rollback_site`, one Publish panel, one `deployment` rune.
+
+## What the second host taught, which the first could not
+
+- **A publish is a mirror, not a patch.** The GitHub commit is built with no
+  `base_tree`, so the tree *is* the built folder. With a base tree, a page
+  deleted from the model would stay live on the site forever. `site/` is already
+  a mirror of the database; the deploy has to be one too, or publishing can
+  leave behind something the model no longer contains.
+- **A host can have opinions the site does not.** GitHub runs Jekyll over the
+  branch unless a `.nojekyll` file sits at its root, and Jekyll silently drops
+  every path beginning with an underscore. That file goes into the *tree*, not
+  into `site/` — it is a property of this host, and a Cloudflare deploy has no
+  business carrying it. The general rule: anything a vendor needs that the site
+  does not is the deployer's to add, never the renderer's.
+- **A custom domain can live in the artifact.** GitHub reads a `CNAME` file in
+  the published tree — not an API field — as the authority on which domain the
+  branch serves, so a deploy that omits it silently *unsets* a domain someone
+  configured in the web UI. This is why `domain` is a payload on a wire rather
+  than a string duplicated on both nodes: the deployer reads it off the wired
+  `hol_dns` node and writes it into the tree, and neither node has to know the
+  other's business.
+- **The rollback id can be the real thing.** On Cloudflare the deployment id has
+  to be recovered from the shape of a preview URL, narrowly and with a hedge.
+  On GitHub the commit sha *is* the id, so the history Hormiga keeps and the
+  thing the host needs to act are the same string. That is the shape this page
+  wants from every host: our record stands on its own, and the vendor is asked
+  only to act on it.
+
+## `effect check-host` — the sibling of `check-store`
+
+The field report asked for it by name, with the right argument attached:
+
+> Perform the smallest real call (list the project) and tell the operator
+> whether the token, the account id and the project name line up, *before* a
+> deploy is attempted.
+
+This page's oldest lesson about credentials applies to the other one-way door:
+**a green light that does not predict the operation is worse than no light.**
+The same report supplies fresh evidence for it — an account-scoped Cloudflare
+token (`cfat_…`) answers `Invalid API Token` to `/user/tokens/verify` while
+working perfectly against every account and zone endpoint. So `check-host` makes
+real reads against the resource a deploy touches and never asks a vendor to
+validate a credential in the abstract.
+
+**It reports several lines rather than a verdict**, and that is the design and
+not an implementation detail. "Can I publish?" is four questions: the credential
+can be wrong, the repository or project name can be wrong, the branch can not
+exist yet (which is *fine* on a first publish), and Pages can be off or pointed
+at a different branch. Four problems, four different fixes, and only one of them
+is the token. Collapsing them into pass/fail sends an operator to regenerate a
+working credential because their `branch` said `main` and the host was serving
+`gh-pages`.
+
+## What is still manual
+
+Creating a **Cloudflare Pages project** — `deploy-site` publishes into one and
+fails if it does not exist. The GitHub path turns Pages on for a repository on
+first publish (one call, made after the branch exists, because GitHub refuses to
+enable Pages on a branch that is not there), so half of the field report's A5 is
+closed and half is not.
+
+Writing **DNS records** is also still manual, and `hol_dns` still holds
+`domain`, `provider`, `zone_id` and `token_file` with only `domain` being read.
+That node is a described capability, not a built one, and this page should not
+pretend otherwise.

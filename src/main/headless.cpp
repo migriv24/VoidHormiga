@@ -43,6 +43,7 @@
 #include "domain/date_query.hpp"           // the date-aware block grammar
 #include "domain/flier_read.hpp"           // proposing tags from a flier
 #include "domain/seed.hpp"                 // register_glyphs: data + block + antfarm
+#include "update/cli.hpp"                     // `voidhormiga-cli update`
 #include "voidmaiz/headless.hpp"
 
 #include <algorithm>
@@ -669,16 +670,68 @@ maiz::HostApp build_app() {
             if (out.extension() != ".miga") out += ".miga";
             /* Resolved through the SAME arithmetic `HormigaApp::data_dir` uses,
              * so a relocated `paths.assets` is the folder that gets bundled. */
+            /* Every file the MODEL points at, not just the assets folder.
+             * A `download.file` beside the database was silently absent from
+             * every bundle until 2026-09-03 — see app/paths.cpp. */
+            HormigaApp refs;
+            wire(refs);
             const auto r = hormiga::miga::pack(
                 g_core->export_state(), g_base_dir, out, out.stem().string(),
-                hormiga::resolve_data_dir(*g_core, g_base_dir, "assets"));
+                hormiga::resolve_data_dir(*g_core, g_base_dir, "assets"),
+                refs.referenced_files(g_core->export_state()));
             if (!r.ok) {
                 std::cerr << "  [error] pack: " << r.error << "\n";
                 return {};
             }
             std::cerr << "  [info] pack: wrote " << out.string() << " ("
                       << r.bytes << " bytes, " << r.assets << " asset(s))\n";
+            for (const std::string& b : r.beyond_assets)
+                std::cerr << "  [info] pack: bundled " << b
+                          << " - a file a block points at from outside the "
+                             "assets folder\n";
             return "\"" + out.string() + "\"";
+        }
+        if (op == "translation-report" || op == "translate-report") {
+            /* WHAT IS NOT TRANSLATED YET, and a script that fixes it. The
+             * author's answer to the field report's "let me publish one
+             * language": more translation tooling, not a way to opt out of the
+             * second language. See src/app/translate.cpp. */
+            if (!g_core) return {};
+            const std::vector<std::string> a = effect_args(args);
+            HormigaApp app;
+            wire(app);
+            /* The language ASKED FOR, else every language but the first. The
+             * first is where the prose gets written, so it is the one nobody
+             * needs a report about. */
+            std::vector<std::string> want;
+            if (!a.empty()) want.push_back(a[0]);
+            else
+                for (size_t i = 1; i < hormiga::site_langs().size(); ++i)
+                    want.push_back(hormiga::site_langs()[i]);
+            int worst = 0;
+            for (const std::string& lg : want) {
+                const int n =
+                    app.translation_report(g_core->export_state(), lg);
+                if (n < 0) return {};
+                worst += n;
+            }
+            return std::to_string(worst);
+        }
+        if (op == "check-host") {
+            /* The smallest REAL reads a publish performs, against the publish
+             * target. The last check worth making before the one-way door, and
+             * the first thing to run with new credentials. See
+             * src/publish/publish.cpp for why it is several lines rather than a
+             * verdict. */
+            if (!g_core) return {};
+            const std::vector<std::string> a = effect_args(args);
+            HormigaApp app;
+            wire(app);
+            maiz::ProjectOptions ao;
+            ao.mantle = kAntfarmMantle;
+            const int rc = app.check_host(maiz::project_scene(*g_core, ao),
+                                          a.empty() ? std::string() : a[0]);
+            return rc == 0 ? "\"ok\"" : std::string();
         }
         if (op == "check-store") {
             /* The smallest REAL operation against the bucket. The first thing an
@@ -812,6 +865,22 @@ maiz::HostApp build_app() {
          false,
          "OVERWRITES THE DATABASE with the backup's contents. What is in the "
          "file now is gone, and nothing in this application can bring it back"},
+        {"translation-report",
+         "How much of this database exists in each language, and a replayable "
+         "script that closes the gap. Args: [<lang>] (default: every language "
+         "but the first). Writes exports/translate-<lang>.hormiga with the "
+         "source text already in place - edit the values and replay it with "
+         "`--script --atomic`.",
+         true,
+         "reads the database and writes one script file beside it; changes "
+         "nothing in the model and sends nothing anywhere"},
+        {"check-host",
+         "Can these credentials publish to this host? Performs the smallest "
+         "real reads a deploy performs - the repository or project, the branch, "
+         "and whether the host is serving it. Args: [<host-node>].",
+         true,
+         "reads your publish target's settings; writes nothing and publishes "
+         "nothing"},
         {"check-store",
          "Can these credentials reach this bucket? Performs the smallest real "
          "operation against it (lists one key), so a pass predicts a push.",
@@ -1034,6 +1103,25 @@ int main(int argc, char** argv) {
                   << " bytes) from " << bkp.string() << "\n";
         return 0;
     }
+
+    /* ---- `update`, AND WHY IT RUNS BEFORE ANY SESSION EXISTS --------------
+     *
+     * The same argument as `--restore-backup` above, and it is worth restating
+     * because it is the shape of both: **a recovery tool that requires a
+     * working system is not a recovery tool.** Every effect runs inside a
+     * session, a session needs a loadable state document and an advisory lock,
+     * and one perfectly ordinary reason to want a newer Hormiga is that this
+     * one will not open the database. So `update` is a verb of the PROCESS, not
+     * of the org: it touches no document, takes no lock, and works in a folder
+     * with nothing in it.
+     *
+     * The verb itself lives in `src/update/cli.cpp`, beside the client it
+     * drives rather than in this file, for the reason src/update/ exists at
+     * all: it must be buildable and testable without a session, a window, or
+     * Void Core. What is here is the two lines that reach it. */
+    for (int i = 1; i < argc; ++i)
+        if (std::string_view(argv[i]) == "update")
+            return hormiga::update::run_cli(argc - i, argv + i, shell_capture);
 
     static std::string flag = "--state";
     static std::string path = (g_base_dir / "demo-org.json").string();

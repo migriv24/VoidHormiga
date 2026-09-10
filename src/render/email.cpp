@@ -34,6 +34,8 @@
  */
 #include "app/app_internal.hpp"
 #include "domain/date_query.hpp" // date: predicates in the block grammar
+#include "render/download.hpp" // a file a visitor can keep
+#include "render/audio.hpp" // the audio block's markup, both domains
 #include "render/video.hpp"      // a pasted video URL, understood
 #include "render/text.hpp"
 #include "render/theme.hpp"
@@ -166,6 +168,15 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                      << prose(hsub) << "</p>";
             html << "</div>\n";
         } else if (n->glyph == "narrative") {
+            /* The heading the web domain renders as an `<h3>` (2026-09-03,
+             * portfolio report A9). Inline-styled rather than a bare `<h3>`,
+             * because mail clients reset heading margins in six different ways;
+             * the weight and the space are what carry the hierarchy. */
+            const std::string nhead = text(*n, "heading");
+            if (!nhead.empty())
+                html << "<p style=\"margin:18px 0 2px;font-weight:bold;"
+                        "font-size:17px;color:#2c2c2c\">"
+                     << html_escape(nhead) << "</p>\n";
             html << "<p style=\"white-space:pre-line;line-height:1.5;color:#333\">"
                  << prose(text(*n, "text")) << "</p>\n";
         } else if (n->glyph == "section_header") {
@@ -204,6 +215,76 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             const std::string label = text(*n, "label");
             if (!tgt.empty())
                 html << email_button(tgt, label.empty() ? tgt : label, acc);
+        } else if (n->glyph == "download") {
+            /* A newsletter cannot carry the file, so this is a link — and a
+             * RELATIVE href opens nothing in anybody's inbox. `site.base_url`
+             * is what makes an absolute one possible; without it the block says
+             * the file is on the website and the render says why. */
+            std::string want = field_value(*n, "file");
+            std::string via_rune;
+            if (!want.empty())
+                for (const auto& dn : data.nodes)
+                    if (dn.glyph == "resource" && dn.name == want) {
+                        via_rune = want;
+                        want = field_value(dn, "path");
+                        break;
+                    }
+            hormiga::DownloadCard dc;
+            dc.label = text(*n, "label");
+            if (dc.label.empty()) dc.label = "Download";
+            dc.caption = text(*n, "caption");
+
+            if (!want.empty() && hormiga::download_refusal(want).empty()) {
+                std::string base = core.dispatch("config get site.base_url").data;
+                if (base.size() >= 2 && base.front() == '"' && base.back() == '"')
+                    base = base.substr(1, base.size() - 2);
+                if (base == "null") base.clear();
+                while (!base.empty() && base.back() == '/') base.pop_back();
+                if (!base.empty()) {
+                    dc.href = base + "/assets/" +
+                              std::filesystem::path(want).filename().string();
+                    dc.meta = hormiga::file_kind(want);
+                } else {
+                    log.push_back({"warn", "render",
+                                   n->name + ": the newsletter cannot link this "
+                                   "file because site.base_url is unset - a "
+                                   "relative link opens nothing in a mail "
+                                   "client. `config set site.base_url "
+                                   "https://your-domain.org`"});
+                }
+            }
+            html << hormiga::download_email(dc, acc);
+        } else if (n->glyph == "audio") {
+            /* Markup in `render/audio.hpp`; what happens here is resolving the
+             * one thing an email cannot do without — an ABSOLUTE address for
+             * the file, which only `site.base_url` can supply. */
+            hormiga::AudioCard ac;
+            const std::string asrc = field_value(*n, "src");
+            ac.title = text(*n, "title");
+            ac.artist = field_value(*n, "artist");
+            ac.duration = field_value(*n, "duration");
+            ac.caption = text(*n, "caption");
+
+            std::string base = core.dispatch("config get site.base_url").data;
+            if (base.size() >= 2 && base.front() == '"' && base.back() == '"')
+                base = base.substr(1, base.size() - 2);
+            if (base == "null") base.clear();
+            while (!base.empty() && base.back() == '/') base.pop_back();
+            if (!base.empty() && !asrc.empty())
+                ac.src = base + "/assets/" +
+                         std::filesystem::path(asrc).filename().string();
+
+            html << hormiga::audio_email(
+                ac, acc, "Listen",
+                ac.title.empty() ? "This recording is on the website."
+                                 : "Listen to this on the website.");
+            if (ac.src.empty() && !asrc.empty())
+                log.push_back({"warn", "render",
+                               n->name + ": the newsletter cannot link this "
+                               "recording because site.base_url is unset - an "
+                               "email has no site/ folder beside it, so a "
+                               "relative path opens nothing. `config set "
+                               "site.base_url https://your-domain.org`"});
         } else if (n->glyph == "video") {
             /* ── A VIDEO, IN AN EMAIL (2026-08-28) ─────────────────────
              *

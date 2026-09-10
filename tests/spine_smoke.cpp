@@ -100,7 +100,7 @@ int main() {
         ",organizer,,,\r\n";                                     // nameless row
     maiz::Scene before = project(a, "demo-org");
     auto res = hormiga::compile_csv_import(
-        csv, "contact", hormiga::glyph_fields("contact"),
+        csv, "contact", hormiga::glyph_fields(a, "contact"),
         [&](const std::string& n) { return before.find(n) != nullptr; });
     CHECK(res.error.empty());
     CHECK(res.rows == 3);
@@ -401,10 +401,73 @@ int main() {
     a.dispatch("undo"); // the whole place is one frame
     CHECK(project(a, "issue-demo").find("b1-note") == nullptr);
 
+    /* ---- 9: A DECLARED GLYPH SURVIVES THE STORAGE ROUND-TRIP -------------
+     *
+     * Void Core 0.2.14 put glyph DECLARATIONS in the state document
+     * (`state.glyphs`) and asked us one question directly:
+     *
+     *   "If Hormiga ever RECONSTRUCTS a state document rather than
+     *    round-tripping the JSON it was given, it will drop `glyphs` and the
+     *    declarations with it."
+     *
+     * Reading the code answers that with "we round-trip": `Storage::save`
+     * stores `export_state()` verbatim in `meta.state` and `load_state` hands
+     * back exactly those bytes. But "we currently round-trip" is a property of
+     * today's code, and the failure it guards against is invisible -- a dropped
+     * declaration does not error, it turns an organization's own record type
+     * back into runes nobody can read. So it is pinned here instead of trusted.
+     *
+     * The second Core REGISTERS NOTHING, and that is the whole assertion: a
+     * type declared into the document is legible to a manager that was never
+     * told about it, which is what makes a `.miga` self-describing and what
+     * unblocks Q59. `glyph_fields` reads it exactly like one of ours. */
+    {
+        maiz::Core d;
+        hormiga::register_glyphs(d);
+        /* Through `declare_glyph`, not `dispatch`, and that is half the point:
+         * the descriptor is ONE SPEC 6.1 argument and "Garden bed" has a space
+         * in it. Written by hand this is three arguments and a refusal. */
+        CHECK(hormiga::declare_glyph(
+                  d, R"({"glyph":"garden_bed","label":"Garden bed",)"
+                     R"("kind":"entity","fields":["crop","planted","area_m2"]})")
+                  .ok);
+        d.dispatch("mantle new plots");
+        d.dispatch("use plots");
+        CHECK(d.dispatch("rune new garden_bed north-bed").ok);
+
+        fs::path db2 = fs::temp_directory_path() / "hormiga-declared-glyph.db";
+        fs::remove(db2);
+        {
+            hormiga::Storage st2(db2);
+            CHECK(st2.ok());
+            CHECK(st2.save(d.export_state(), {project(d, "plots")}));
+
+            maiz::Core b(st2.load_state());   // registers NOTHING
+            const auto fields = hormiga::glyph_fields(b, "garden_bed");
+            CHECK(fields.size() == 3);
+            CHECK(!fields.empty() && fields[0] == "crop");
+            CHECK(hormiga::glyph_kind(b, "garden_bed") == "entity");
+            // the descriptor says WHERE it came from, so a declaration
+            // shadowing a registration is never silent (0.2.14 section 2)
+            const maiz::Result gr = b.dispatch("glyphs garden_bed");
+            CHECK(gr.ok && gr.data.find("document") != std::string::npos);
+            CHECK(project(b, "plots").find("north-bed") != nullptr);
+        }
+        fs::remove(db2);
+
+        /* The other half, and the reason this is two assertions rather than
+         * one: a merely-REGISTERED glyph must NOT travel. Host config that
+         * travelled would be a different bug -- one machine's registration
+         * silently becoming another machine's data. `contact` is registered on
+         * `d` and declared by nobody. */
+        maiz::Core c2(d.export_state());
+        CHECK(hormiga::glyph_fields(c2, "contact").empty());
+    }
+
     if (failures == 0) {
         std::cout << "OK — sqlite round-trip + csv import + rescue import + "
                      "antfarm colony + map actions + geo math + json-arg + "
-                     "doc grid\n";
+                     "doc grid + declared glyphs travel\n";
         return 0;
     }
     std::cerr << failures << " check(s) failed\n";

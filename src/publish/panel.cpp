@@ -61,8 +61,14 @@ void HormigaApp::draw_publish_body() {
     ImGui::Spacing();
     ImGui::TextDisabled("WHERE");
     std::vector<const maiz::SceneNode*> hosts;
+    /* BOTH KINDS OF HOST (2026-09-02). A `hol_github` node publishes the same
+     * `site/` folder through the same `deploy_site`, so leaving it out of this
+     * list would put the capability in the CLI and not in the application — the
+     * exact split this file's header exists to prevent, in the same direction:
+     * the person who owns the data losing an ability an agent has. */
     for (const auto& n : farm.nodes)
-        if (n.glyph == "hol_static_host") hosts.push_back(&n);
+        if (n.glyph == "hol_static_host" || n.glyph == "hol_github")
+            hosts.push_back(&n);
     if (publish_host.empty() && !hosts.empty()) publish_host = hosts.front()->name;
     const maiz::SceneNode* host = nullptr;
     for (const auto* hn : hosts)
@@ -71,10 +77,12 @@ void HormigaApp::draw_publish_body() {
         ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.3f, 1),
                            "No publish target is wired.");
         ImGui::TextWrapped(
-            "Add a `Static host - cloud deploy` node in the Antfarm tab and set "
-            "its provider, account id, project and token file. Hormiga does not "
-            "own an account anywhere; the host is yours and it is configuration, "
-            "which is why you can change it without a new version of this app.");
+            "Add a `Static host - cloud deploy` node in the Antfarm tab (a "
+            "managed CDN: provider, account id, project, token) or a `GitHub "
+            "Pages - cloud deploy` node (a repository, a branch, a token). "
+            "Hormiga does not own an account anywhere; the host is yours and it "
+            "is configuration, which is why you can change it without a new "
+            "version of this app.");
         return;
     }
     ImGui::SetNextItemWidth(260);
@@ -85,7 +93,16 @@ void HormigaApp::draw_publish_body() {
         ImGui::EndCombo();
     }
     if (host) {
-        std::string where = field_value(*host, "provider");
+        /* WHAT THIS HOST IS, in its own vocabulary. A managed CDN is named by
+         * its provider; a Pages repository is named by the repository and the
+         * branch, and the branch is the field most likely to be wrong in a way
+         * that publishes into a void. */
+        std::string where = host->glyph == "hol_github"
+                                ? field_value(*host, "repo") + " @ " +
+                                      (field_value(*host, "branch").empty()
+                                           ? std::string("gh-pages")
+                                           : field_value(*host, "branch"))
+                                : field_value(*host, "provider");
         // the DOMAIN comes down the wire from hol_dns, which is why it is a
         // payload and not a string duplicated on both nodes
         for (const auto& n : farm.nodes)
@@ -198,7 +215,9 @@ void HormigaApp::draw_publish_body() {
     };
     std::vector<Check> checks;
     const std::string prov = host ? field_value(*host, "provider") : "";
-    const std::string proj = host ? field_value(*host, "project") : "";
+    const bool host_is_gh = host && host->glyph == "hol_github";
+    const std::string proj =
+        host ? field_value(*host, host_is_gh ? "repo" : "project") : "";
     const std::string acct = host ? field_value(*host, "account_id") : "";
     const std::string keyf = host ? field_value(*host, "token_file") : "";
     const std::string dcmd = host ? field_value(*host, "deploy_cmd") : "";
@@ -209,10 +228,18 @@ void HormigaApp::draw_publish_body() {
                       built ? (data_dir("site")).string()
                             : ("not built yet: " + unbuilt)});
     checks.push_back({host != nullptr, "a publish target is wired",
-                      host ? host->name : std::string("add a hol_static_host "
-                                                      "node in the Antfarm")});
-    checks.push_back({!proj.empty(), "the host's project is named", proj});
-    checks.push_back({!acct.empty(), "the host's account id is set", acct});
+                      host ? host->name
+                           : std::string("add a `Static host` or `GitHub Pages` "
+                                         "node in the Antfarm")});
+    checks.push_back({!proj.empty(),
+                      host_is_gh ? "the repository is named (owner/repo)"
+                                 : "the host's project is named",
+                      proj});
+    /* An account id is a Cloudflare concept. Asking a GitHub Pages host for one
+     * would be a red cross beside a field that node does not have, on the panel
+     * whose whole job is to tell an operator whether they are ready. */
+    if (!host_is_gh)
+        checks.push_back({!acct.empty(), "the host's account id is set", acct});
 
     // the token: configured, resolved, present, readable, non-empty
     fs::path kp;
@@ -257,11 +284,14 @@ void HormigaApp::draw_publish_body() {
      *
      * The real precondition is "SOMETHING can upload this", which is true when
      * a template is set OR the provider is one we speak natively. */
-    const bool native_provider = prov == "cloudflare-pages" ||
+    const bool native_provider = host_is_gh || prov == "cloudflare-pages" ||
                                  prov == "cloudflare_pages" || prov.empty();
     checks.push_back({!dcmd.empty() || native_provider,
                       "something can upload the site",
-                      !dcmd.empty()
+                      host_is_gh
+                          ? std::string("built in - a commit through GitHub's "
+                                        "Git Data API, no script needed")
+                      : !dcmd.empty()
                           ? dcmd
                           : (native_provider
                                  ? std::string("built in - Cloudflare Pages "
@@ -399,25 +429,29 @@ void HormigaApp::draw_publish_body() {
      * same order or the test stops predicting the operation, which is the whole
      * point of the button. */
     if (host && tok_ok && on_shell_capture) {
-        if (ImGui::SmallButton("Test this token")) {
-            hormiga::cloudflare::Config cc;
-            cc.account_id = acct;
-            cc.project = proj;
-            cc.work_dir = base_dir.string();
-            cc.shell = on_shell_capture;
-            if (!tkey.empty() && vault.unlocked())
-                cc.token = trim_secret(vault.get(tkey));
-            if (cc.token.empty() && !keyf.empty()) {
-                std::ifstream tf2(kp, std::ios::binary);
-                std::stringstream tb2;
-                tb2 << tf2.rdbuf();
-                cc.token = trim_secret(tb2.str());
-            }
-            const auto st = hormiga::cloudflare::check_token(cc);
-            publish_token_check = st.ok ? "ok" : st.detail;
-            toast(st.ok ? "the token can reach this account's Pages projects"
-                        : "token check failed - see the panel",
-                  !st.ok);
+        /* ── ONE CHECK, BOTH HOSTS (2026-09-02) ─────────────────────────────
+         *
+         * This called `cloudflare::check_token` directly, which meant the
+         * button read "Test this token" and tested a vendor the selected host
+         * might not be. `check_host` is the verb both front-ends now share
+         * (field report A5) — it resolves the credential the same way
+         * `deploy_site` does, dispatches on the host's glyph, and reports
+         * several lines rather than a verdict, because "can I publish?" is four
+         * questions with four different fixes. */
+        if (ImGui::SmallButton("Test this host")) {
+            const size_t from = log.size();
+            const int rc = check_host(farm, host->name);
+            std::string first_fail;
+            for (size_t i = from; i < log.size(); ++i)
+                if (log[i].op == "host" && log[i].level == "error" &&
+                    first_fail.empty())
+                    first_fail = log[i].msg;
+            publish_token_check = rc == 0 ? "ok"
+                                  : first_fail.empty() ? "check failed"
+                                                       : first_fail;
+            toast(rc == 0 ? "these credentials can reach " + host->name
+                          : "host check failed - see the panel",
+                  rc != 0);
         }
         if (!publish_token_check.empty()) {
             ImGui::SameLine();

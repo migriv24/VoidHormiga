@@ -131,6 +131,13 @@ struct HormigaApp {
      * set this from argv[0]; empty falls back to the working directory. */
     std::filesystem::path ship_dir;
     ImFont* mono_font = nullptr;    // JetBrains Mono for the script IDE (set by the shell)
+    /* MAY THIS FRONT-END OFFER AN UPDATE? Set by the DESKTOP shell and by
+     * nothing else -- it is in the public section beside `ship_dir` because a
+     * shell is what sets it. The headless front-end builds a `HormigaApp` to
+     * render a newsletter from, and an agent asking for a newsletter is not
+     * consent to make a network request; its updater is
+     * `voidhormiga-cli update`, a verb somebody typed. See `updates_boot`. */
+    bool offer_updates = false;
     std::function<void(const std::string&)> on_title; // window title (optional)
     std::function<void()> on_quit;                    // File > Quit (optional)
     std::function<void(const std::string&)> on_open;  // open path/URL in the OS
@@ -244,6 +251,37 @@ struct HormigaApp {
      * operation against it, never a credential validator in the abstract — a
      * green light that does not predict the operation is worse than no light. */
     int check_store(const maiz::Scene& farm, std::string_view node);
+    /* Can these credentials publish to this host? The sibling of `check_store`
+     * for the other one-way door (field report A5). Makes the smallest REAL
+     * reads a deploy performs — never a vendor "is this token valid" call, which
+     * has been observed to lie. 0 = every check passed, 1 = one did not,
+     * -1 = could not run. */
+    int check_host(const maiz::Scene& farm, std::string_view node);
+    /* How much of this database exists in `lang`, and a replayable script that
+     * closes the gap. Writes `exports/translate-<lang>.hormiga`; returns the
+     * number of untranslated fields (0 = complete, -1 = refused).
+     *
+     * Takes the state document rather than reading `core`, like the sync verbs
+     * and for the same reason: it walks EVERY mantle, so it cannot ride the
+     * active projection. It boots its own core from what it is handed.
+     *
+     * The answer to the 2026-09-02 field report's "let me publish one language"
+     * — which the author declined. Bilingual is the resting state; what was
+     * missing was the tooling that makes it cheap. See app/translate.cpp. */
+    int translation_report(const std::string& state_json, std::string_view lang);
+    /* Say so when `site.languages` is set: it is accepted by Void Core's
+     * free-form config, stored, read back — and read by nothing here. A key
+     * that confirms itself and does nothing is worse than a missing one
+     * (portfolio report D1, 2026-09-02). */
+    void warn_unread_language_key();
+    /* Bundle-key -> source path for every file the MODEL points at, derived
+     * from the glyph declarations (a `path`/`image` editor) rather than from a
+     * list of field names that would go stale. `.miga` bundled only the assets
+     * folder, so a `download.file` beside the database was silently absent from
+     * every bundle (portfolio report D2, 2026-09-03). See app/paths.cpp for
+     * why a deploy token does not come along. */
+    std::map<std::string, std::filesystem::path> referenced_files(
+        const std::string& state_json);
     /* Resolving a store node into a signing config lives in the PUBLISH layer,
      * not here: `app` may not depend on `publish` (tools/check_layering.py), and
      * a member whose parameter is an `aws::Config` would drag the whole vendor
@@ -494,6 +532,19 @@ private:
     char new_doc_name[64] = {};
     std::vector<std::string> list_documents(); // mantles that are documents
     void new_document(const std::string& name); // mantle new + switch + seed hero
+    /* Rename / delete the current Builder document. Both were listed as blocked
+     * on Void Core verbs that have since landed (`mantle rename`, `mantle rm`).
+     * Delete refuses on the last remaining document — see builder.cpp. */
+    void rename_document(const std::string& to);
+    void delete_document(const std::string& name);
+    int document_element_count(const std::string& name);
+    char rename_doc_name[96] = {};  // staged document rename (Builder picker)
+    /* Model edits since the last `save`, counted at the ONE door every GUI edit
+     * goes through (`dispatch_and_reproject`). The Builder's Save button reads
+     * it; nothing else should write it. The author asked for a Save in the tab
+     * where the work happens (2026-09-02) — the writing was never the missing
+     * part, being told was. */
+    int edits_since_save = 0;
     void doc_new_page();             // mint a `page` rune + switch to it
     void draw_page_manager();        // the nothing-selected overview (map-style)
     char page_tag_input[64] = {};    // tag_picker buffer for page tags
@@ -569,6 +620,14 @@ private:
     struct RefFan { double lat, lon; float dx, dy; }; // ref geo + pixel offset
     std::map<std::string, RefFan> ref_fans(const maiz::Scene& s,
                                            const std::string& channel) const;
+    /* The rune-name editor: staged, commits one `rune rename` on Enter.
+     * Shared by the Data detail pane and the Notes tab — a note is a rune the
+     * Data tab deliberately skips, which is why it was the one kind that could
+     * not be renamed (author, 2026-09-02).
+     *
+     * Returns TRUE when a rename landed, which means the caller's node
+     * reference is dangling and it must return immediately. */
+    bool rune_rename_control(const maiz::SceneNode& sel, float width);
     char rename_buf[96] = {};    // staged name edit (detail pane)
     std::string rename_for;      // which rune the buffer is staged for
 
@@ -893,6 +952,15 @@ private:
     // copy a referenced local asset into site/assets/; return its site-relative
     // href ("" if the source is missing). Self-hosting: the site owns its media.
     std::string stage_site_asset(const std::string& rel);
+    /* Stage `custom.css` from beside the database into `site/`, if there is
+     * one, and say whether the page should link it. The operator's two lines of
+     * CSS, the same way `fonts/` already takes the organization's own faces —
+     * see render/assets.cpp for why this is a file and never a model field. */
+    bool stage_custom_css();
+    /* Say so when the organization's runes are in a mantle no block query
+     * reads. Silent unless the data mantle is empty AND data-shaped runes exist
+     * somewhere else — see render/assets.cpp (field report D6). */
+    void warn_if_data_is_elsewhere(const maiz::Scene& data);
     /* A downscaled JPEG beside a staged image, for gallery tiles. "" = use the
      * original (already small, or the decode failed). The lightbox always keeps
      * the original — "see the flier full size" is why a flier is on the page. */
@@ -927,6 +995,80 @@ private:
     std::filesystem::path vault_path() const;
     void load_secrets();               // populate imgbb_key from vault/plaintext
     void draw_vault_modal();           // the passphrase prompt (unlock/create)
+
+    /* ---- UPDATES (src/update/update.hpp; the ImGui half is ui/updates.cpp) ---
+     *
+     * THE APP HOLDS NO DECISIONS, only what a frame needs to draw. Whether an
+     * update exists, whether the person has been asked, whether a download
+     * matched its checksum -- all of it is `hormiga::update`, which is
+     * view-free and reachable in full from `voidhormiga-cli update`. What lives
+     * here is the answer it gave and which modal is open.
+     *
+     * NOTHING HERE TOUCHES THE NETWORK ON ITS OWN. `updates_boot()` reads a
+     * preferences file and does one of three things: open the permission modal
+     * (never asked), start a check (asked, answer yes), or nothing at all
+     * (answer no). Somebody who said `never` gets one line in Settings and no
+     * traffic, ever. That is the first half of `void.json`'s "no silent
+     * updates", and it is the half that is easy to lose -- a check is a network
+     * request a person did not make.
+     *
+     * THE ARTIFACT IS CARRIED AS STRINGS rather than as an `update::Release`,
+     * so `update/update.hpp` stays out of a header the whole tree includes.
+     * `ui/updates.cpp` reassembles one where it needs it. Four strings against
+     * a dependency in every translation unit is the right side of that trade.
+     *
+     * The check runs OFF THE UI THREAD for the reason every network call here
+     * does: a `curl` on the frame thread is a frozen window on a bad
+     * connection, and the first impression of an update prompt must not be that
+     * the application hung. `UpdateJob` is separate from `Job` above because
+     * that one exists to land dispatcher commands and this one changes no
+     * model at all -- an update is a fact about the installation, not the org. */
+    enum class UpdateModal { None, AskPermission, Offer, Failed };
+    struct UpdateJob {
+        std::thread worker;
+        std::atomic<bool> finished{false};
+        // Written by the worker; read by the main thread ONLY after `finished`,
+        // which is the whole of the synchronisation and is why there is no mutex.
+        bool ok = false;
+        bool available = false;
+        bool skipped = false;
+        std::string error, summary, version, latest;
+        std::string art_url, art_file, art_sha256;   // the platform's artifact
+        long long art_bytes = 0;
+        std::string downloaded;   // set by an install job: a VERIFIED installer
+        ~UpdateJob() { if (worker.joinable()) worker.join(); }
+    };
+    UpdateModal update_modal = UpdateModal::None;
+    std::unique_ptr<UpdateJob> update_job;   // a check or a download in flight
+    bool update_installing = false;          // which of the two it is
+    /* Was the check asked for by a person? A STARTUP check that could not
+     * reach the feed is not news -- putting a modal in front of an
+     * organization because their cafe Wi-Fi is captive is how you train
+     * people to dismiss the one that matters. It goes to the log instead. */
+    bool update_by_hand = false;
+    bool update_have_offer = false;
+    std::string update_summary;   // `describe(offer)` -- exactly what the modal shows
+    std::string update_version;   // the version being offered ("" = none)
+    std::string update_latest;    // the feed's `latest`, even when we are current
+    std::string update_error;     // the last failure, verbatim
+    std::string update_file;      // a verified installer waiting to be run
+    std::string update_art_url, update_art_file, update_art_sha256;
+    long long update_art_bytes = 0;
+    /* A CACHED VIEW OF `updates.json`, not a second copy of the truth. The
+     * Settings block draws four values out of that file, and Settings is open
+     * by default -- reading and parsing a file on disk once per frame is not a
+     * thing to do to somebody's laptop. `updates_reload_prefs()` refreshes
+     * these after every write and after a check; the file stays authoritative
+     * and nothing here is ever written back from these fields. */
+    int update_pref_ask = 0;      // 0 unasked, 1 never, 2 startup
+    std::string update_pref_skip, update_pref_last, update_pref_feed;
+    void updates_reload_prefs();
+    void updates_boot();                // once, at the end of init()
+    void updates_check(bool by_hand);   // fetch + parse + decide, off-thread
+    void updates_install();             // download + verify, off-thread, then launch
+    void updates_drain();               // join a finished job (called from frame())
+    void draw_update_modal();           // the prompt, and it is never skippable
+    void draw_update_settings();        // the block inside the Settings window
     void import_rescue_effect(); // Supabase node's Import now → one batch
     void derive_date_tags();     // temper: event date → month:/season: tags
     bool run_temper_next = false; // queue a date-tag pass after an import
@@ -952,6 +1094,16 @@ private:
     std::vector<maiz::Scene> project_all_mantles(); // `mantles` verb → scenes
     void run_csv_import(const std::string& glyph);  // pick file → ONE batch
     std::string ingest_asset(const std::string& src, bool quiet = false);
+    /* Bring a file in AND mint the `image` rune for it — the author's rule
+     * (2026-09-02): "Uploading a NEW image should redirect to creating a new
+     * image asset." Returns the site-relative path, "" on failure. */
+    std::string ingest_image_rune(const std::string& src);
+    /* A popup that picks one of the organization's existing images, returning
+     * its `path`. "" = nothing picked this frame. Call `ImGui::OpenPopup` with
+     * the same id first. Shared so branding and content pick images the same
+     * way. */
+    std::string org_image_picker(const char* popup_id, const char* heading);
+    char img_pick_search[64] = {}; // filter box inside that popup
 
     std::filesystem::path org_file() const;
     std::filesystem::path db_file() const;

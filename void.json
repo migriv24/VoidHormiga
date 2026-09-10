@@ -12,11 +12,11 @@
     {
       "name": "voidcore",
       "kind": "runtime",
-      "version": ">=0.2.7",
+      "version": ">=0.2.14",
       "sibling": "../VoidCore",
       "cmake_var": "VOIDCORE_ROOT",
       "link": "shared",
-      "note": "the engine and the dispatcher; ships as libvoidcore.dll beside our binaries"
+      "note": "the engine and the dispatcher; ships as libvoidcore.dll beside our binaries. The floor is 0.2.14 rather than 0.2.7 because `glyphs` (the descriptor as a host contract) and `state.glyphs` (declarations that travel with the document) are both read here, and a 0.2.13 core answers neither -- it does not fail, it returns an empty descriptor, which is the shape of failure this floor exists to refuse."
     },
     {
       "name": "voidmaiz",
@@ -45,6 +45,99 @@
       "cmake_var": "VOIDPALABRA_ROOT",
       "link": "static",
       "note": "canonical encoding and the CRDT merge; compiled from source into our own target"
+    }
+  ],
+
+  "_vendors_unversioned_note": "BLAKE3, Lucide and the typefaces carry no version string in the vendored drop, so they carry none here. `mago doctor` is right that nothing can then tell whether ours is the same copy anybody else has -- but a version invented to silence a note is the wrong answer to exactly the question the field exists to ask. The fix is to record the version at the next re-vendor, when it is a fact rather than a reconstruction.",
+  "_vendors_note": "The machine-readable twin of THIRD-PARTY-NOTICES.md, which stays the human index and points at the license texts, which are authoritative. Declared 2026-09-04 because `mago doctor` was right that the rule was doing two jobs: 'vendor, don't depend' decided how third-party code is ACQUIRED and quietly decided it need not be WRITTEN DOWN. Only the first was a good idea -- and once this project ships an installer, `mago notices voidhormiga` is what assembles the notices for everything actually in the binary.",
+  "vendors": [
+    {
+      "name": "SQLite",
+      "version": "3.53.3",
+      "version_source": "vendor/sqlite/sqlite3.h",
+      "license": "public domain",
+      "upstream": "https://sqlite.org",
+      "path": "vendor/sqlite",
+      "link": "source",
+      "note": "the default Data holiday: state plus normalized rows, compiled as one C file. Built with SQLITE_OMIT_LOAD_EXTENSION (no runtime extension loading, and no libdl) and SQLITE_DQS=0 (double-quoted string literals are refused rather than silently read as identifiers)."
+    },
+    {
+      "name": "libsodium",
+      "version": "1.0.20",
+      "version_source": "vendor/libsodium/include/sodium/version.h",
+      "license": "ISC",
+      "upstream": "https://libsodium.org",
+      "path": "vendor/libsodium",
+      "link": "static",
+      "note": "THE ONE CRYPTO DEPENDENCY, and the ground rule is that there is never a second and never a hand-rolled primitive: the vault, the encrypted backup, the LAN pairing, the AWS SigV4 signer and the update client's checksum all bottom out here."
+    },
+    {
+      "name": "nlohmann/json",
+      "version": "3.12.0",
+      "version_source": "vendor/json/json.hpp",
+      "license": "MIT",
+      "upstream": "https://github.com/nlohmann/json",
+      "path": "vendor/json",
+      "link": "source",
+      "note": "header-only. Deliberately kept off the include path of the translation units that would otherwise push the link past PE's 16-bit section ceiling."
+    },
+    {
+      "name": "stb",
+      "version": "2.30",
+      "version_source": "vendor/stb/stb_image.h",
+      "license": "MIT / public domain",
+      "upstream": "https://github.com/nothings/stb",
+      "path": "vendor/stb",
+      "link": "source",
+      "note": "stb_image 2.30 (decoding an organization's photographs) and stb_image_write 1.16 (the map's PNG exports). The declared version is stb_image's, because a version has to name one file to be checkable against it."
+    },
+    {
+      "name": "BLAKE3",
+      "license": "CC0",
+      "upstream": "https://github.com/BLAKE3-team/BLAKE3",
+      "path": "vendor/blake3",
+      "link": "source",
+      "note": "content-addresses every ingested asset. A hand port of a hash function is exactly the code where 'it compiles' means nothing -- Cloudflare keys each uploaded file by this digest, and a wrong one does not fail loudly, it stores the file under a name the manifest does not reference. Pinned against its published vectors in tests/blake3_smoke.cpp."
+    },
+    {
+      "name": "Lucide",
+      "license": "ISC",
+      "upstream": "https://lucide.dev",
+      "path": "vendor/icons",
+      "link": "source"
+    },
+    {
+      "name": "Inter, Source Serif 4, Space Grotesk, Lato, JetBrains Mono",
+      "license": "SIL Open Font License 1.1",
+      "path": "vendor/fonts",
+      "link": "vendored",
+      "ships": true,
+      "note": "SHIPPED BESIDE THE BINARY as vendor/fonts/ -- the TTFs are the desktop UI and the map-export atlas, the woff2 subsets under web/ are embedded by @font-face in every generated site so a deployed page carries its own faces and reaches no CDN. The OFL is permissive but NOT unconditional: the files may be bundled with and sold as part of software but may not be sold on their own, and a modified version may not reuse a Reserved Font Name. That condition travels with anyone redistributing this repository and no license choice made here can change it."
+    },
+    {
+      "name": "Font Awesome Free",
+      "license": "CC BY 4.0 / SIL OFL 1.1 / MIT",
+      "upstream": "https://fontawesome.com",
+      "path": "vendor/fonts/fa-solid-900.ttf",
+      "link": "vendored",
+      "ships": true,
+      "note": "solid glyphs only, merged into the UI atlas. Every section tab, toolbar button and map marker is one of these codepoints, which is why a font path that fails resolves to a window with no icons rather than to an error."
+    },
+    {
+      "name": "Dear ImGui",
+      "license": "MIT",
+      "upstream": "https://github.com/ocornut/imgui",
+      "link": "static",
+      "via": "voidmaiz",
+      "note": "not vendored here: it arrives inside Void Maiz's view module. Declared so a notices list assembled from this manifest describes what is actually in the binary rather than what is in this folder."
+    },
+    {
+      "name": "GLFW",
+      "license": "zlib",
+      "upstream": "https://www.glfw.org",
+      "link": "static",
+      "via": "voidmaiz",
+      "note": "the same: the desktop shell's window and input, reached through Void Maiz."
     }
   ],
 
@@ -83,7 +176,7 @@
     "ships_beside_binary": [
       "AGENT-GUIDE.md",
       "okf/",
-      "fonts/"
+      "vendor/fonts/"
     ]
   },
 
@@ -104,6 +197,23 @@
   },
 
   "platforms": ["windows-x64"],
+  "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen.",
+
+  "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
+  "release": {
+    "version": "0.1.0",
+    "_previous_note": "No `previous`: this is the first release, so there is nothing anybody is moving FROM. `mago blast` and `mago notify` need --to until there is.",
+    "change": "compatible",
+    "date": "2026-09-04",
+    "summary": "the first release: an outreach organization's people, events and images as tagged runes, composed into newsletters and websites",
+    "adds": [
+      "voidhormiga-cli update -- check, download, verify and launch a newer version",
+      "glyph declare: an organization's own record type travels inside its .miga",
+      "hol_github: publish to GitHub Pages natively, beside Cloudflare Pages"
+    ],
+    "behavior_changes": [],
+    "read_more": ["README.md", "AGENT-GUIDE.md", "okf/index.md"]
+  },
 
   "update": {
     "channel": "desktop",

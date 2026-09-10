@@ -11,6 +11,7 @@
  * predicates included — a Builder that shows a different set from the page is
  * worse than one that shows nothing. */
 #include "domain/date_query.hpp"
+#include "render/download.hpp" // the refusal list, so the canvas can warn
 #include "render/video.hpp" // the preview says which video, not just "video"
 #include "json.hpp" // block payloads and template bodies are JSON
 
@@ -35,260 +36,6 @@ void HormigaApp::doc_palette_place(const std::string& glyph) {
     ed.selection = {name};
 }
 
-/* Apply a TEMPLATE: clear the current document's elements, set the theme, and
- * replay the template's build commands — the clear+build as ONE undoable batch
- * (Ctrl+Z reverts the whole thing). Theme is config-tier (kept in sync with the
- * Style-tab members). Runs in the issue mantle, then restores the data home. */
-void HormigaApp::apply_template(const hormiga::DocTemplate& t) {
-    maiz::ProjectOptions io;
-    io.mantle = cur_doc;
-    maiz::Scene issue = maiz::project_scene(core, io);
-    std::vector<std::string> batch;
-    for (const auto& n : issue.nodes) batch.push_back("rm " + n.name);
-    for (const auto& c : t.commands) batch.push_back(c);
-
-    pending_cmds.push_back(std::string("use ") + cur_doc);
-    pending_cmds.push_back(maiz::compile_commit(batch)); // clear+build, one undo
-    auto sethex = [&](const char* key, const std::string& hex, float out[3]) {
-        unsigned r, g, b;
-        if (hex.size() >= 7 && std::sscanf(hex.c_str(), "#%02x%02x%02x", &r, &g, &b) == 3) {
-            out[0] = r / 255.0f; out[1] = g / 255.0f; out[2] = b / 255.0f;
-            pending_cmds.push_back(std::string("config set ") + key + " \"" + hex + "\"");
-        }
-    };
-    sethex("theme.accent", t.accent, theme_accent);
-    sethex("theme.bg", t.bg, theme_bg);
-    sethex("theme.ink", t.ink, theme_ink);
-    if (t.preset >= 0) {
-        theme_preset = t.preset;
-        pending_cmds.push_back("config set theme.preset \"" + std::to_string(t.preset) + "\"");
-    }
-    if (t.font >= 0) {
-        theme_font = t.font;
-        pending_cmds.push_back("config set theme.font \"" + std::to_string(t.font) + "\"");
-    }
-    if (t.dark >= 0) {
-        theme_dark = (t.dark != 0);
-        pending_cmds.push_back(std::string("config set theme.dark \"") + (t.dark ? "1" : "0") + "\"");
-    }
-    pending_cmds.push_back(std::string("use ") + kDataMantle);
-    ed.selection.clear();
-    cur_page.clear();
-    show_templates = false;
-    toast("applied template '" + t.name + "' - edit it, then Live preview");
-}
-
-/* Save the current document as a user template (templates/<slug>.json): each
- * element becomes rune new + set commands, plus the current theme. The same
- * shape as the built-ins, so it lists beside them. */
-void HormigaApp::save_current_as_template(const std::string& name) {
-    std::string slug = name;
-    for (char& c : slug)
-        if (!std::isalnum((unsigned char)c)) c = '-';
-    std::error_code ec;
-    fs::create_directories(data_dir("templates"), ec);
-    std::ofstream o(data_dir("templates") / (slug + ".json"),
-                    std::ios::binary | std::ios::trunc);
-    o << capture_doc_json(name);
-    toast("saved template '" + name + "' to templates/" + slug + ".json");
-}
-
-/* Capture the CURRENT document (cur_doc's elements + the theme) into the
- * portable name/kind/theme/commands JSON shared by templates and document
- * files — the replayable-transcript philosophy, serialized. */
-std::string HormigaApp::capture_doc_json(const std::string& name) {
-    maiz::ProjectOptions io;
-    io.mantle = cur_doc;
-    maiz::Scene issue = maiz::project_scene(core, io);
-    bool has_pages = false;
-    for (const auto& n : issue.nodes)
-        if (n.glyph == "page") has_pages = true;
-    nlohmann::json j;
-    j["name"] = name;
-    j["kind"] = has_pages ? "website" : "newsletter";
-    j["desc"] = "Saved from a Hormiga document.";
-    SiteTheme th = read_site_theme(core);
-    j["accent"] = th.accent; j["bg"] = th.bg; j["ink"] = th.ink;
-    j["preset"] = th.preset; j["font"] = th.font; j["dark"] = th.dark ? 1 : 0;
-    nlohmann::json cmds = nlohmann::json::array();
-    for (const auto& n : issue.nodes) {
-        cmds.push_back("rune new " + n.glyph + " " + n.name);
-        for (const auto& f : n.fields) {
-            std::string v = f.value_json;
-            if (f.is_string && v.size() >= 2) v = v.substr(1, v.size() - 2);
-            if (v.empty() || v == "null") continue;
-            cmds.push_back("set " + n.name + " " + f.key + " " + json_str(v));
-        }
-    }
-    j["commands"] = cmds;
-    return j.dump(2);
-}
-
-/* Export the current document to a portable FILE (documents/<slug>.json). Load
- * it back with import_document — or on another machine/org (it references data
- * by query, so it re-binds to whatever contacts/events live there). */
-void HormigaApp::export_document() {
-    std::string slug = cur_doc;
-    std::error_code ec;
-    fs::create_directories(data_dir("documents"), ec);
-    fs::path out = data_dir("documents") / (slug + ".json");
-    std::ofstream o(out, std::ios::binary | std::ios::trunc);
-    o << capture_doc_json(cur_doc);
-    toast("saved document to documents/" + slug + ".json");
-    if (on_open) on_open(out.string());
-}
-
-/* Import a document FILE → a NEW document mantle (never clobbers the current
- * one; unlike a template, which replaces). Switches the Builder to it. */
-void HormigaApp::import_document() {
-    if (!on_pick_file) {
-        toast("no file picker available", true);
-        return;
-    }
-    std::string path = on_pick_file("");
-    if (path.empty()) return;
-    nlohmann::json j;
-    try {
-        std::ifstream in(path);
-        j = nlohmann::json::parse(in);
-    } catch (...) {
-        toast("could not read that document file", true);
-        return;
-    }
-    // a unique mantle name from the file's name (check the mantles list —
-    // never probe with `use`, which would mutate the active mantle)
-    std::string base = j.value("name", fs::path(path).stem().string());
-    std::string mantle = base;
-    for (char& c : mantle)
-        if (!std::isalnum((unsigned char)c) && c != '-') c = '-';
-    std::set<std::string> existing;
-    for (std::string line : core.dispatch("mantles").lines) {
-        while (!line.empty() && (line.front() == '*' || line.front() == ' '))
-            line.erase(line.begin());
-        if (auto p = line.find(" ("); p != std::string::npos) line.resize(p);
-        while (!line.empty() && line.back() == ' ') line.pop_back();
-        existing.insert(line);
-    }
-    std::string uniq = mantle;
-    for (int n = 2; existing.count(uniq); ++n)
-        uniq = mantle + "-" + std::to_string(n);
-    pending_cmds.push_back("mantle new " + uniq);
-    for (const auto& c : j.value("commands", nlohmann::json::array()))
-        pending_cmds.push_back(c.get<std::string>());
-    pending_cmds.push_back(std::string("use ") + kDataMantle);
-    cur_doc = uniq;
-    cur_page.clear();
-    ed.selection.clear();
-    toast("imported document '" + uniq + "' - now the active document");
-}
-
-std::vector<hormiga::DocTemplate> HormigaApp::load_user_templates() const {
-    std::vector<hormiga::DocTemplate> out;
-    std::error_code ec;
-    fs::path dir = data_dir("templates");
-    if (!fs::exists(dir)) return out;
-    for (const auto& e : fs::directory_iterator(dir, ec)) {
-        if (e.path().extension() != ".json") continue;
-        try {
-            std::ifstream in(e.path());
-            auto j = nlohmann::json::parse(in);
-            hormiga::DocTemplate t;
-            t.name = j.value("name", e.path().stem().string());
-            t.kind = j.value("kind", "newsletter");
-            t.desc = j.value("desc", "");
-            t.accent = j.value("accent", ""); t.bg = j.value("bg", "");
-            t.ink = j.value("ink", "");
-            t.preset = j.value("preset", -1); t.font = j.value("font", -1);
-            t.dark = j.value("dark", -1);
-            for (const auto& c : j.value("commands", nlohmann::json::array()))
-                t.commands.push_back(c.get<std::string>());
-            out.push_back(std::move(t));
-        } catch (...) {}
-    }
-    return out;
-}
-
-/* The TEMPLATES window: start from a designed layout (built-ins + user), or
- * save the current document as one. Newsletter vs website templates are
- * labeled; the website ones are the richer, multi-page kind. */
-void HormigaApp::draw_templates_window() {
-    if (!show_templates) return;
-    ImGui::SetNextWindowSize(ImVec2(460, 0), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Templates", &show_templates)) {
-        ImGui::TextWrapped("Start from a designed layout. Applying a template "
-                           "REPLACES the current document (undo with Ctrl+Z).");
-        ImGui::Spacing();
-        auto row = [&](const hormiga::DocTemplate& t, bool user) {
-            ImGui::PushID(t.name.c_str());
-            ImGui::SeparatorText(
-                (t.name + "   [" + t.kind + (user ? ", saved]" : "]")).c_str());
-            ImGui::PushTextWrapPos(0);
-            ImGui::TextDisabled("%s", t.desc.c_str());
-            ImGui::PopTextWrapPos();
-            if (ImGui::Button(("Use this template##" + t.name).c_str()))
-                apply_template(t);
-            ImGui::PopID();
-        };
-        ImGui::SeparatorText("Built-in");
-        for (const auto& t : hormiga::builtin_templates()) row(t, false);
-        auto user = load_user_templates();
-        if (!user.empty()) {
-            ImGui::Spacing();
-            for (const auto& t : user) row(t, true);
-        }
-        ImGui::Spacing();
-        ImGui::SeparatorText("Save the current document as a template");
-        ImGui::SetNextItemWidth(-90);
-        ImGui::InputTextWithHint("##tplname", "template name...",
-                                 template_save_name, sizeof template_save_name);
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!template_save_name[0]);
-        if (ImGui::Button("Save")) {
-            save_current_as_template(template_save_name);
-            template_save_name[0] = 0;
-        }
-        ImGui::EndDisabled();
-    }
-    ImGui::End();
-}
-
-/* Documents are mantles (author 2026-07-23): everything except the Data and
- * Antfarm mantles is a builder DOCUMENT (a newsletter or website you can save
- * and switch between). They persist in the database like everything else. */
-std::vector<std::string> HormigaApp::list_documents() {
-    std::vector<std::string> out;
-    for (std::string line : core.dispatch("mantles").lines) {
-        while (!line.empty() && (line.front() == '*' || line.front() == ' '))
-            line.erase(line.begin());
-        if (auto p = line.find(" ("); p != std::string::npos) line.resize(p);
-        while (!line.empty() && line.back() == ' ') line.pop_back();
-        if (line.empty() || line == "(no mantles)" || line == kDataMantle ||
-            line == "antfarm")
-            continue;
-        out.push_back(line);
-    }
-    return out;
-}
-
-/* Create a new document (a fresh mantle) with a starter hero, switch the
- * Builder to it. One undoable-ish sequence; the data home is restored. */
-void HormigaApp::new_document(const std::string& name) {
-    std::string mantle = name;
-    for (char& c : mantle) // command-safe mantle name
-        if (!std::isalnum((unsigned char)c) && c != '-') c = '-';
-    if (mantle.empty()) return;
-    if (scene.find(mantle)) { toast("a document named that exists", true); return; }
-    pending_cmds.push_back("mantle new " + mantle); // creates + makes active
-    pending_cmds.push_back("rune new hero doc-hero");
-    pending_cmds.push_back("set doc-hero title_en " + json_str(name));
-    pending_cmds.push_back("set doc-hero row \"0\"");
-    pending_cmds.push_back(std::string("use ") + kDataMantle);
-    cur_doc = mantle;
-    cur_page.clear();
-    ed.selection.clear();
-    toast("new document '" + mantle + "' - build it, then Email preview / "
-          "Build website");
-}
 
 /* Mint a website PAGE (W2). The first "New page" also establishes a Home page
  * so the existing (empty-`page`) components have a named home; every later
@@ -477,6 +224,8 @@ void HormigaApp::draw_document_canvas(float body_h) {
         if (n.glyph == "image_grid") return 116.0f;
         if (n.glyph == "map_embed") return 132.0f;
         if (n.glyph == "calendar_embed") return 124.0f;
+        if (n.glyph == "download") return 92.0f;
+        if (n.glyph == "audio") return 128.0f;
         if (n.glyph == "video") return 120.0f;
         return 108.0f; // event_grid / job_grid / anything new
     };
@@ -744,6 +493,109 @@ void HormigaApp::draw_document_canvas(float body_h) {
                 ImGui::Dummy(ImVec2(1, ((first + dim + 6) / 7) * chh + 4));
                 ImGui::TextDisabled("%s %d - interactive on the site",
                                     kMonthNames[tm3 - 1], ty2);
+            } else if (n.glyph == "download") {
+                /* The file's presence is the thing to see before deploying: a
+                 * `download` whose file is missing leaves NO button on the page
+                 * at all, so a canvas that drew a confident button would be
+                 * lying about the most important control on some sites. */
+                std::string want = field_value(n, "file");
+                std::string via;
+                if (!want.empty())
+                    for (const auto& dn : data.nodes)
+                        if (dn.glyph == "resource" && dn.name == want) {
+                            via = want;
+                            want = field_value(dn, "path");
+                            break;
+                        }
+                const bool refused =
+                    !want.empty() && !hormiga::download_refusal(want).empty();
+                const bool have =
+                    !want.empty() && !refused &&
+                    std::filesystem::exists(
+                        std::filesystem::path(want).is_absolute()
+                            ? std::filesystem::path(want)
+                            : base_dir / want);
+                std::string lbl = text_of(n, "label");
+                if (lbl.empty()) lbl = "Download";
+                ImVec2 p0 = ImGui::GetCursorScreenPos();
+                const float bw = std::min(inner_w, 210.0f), bh = 30.0f;
+                dl->AddRectFilled(p0, ImVec2(p0.x + bw, p0.y + bh),
+                                  have ? IM_COL32(46, 107, 79, 255)
+                                       : IM_COL32(110, 60, 60, 255),
+                                  6.0f);
+                dl->AddText(ImVec2(p0.x + 10, p0.y + 7),
+                            IM_COL32(240, 240, 240, 255),
+                            (std::string(ICON_FA_DOWNLOAD) + "  " + lbl).c_str());
+                ImGui::Dummy(ImVec2(1, bh + 4));
+                if (want.empty())
+                    ImGui::TextDisabled("(no file yet)");
+                else if (refused)
+                    ImGui::TextColored(ImVec4(0.85f, 0.45f, 0.45f, 1),
+                                       "%s - refused: not publishable",
+                                       want.c_str());
+                else if (!have)
+                    ImGui::TextColored(ImVec4(0.85f, 0.45f, 0.45f, 1),
+                                       "%s - file not found", want.c_str());
+                else
+                    ImGui::TextDisabled("%s%s", want.c_str(),
+                                        via.empty() ? ""
+                                                    : "  (resource)");
+            } else if (n.glyph == "audio") {
+                /* A cover, the title line, and a transport bar drawn to scale.
+                 * The one thing an author needs to see before deploying is
+                 * whether the FILE is actually there — a block whose `src`
+                 * points at something not on this machine renders an apology on
+                 * the page, and finding that out from the deployed site is the
+                 * failure the `video` preview two cases up was built to end.
+                 * So the bar is warm-grey when the file resolves and red when
+                 * it does not, and the line underneath says which. */
+                const std::string asrc = field_value(n, "src");
+                const bool have =
+                    !asrc.empty() &&
+                    std::filesystem::exists(std::filesystem::path(asrc).is_absolute()
+                                                ? std::filesystem::path(asrc)
+                                                : base_dir / asrc);
+                const float ch = 46.0f;
+                ImVec2 p0 = ImGui::GetCursorScreenPos();
+                // the cover, if the named image rune has a file we can draw
+                float x = p0.x;
+                const std::string cov = field_value(n, "cover");
+                if (!cov.empty()) {
+                    for (const auto& dn : data.nodes)
+                        if (dn.glyph == "image" && dn.name == cov) {
+                            HostTexture t = texture_for(field_value(dn, "path"));
+                            if (t.id)
+                                dl->AddImage((ImTextureID)(intptr_t)t.id,
+                                             ImVec2(x, p0.y),
+                                             ImVec2(x + ch, p0.y + ch));
+                            else
+                                dl->AddRect(ImVec2(x, p0.y),
+                                            ImVec2(x + ch, p0.y + ch),
+                                            IM_COL32(120, 120, 128, 160), 4.0f);
+                            x += ch + 8;
+                        }
+                }
+                const float bw = std::max(60.0f, std::min(inner_w - (x - p0.x),
+                                                          200.0f));
+                dl->AddRectFilled(ImVec2(x, p0.y + ch - 16),
+                                  ImVec2(x + bw, p0.y + ch - 6),
+                                  have ? IM_COL32(90, 90, 98, 255)
+                                       : IM_COL32(120, 60, 60, 255),
+                                  5.0f);
+                dl->AddCircleFilled(ImVec2(x + 10, p0.y + ch - 11), 6.0f,
+                                    have ? IM_COL32(200, 200, 210, 255)
+                                         : IM_COL32(210, 150, 150, 255));
+                ImGui::Dummy(ImVec2(1, ch + 2));
+                const std::string at = text_of(n, "title");
+                ImGui::TextDisabled(
+                    "%s %s", ICON_FA_MUSIC,
+                    at.empty() ? (asrc.empty() ? "(no file yet)" : asrc.c_str())
+                               : at.c_str());
+                if (!asrc.empty() && !have) {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(0.85f, 0.45f, 0.45f, 1),
+                                       "- file not found");
+                }
             } else if (n.glyph == "video") {
                 /* A play mark and the RESOLVED provider + id. The preview says
                  * whether the pasted string parsed, which is the one thing an
@@ -1063,7 +915,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
         ImGui::EndCombo();
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("+ New##doc")) ImGui::OpenPopup("##newdoc");
+    if (ImGui::SmallButton(ICON_FA_SQUARE_PLUS " New##doc")) ImGui::OpenPopup("##newdoc");
     if (ImGui::BeginPopup("##newdoc")) {
         ImGui::TextDisabled("a new document (newsletter or website)");
         ImGui::SetNextItemWidth(200);
@@ -1081,13 +933,92 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("documents are saved in the database (Antfarm-decided\n"
                           "store); each is its own newsletter or website");
+    /* ── RENAME / DELETE (2026-09-02) ────────────────────────────────────────
+     * The roadmap's "blocked on Core `mantle rm`/`rename`" note outlived its
+     * blocker; both verbs are in `verbs_edit.c`. See `rename_document` /
+     * `delete_document` for why one of these asks and the other does not. */
     ImGui::SameLine();
-    if (ImGui::SmallButton("Save to file")) export_document();
+    if (ImGui::SmallButton(ICON_FA_PEN_TO_SQUARE " Rename##doc")) {
+        std::snprintf(rename_doc_name, sizeof rename_doc_name, "%s",
+                      cur_doc.c_str());
+        ImGui::OpenPopup("##renamedoc");
+    }
+    if (ImGui::BeginPopup("##renamedoc")) {
+        ImGui::TextDisabled("rename this document");
+        ImGui::SetNextItemWidth(200);
+        const bool go =
+            ImGui::InputText("##rdname", rename_doc_name, sizeof rename_doc_name,
+                             ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::SameLine();
+        if ((ImGui::Button("Rename") || go) && rename_doc_name[0]) {
+            rename_document(rename_doc_name);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::TextDisabled("every element comes with it; links repoint");
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton(ICON_FA_TRASH " Delete##doc")) ImGui::OpenPopup("##deldoc");
+    if (ImGui::BeginPopup("##deldoc")) {
+        /* The consequence in words, with a count, rather than "are you sure?".
+         * Same reasoning as the Publish confirmation: a person can answer a
+         * question about 34 elements and cannot answer a question about
+         * nothing in particular. */
+        ImGui::TextColored(ImVec4(0.9f, 0.55f, 0.3f, 1),
+                           "Delete '%s' and its %d element(s)?", cur_doc.c_str(),
+                           document_element_count(cur_doc));
+        ImGui::TextDisabled("the document and everything in it. Ctrl+Z undoes it,\n"
+                            "but the picker will not offer it again until you do.");
+        if (ImGui::Button("Delete document")) {
+            delete_document(cur_doc);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+    /* ── SAVE, IN THE TAB WHERE THE WORK HAPPENS (2026-09-02) ────────────────
+     *
+     * The author: *"there's still no 'save' button in the builder tab. sure i
+     * can save the miga file, but i would like to just save what i have in the
+     * builder as well. I don't wanna 'save as' a lot of the time honestly."*
+     *
+     * Every edit is already persisted through the dispatcher, and `save` writes
+     * the state document — File > Save and Ctrl+S have always done it. What was
+     * missing is not persistence, it is **being told**, in the place a person is
+     * working, that their afternoon is on disk. A `.miga` Save As is a different
+     * operation entirely (it packs a portable bundle) and reaching for it as a
+     * substitute is exactly what the author was doing.
+     *
+     * So: the same `do_save()` the File menu calls, with a live indicator beside
+     * it. `edits_since_save` is incremented by `dispatch_and_reproject` — one
+     * counter, at the one door every GUI edit goes through, which is the only
+     * place it cannot drift from the truth. */
+    ImGui::SameLine(0, 16);
+    if (ImGui::SmallButton(edits_since_save ? ICON_FA_FLOPPY_DISK " Save*"
+                                        : ICON_FA_FLOPPY_DISK " Save")) do_save();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip(
+            edits_since_save
+                ? "write the database to disk (Ctrl+S).\n%d change(s) since the "
+                  "last save.\nThis is NOT 'save as a .miga' - that packs a "
+                  "portable bundle."
+                : "everything is written to disk (Ctrl+S).\nThis is NOT 'save as "
+                  "a .miga' - that packs a portable bundle.",
+            edits_since_save);
+    ImGui::SameLine();
+    if (edits_since_save)
+        ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.3f, 1), "%d unsaved",
+                           edits_since_save);
+    else
+        ImGui::TextDisabled("saved");
+    ImGui::SameLine();
+    if (ImGui::SmallButton(ICON_FA_DOWNLOAD " Save to file")) export_document();
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("export this document to documents/<name>.json -\n"
                           "a portable file you can back up or share");
     ImGui::SameLine();
-    if (ImGui::SmallButton("Load file")) import_document();
+    if (ImGui::SmallButton(ICON_FA_FOLDER_OPEN " Load file")) import_document();
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("open a document .json as a NEW document (never\n"
                           "overwrites the current one)");
@@ -1096,12 +1027,12 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
     ImGui::SetNextItemWidth(60);
     ImGui::Combo("##lang", &preview_lang, "EN\0ES\0");
     ImGui::SameLine();
-    if (ImGui::SmallButton("Email preview"))
+    if (ImGui::SmallButton(ICON_FA_ENVELOPE " Email preview"))
         dispatch_and_reproject(preview_lang ? "effect render es" : "effect render en");
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("email domain: table-safe HTML for pasting into a mail client");
     ImGui::SameLine();
-    if (ImGui::SmallButton("Build website"))
+    if (ImGui::SmallButton(ICON_FA_GLOBE " Build website"))
         dispatch_and_reproject(preview_lang ? "effect render-site es"
                                             : "effect render-site en");
     if (ImGui::IsItemHovered())
@@ -1175,7 +1106,25 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
             ImGui::SeparatorText(e.category.c_str());
             last_cat = e.category;
         }
-        bool clicked = ImGui::Button(e.label.c_str(), ImVec2(-1, 0));
+        /* ── THE ICON GOES ON THE BUTTON, AND ON THE DRAG GHOST (2026-09-02) ─
+         *
+         * The author asked for *"little icons next to the drag and drop
+         * button"*. The palette is a column of same-width buttons whose only
+         * differentiator was a word, which is exactly the case an icon earns
+         * its place in: at a glance, `image grid` and `event grid` are the same
+         * shape and the same length, and a picture is not.
+         *
+         * `glyph_icon` (app_internal.hpp) maps the glyph to a Font Awesome
+         * codepoint already merged into the ImGui atlas. Unlisted glyphs get a
+         * neutral square rather than nothing, so a new block looks sparse
+         * instead of broken.
+         *
+         * The DRAG GHOST gets it too. That ghost is the only thing visible
+         * while a person is deciding where to drop, so it is the one place the
+         * icon is doing the most work. */
+        const std::string plabel =
+            std::string(glyph_icon(e.glyph)) + "  " + e.label;
+        bool clicked = ImGui::Button(plabel.c_str(), ImVec2(-1, 0));
         // DRAG a palette element onto the document (author's one missing
         // nicety, 2026-07-23): drop between rows in the doc canvas to insert
         // AT a position; the click still appends.
@@ -1183,7 +1132,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
             ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
             ImGui::SetDragDropPayload("PALETTE_GLYPH", e.glyph.c_str(),
                                       e.glyph.size() + 1);
-            ImGui::Text("+ %s", e.label.c_str());
+            ImGui::Text("%s  %s", glyph_icon(e.glyph), e.label.c_str());
             ImGui::EndDragDropSource();
         }
         if (clicked) {

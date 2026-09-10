@@ -127,6 +127,27 @@ with it.
   profile, the signed-in identity and the contact as three different things,
   and why a profile is a credential on a device rather than a person. Many
   profiles, one contact; never a `contacts.is_admin` column.
+- [The download page](/concepts/platform/download-page.md) — **built and live
+  (2026-09-08), on a client's site**: where the installer is hosted and how a
+  stranger gets it. GitHub Releases rather than the website (release assets live
+  outside git's history; a 7 MB binary in a Pages branch does not, once per
+  release forever), and **the button carries no version number** — a
+  stable-named copy of each release makes one URL permanently correct, so
+  shipping a new version never means redeploying the site. **§5(d) is the OS
+  detection the author asked for**, in the only shape it survives: a `platform`
+  field on `download` and `link`, a grid row of them as a *platform set*, the
+  visitor's own moved first and labelled, and **none of them ever hidden** — a
+  rule turned into a property of the mechanism. Also the honest part: nothing is
+  signed, so the page says what SmartScreen will say before it says it.
+- [Distribution](/concepts/platform/distribution.md) — **opened 2026-09-04**:
+  how the application reaches a machine that is not the developer's, and how the
+  person on it hears about a newer one. Void Mago compiles `void.json` into a
+  side-by-side per-user installer; the update client is ours. **The hub is a
+  file** — one `void-updates.json` beside the installers, read by each
+  application about itself — because a hub is an application you must install
+  before the application you actually wanted. The rule the whole design turns
+  on: *a check is a network request a person did not make*, so the preference
+  starts at "unasked" and lives beside the install rather than in the org.
 - [Collaboration](/concepts/platform/collaboration.md) — **opened 2026-08-27**:
   one database, several devices. The merge is Void Palabra's and is built; the
   transport is ours for now, LAN first, with a UDP beacon, an out-of-band short
@@ -182,11 +203,16 @@ with it.
   conflict resolution, reactivity, round-tripping, …).
 - [Log](/log.md) — the running history.
 - `okf/reports/` — **field reports from agents running the shipped binary**
-  against a real organization's data. They are kept rather than folded away
-  because each one is a measurement: what an outside caller, following the
-  documentation in good faith, actually got. Every claim in them is reproduced
-  against the binary before anything is decided, and the decisions land in the
-  [log](/log.md) and the concepts.
+  against real data. They are kept rather than folded away because each one is a
+  measurement: what an outside caller, following the documentation in good
+  faith, actually got. Every claim in them is reproduced against the binary
+  before anything is decided, and the decisions land in the [log](/log.md) and
+  the concepts. The folder was created on 2026-09-02 to hold the first report
+  from a client that is **not** an outreach organization — a music project,
+  adopted deliberately to find where the vocabulary runs out. It ran out in
+  twelve places, two of which were live on a real community website at the
+  time, which is the argument for keeping a client whose needs are wrong on
+  purpose.
 - `DESIGN.md` (repo root) — the dated founding design document, the one place
   that references the predecessor project freely. This OKF supersedes it
   concept by concept as things stabilize.
@@ -224,3 +250,60 @@ Remaining for C's exit: the rescue-dump import (deadline
 **2026-08-02**, run right rather than rushed — the import infrastructure is
 ready for it), Sheets import, temper hygiene, the table view
 (see [roadmap](/roadmap.md) and the [log](/log.md)).
+
+**The download page went live 2026-09-08**, on `clicklafont.com` — the author's
+choice, because that site is experimental enough to be safe to break. It was
+built by that client's agent from §6 of the concept, which is how three of that
+page's numbers got corrected (the installer is 7.0 MB, not 25) and how the OS
+detection arrived as a *design* rather than a script: the agent refused to fake
+it, proposed platform sets, and platform sets are what shipped. **Void Hormiga 0.1.0 shipped on 2026-09-08** — installer, update feed,
+checksums, a live download page, and `update --check` answering *up to date*
+from an installed copy instead of 404. The road there:
+the forward slash in Void Mago's generated `.nsi` that installed the fonts into
+a folder called `vendorfonts` was reported there and **fixed the same day** (mago
+0.1.6), at a chokepoint, verified here against this repository's own manifest.
+What is left is a second computer, and then a 0.1.1 — because one release
+proves the feed parses and nothing more, and the exit test is that it *updates
+itself*.
+
+**Linux and macOS are asked for and gated upstream.** The code is more portable
+than the platform list suggests — every Windows-touching file carries a `#else`
+but one, the HTTP layer shells out to `curl`, and the update client already
+knows `XDG_CONFIG_HOME` and `xdg-open` — and two real gaps were closed on
+2026-09-08 (`ws2_32` linked unconditionally; `HORMIGA_PLATFORM` answering
+`"unknown"`, which is the key the update client looks itself up under in the
+feed). But **Void Maiz declares `windows-x64` and `android-arm64`**, and both
+our binaries link it, so the question is theirs before it is ours; Void Mago's
+`wizard` emits NSIS and nothing else, which is the next gate after that. See
+the [log](/log.md).
+
+**Phase G — ship it — opened 2026-09-04**, when Void Mago staged this
+repository for the first time and refused to produce a package. Both refusals
+were right and both fixes are here; fixing the second found a third blocker
+nobody had reported, which would have opened the application on the first test
+device with no icons at all. The package now stages clean and the **update
+client is built** — the feed reader, the version comparison, the prompt, the
+digest check, and `voidhormiga-cli update`. Nothing is signed, `makensis` has
+not been run, and no second machine has installed anything: the exit test is a
+second computer, like phase F's, and the author's instruction was to have this
+ready rather than launched while Allomone and Palabra are still moving. See
+[distribution](/concepts/platform/distribution.md).
+
+**Void Core 0.2.14 landed the same week** and answered all five of our asks
+(2026-09-03). Glyph descriptors are a documented host contract, so the
+hand-maintained `glyph_fields()` duplicate is deleted — it was already wrong —
+and glyph **declarations travel in the state document**, which is what makes a
+`.miga` self-describing and unblocks [Q59](/developer_questions.md). Runes now
+have a `kind` (`entity` / `act` / `measure`); five of ours are `act` and none is
+`measure`, because Hormiga's numbers are points and a point has no magnitude.
+Q64 and Q65 are answered and cleared.
+
+**Phase E gained its second deploy holiday on 2026-09-02**: `hol_github`
+publishes to GitHub Pages natively, alongside the Cloudflare Pages path, which
+is what turns *every cloud host is disposable* from an argument into a property
+an organization can exercise. The same day brought the first field report from a
+client that is **not** an outreach organization (`okf/reports/`), six one-line
+render fixes it found — two of them live on a real community website — and the
+author's decision that a site may never be published in one language: the answer
+to "translating is tedious" is **better translation tooling**, not a switch. See
+the [log](/log.md).

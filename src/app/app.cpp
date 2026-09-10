@@ -828,6 +828,47 @@ maiz::Result HormigaApp::dispatch_and_reproject(const std::string& cmd) {
         preview_dirty = true;   // (debounced in frame(); render is VIEW-side,
         preview_edit_t = ImGui::GetTime(); // not a logged effect)
     }
+    /* ── UNSAVED WORK, COUNTED AT THE ONE DOOR (2026-09-02) ──────────────────
+     *
+     * The author asked for a Save button in the Builder. Writing was never the
+     * missing part — Ctrl+S and File > Save have always done it — so what the
+     * button needs is the thing the writing did not provide: an answer to *is
+     * there anything to save*. This is the only place a GUI edit reaches the
+     * model, so it is the only place a count cannot drift.
+     *
+     * DELIBERATELY BIASED TOWARD OVER-REPORTING. `maiz::Result` carries no
+     * "did this change anything" flag, and comparing exported state per edit is
+     * not worth it, so anything off the short read-only list counts. The two
+     * failure directions are not symmetric: an extra "1 unsaved" makes somebody
+     * press a free, idempotent button, while a missed one lets them close the
+     * app believing their afternoon is on disk. A list of MUTATING verbs would
+     * go stale in the dangerous direction; this one goes stale in the harmless
+     * one.
+     *
+     * `use` is on the list and is the judgement call: switching mantle is a
+     * state change, but the Builder dispatches it on every document switch, and
+     * a counter that ticks when somebody looks at another page is one they
+     * learn to ignore. */
+    if (r.ok) {
+        static const char* kReadOnly[] = {"use ",  "ls",   "find",  "cat ",
+                                          "mantles", "glyphs", "links ",
+                                          "related ", "status", "diff",
+                                          "verbs", "tags"};
+        if (cmd == "save") {
+            edits_since_save = 0;
+        } else {
+            bool reads_only = false;
+            for (const char* v : kReadOnly) {
+                const size_t n = std::strlen(v);
+                if (cmd.compare(0, n, v) == 0 &&
+                    (cmd.size() == n || v[n - 1] == ' ')) {
+                    reads_only = true;
+                    break;
+                }
+            }
+            if (!reads_only) ++edits_since_save;
+        }
+    }
     return r;
 }
 
@@ -889,7 +930,8 @@ void HormigaApp::save_database() {
         for (size_t i = 0; i + 10 < mine.size(); ++i) fs::remove(mine[i], ec);
     }
     auto r = hormiga::miga::pack(core.export_state(), base_dir, cur_miga,
-                                 fs::path(cur_miga).stem().string(), assets_dir());
+                                 fs::path(cur_miga).stem().string(), assets_dir(),
+                                 referenced_files(core.export_state()));
     if (r.ok)
         toast("saved database " + fs::path(cur_miga).filename().string() + " (" +
               std::to_string(r.assets) + " assets, " +
@@ -907,7 +949,8 @@ void HormigaApp::save_database_as(const std::string& path) {
     if (out.extension() != ".miga") out += ".miga";
     do_save(); // flush live state into the working .db first
     auto r = hormiga::miga::pack(core.export_state(), base_dir, out,
-                                 out.stem().string(), assets_dir());
+                                 out.stem().string(), assets_dir(),
+                                 referenced_files(core.export_state()));
     if (r.ok) {
         cur_miga = out.string();
         toast("saved database to " + out.string() + " (" +
@@ -1710,6 +1753,22 @@ void HormigaApp::init() {
                      : "Hormiga - " + abs.parent_path().filename().string() +
                            " - " + abs.string());
     }
+
+    /* LAST, AND ONLY WHERE A PERSON IS LOOKING. `updates_boot` reads a
+     * preferences file and then either asks a question, starts a check, or does
+     * nothing -- it never decides to go to the network on its own
+     * (ui/updates.cpp says why). It is at the END of init because a check must
+     * not be able to delay or interfere with opening somebody's database, which
+     * is the thing they actually came here to do.
+     *
+     * `offer_updates` IS AN EXPLICIT FLAG RATHER THAN A TEST OF SOMETHING ELSE,
+     * and the near-miss is the reason. The obvious guard was `on_shell_capture`
+     * -- "do we have a transport?" -- and the headless front-end sets that too:
+     * it builds a throwaway `HormigaApp` and calls `init()` to render a
+     * newsletter, which would have made a network request during a command that
+     * asked for a newsletter. An agent's `render` is not consent to check for
+     * updates. Only the desktop shell sets this. */
+    if (offer_updates) updates_boot();
 }
 
 void HormigaApp::shutdown() {
@@ -1960,7 +2019,7 @@ void HormigaApp::run_csv_import(const std::string& glyph) {
     std::stringstream ss;
     ss << in.rdbuf();
     auto res = hormiga::compile_csv_import(
-        ss.str(), glyph, hormiga::glyph_fields(glyph),
+        ss.str(), glyph, hormiga::glyph_fields(core, glyph),
         [this](const std::string& n) { return scene.find(n) != nullptr; });
     if (!res.error.empty()) {
         toast("import failed: " + res.error, true);
@@ -2773,6 +2832,32 @@ void HormigaApp::frame() {
     ImGui::End();
 #endif
 
+    /* ── NO ICONS ON WINDOW TITLES, AND THIS IS THE NOTE THAT SAYS WHY ───────
+     *
+     * They were added on 2026-09-02 as `ICON " Data###Data"`, on the reasoning
+     * that ImGui hashes what follows `###` so the window id would not move and
+     * nobody's dock layout would either. **The id was right and the reasoning
+     * was wrong**, and it cost the author a working application for an evening.
+     *
+     * `imgui.ini` keys a window's saved settings by a DIFFERENT hash than the
+     * live window uses. `ImGui::CreateNewWindowSettings` skips to the `###`
+     * marker and hashes from there, so a saved `[Window][Data]` has the id
+     * `hash("Data")` while a window named `"X Data###Data"` looks itself up as
+     * `hash("###Data")`. Those are not equal. Every existing entry was orphaned:
+     * position, size and dock assignment all lost, silently, for anybody who
+     * upgraded.
+     *
+     * That alone would have been a rude but survivable one-time reset. What it
+     * actually did was hand the Data section a window narrow enough to cross
+     * the bounds of a `std::clamp` — which is UB, which libstdc++ turns into
+     * `abort()`. The application opened and closed again before it could draw a
+     * frame. Both halves are fixed; only one of them was mine.
+     *
+     * So: **the titles are the plain names they have always been.** Icons live
+     * everywhere they cost nothing — the Builder palette and its drag ghost,
+     * the document toolbar, the Data "+ New" menu, the Notes tab. Putting one
+     * on a window title needs an `imgui.ini` migration first, and that is a
+     * deliberate piece of work rather than a decoration. */
     section_window("Data", Data);
     section_window("Builder", Builder);
     section_window("Antfarm", Antfarm);
@@ -2839,6 +2924,12 @@ void HormigaApp::frame() {
     if (boot_section >= 0 && --boot_focus_frames <= 0) boot_section = -1;
 
     draw_vault_modal();
+    /* The update client's main-thread half: join a finished worker, then draw.
+     * Drained here rather than beside the `job` drain above because it lands no
+     * dispatcher commands -- an update is a fact about the installation, not a
+     * change to the organization's data. */
+    updates_drain();
+    draw_update_modal();
     draw_job_overlay();
     draw_busy_overlay();
     draw_toasts();

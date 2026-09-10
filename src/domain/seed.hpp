@@ -41,6 +41,27 @@ namespace hormiga {
  * (../VoidMaiz/src/project/project.cpp fill_fields), so channel positions
  * must be registered onto the placeable glyphs or the canvas never sees
  * them — reproject() keeps this in sync as views unlock and lock. */
+/* THE RUNE KIND (`"kind"`, Void Core 0.2.14 section 3.3): `entity` | `act` |
+ * `measure`, defaulting to `entity`. Hormiga is almost entirely entities and
+ * that default is left alone rather than typed out everywhere -- five glyphs
+ * carry `"kind":"act"` and nothing else does.
+ *
+ * The five are the ones whose rune records a HAPPENING whose subject is some
+ * other rune: `statement` (a council member said this, at this offset, in that
+ * meeting), `revision` (a policy changed), `submission` (a stranger sent
+ * something in), `deployment` (a site was published), `incident` (something
+ * occurred). Each is already reified for the arity reason Q64 turned on -- the
+ * sentence they express is ternary and an edge label is binary -- so the
+ * annotation names what the model already does rather than proposing anything.
+ *
+ * `event` is deliberately NOT one of them. An event in Hormiga is the thing a
+ * person attends -- a venue, times, a flier, a page on the website -- and its
+ * fields are read by renderers, not filled as the roles of a verb. Marking it
+ * `act` would be reading the English word rather than the model.
+ *
+ * `measure` is unused here on purpose: Q65's answer is that Hormiga's numbers
+ * are POINTS (dates, coordinates, grid columns), and a point has no magnitude,
+ * so there is nothing for a weight to be. */
 inline void register_glyphs(maiz::Core& core,
                             const std::vector<std::string>& channel_geo_fields = {}) {
     // splice the channel fields into a geo-bearing glyph's declaration
@@ -64,23 +85,39 @@ inline void register_glyphs(maiz::Core& core,
     // Earth); set by map actions / drag-to-place, queried by `effect query near`
     core.register_glyph(with_channels(
         R"({"glyph":"contact","label":"Contact",)"
-        R"("fields":["display_name","avatar","role","email","phone","website","bio","notes","image_url","geo","ref","ref_off"],)"
+        /* `bio_en`/`bio_es` joined `bio` on 2026-09-03. A bilingual site's
+         * directory published one language of prose whatever page it was on,
+         * which made the organization's OWN CONTENT the one text that could not
+         * be translated -- the author's `site.languages` commitment applied one
+         * layer down (portfolio report A5). `bio` is still read, last, so no
+         * existing database loses a word. */
+        R"("fields":["display_name","avatar","role","email","phone","website",)"
+        R"("bio_en","bio_es","bio","notes","image_url","geo","ref","ref_off"],)"
         R"("hints":{"color":"#b3592e","face":{"w":190,"h":58},"category":"People",)"
-        R"("editors":{"avatar":"image","role":"enum","bio":"multiline:70","notes":"multiline:70","ref_off":"hidden"},)"
+        R"("editors":{"avatar":"image","role":"enum","bio_en":"multiline:70",)"
+        R"("bio_es":"multiline:70","bio":"multiline:70","notes":"multiline:70",)"
+        R"("ref_off":"hidden"},)"
         R"("labels":{"avatar":"Photo","role":"Role","email":"Email","phone":"Phone","website":"Website",)"
         R"__("display_name":"Name as printed (blank = the rune name)",)__"
-        R"__("bio":"Public bio","image_url":"Photo URL (legacy)",)__"
+        R"__("bio_en":"Public bio (English)","bio_es":"Biografia publica (espanol)",)__"
+        R"__("bio":"Public bio (legacy, used when neither language is set)",)__"
+        R"__("image_url":"Photo URL (legacy)",)__"
         R"__("geo":"Location (lat,lon)","ref":"Reference point (fan-out parent)",)__"
         R"__("notes":"Internal notes (never exported)"}}})__"));
     core.register_glyph(with_channels(
         R"({"glyph":"organization","label":"Organization",)"
-        R"("fields":["display_name","avatar","abbreviation","kind","email","url","location","bio","image_url","geo","ref","ref_off"],)"
+        R"("fields":["display_name","avatar","abbreviation","kind","email","url",)"
+        R"("location","bio_en","bio_es","bio","image_url","geo","ref","ref_off"],)"
         R"("hints":{"color":"#8a6d3b","face":{"w":200,"h":52},"category":"People",)"
-        R"("editors":{"avatar":"image","bio":"multiline:70","ref_off":"hidden"},)"
+        R"("editors":{"avatar":"image","bio_en":"multiline:70",)"
+        R"("bio_es":"multiline:70","bio":"multiline:70","ref_off":"hidden"},)"
         R"("labels":{"avatar":"Logo / photo","abbreviation":"Abbreviation","email":"Contact email",)"
         R"__("display_name":"Name as printed (blank = the rune name)",)__"
         R"__("kind":"Kind (e.g. community center, coalition)",)__"
-        R"__("url":"Website","location":"Location (text)","bio":"Description (public)",)__"
+        R"__("url":"Website","location":"Location (text)",)__"
+        R"__("bio_en":"Description (public, English)",)__"
+        R"__("bio_es":"Descripcion (publica, espanol)",)__"
+        R"__("bio":"Description (legacy, used when neither language is set)",)__"
         R"__("geo":"Location (lat,lon)","ref":"Reference point (fan-out parent)",)__"
         R"__("image_url":"Logo URL (legacy)"}}})__"));
     /* ── WHO A VISITOR IS, AND WHAT THEY ARE ASKING FOR (2026-08-19) ─────────
@@ -122,7 +159,7 @@ inline void register_glyphs(maiz::Core& core,
      * and nowhere else — so the provider can be swapped and the relationships
      * survive it, which is `antfarm.md`'s disposability rule applied to login. */
     core.register_glyph(
-        R"({"glyph":"submission","label":"Submission",)"
+        R"({"glyph":"submission","label":"Submission","kind":"act",)"
         R"("fields":["actor","actor_email","transcript","received","state",)"
         R"("decided","note","evidence"],)"
         R"("hints":{"color":"#8a6d3b","face":{"w":230,"h":72},"category":"Inbox",)"
@@ -188,11 +225,22 @@ inline void register_glyphs(maiz::Core& core,
         R"__("contact_phone":"Contact phone"}}})__");
     core.register_glyph(
         R"({"glyph":"image","label":"Image",)"
-        R"("fields":["path","alt","url","description"],)"
+        /* `alt` and `description` are prose an organization wrote, and a
+         * caption under a flier on the Spanish page is exactly the text a
+         * Spanish reader needs (portfolio report A5). Legacy fields last. */
+        R"("fields":["path","alt_en","alt_es","alt","url",)"
+        R"("description_en","description_es","description"],)"
         R"("hints":{"color":"#7d5bb0","face":{"w":180,"h":118},"category":"Assets",)"
-        R"("editors":{"path":"image","description":"multiline:60"},)"
-        R"__("labels":{"path":"Image file","alt":"Alt text (for accessibility)",)__"
-        R"__("url":"Public URL (published or legacy)","description":"Description"}}})__");
+        R"("editors":{"path":"image","description_en":"multiline:60",)"
+        R"("description_es":"multiline:60","description":"multiline:60"},)"
+        R"__("labels":{"path":"Image file",)__"
+        R"__("alt_en":"Alt text, English (for accessibility)",)__"
+        R"__("alt_es":"Texto alternativo, espanol",)__"
+        R"__("alt":"Alt text (legacy, used when neither language is set)",)__"
+        R"__("url":"Public URL (published or legacy)",)__"
+        R"__("description_en":"Description (English)",)__"
+        R"__("description_es":"Descripcion (espanol)",)__"
+        R"__("description":"Description (legacy)"}}})__");
     core.register_glyph(
         R"({"glyph":"resource","label":"Resource","fields":["path","topic"],)"
         R"("hints":{"color":"#4e8d85","face":{"w":190,"h":52},"category":"Assets",)"
@@ -207,7 +255,7 @@ inline void register_glyphs(maiz::Core& core,
     // when dated, on the calendar as a SEPARATE 'incident' entry, never mixed
     // with planned events. type:incident keeps the query surfaces apart.
     core.register_glyph(with_channels(
-        R"({"glyph":"incident","label":"Incident",)"
+        R"({"glyph":"incident","label":"Incident","kind":"act",)"
         R"("fields":["date","time","severity","description","geo","ref","ref_off"],)"
         R"("hints":{"color":"#a83232","face":{"w":200,"h":60},"category":"Events",)"
         R"("editors":{"date":"date","description":"multiline:70",)"
@@ -351,30 +399,81 @@ inline void register_glyphs(maiz::Core& core,
     civic::register_glyphs(core);
 }
 
-/* The data glyphs' declared fields (import mapping, wizards). Must match
- * register_glyphs above — the one place the schema is written twice, until a
- * core verb exposes glyph descriptors to hosts. */
-inline std::vector<std::string> glyph_fields(const std::string& glyph) {
-    if (glyph == "contact")
-        return {"role", "email", "phone", "website", "bio", "notes", "image_url"};
-    if (glyph == "organization")
-        return {"abbreviation", "email", "url", "location", "bio", "image_url"};
-    if (glyph == "event")
-        return {"date", "days", "start_time", "end_time", "venue",
-                "virtual", "summary", "email", "color", "icon_url"};
-    if (glyph == "job") return {"org", "deadline", "url"};
-    if (glyph == "image") return {"path", "alt", "url", "description"};
-    if (glyph == "resource") return {"path", "topic"};
-    if (glyph == "note") return {"text"};
-    if (glyph == "job")
-        return {"org", "pay", "job_type", "location", "description",
-                "availability", "deadline", "contact_name", "contact_email",
-                "contact_phone"};
-    if (glyph == "incident") return {"date", "time", "severity", "description", "geo"};
-    if (glyph == "day") return {"date", "name"};
-    if (glyph == "map")
-        return {"source", "center", "zoom", "rules", "channel", "visible"};
-    return {};
+/* THE GLYPH'S DECLARED FIELDS, ASKED OF VOID CORE (0.2.14, their ask 1).
+ *
+ * This function used to be a hand-written table -- a second copy of every
+ * `"fields":[...]` in `register_glyphs` above, kept in step by nobody. It was
+ * already wrong when it was deleted, and the way it was wrong is the argument:
+ * `job` appeared TWICE in it, so the first arm won and answered `{org,
+ * deadline, url}` for a glyph that declares twelve fields and no `url` at all.
+ * A CSV of jobs therefore mapped two real columns, wrote a `url` field nothing
+ * declares, and told the importer that `pay`, `location`, `description` and six
+ * others were "no such job field" -- a wrong answer delivered with a
+ * diagnostic. Nothing could have caught it, because a duplicate of a
+ * declaration never disagrees with the declaration; it disagrees with the
+ * other duplicate, and only a reader who happened to scroll past both would
+ * ever see the two.
+ *
+ * Void Core 0.2.14 makes the descriptor a documented host contract: `glyphs
+ * <name>` returns it as `data` with `fields`, `kind` and `source` always
+ * present, resolved across the declared and registered registries. So the
+ * schema is read from the one place that holds it, and a glyph an ORGANIZATION
+ * declared (`glyph declare`, travelling in `state.glyphs`) answers here exactly
+ * like one we registered -- which is the property that unblocks Q59.
+ *
+ * Order is the declaration's order, because an importer maps columns by it. */
+inline std::vector<std::string> glyph_fields(maiz::Core& core,
+                                             const std::string& glyph) {
+    std::vector<std::string> out;
+    if (glyph.empty()) return out;
+    const auto r = core.dispatch("glyphs " + glyph);
+    if (!r.ok) return out;
+    nlohmann::json d = nlohmann::json::parse(r.data, nullptr, false);
+    if (d.is_discarded()) return out;
+    /* `glyphs <name>` answers with the one descriptor; `glyphs` with a map of
+     * them. Accept both shapes so a caller that passed a name it should not
+     * have does not get a plausible-looking wrong answer. */
+    if (d.is_object() && !d.contains("fields") && d.contains(glyph)) d = d[glyph];
+    if (!d.is_object()) return out;
+    const auto it = d.find("fields");
+    if (it == d.end() || !it->is_array()) return out;
+    for (const auto& f : *it)
+        if (f.is_string()) out.push_back(f.get<std::string>());
+    return out;
+}
+
+/* DECLARE A GLYPH INTO THE STATE DOCUMENT (Void Core 0.2.14, `glyph declare`).
+ *
+ * ONE DOOR, AND THE REASON IS THE ARGUMENT ITSELF. `register_glyph` takes its
+ * JSON across the C ABI, where a string is a string; `glyph declare` is a
+ * DISPATCHER COMMAND, so its descriptor is one SPEC 6.1 argument and has to be
+ * quoted as one. A descriptor whose label is "Garden bed" tokenizes into three
+ * arguments if it is pasted in raw. The failure is a refusal at the door rather
+ * than anything subtle -- but it is a refusal every host writing this command
+ * by hand hits once, which is why Core's Python binding grew
+ * `declare_glyph(dict)` doing exactly this. This is that, for us.
+ *
+ * `maiz::arg` is Void Core's own exported encoder reached through Void Maiz --
+ * never a quoting function written here. Five independent implementations of
+ * 6.1 have been wrong, two of them ours. */
+inline maiz::Result declare_glyph(maiz::Core& core,
+                                  const std::string& descriptor_json) {
+    return core.dispatch("glyph declare " + maiz::arg(descriptor_json));
+}
+
+/* THE GLYPH'S RUNE KIND (0.2.14 §3.3): "entity" | "act" | "measure".
+ * Always present on a resolved descriptor; "entity" if the core is older or
+ * the glyph is unknown, which is the same default the core itself applies. */
+inline std::string glyph_kind(maiz::Core& core, const std::string& glyph) {
+    if (glyph.empty()) return "entity";
+    const auto r = core.dispatch("glyphs " + glyph);
+    if (!r.ok) return "entity";
+    nlohmann::json d = nlohmann::json::parse(r.data, nullptr, false);
+    if (d.is_discarded() || !d.is_object()) return "entity";
+    if (!d.contains("kind") && d.contains(glyph)) d = d[glyph];
+    if (!d.is_object()) return "entity";
+    const auto it = d.find("kind");
+    return (it != d.end() && it->is_string()) ? it->get<std::string>() : "entity";
 }
 
 /* The block glyphs (v0 of the builder's vocabulary — the full inventory and

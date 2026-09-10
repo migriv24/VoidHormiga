@@ -50,10 +50,17 @@ Working software, still pre-1.0. What runs today:
 - **Allomone** — a rules language over the rune graph, derive-only, where two
   rules that disagree produce a visible conflict rather than a winner picked by
   evaluation order.
-- **Publishing** — static-site deploy to Cloudflare Pages or S3-compatible
-  storage, signed natively. No Node, no npm, no Python at runtime.
+- **Publishing** — static-site deploy to Cloudflare Pages or GitHub Pages, plus
+  S3-compatible storage, all spoken natively. No Node, no npm, no Python at
+  runtime. Two deploy targets rather than one on purpose: the property this
+  design rests on is that every cloud host is disposable, and one target makes
+  that a claim instead of something you can exercise.
 - **Sync** — device-to-device, merge-first, with an X25519 identity that never
   leaves the machine.
+- **Updates** — `voidhormiga-cli update` reads a static feed, compares versions,
+  verifies the download's checksum and launches the installer. It never checks
+  without being asked and never installs without being told; see
+  [Installing](#installing).
 
 The development history is [okf/log.md](okf/log.md); open design questions are
 [okf/developer_questions.md](okf/developer_questions.md).
@@ -76,17 +83,69 @@ build\bin\voidhormiga-cli.exe --describe   # the headless briefing
 
 Layout: `src/app` (the shell) · `src/main` (`desktop.cpp` GLFW, `headless.cpp`
 CLI) · `src/domain` · `src/render` · `src/publish` · `src/gis` · `src/sync` ·
-`src/platform` · `src/ui` — with `tests/`, `tools/` (linters and the render
+`src/update` · `src/platform` · `src/ui` — with `tests/`, `tools/` (linters and the render
 golden), `okf/` (the design), and `vendor/` (every third-party dependency,
 with its license). No package manager, no CDN, no framework.
+
+## Installing
+
+**Not yet — this is ready rather than released.** The package stages cleanly and
+the update client is built; no installer has been compiled, nothing is signed,
+and no second machine has installed anything. The full status, including what
+is *not* proven, is in
+[okf/concepts/platform/distribution.md](okf/concepts/platform/distribution.md).
+
+When it ships it will be a standalone per-user installer — `$LOCALAPPDATA`, no
+elevation, a Start Menu shortcut, an uninstall entry — built by
+[Void Mago](../VoidMago/README.md) from `void.json`:
+
+```
+mago stage voidhormiga --platform windows-x64
+makensis ../VoidMago/stage/voidhormiga-0.1.0-windows-x64/voidhormiga.nsi
+```
+
+**Side by side.** Each version installs into its own folder under
+`%LOCALAPPDATA%\VoidHormiga\`, so installing a new one leaves the old one
+working. That is what makes taking an update a decision you can take back, and
+nothing in this repository ever deletes a version folder.
+
+### Updates
+
+There is no updater to install and no hub to sign into. The "hub" is one static
+`void-updates.json` beside the releases, and each application reads its own
+entry:
+
+```
+voidhormiga-cli update            what is installed, and the setting
+voidhormiga-cli update --check    ask the feed (a network request)
+voidhormiga-cli update --install  check, download, verify, launch
+voidhormiga-cli update --startup  let the app ask the feed when it opens
+voidhormiga-cli update --never    never offer updates again
+```
+
+The desktop application does the same thing behind a prompt, and both print the
+same words about the same release. **Two rules it keeps:**
+
+- **It never checks without being asked.** A check is a network request a person
+  did not make, so the setting starts at *unasked*: the first thing a new
+  install does is ask permission to check, before it has checked. "Don't ask
+  again" is real, is stored beside the installation rather than inside your
+  database, and is never re-asked.
+- **It never installs without being told.** The download is verified against the
+  feed's SHA-256 before anything can be run, and a file that fails is deleted.
+  Nothing is signed yet, so the prompt says so: the checksum proves the download
+  arrived intact, not who built it.
 
 ## The family manifest
 
 [`void.json`](void.json) declares what this project is, which Void projects it
 requires and at what versions, and what it provides — the build-time twin of
 `voidhormiga-cli --describe`. It is the convention
-[Void Mago](../VoidMago/okf/index.md) will read to resolve the family; every
-Void repository carries one at its root.
+[Void Mago](../VoidMago/okf/index.md) reads to resolve the family and to build
+the installer; every Void repository carries one at its root. Its `release`
+block is what the update prompt shows a person — including
+`behavior_changes`, the category a version number cannot express and a
+dependency resolver cannot see.
 
 ## License
 

@@ -2,10 +2,38 @@
  * See preview_server.hpp for the contract. Localhost only, by construction. */
 #include "platform/preview_server.hpp"
 
+/* ── ONE SOCKET API, TWO SPELLINGS (2026-09-08) ──────────────────────────────
+ *
+ * This file was winsock with no alternative, which made it the first real
+ * obstacle to a Linux or macOS build once Void Maiz answered that their view
+ * compiles on all three (their CI, 2026-09-08). The port is mechanical and the
+ * shim below is the whole of it, because **winsock IS BSD sockets** — Berkeley
+ * is what Microsoft copied — differing in initialization, teardown, and the
+ * name of the failure value. Naming those three things once leaves the body of
+ * this file identical on every platform, which is the point: a translation
+ * layer that touched every call site would be a second thing to keep right.
+ *
+ * The one place they genuinely disagree is what happens when the peer hangs up
+ * mid-response, and it is not cosmetic. On Linux a `send` to a closed socket
+ * raises SIGPIPE and the DEFAULT DISPOSITION IS TO KILL THE PROCESS — so a
+ * person closing the preview tab while a page was still being written would
+ * take the whole application down with it. Windows has no such signal. See
+ * `kSendFlags` and the `SO_NOSIGPIPE` call in `serve()`. */
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+using SOCKET = int;
+static constexpr SOCKET INVALID_SOCKET = -1;
+inline int closesocket(SOCKET s) { return ::close(s); }
+#endif
 
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -39,13 +67,49 @@ const char* content_type(const std::string& path) {
     if (ends(".woff")) return "font/woff";
     if (ends(".ics")) return "text/calendar";
     if (ends(".json")) return "application/json";
+    /* audio, for the `audio` block (2026-09-02). The live preview has to agree
+       with the deployed site about what a .mp3 is, or the block plays in one
+       and offers a download in the other. */
+    if (ends(".mp3")) return "audio/mpeg";
+    if (ends(".m4a")) return "audio/mp4";
+    if (ends(".aac")) return "audio/aac";
+    if (ends(".ogg") || ends(".oga") || ends(".opus")) return "audio/ogg";
+    if (ends(".wav")) return "audio/wav";
+    if (ends(".flac")) return "audio/flac";
+    if (ends(".mp4")) return "video/mp4";
+    if (ends(".webm")) return "video/webm";
     return "application/octet-stream";
+}
+
+/* Winsock has no signals; Linux raises SIGPIPE on a write to a hung-up peer and
+ * kills the process by default. macOS has neither `MSG_NOSIGNAL` nor that
+ * default reachable this way, so it is handled per-socket with `SO_NOSIGPIPE`
+ * in `serve()` instead. */
+#if defined(MSG_NOSIGNAL)
+constexpr int kSendFlags = MSG_NOSIGNAL;
+#else
+constexpr int kSendFlags = 0;
+#endif
+
+/* Winsock needs a one-time library init and BSD sockets do not. Written as a
+ * function rather than a faked `WSAStartup` macro so the difference is visible
+ * where it is read. */
+bool net_startup() {
+#ifdef _WIN32
+    WSADATA wsa;
+    return WSAStartup(MAKEWORD(2, 2), &wsa) == 0;
+#else
+    return true;
+#endif
 }
 
 void send_all(SOCKET c, const std::string& data) {
     size_t off = 0;
     while (off < data.size()) {
-        int n = send(c, data.data() + off, (int)(data.size() - off), 0);
+        /* `send` returns int on Windows and ssize_t on POSIX; the widest of the
+         * two holds either, and a short write is the loop's ordinary case. */
+        const long long n = (long long)send(c, data.data() + off,
+                                            (int)(data.size() - off), kSendFlags);
         if (n <= 0) return;
         off += (size_t)n;
     }
@@ -67,8 +131,7 @@ bool PreviewServer::start(const std::filesystem::path& root, bool host_mode,
                           int base_port) {
     if (running_.load()) return true;
     host_mode_ = host_mode;
-    WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return false;
+    if (!net_startup()) return false;
     SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s == INVALID_SOCKET) return false;
     sockaddr_in addr{};
@@ -76,7 +139,7 @@ bool PreviewServer::start(const std::filesystem::path& root, bool host_mode,
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr); // localhost ONLY
     int port = base_port;
     for (; port < base_port + 20; ++port) { // first free port in a small window
-        addr.sin_port = htons((u_short)port);
+        addr.sin_port = htons((uint16_t)port); // `u_short` is a winsock spelling
         if (bind(s, (sockaddr*)&addr, sizeof addr) == 0) break;
     }
     if (port >= base_port + 20 || listen(s, 8) != 0) {
@@ -101,8 +164,15 @@ void PreviewServer::serve() {
     while (running_.load()) {
         SOCKET c = accept((SOCKET)sock_, nullptr, nullptr);
         if (c == INVALID_SOCKET) break; // stop() closed the listener
+#ifdef SO_NOSIGPIPE
+        /* macOS: the per-socket form of what `MSG_NOSIGNAL` does per-call on
+         * Linux. Without one of the two, closing the preview tab mid-response
+         * kills the application. */
+        const int one = 1;
+        setsockopt(c, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof one);
+#endif
         char buf[4096];
-        int n = recv(c, buf, sizeof buf - 1, 0);
+        const long long n = (long long)recv(c, buf, sizeof buf - 1, 0);
         if (n <= 0) { closesocket(c); continue; }
         buf[n] = 0;
         // "GET /path HTTP/1.1" — the only request shape we serve

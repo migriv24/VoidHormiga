@@ -48,6 +48,19 @@ FORBIDDEN = {
     # only stays cheap to displace while it knows nothing about the application:
     # it finds an address, proves an identity, moves bytes. The moment something
     # in here knows what a rune is, the swap becomes a refactor.
+    # src/update/ IS THE FOLDER THAT HAS TO WORK WHEN NOTHING ELSE DOES. The
+    # one machine you cannot attach a debugger to is the one an update broke,
+    # and the ordinary reason somebody wants a newer Hormiga is that this one
+    # will not open their database. So it depends on the standard library,
+    # libsodium and the vendored JSON, and on no part of this application: no
+    # window, no Void Core, no session, no org. Every decision in it is
+    # reachable from `voidhormiga-cli update` and from tests/update_smoke.cpp.
+    'update': ([r'imgui', r'GLFW', r'glad', r'voidmaiz', r'voidcore',
+                r'"app/', r'"ui/', r'"render/', r'"domain/', r'"platform/',
+                r'"publish/', r'"sync/', r'\.\./app/', r'\.\./ui/'],
+               'the update client must stay runnable on a broken install: it '
+               'is what a person reaches for when the application itself is '
+               'the thing that is wrong'),
     'sync': ([r'imgui', r'GLFW', r'glad', r'"app/', r'"ui/', r'"render/',
               r'"domain/', r'"platform/', r'"publish/', r'\.\./app/', r'\.\./ui/'],
              'the sync layer is a stand-in for Void Palabra Phase 4 and must '
@@ -63,16 +76,18 @@ ALLOWED = {
     'gis': {'gis'},
     # sync depends on ITSELF ONLY, for the reason in FORBIDDEN above.
     'sync': {'sync'},
+    # update depends on ITSELF ONLY -- see FORBIDDEN above.
+    'update': {'update'},
     'domain': {'domain', 'gis'},
     'render': {'render', 'domain', 'app', 'gis'},
     'platform': {'platform', 'domain', 'gis'},
     'publish': {'publish', 'render', 'domain', 'app', 'gis'},
-    'ui': {'ui', 'render', 'domain', 'app', 'platform', 'gis', 'sync'},
-    'app': {'app', 'domain', 'render', 'platform', 'ui', 'gis', 'sync'},
+    'ui': {'ui', 'render', 'domain', 'app', 'platform', 'gis', 'sync', 'update'},
+    'app': {'app', 'domain', 'render', 'platform', 'ui', 'gis', 'sync', 'update'},
     # the two front-ends: adapters, so they may reach anything. There are
     # exactly two and they are peers — founding commitment 1, in the tree.
     'main': {'main', 'app', 'domain', 'render', 'platform', 'publish', 'ui',
-             'gis', 'sync'},
+             'gis', 'sync', 'update'},
 }
 
 

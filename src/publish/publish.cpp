@@ -38,6 +38,7 @@
  */
 #include "app/app_internal.hpp"
 #include "publish/cloudflare.hpp"
+#include "publish/github.hpp"
 #include "json.hpp"
 
 #include <cctype>
@@ -178,6 +179,135 @@ static std::string fill(std::string tpl, const std::map<std::string, std::string
     return tpl;
 }
 
+/* ── THE HOST'S CREDENTIAL, RESOLVED ONE WAY ─────────────────────────────────
+ *
+ * Vault first, file second, and the error names both. Lifted out of
+ * `deploy_site` on 2026-09-02 when `rollback_site` and the new `check_host`
+ * both needed it — and lifting it fixed a real asymmetry rather than only
+ * removing a copy: `rollback_site` read `token_file` ONLY, so a host configured
+ * the recommended way, with `token_key` in the passphrase-locked vault, could
+ * publish and could not undo. The one operation an operator reaches for when
+ * something has gone wrong in public was the one that could not find the
+ * credential.
+ *
+ * `kp` comes back as the token FILE's resolved path when that is where the
+ * secret came from, because `deploy_cmd` templates expose `{token_file}` and a
+ * template that names it needs the path the read actually used.
+ */
+static bool host_token(const maiz::SceneNode& host, const fs::path& base_dir,
+                       hormiga::Vault& vault, std::vector<maiz::LogEntry>& log,
+                       const char* op, std::string& token, fs::path& kp) {
+    token.clear();
+    kp.clear();
+    const std::string tkey = field_value(host, "token_key");
+    const std::string keyfile = field_value(host, "token_file");
+    if (!tkey.empty() && vault.unlocked()) {
+        token = trim_secret(vault.get(tkey));
+        if (!token.empty()) {
+            log.push_back({"info", op, "using the token from the vault"});
+            return true;
+        }
+    }
+    if (keyfile.empty()) {
+        log.push_back({"error", op,
+                       tkey.empty()
+                           ? "no credential on " + host.name +
+                                 " - set token_key (kept in the vault, travels "
+                                 "with the .miga) or token_file"
+                           : "token_key '" + tkey +
+                                 "' is not in the vault - unlock it, or set "
+                                 "token_file instead"});
+        return false;
+    }
+    kp = fs::path(keyfile).is_absolute() ? fs::path(keyfile) : base_dir / keyfile;
+    std::ifstream kin(kp, std::ios::binary);
+    if (!kin) {
+        log.push_back({"error", op,
+                       "cannot read token file: " + kp.string() +
+                           " (a relative token_file resolves against the folder "
+                           "the app was started in - an absolute path, or "
+                           "token_key, avoids that)"});
+        return false;
+    }
+    std::stringstream kss;
+    kss << kin.rdbuf();
+    token = trim_secret(kss.str());
+    if (token.empty()) {
+        log.push_back({"error", op, "token file is empty: " + kp.string()});
+        return false;
+    }
+    return true;
+}
+
+/* ── FINDING THE HOST, ONCE, FOR EVERY OPERATION THAT NEEDS ONE ──────────────
+ *
+ * `deploy_site` and `rollback_site` each carried their own copy of this loop,
+ * and `check_host` would have made three. Two copies stayed in step by luck;
+ * three would not have, and the failure mode of a drifted copy here is
+ * publishing to the wrong website — which is not revertible.
+ *
+ * A HOST IS NOW EITHER GLYPH (2026-09-02). `hol_static_host` is a managed CDN
+ * that receives an upload; `hol_github` is a repository that receives a commit.
+ * They are different holidays with different fields on purpose (see
+ * glyphs_antfarm.hpp), and this is the one place that has to know they are both
+ * answers to "where does the site go".
+ *
+ * AN EMPTY NAME PICKS THE ONLY ONE, AND SEVERAL IS A REFUSAL rather than a
+ * guess. That rule predates this function and is why it is a refusal: publishing
+ * a community organization's website to the wrong host is not something an
+ * operator can undo by pressing the button again.
+ */
+static bool is_host_glyph(const std::string& g) {
+    return g == "hol_static_host" || g == "hol_github";
+}
+
+static const maiz::SceneNode* find_host(const maiz::Scene& farm,
+                                        std::string_view node,
+                                        std::vector<maiz::LogEntry>& log,
+                                        const char* op) {
+    const maiz::SceneNode* host = nullptr;
+    int hosts = 0;
+    for (const auto& n : farm.nodes) {
+        if (!is_host_glyph(n.glyph)) continue;
+        ++hosts;
+        if (node.empty() || n.name == node) host = &n;
+    }
+    if (!host) {
+        log.push_back({"error", op,
+                       hosts == 0
+                           ? "no publish target in the antfarm mantle - add a "
+                             "`hol_static_host` (a managed CDN) or a "
+                             "`hol_github` (a Pages repository) node and "
+                             "configure it"
+                           : "no such host node: " + std::string(node)});
+        return nullptr;
+    }
+    if (node.empty() && hosts > 1) {
+        log.push_back({"error", op,
+                       std::to_string(hosts) +
+                           " publish targets are wired - name the one to use"});
+        return nullptr;
+    }
+    return host;
+}
+
+/* The domain an org owns, as the `hol_dns` node states it.
+ *
+ * It comes down a WIRE rather than being duplicated on the host, which is the
+ * whole reason `domain` is a payload type — one zone can feed several deployers
+ * without either guessing the other's hostname. GitHub Pages needs it as a file
+ * in the published tree (`CNAME`), which is the one place a custom domain is
+ * authoritative on that host; a deploy that omits it UNSETS a domain configured
+ * in the web UI. So it is read here rather than left to the operator. */
+static std::string wired_domain(const maiz::Scene& farm) {
+    for (const auto& n : farm.nodes)
+        if (n.glyph == "hol_dns") {
+            const std::string d = field_value(n, "domain");
+            if (!d.empty()) return d;
+        }
+    return {};
+}
+
 std::string HormigaApp::deploy_site(const maiz::Scene& farm,
                                     std::string_view node) {
     /* Deploy is the one-way door, so its report reaches the terminal whatever
@@ -218,29 +348,11 @@ std::string HormigaApp::deploy_site(const maiz::Scene& farm,
      * dependency is gone, and the capability is in one place that both
      * main()s compile.
      */
-    // Find the host node. Empty name picks the only one; several is a REFUSAL
-    // rather than a guess — publishing the wrong website is not revertible.
-    const maiz::SceneNode* host = nullptr;
-    int hosts = 0;
-    for (const auto& n : farm.nodes) {
-        if (n.glyph != "hol_static_host") continue;
-        ++hosts;
-        if (node.empty() || n.name == node) host = &n;
-    }
-    if (!host) {
-        log.push_back({"error", "deploy",
-                       hosts == 0
-                           ? "no hol_static_host node in the antfarm mantle - add "
-                             "one and set provider/account_id/project/token_file"
-                           : "no such host node: " + std::string(node)});
-        return {};
-    }
-    if (node.empty() && hosts > 1) {
-        log.push_back({"error", "deploy",
-                       std::to_string(hosts) +
-                           " static hosts are wired - name the one to publish to"});
-        return {};
-    }
+    // Find the host node — either kind. See `find_host` above for why an empty
+    // name picks the only one and why several is a refusal.
+    const maiz::SceneNode* host = find_host(farm, node, log, "deploy");
+    if (!host) return {};
+    const bool is_github = host->glyph == "hol_github";
 
     const std::string provider = field_value(*host, "provider");
     const std::string project = field_value(*host, "project");
@@ -356,63 +468,73 @@ std::string HormigaApp::deploy_site(const maiz::Scene& farm,
         log.push_back({"error", "deploy", "no shell transport on this front-end"});
         return {};
     }
-    /* ── THE CREDENTIAL COMES FROM THE VAULT FIRST (2026-08-20) ─────────────
-     *
-     * The author's correction, and it goes to what a `.miga` is FOR:
-     *
-     *   > the whole point of a miga file was to share information like API
-     *   > keys, tokens, etc.
-     *
-     * A `token_file` is a path, and a path is exactly the thing that does not
-     * travel: hand somebody your database and they get a node pointing at a
-     * file on your disk. It is also what broke publishing today — a relative
-     * path resolved against whichever folder the app happened to start in.
-     *
-     * `token_key` names a secret in the passphrase-locked vault
-     * (`platform/vault.cpp`, XChaCha20-Poly1305 over argon2id). That rides the
-     * bundle, encrypted, and needs no path at all. `token_file` remains for an
-     * operator who would rather keep a secret out of the database entirely —
-     * a legitimate preference, and still the right default for a shared repo.
-     *
-     * Vault first, file second, and the error names both. */
+    /* Vault first, file second — see `host_token` above, which is also what
+     * `rollback_site` and `check_host` resolve through, so the three cannot
+     * disagree about where a credential lives. */
     std::string token;
-    const std::string tkey = field_value(*host, "token_key");
-    if (!tkey.empty() && vault.unlocked()) {
-        token = trim_secret(vault.get(tkey));
-        if (!token.empty())
-            log.push_back({"info", "deploy", "using the token from the vault"});
-    }
-    if (token.empty() && keyfile.empty()) {
-        log.push_back({"error", "deploy",
-                       tkey.empty()
-                           ? "no credential on " + host->name +
-                                 " - set token_key (kept in the vault, travels "
-                                 "with the .miga) or token_file"
-                           : "token_key '" + tkey +
-                                 "' is not in the vault - unlock it, or set "
-                                 "token_file instead"});
-        return {};
-    }
     fs::path kp;
-    if (token.empty()) {
-        kp = fs::path(keyfile).is_absolute() ? fs::path(keyfile)
-                                             : base_dir / keyfile;
-        std::ifstream kin(kp, std::ios::binary);
-        if (!kin) {
+    if (!host_token(*host, base_dir, vault, log, "deploy", token, kp)) return {};
+
+    /* ── GITHUB PAGES (2026-09-02) ───────────────────────────────────────────
+     *
+     * Placed here, above the curl-config file and the `deploy_cmd` template,
+     * because it needs neither: `publish/github.cpp` speaks the Git Data API
+     * itself and writes its own request files. The gates ABOVE this point are
+     * the ones that matter and they are shared — every language is built, they
+     * were built in one pass, there is a shell, and the credential resolved.
+     * A second deploy target must not be a second set of preconditions.
+     *
+     * `deploy_cmd` deliberately has no counterpart on this node. The escape
+     * hatch on `hol_static_host` exists for a vendor Hormiga has never heard
+     * of; GitHub is not that, and a template here would be a way to run an
+     * arbitrary command under the word "publish" for no gain. */
+    if (is_github) {
+        hormiga::github::Config gc;
+        const std::string repo_spec = field_value(*host, "repo");
+        if (repo_spec.empty()) {
             log.push_back({"error", "deploy",
-                           "cannot read token file: " + kp.string() +
-                               " (a relative token_file resolves against the "
-                               "folder the app was started in - an absolute "
-                               "path, or token_key, avoids that)"});
+                           "no repository on " + host->name +
+                               " - `set " + host->name + " repo owner/repo`"});
             return {};
         }
-        std::stringstream kss;
-        kss << kin.rdbuf();
-        token = trim_secret(kss.str());
-        if (token.empty()) {
-            log.push_back({"error", "deploy", "token file is empty: " + kp.string()});
+        if (!hormiga::github::split_repo(repo_spec, gc.owner, gc.repo)) {
+            log.push_back({"error", "deploy",
+                           "cannot read '" + repo_spec +
+                               "' as owner/repo - a bare name does not say whose "
+                               "repository is meant, and guessing would publish "
+                               "to somebody else's"});
             return {};
         }
+        const std::string br = field_value(*host, "branch");
+        if (!br.empty()) gc.branch = br;
+        gc.token = token;
+        gc.message = field_value(*host, "message");
+        /* The custom domain, from the `hol_dns` node wired into this host.
+         * GitHub reads a `CNAME` FILE in the published tree as the authority on
+         * which domain the branch serves, so a publish that omits it unsets a
+         * domain configured in the web UI — the site keeps working and quietly
+         * moves back to `*.github.io`. */
+        gc.cname = wired_domain(farm);
+        gc.site_dir = site.string();
+        gc.work_dir = base_dir.string();
+        gc.shell = on_shell_capture;
+        gc.progress = [this](const std::string& m) {
+            log.push_back({"info", "deploy", m});
+        };
+        const auto res = hormiga::github::deploy(gc);
+        if (!res.ok) {
+            for (const auto& st : res.steps)
+                if (!st.ok)
+                    log.push_back({"error", "deploy", st.what + ": " + st.detail});
+            return {};
+        }
+        // the commit sha IS the rollback target, so there is nothing to recover
+        // from a URL the way the Cloudflare path has to
+        last_deploy_vendor_id = res.vendor_id;
+        log.push_back({"info", "deploy",
+                       "GitHub Pages can take a minute to build - " + res.url +
+                           " may 404 until it does"});
+        return res.url.empty() ? std::string("ok") : res.url;
     }
 
     // The secret lives in a curl config file, never in argv.
@@ -716,27 +838,25 @@ std::string HormigaApp::rollback_site(const maiz::Scene& farm,
         }
     } _report{log, log_from};
 
-    const maiz::SceneNode* host = nullptr;
-    int hosts = 0;
-    for (const auto& n : farm.nodes) {
-        if (n.glyph != "hol_static_host") continue;
-        ++hosts;
-        if (node.empty() || n.name == node) host = &n;
-    }
-    if (!host) {
-        log.push_back({"error", "rollback",
-                       hosts == 0 ? "no hol_static_host node in the antfarm mantle"
-                                  : "no such host node: " + std::string(node)});
-        return {};
-    }
-    if (node.empty() && hosts > 1) {
-        log.push_back({"error", "rollback",
-                       std::to_string(hosts) +
-                           " static hosts are wired - name the one to roll back"});
-        return {};
-    }
-    const std::string tpl = field_value(*host, "rollback_cmd");
-    if (tpl.empty()) {
+    const maiz::SceneNode* host = find_host(farm, node, log, "rollback");
+    if (!host) return {};
+    /* ── A MISSING CONFIGURATION IS REPORTED BEFORE A MISSING ARGUMENT ───────
+     *
+     * `rollback_cmd` is checked before `deployment` is, and the smoke test
+     * pins the order: *"...and does so before anything else can go wrong"*. An
+     * operator who has not set the field will not have set it on their second
+     * try either, and telling them which field to set is worth more than
+     * telling them to finish typing.
+     *
+     * A `hol_github` host has no `rollback_cmd` and needs none — restoring is a
+     * ref move, and the branching below is where that is decided — so the
+     * argument check moves inside each arm rather than being hoisted above
+     * both, which would report a field that one of the two hosts does not
+     * have. */
+    const bool rb_github = host->glyph == "hol_github";
+    const std::string tpl = rb_github ? std::string()
+                                      : field_value(*host, "rollback_cmd");
+    if (!rb_github && tpl.empty()) {
         log.push_back(
             {"error", "rollback",
              "no rollback_cmd on " + host->name +
@@ -757,21 +877,46 @@ std::string HormigaApp::rollback_site(const maiz::Scene& farm,
         log.push_back({"error", "rollback", "no shell transport on this front-end"});
         return {};
     }
-    const std::string keyfile = field_value(*host, "token_file");
-    fs::path kp = fs::path(keyfile).is_absolute() ? fs::path(keyfile)
-                                                  : base_dir / keyfile;
-    std::ifstream kin(kp, std::ios::binary);
-    if (!kin) {
-        log.push_back({"error", "rollback", "cannot read token file: " + kp.string()});
-        return {};
+    std::string token;
+    fs::path kp;
+    if (!host_token(*host, base_dir, vault, log, "rollback", token, kp)) return {};
+
+    /* ── ROLLING BACK A GITHUB PAGES SITE IS A REF MOVE ──────────────────────
+     *
+     * No `rollback_cmd`, no vendor rollback endpoint, and nothing re-uploaded:
+     * the old tree is still in the repository, so restoring is one force-update
+     * of the branch back onto the commit the `deployment` rune already holds.
+     *
+     * This is why the commit sha is the `vendor_id` rather than something
+     * recovered from a URL the way the Cloudflare path has to recover it. The
+     * history Hormiga keeps and the thing the host needs are the same string,
+     * which is the shape `web-platform.md` wants from every host: our record
+     * stands on its own, and the vendor is asked only to act on it. */
+    if (rb_github) {
+        hormiga::github::Config gc;
+        if (!hormiga::github::split_repo(field_value(*host, "repo"), gc.owner,
+                                         gc.repo)) {
+            log.push_back({"error", "rollback",
+                           "cannot read '" + field_value(*host, "repo") +
+                               "' as owner/repo"});
+            return {};
+        }
+        const std::string br = field_value(*host, "branch");
+        if (!br.empty()) gc.branch = br;
+        gc.token = token;
+        gc.work_dir = base_dir.string();
+        gc.shell = on_shell_capture;
+        log.push_back({"info", "rollback",
+                       "restoring " + std::string(deployment) + " on " + host->name});
+        const auto res = hormiga::github::rollback(gc, std::string(deployment));
+        for (const auto& st : res.steps)
+            if (!st.ok)
+                log.push_back({"error", "rollback", st.what + ": " + st.detail});
+        if (!res.ok) return {};
+        log.push_back({"info", "rollback", "restored " + std::string(deployment)});
+        return std::string(deployment);
     }
-    std::stringstream kss;
-    kss << kin.rdbuf();
-    const std::string token = trim_secret(kss.str());
-    if (token.empty()) {
-        log.push_back({"error", "rollback", "token file is empty: " + kp.string()});
-        return {};
-    }
+
     std::error_code ec;
     const fs::path cfg = base_dir / ".rollback-curl.cfg";
     {
@@ -805,6 +950,131 @@ std::string HormigaApp::rollback_site(const maiz::Scene& farm,
     }
     log.push_back({"info", "rollback", "restored " + std::string(deployment)});
     return std::string(deployment);
+}
+
+/* ── check-host: does this publish target line up, BEFORE the one-way door ────
+ *
+ * Field report A5 (2026-09-02), and it asked for exactly this:
+ *
+ *   > **`effect check-host <node>`** — the sibling of `check-store`, with the
+ *   > same reasoning behind it. Perform the smallest real call (list the
+ *   > project) and tell the operator whether the token, the account id and the
+ *   > project name line up, *before* a deploy is attempted.
+ *
+ * The reasoning `check-store` was written with, applied to the other one-way
+ * door: **a green light that does not predict the operation is worse than no
+ * light.** So this makes a REAL call against the resource a deploy touches and
+ * never asks a vendor to validate a credential in the abstract. The report
+ * supplies the proof for that rule on this very host — an account-scoped
+ * Cloudflare token (`cfat_…`) answers `Invalid API Token` to
+ * `/user/tokens/verify` while working perfectly against every account and zone
+ * endpoint.
+ *
+ * ── IT REPORTS SEVERAL LINES, NOT A VERDICT ──────────────────────────────────
+ *
+ * "Can I publish?" is not one question. The token can be wrong, the repository
+ * name can be wrong, the branch can not exist yet (which is FINE on a first
+ * publish), and GitHub Pages can be off or pointed at a different branch — four
+ * problems with four different fixes, of which exactly one is the credential.
+ * Collapsing them into pass/fail would send an operator to regenerate a working
+ * token because their `branch` said `main` and Pages was serving `gh-pages`.
+ *
+ * Returns 0 when every check passed, 1 when any did not, -1 when it could not
+ * run at all — the same shape `check_store` returns, because both are read by
+ * the same kind of caller for the same kind of decision.
+ */
+int HormigaApp::check_host(const maiz::Scene& farm, std::string_view node) {
+    const size_t log_from = log.size();
+    struct Reporter {
+        const std::vector<maiz::LogEntry>& log;
+        size_t from;
+        ~Reporter() {
+            for (size_t i = from; i < log.size(); ++i)
+                if (log[i].op == "host")
+                    std::cerr << "  [" << log[i].level << "] host: "
+                              << log[i].msg << "\n";
+        }
+    } _report{log, log_from};
+
+    const maiz::SceneNode* host = find_host(farm, node, log, "host");
+    if (!host) return -1;
+    if (!on_shell_capture) {
+        log.push_back({"error", "host", "no shell transport on this front-end"});
+        return -1;
+    }
+    std::string token;
+    fs::path kp;
+    if (!host_token(*host, base_dir, vault, log, "host", token, kp)) return -1;
+
+    /* THE SHAPE TEST FIRST, because it is free and because both vendors issue
+     * more than one kind of string that looks like a credential and only one of
+     * which works. It is a warning and not a refusal: GitHub Enterprise and
+     * future prefixes are real, and a check that refuses a working token is
+     * worse than one that lets a doubtful one through to a call that will say
+     * so precisely. */
+    const bool gh = host->glyph == "hol_github";
+    const std::string shape = gh ? hormiga::github::looks_like_token(token)
+                                 : hormiga::cloudflare::looks_like_token(token);
+    if (!shape.empty())
+        log.push_back({"warn", "host", "the credential " + shape});
+
+    int failed = 0;
+    auto report = [&](const auto& steps) {
+        for (const auto& s : steps) {
+            if (!s.ok) ++failed;
+            log.push_back({s.ok ? "info" : "error", "host",
+                           (s.ok ? "ok   " : "FAIL ") + s.what +
+                               (s.detail == "ok" ? std::string()
+                                                 : " - " + s.detail)});
+        }
+    };
+
+    if (gh) {
+        hormiga::github::Config gc;
+        if (!hormiga::github::split_repo(field_value(*host, "repo"), gc.owner,
+                                         gc.repo)) {
+            log.push_back({"error", "host",
+                           "cannot read '" + field_value(*host, "repo") +
+                               "' as owner/repo - `set " + host->name +
+                               " repo owner/repo`"});
+            return -1;
+        }
+        const std::string br = field_value(*host, "branch");
+        if (!br.empty()) gc.branch = br;
+        gc.token = token;
+        gc.work_dir = base_dir.string();
+        gc.shell = on_shell_capture;
+        report(hormiga::github::check_host(gc));
+    } else {
+        const std::string provider = field_value(*host, "provider");
+        if (!(provider.empty() || provider == "cloudflare-pages" ||
+              provider == "cloudflare_pages")) {
+            /* A `deploy_cmd` host is an arbitrary command line. There is no
+             * "smallest real call" to make against it that is not that command,
+             * and running the operator's deploy command as a CHECK would be a
+             * check that publishes. Saying so is the honest answer. */
+            log.push_back({"warn", "host",
+                           "provider '" + provider +
+                               "' publishes through deploy_cmd, so there is no "
+                               "read-only call to rehearse - "
+                               "`effect deploy-site` with --dry-run-effects is "
+                               "the rehearsal for that path"});
+            return 0;
+        }
+        hormiga::cloudflare::Config cc;
+        cc.account_id = field_value(*host, "account_id");
+        cc.project = field_value(*host, "project");
+        cc.token = token;
+        cc.work_dir = base_dir.string();
+        cc.shell = on_shell_capture;
+        report(std::vector<hormiga::cloudflare::Step>{
+            hormiga::cloudflare::check_token(cc)});
+    }
+    if (failed == 0)
+        log.push_back({"info", "host",
+                       "these credentials can reach " + host->name +
+                           " - the same reads a publish performs"});
+    return failed ? 1 : 0;
 }
 
 /* ── THE PUBLISH PANEL ────────────────────────────────────────────────────────

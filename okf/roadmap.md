@@ -69,6 +69,19 @@ macOS/Linux as CI targets once the app has users there.
 *Exit: a stranger downloads Void Hormiga from a page Void Hormiga deployed,
 and it updates itself.*
 
+**Where it stands (2026-09-02).** The `web` renderer pack, the site mantle and
+pages, and a live public site have existed since August. What landed on
+2026-09-02 is the **second** deploy holiday this phase always named:
+`hol_github` publishes to GitHub Pages natively — blobs, a tree, a commit, a ref
+move — and `effect check-host` rehearses a publish the way `check-store`
+rehearses a push. See [the web platform](/concepts/platform/web-platform.md) §8
+for what the second host taught that the first could not, and why two deployers
+is what turns "every cloud host is disposable" from a claim into a property.
+
+Still owed by this phase: the folder deployer, the dogfooded project website,
+and the signed self-updater — which is the half of the exit test nothing has
+started on.
+
 # F — Collaborate (STARTED 2026-08-27, ahead of D/E)
 
 `.miga` sharing, LAN peer sync E2EE, roles
@@ -89,6 +102,32 @@ half is now built and measured — see
 verified, including a full sealed exchange between two databases and independent
 agreement on the pairing code. What is *not* done is the exit test itself — two
 separate laptops. That needs a second machine, not more code.
+
+# G — Ship it (STARTED 2026-09-04)
+
+Get Hormiga onto a machine that is not the developer's, and let the person on
+it choose a newer version. See
+[distribution](/concepts/platform/distribution.md).
+*Exit: a second computer installs a release from a URL, opens it, and is later
+offered — and takes — an update, without either step being done by hand.*
+
+**Started because Void Mago staged this repository and refused**, finding two
+things that would each have broken the first install: a MinGW runtime that lives
+on no other machine, and a `fonts/` the manifest promised and the repository
+never had. Both fixed; fixing the second found a third that nobody had reported,
+which would have opened the application with no icons on the first device it was
+tested on.
+
+Built: the package stages clean (`mago stage`, six files, no unresolved
+imports), and the update client — the feed reader, the version comparison, the
+prompt, the digest check and `voidhormiga-cli update`. `void.json` carries the
+`release` block that makes a prompt worth reading.
+
+Not built, and named rather than implied: **nothing is signed**, `makensis` has
+not been run, and no second machine has installed anything. The author's
+instruction was to have this ready and not launch it while Allomone and Palabra
+are still moving, which is where it stops. Like phase F, the exit test needs a
+second computer, not more code.
 
 # Planned sections (post-spine, evidence-ordered)
 

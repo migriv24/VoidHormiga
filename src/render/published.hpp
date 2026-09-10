@@ -92,9 +92,14 @@ struct Directory {
  * trusted** — no query, field or flag turns off `clearance:public`. That
  * inversion is deliberate: `web-hide` is a subtraction from a default of
  * publishing, which is right for an event and wrong for a person. */
+/* `lang` is the page being built. A directory publishes an organization's own
+ * PROSE — a bio, a project description — and until 2026-09-03 that prose was
+ * the one text on a bilingual site that could not be bilingual, because the
+ * data glyphs had no `_es` sibling. See `lang_text` in render/text.hpp. */
 inline Directory directory(const maiz::Scene& data, const std::string& query,
                            const std::string& kind,
-                           const std::function<bool(const std::string&)>& hidden) {
+                           const std::function<bool(const std::string&)>& hidden,
+                           std::string_view lang = "en") {
     Directory out;
     for (const auto& dn : data.nodes) {
         const bool is_c = dn.glyph == "contact";
@@ -119,7 +124,7 @@ inline Directory directory(const maiz::Scene& data, const std::string& query,
         p.role = is_c ? hormiga::temper::field_value(dn, "role")
                       : hormiga::temper::field_value(dn, "abbreviation");
         p.place = is_o ? hormiga::temper::field_value(dn, "location") : std::string();
-        p.bio = hormiga::temper::field_value(dn, "bio");
+        p.bio = lang_text(dn, "bio", lang);
         p.website = is_c ? hormiga::temper::field_value(dn, "website")
                          : hormiga::temper::field_value(dn, "url");
         p.avatar = hormiga::temper::field_value(dn, "avatar");

@@ -123,7 +123,7 @@ inline void register_glyphs(maiz::Core& core) {
     // sits in time is `from`/`until`. Absent, it falls back to `from`, so
     // everything already stored keeps its current meaning exactly.
     core.register_glyph(
-        R"({"glyph":"revision","label":"Revision",)"
+        R"({"glyph":"revision","label":"Revision","kind":"act",)"
         R"("fields":["summary","text","from","until","adopted","source_url","snapshot"],)"
         R"("hints":{"color":"#7a5cc0","face":{"w":220,"h":60},"category":"Civic",)"
         R"("editors":{"text":"multiline:70","from":"date","until":"date",)"
@@ -148,7 +148,7 @@ inline void register_glyphs(maiz::Core& core) {
     // with it — see okf/concepts/projects/civic-record.md and Reyna's attribution.md.
     // `method` is one of: labeled | human | diarized | inferred.
     core.register_glyph(
-        R"({"glyph":"statement","label":"Statement",)"
+        R"({"glyph":"statement","label":"Statement","kind":"act",)"
         R"("fields":["text","offset","method","confidence","source_url","snapshot"],)"
         R"("hints":{"color":"#b3592e","face":{"w":230,"h":62},"category":"Civic",)"
         R"("editors":{"text":"multiline:70"},)"

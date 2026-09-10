@@ -651,7 +651,11 @@ void HormigaApp::draw_calendar_body() {
             } else { // whole block → new start (+day), duration preserved
                 int c = col_of(mouse.x);
                 mc = c >= 0 ? c : cal_grab_col;
-                nt0 = std::clamp(snap(hour_of(mouse.y) - cal_grab_off), H0, H1 - dur);
+                /* `clamp_fit`: an event LONGER than the visible hour range
+                 * makes `H1 - dur` fall below `H0`, and a crossed clamp is an
+                 * abort rather than a bad drag. A twelve-hour event in a
+                 * nine-to-five view is an ordinary thing to drag. */
+                nt0 = clamp_fit(snap(hour_of(mouse.y) - cal_grab_off), H0, H1 - dur);
                 nt1 = nt0 + dur;
             }
             // ghost at the new position

@@ -63,6 +63,58 @@
     });
   });
 
+  /* ── THE DOWNLOAD FOR YOUR COMPUTER ───────────────────────────────────────
+     The author asked for the page to detect the visitor's operating system and
+     offer the right build. `src/render/download.hpp` records why this is the
+     only shape that request survives in, and the short version is the rule this
+     block is built to keep: **it never hides one.**
+
+     A `.wrow.platform-set` is a row the RENDERER decided is a set of per-platform
+     downloads -- two or more blocks that named a computer -- and each candidate
+     carries `data-platform`. We do exactly two things: move the matching one to
+     the front of its row, and label it with the row's own `data-yours` text
+     (which is in the page's language, because one app.js serves both).
+
+     Not on a match, not on a miss, not on a browser that tells us nothing does
+     anything get removed. With scripting off none of this runs at all and the
+     author's order stands, which is the same guarantee the <noscript> rule buys
+     everywhere else on the page. */
+  var uad=navigator.userAgentData;
+  var pstr=((uad&&uad.platform)||navigator.platform||'').toLowerCase();
+  var uastr=(navigator.userAgent||'').toLowerCase();
+  var fam='';
+  /* A phone, a tablet and a Chromebook run none of these installers, and Android
+     and Chrome OS both report themselves as Linux -- matching either would badge
+     the Linux card "for your computer" on a device that cannot use it. A user
+     agent is a guess; when the guess is unsafe the honest move is to say
+     nothing and leave the page exactly as it was rendered. */
+  if(!/android|iphone|ipad|ipod|cros/.test(pstr+' '+uastr)){
+    if(pstr.indexOf('win')===0||pstr.indexOf('windows')>-1)fam='windows';
+    else if(pstr.indexOf('mac')>-1)fam='macos';
+    else if(pstr.indexOf('linux')>-1)fam='linux';
+  }
+  if(fam)document.querySelectorAll('.wrow.platform-set').forEach(function(row){
+    var label=row.getAttribute('data-yours')||'';
+    var cols=row.children,mine=null;
+    for(var ci=0;ci<cols.length&&!mine;ci++){
+      var a=cols[ci].querySelector('[data-platform]');
+      if(!a)continue;
+      /* The token is `<family>` or `<family>-<arch>`; only the family is
+         matched. A browser will not tell you the architecture it is running on
+         -- navigator.platform still says "Win32" on a 64-bit machine -- so the
+         arch is carried for the author and the filename, never guessed at. */
+      if(((a.getAttribute('data-platform')||'').split('-')[0])===fam)mine=cols[ci];
+    }
+    if(!mine)return;  // nothing here is for this visitor: leave the row alone
+    if(label&&!mine.querySelector('.plat-yours')){
+      var b=document.createElement('span');
+      b.className='plat-yours';b.textContent=label;
+      mine.insertBefore(b,mine.firstChild);
+    }
+    mine.className+=' is-yours';
+    if(row.firstChild!==mine)row.insertBefore(mine,row.firstChild);
+  });
+
   // ── LIVE DIRECTORIES ─────────────────────────────────────────────────────
   // A directory marked `live` refreshes from a small fragment under index/,
   // so updating one contact costs that file being republished rather than the

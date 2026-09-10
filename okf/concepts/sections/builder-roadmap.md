@@ -171,9 +171,13 @@ The Style tab decides how components look; developed alongside the Builder.
   switches `cur_doc` — the canvas edits it and the previews render it. New
   docs get a starter hero. They persist in the database like everything else
   (so save = the org save). Verified: a second document (`spring-website`)
-  lives isolated beside `issue-demo`. *Still ⬜:* **delete + rename**
-  (blocked on Core `mantle rm`/`rename` — MESSAGE_FOR_VOIDCORE 2026-07-23,
-  interim is clear-elements); **export/import a document as a standalone
+  lives isolated beside `issue-demo`. **Delete + rename BUILT (2026-09-02)** —
+  the Void Core verbs they waited on (`mantle rm`, `mantle rename`) had landed
+  some time earlier and nothing told this document, which is the small lesson
+  about a roadmap entry that names a dependency. Rename needs no ceremony;
+  delete asks, names the document and its element count in the question, and
+  refuses on the last remaining document. Both live in `ui/documents.cpp`, split
+  out of `builder.cpp` the same day. *Still ⬜:* **export/import a document as a standalone
   FILE** (a user template already is one — unify); the **Calendar** as a
   project too; and the full **Q19** multi-database/`.miga` flow (dedicated
   session). A saved user template is 80% of a saved document.
@@ -203,6 +207,81 @@ The Style tab decides how components look; developed alongside the Builder.
   carousel = swipe track with snap + ‹/› buttons — the "content-horizontal"
   swipe). Email always renders a simple table grid. *Still ⬜:* justified /
   single-focus / collage modes
+- ✅ **`hero.portrait` (2026-09-03)** — a round inset in front of the banner.
+  Every image slot a hero had was the BACKGROUND, so a face put there was
+  cropped to the band; this is the shape `.card.person` already draws for a
+  contact, on the block that lacked it. Deletes 23 lines of a client's
+  `custom.css`. A board page and a "meet the director" page want the same thing.
+- ✅ **`narrative.heading_en/_es` (2026-09-03)** — an `<h3>` above the prose.
+  `narrative` was one `<p>`, so a role, an employer, a date range and four
+  bullets were one paragraph at one weight, and the workaround in the field was
+  `::first-line{font-weight:800}` — "the first line of this paragraph is
+  secretly a heading". Line breaks (2026-09-02) made the structure expressible
+  and left the hierarchy not. *Still ⬜:* the richer answer is
+  [Q60](/developer_questions.md), a `role` glyph, which removes the prose parser
+  downstream as well as the flat look.
+- ✅ **DATA RUNES ARE BILINGUAL (2026-09-03)** — `bio_en`/`bio_es` on `contact`
+  and `organization`, `alt_*` and `description_*` on `image`, legacy fields
+  still read last. `directory` and `image_grid` publish an organization's own
+  PROSE, and until now that prose was the one text on a bilingual site that
+  could not be bilingual — the author's `site.languages` commitment applied one
+  layer down. `lang_text` in `render/text.hpp` is the shared reader.
+  *Still ⬜:* `job.description`, `resource.topic` and the civic set.
+- ✅ **`download` block (2026-09-02)** — a file a visitor can keep, which the
+  portfolio client's first deploy was blocked on: *"the one control this whole
+  site exists for is the one thing on it Hormiga does not own."* A flier PDF,
+  the bylaws, an annual report and a printable calendar are the same ask for an
+  organization. `file` takes a path **or a `resource` rune name**, which is what
+  finally makes `resource` reachable after being declared-and-rendered-by-nothing
+  since it was written. Type and size are read from the staged file; `.html`,
+  `.svg`, `.js` and friends are refused out loud, because model data arrives by
+  import and by merge and a page on our own origin acts with our own authority.
+  Email becomes a link and needs `site.base_url`. Markup and the refusal list in
+  `render/download.hpp`. *Still ⬜:* a `download_grid`, which needs
+  `directory`'s clearance conversation attached — a single named file needs
+  none, because naming it is the consent.
+- ✅ **platform sets (2026-09-08)** — the author's *"it should detect the system
+  (linux, windows, mac), and then provide the correct download for hormiga."*
+  `download` **and `link`** take `platform` (`windows-x64` / `macos` /
+  `macos-arm64` / `linux-x64` / `any`); two or more on one `row` make that row a
+  set, and `app.js` moves the visitor's own to the front and labels it *"For
+  your computer"* from a `data-yours` the renderer wrote in the page's language.
+  `link` carries the field because **the installer button is a `link`** — the
+  binary lives on GitHub Releases, not in `assets/`.
+  **It has no branch that hides anything**, which is the design: the old rule
+  *"do not detect their OS and hide things"* became a property of the mechanism
+  instead of a sentence an author has to remember. Family only, never
+  architecture — a browser will not tell you which one it is on — and a device
+  that reports itself ambiguously (Android and Chrome OS both say Linux) is
+  matched to nothing rather than to the wrong card. An unknown `platform` value
+  is reported at render time and treated as `any`. Renderer-owned rather than an
+  author `<script>`, at the same trust level as the lightbox: see
+  `render/download.hpp` and
+  [the download page](/concepts/platform/download-page.md) §5d. *Still ⬜:* a
+  second build for either of the other two cards to point at.
+- ✅ **`audio` block (2026-09-02)** — a recording the organization owns, played
+  from its own site. File + title + artist + duration + optional cover, staged
+  into `site/assets/` like any image. **No facade**, unlike `video`: nothing
+  leaves this site, so `preload="none"` on a native `<audio controls>` keeps the
+  same "fetch nothing until they press play" promise using the standard instead
+  of our JavaScript — and it works with scripting off. Email gets a card and a
+  Listen button (Gmail and Outlook both strip `<audio>`), which needs
+  `site.base_url` and says so when it is missing. Markup in `render/audio.hpp`,
+  beside its own concern, the way `render/video.hpp` did it. *Still ⬜:* a
+  `track_list` / `release` (field report A1 rungs 2-3), and an audio DATA rune —
+  both waiting on [Q59](/developer_questions.md), because a glyph per medium may
+  be the wrong shape.
+- ✅ **ICONS IN THE GUI (2026-09-02)** — the author: *"i'd really like to get
+  some icons in this application. like not just emojis … especially for the
+  buildeer, like little icons next to the drag and drop button."* Nothing was
+  downloaded: **Font Awesome 6 Solid has been vendored and merged into the ImGui
+  atlas since the map markers shipped**, and had never been used past them.
+  One table, `glyph_icon()` in `app/app_internal.hpp`, maps a glyph to a
+  codepoint; the Builder palette buttons and their drag ghosts, the document
+  toolbar, the Data "+ New" menu, the Notes tab and every dockable window title
+  read it. Window titles use `Label###StableId` so nobody's saved dock layout
+  moved. *Still ⬜:* the Antfarm and Allomone palettes, which Void Maiz draws
+  (`maiz::edit_canvas`) — an upstream ask, not something to patch here.
 - ✅ **`video` block (2026-08-28)** — a pasted YouTube or Vimeo **address**
   (never an embed code: a field that accepts markup is a script-injection seam),
   rendered as a **click-to-play facade** so no visitor is reported to the video
@@ -223,6 +302,76 @@ The Style tab decides how components look; developed alongside the Builder.
   but will.
 - ⬜ **`doc convert`** (newsletter → website: rows → bands, static embeds →
   interactive)
+
+# Reported by the author, 2026-09-02
+
+Seven items from a hands-on session with the built app. The first six were
+straightforward and are done; the seventh is a design conversation and has its
+own question, [Q58](/developer_questions.md), alongside the one it opened about
+custom data types, [Q59](/developer_questions.md).
+
+- ✅ **1. A note could not be renamed.** Not a missing widget — a structural
+  gap. The Data tab's detail pane has had a rename box since it was written,
+  and `draw_data_body` skips `note` and `rule` runes because both have their own
+  tab. So the one surface that could rename a rune never showed the runes in
+  question, and the Notes tab printed the name with `TextDisabled`. The control
+  moved to `ui/widgets.cpp` and both tabs call it; it returns a bool meaning
+  *your node reference is now dangling*, because a rename reprojects and the
+  caller must stop reading `sel`.
+- ✅ **2. Linking "errored".** Linking images is not special and the CLI path
+  was fine; the defect was in how the Data tab's relation text box reached the
+  dispatcher. The command was built by string concatenation, so `goes with`
+  became `--relation goes` (silently dropping `with`, writing a relation nobody
+  asked for) and `maria's` produced an *unterminated quote (SPEC §6.1)* error
+  aimed at somebody who had typed a word into a text box — almost certainly the
+  "weird error". Both halves now go through `json_arg`, this project's §6.1
+  quoter. `unlink` also stopped emitting a bare `--relation ` with nothing after
+  it, which Void Core skips as a flag and which therefore widened the unlink to
+  *any* edge between the two runes.
+- ✅ **3. Brand images come from the asset library.** `org.logo` now offers
+  **Choose** (a picker over the organization's `image` runes, with thumbnails)
+  before **Browse**, and Browse mints an `image` rune via `ingest_image_rune`
+  rather than pointing config at wherever the file happened to live. The
+  author's framing is the general rule and it matches what the render seam
+  already enforces one layer down: an image on a page is a rune — tagged,
+  queryable, linked to its event, in the `.miga`. An upload that does not become
+  a rune is an asset the organization cannot find again.
+- ✅ **4. A Save button in the Builder.** Every edit was already persisted and
+  Ctrl+S already wrote the document, so the missing part was never the writing —
+  it was *being told*, in the tab where the work happens. The button sits beside
+  the document picker with a live count, and `edits_since_save` is incremented
+  at `dispatch_and_reproject`, the one door every GUI edit passes through. It
+  deliberately over-reports: an extra "1 unsaved" costs a free, idempotent
+  button press, and a missed one lets somebody close the app believing their
+  afternoon is on disk.
+- ⬜ **5. Text wrap and typing in narrative blocks on the canvas.** Not done,
+  and not a small fix. With the honest scope in the author's own words:
+
+  > We still don't have the goal of something like squarespace or wix, where
+  > the user can just directly edit what things look like. However, of course
+  > it'll be difficult, because they are different languages.
+
+  The canvas is ImGui and the output is HTML; a canvas that wraps text the way
+  a browser will is a text-layout problem, not a widget problem. It is the same
+  wall the "canvas preview resembles the output" half of Q58 runs into, and the
+  two should be answered together rather than separately.
+- ✅ **6. A deleted page routes to the 404.** The diagnosis was in the author's
+  own parenthetical — *"cuz i guess the link still exists"*. `render_site` wrote
+  one file per page and removed nothing, so deleting a `page` rune took it out
+  of the nav, the sitemap and the model and left `about-en.html` in `site/`,
+  where the next deploy uploaded it again. The old page stayed live at its old
+  URL showing content the database no longer contained. `site/` is a mirror of
+  the document now — the same property the GitHub deployer builds its commit
+  with, applied one layer earlier so it holds for every host — and once the file
+  is gone the host's own 404 serves that URL, which is what was asked for. The
+  prune is narrow on purpose: only `<name>-<lang>.html` at the top level, only
+  for a language this site publishes, and only for the language being rendered.
+- ⬜ **7. Registering custom elements.** [Q58](/developer_questions.md), which
+  grew a sibling the same day: [Q59](/developer_questions.md), custom data
+  types. The author's argument is that `contact`, `event` and `image` are
+  universal in a way that `audio file` is not, and `3D object` or `WebGL Unity
+  game showcase` obviously are not — so the answer to "we need more glyphs" is a
+  registry rather than a longer built-in list.
 
 # Two builders, kept distinct
 

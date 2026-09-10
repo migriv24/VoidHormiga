@@ -51,7 +51,8 @@ std::string iso_now() {
 
 PackResult pack(const std::string& state_json, const fs::path& base_dir,
                 const fs::path& out_path, const std::string& name,
-                const fs::path& assets_dir) {
+                const fs::path& assets_dir,
+                const std::map<std::string, fs::path>& extra) {
     (void)base_dir; // kept: the envelope's other paths are still base-relative
     PackResult r;
     json env;
@@ -101,6 +102,34 @@ PackResult pack(const std::string& state_json, const fs::path& base_dir,
             assets[rel] = b64_encode(read_file(it->path()));
             ++r.assets;
         }
+    }
+    /* ── AND EVERY FILE THE MODEL POINTS AT FROM ANYWHERE ELSE (2026-09-03) ──
+     *
+     * The assets walk above is "back up the folder of originals", and it was the
+     * whole of the bundle until a `download.file` pointed at a resume in a
+     * folder beside the database. The render staged it, the deploy published
+     * it, and the bundle silently did not contain it — so opening that bundle
+     * anywhere else gave "This file is not available", correctly and
+     * unhelpfully. The portfolio report's sentence for it: *the site was
+     * correct, the bundle was correct, and the combination was broken.*
+     *
+     * `extra` is resolved by the CALLER (`HormigaApp::referenced_files`), which
+     * has the glyph declarations this file deliberately does not: which fields
+     * are files is a property of the model, and a copy of that knowledge here
+     * would be a second place to keep it right. See app/paths.cpp, including
+     * why a deploy token does not arrive in this map.
+     *
+     * Keyed by the model's own relative string, so `open` restores each file
+     * exactly where the field expects it. An entry already bundled by the
+     * assets walk is left alone — the folder version is the same bytes, and
+     * counting it twice would make the report lie. */
+    for (const auto& [rel, src] : extra) {
+        if (assets.contains(rel)) continue;
+        std::error_code fe;
+        if (!fs::is_regular_file(src, fe)) continue;
+        assets[rel] = b64_encode(read_file(src));
+        ++r.assets;
+        r.beyond_assets.push_back(rel);
     }
     env["assets"] = std::move(assets);
     env["rebuild"] = {{"tiles", "re-fetch from the map source node"},

@@ -87,3 +87,30 @@ vendor/libsodium/lib/pkgconfig/
 # If a curated, path-free agent config is ever worth sharing, it can be added
 # deliberately with `git add -f .claude/settings.json`. The default is out.
 .claude/
+# ── DEPLOY CREDENTIALS AND THE OPERATOR'S OWN STYLESHEET (2026-09-02) ────────
+#
+# A deploy token is a credential that can publish a website. The guide's own
+# examples name `cf.key` and `gh.token` and say "gitignored, beside the
+# database", so these patterns make that sentence true for anyone who follows
+# it literally while working inside a checkout. Ground rule 2: the repo root is
+# a public artifact.
+#
+# The `.deploy-curl.cfg` / `.rollback-curl.cfg` / `.cf-*` / `.gh-*` files hold a
+# bearer header and are deleted when the call returns — but a crashed or killed
+# publish leaves one behind, and a file that only exists after something went
+# wrong is exactly the file nobody remembers to check.
+#
+# `custom.css` is not a secret; it is the operator's own stylesheet, staged from
+# beside the database (render/assets.cpp). It belongs to whoever's site it is,
+# not to this repository, and one committed here would silently restyle a
+# developer's test renders.
+*.token
+*.key
+!vendor/**/*.key
+.deploy-curl.cfg
+.rollback-curl.cfg
+.cf-curl.cfg
+.cf-body.json
+.gh-curl.cfg
+.gh-body.json
+custom.css

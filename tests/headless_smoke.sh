@@ -151,8 +151,15 @@ check $? "deploy-site is refused by default"
 echo "$out" | grep -q "PUBLISHES THE WEBSITE"
 check $? "...and the refusal says what publishing means"
 
-"$CLI" --allow-effects=deploy-site effect deploy-site 2>&1 | grep -q "no hol_static_host"
+# A publish target is now EITHER kind of host node (2026-09-02: `hol_github`
+# became a real deployer), so the refusal names both rather than the one that
+# happened to be implemented first. An operator who has wired a GitHub Pages
+# node and is told to add a `hol_static_host` will add a second, wrong node.
+out=$("$CLI" --allow-effects=deploy-site effect deploy-site 2>&1)
+echo "$out" | grep -q "no publish target"
 check $? "deploy with no host node says so"
+echo "$out" | grep -q "hol_github"
+check $? "...and names both kinds of host, not only the first one implemented"
 
 cat > farm.txt <<'EOF'
 mantle new antfarm
@@ -1035,6 +1042,568 @@ for m in d.get('mantles', []):
 sys.exit(1)
 PYEOF
 check $? "...and the newline itself survives, so a two-paragraph value works"
+cd ..
+
+
+# ── the Click LaFont field report, 2026-09-02 ────────────────────────────────
+# Six defects and six absences, of which these are the ones a headless run can
+# see. Each check names the report item it pins, because a test whose reason
+# lives only in a commit message is a test somebody deletes.
+mkdir -p report && cd report
+
+cat > site.txt <<'EOF'
+mantle new demo-org
+use demo-org
+mantle new report-site
+use report-site
+rune new page home
+set home slug home
+set home title_en Home
+set home title_es Inicio
+set home order 0
+rune new hero r-hero
+set r-hero title_en 'Riverton Network'
+set r-hero row 0
+rune new narrative r-nar
+set r-nar text_en 'Line one.
+Line two, see https://example.org for more.'
+set r-nar row 1
+rune new divider r-bar
+set r-bar divider_style bar
+set r-bar colors '#ff5a5f,#3ddc97,;background:url(x)'
+set r-bar row 2
+rune new image_grid r-gal
+set r-gal query 'type:image'
+set r-gal columns 2
+set r-gal row 3
+EOF
+"$CLI" --script site.txt --atomic >/dev/null 2>&1
+check $? "the field-report fixture applies"
+out=$("$CLI" --allow-effects=render-site effect render-site en report-site 2>&1)
+
+# D1 — every page this renderer has ever produced was invisible without JS
+grep -q 'noscript' site/index-en.html
+check $? "D1: a no-JS visitor gets an unanimated page, not an empty one"
+
+# D4 — `narrative` renders the same way in both output domains
+grep -q 'class="prose pre-line reveal"' site/index-en.html
+check $? "D4: a narrative keeps the line breaks the author typed"
+grep -q 'a href="https://example.org"' site/index-en.html
+check $? "...and a bare URL in it is linkified, as AGENT-GUIDE 8 says"
+grep -q 'color:inherit' site/index-en.html
+[ $? -ne 0 ]
+check $? "...without the email domain's inline colour, which a page has CSS for"
+
+# D2/D3 — the two colour rules that were not tokens
+grep -q 'site-head{position:sticky;top:0;z-index:20;' site/style.css
+check $? "D2: the header rule is still there"
+grep -q 'background:color-mix(in srgb,var(--bg) 78%,transparent)' site/style.css
+check $? "...and it rides --bg now instead of hardcoding white over a dark page"
+grep -q 'meta a{color:var(--accent)}' site/style.css
+check $? "D3: a link in a meta line has a colour"
+
+# A6 — a declared field that did nothing, and a bar there was no way to draw
+grep -q 'class="gallery grid cols-2 reveal"' site/index-en.html
+check $? "A6: image_grid.columns reaches the page"
+grep -q 'class="divider bar reveal"' site/index-en.html
+check $? "A6: divider_style bar draws a coloured swatch strip"
+grep -q 'background:#ff5a5f' site/index-en.html
+check $? "...with the colours the operator named"
+grep -q 'url(x)' site/index-en.html
+[ $? -ne 0 ]
+check $? "...and a value that is not a colour is dropped, never escaped into a style attribute"
+echo "$out" | grep -q 'divider colour'
+check $? "...and the render says which value it dropped"
+grep -q 'og:title" content="Home - Riverton Network"' site/index-en.html
+check $? "A6: a share card carries the site name, not the bare word Home"
+
+# Part 3 — the operator's two lines of CSS
+grep -q 'custom.css' site/index-en.html
+[ $? -ne 0 ]
+check $? "no custom.css beside the database changes nothing"
+printf 'body{outline:0}\n' > custom.css
+"$CLI" --allow-effects=render-site effect render-site en report-site >/dev/null 2>&1
+grep -q 'href="custom.css' site/index-en.html
+check $? "Part 3: custom.css beside the database is staged and linked"
+rm custom.css
+"$CLI" --allow-effects=render-site effect render-site en report-site >/dev/null 2>&1
+[ ! -f site/custom.css ]
+check $? "...and deleting it turns the overrides off again"
+
+# A3 — the author declined "publish one language" and asked for translation
+# tooling instead. This is that tooling.
+out=$("$CLI" --allow-effects=render-site effect render-site es report-site 2>&1)
+echo "$out" | grep -q 'fell back to another language'
+check $? "A3: a render says how much of the page is in the language asked for"
+out=$("$CLI" --allow-effects=translation-report effect translation-report es 2>&1)
+echo "$out" | grep -q 'fall back to the language they were written in'
+check $? "...and translation-report counts every gap in the database"
+grep -q 'set r-nar text_es' exports/translate-es.hormiga
+check $? "...and writes a replayable script with the source text in place"
+grep -q 'atomic' exports/translate-es.hormiga
+check $? "...that says how to replay it"
+
+# D6 — the silent empty render, which cost the report an hour
+cat > elsewhere.txt <<'EOF'
+mantle new someorg
+use someorg
+rune new image e-img
+set e-img path 'assets/nothing.jpg'
+tag e-img +type:image
+EOF
+"$CLI" --script elsewhere.txt --atomic >/dev/null 2>&1
+out=$("$CLI" --allow-effects=render-site effect render-site en report-site 2>&1)
+echo "$out" | grep -q "the data mantle 'demo-org' is empty"
+check $? "D6: runes in a mantle no block query reads are reported, not ignored"
+echo "$out" | grep -q 'someorg'
+check $? "...and the message names the mantle they are actually in"
+echo "$out" | grep -q 'mantle rename someorg demo-org'
+check $? "...and the one command that fixes it"
+
+# A5 — check-host, the sibling of check-store for the other one-way door
+"$CLI" --describe 2>/dev/null | grep -q 'check-host'
+check $? "A5: check-host is in the briefing an agent reads"
+out=$("$CLI" effect check-host 2>&1)
+echo "$out" | grep -qi 'refused'
+check $? "...and it is an effect, so it is refused by default"
+out=$("$CLI" --allow-effects=check-host effect check-host 2>&1)
+echo "$out" | grep -q 'no publish target'
+check $? "...and with nothing wired it says so in both hosts' vocabulary"
+
+# GitHub Pages: the deployer whose node has been in the palette all along
+cat > gh.txt <<'EOF'
+mantle new antfarm
+use antfarm
+rune new hol_github gh1
+set gh1 repo 'not-a-repo-spec'
+set gh1 token_file 'gh.token'
+EOF
+"$CLI" --script gh.txt --atomic >/dev/null 2>&1
+check $? "a hol_github node configures like any other holiday"
+printf 'ghp_0123456789abcdefghijklmnopqrstuvwxyz\n' > gh.token
+out=$("$CLI" --allow-effects=deploy-site effect deploy-site gh1 2>&1)
+echo "$out" | grep -q "as owner/repo"
+check $? "...and a repo spec that names no owner is a refusal, not a guess"
+echo "$out" | grep -q "somebody else"
+check $? "...because guessing an owner publishes to somebody else's repository"
+out=$("$CLI" --allow-effects=rollback-site effect rollback-site gh1 2>&1)
+echo "$out" | grep -q 'name the deployment to restore'
+check $? "a GitHub rollback needs no rollback_cmd - restoring is a ref move"
+
+# ── a deleted page leaves the site (author, 2026-09-02) ─────────────────────
+# `render_site` wrote one file per page and removed nothing, so deleting a page
+# left its HTML in the folder the deploy uploads and the old URL stayed live
+# forever. `site/` is a mirror of the document.
+cat > pages.txt <<'EOF'
+use report-site
+rune new page gone
+set gone slug gone
+set gone title_en Gone
+set gone order 5
+EOF
+"$CLI" --script pages.txt --atomic >/dev/null 2>&1
+"$CLI" --allow-effects=render-site effect render-site report-site >/dev/null 2>&1
+[ -f site/gone-en.html ] && [ -f site/gone-es.html ]
+check $? "a page renders to its own file in every language"
+printf 'use report-site\nrune rm gone\n' > rmpage.txt
+"$CLI" --script rmpage.txt --atomic >/dev/null 2>&1
+out=$("$CLI" --allow-effects=render-site effect render-site report-site 2>&1)
+[ ! -f site/gone-en.html ] && [ ! -f site/gone-es.html ]
+check $? "...and deleting the page removes both, so the old URL stops being live"
+echo "$out" | grep -q "removed gone-en.html"
+check $? "...and the render says which file it took down"
+[ -f site/index-en.html ] && [ -f site/404.html ] && [ -f site/style.css ]
+check $? "...while the pages that remain, and the site chrome, are untouched"
+# a ONE-LANGUAGE render must not take the other language's pages down: the
+# preview loop runs `render-site es` constantly and that is not a deletion.
+"$CLI" --allow-effects=render-site effect render-site en report-site >/dev/null 2>&1
+[ -f site/index-es.html ]
+check $? "...and rendering one language leaves the other language's pages alone"
+
+# the link relation is quoted, not concatenated (author 2026-09-02: "cant link
+# images together? or there's a weird error"). The GUI builds this command; the
+# defect was that a relation with a space silently truncated and one with an
+# apostrophe produced a SPEC 6.1 quoting error.
+cat > lk.txt <<'EOF'
+use demo-org
+rune new image lk-a
+rune new image lk-b
+EOF
+"$CLI" --script lk.txt --atomic >/dev/null 2>&1
+printf "use demo-org\nlink lk-a lk-b --relation 'goes with'\n" > lk2.txt
+"$CLI" --script lk2.txt --atomic >/dev/null 2>&1
+check $? "a quoted multi-word relation applies"
+"$CLI" links lk-a 2>&1 | grep -q -- "-goes with->"
+check $? "...and survives whole, instead of truncating at the space"
+
+# ── the `audio` block (field report A1, first rung; 2026-09-02) ─────────────
+# "a music artist's website cannot play the artist's music" -- and an
+# organization with a podcast or a recorded meeting has the same absence.
+python - <<'PYEOF'
+import struct, math, io, os
+os.makedirs('assets', exist_ok=True)
+sr = 8000; n = int(sr * 0.4)
+d = b''.join(struct.pack('<h', int(12000 * math.sin(2 * math.pi * 440 * i / sr)))
+             for i in range(n))
+io.open('assets/tone.wav', 'wb').write(
+    b'RIFF' + struct.pack('<I', 36 + len(d)) + b'WAVEfmt ' +
+    struct.pack('<IHHIIHH', 16, 1, 1, sr, sr * 2, 2, 16) +
+    b'data' + struct.pack('<I', len(d)) + d)
+PYEOF
+check $? "a test recording exists to render"
+cat > audio.txt <<'EOF'
+use report-site
+rune new audio a-good
+set a-good src 'assets/tone.wav'
+set a-good title_en 'Track One'
+set a-good artist 'The Organization'
+set a-good duration '0:24'
+set a-good caption_en 'From the meeting.'
+set a-good row 20
+rune new audio a-missing
+set a-missing src 'assets/not-here.mp3'
+set a-missing title_en 'A recording nobody moved over'
+set a-missing row 21
+EOF
+"$CLI" --script audio.txt --atomic >/dev/null 2>&1
+check $? "audio blocks apply"
+out=$("$CLI" --allow-effects=render-site effect render-site en report-site 2>&1)
+
+grep -q 'class="audio-player" controls preload="none" src="assets/tone.wav"' site/index-en.html
+check $? "A1: the page carries a real player for the organization's own file"
+[ -f site/assets/tone.wav ]
+check $? "...and the file is staged into the site like any other asset"
+grep -q 'preload="none"' site/index-en.html
+check $? "...fetching nothing until somebody presses play"
+grep -q 'audio.*<a href="assets/tone.wav">' site/index-en.html
+check $? "...with a download link inside it for a browser that cannot play it"
+grep -q 'class="audio-title">Track One<' site/index-en.html
+check $? "...and the title, artist and duration on the card"
+grep -q 'class="audio-dur">0:24<' site/index-en.html
+check $? "...including the duration as the operator wrote it"
+
+# a file that is not on this machine must SAY so, not render a dead player
+grep -q 'This recording is not available' site/index-en.html
+check $? "a missing audio file gets a sentence, not a play button that does nothing"
+echo "$out" | grep -q "is not on this machine"
+check $? "...and the render names the file and how to fix it"
+
+# EMAIL: no client plays audio, so the newsletter links it -- which needs an
+# absolute address, which only site.base_url can supply.
+out=$("$CLI" --allow-effects=render effect render en report-site 2>&1)
+echo "$out" | grep -q "site.base_url is unset"
+check $? "without a base URL the newsletter says why it cannot link the recording"
+"$CLI" config set site.base_url 'https://example.org' >/dev/null 2>&1
+"$CLI" --allow-effects=render effect render en report-site >/dev/null 2>&1
+ls exports/*.html >/dev/null 2>&1
+check $? "the newsletter renders"
+grep -q 'https://example.org/assets/tone.wav' exports/*.html
+check $? "...and with one, the Listen button points at a real address"
+grep -q '<audio' exports/*.html
+[ $? -ne 0 ]
+check $? "...and never emits <audio>, which Gmail and Outlook both strip"
+
+# the block is in the briefing, so an agent can place it too
+"$CLI" --describe 2>/dev/null | grep -q '"audio"'
+check $? "the audio glyph is in the briefing an agent reads"
+
+# ── the `download` block (portfolio agent, 2026-09-02) ─────────────────────
+# "A Hormiga website cannot publish a file a visitor can download" -- which was
+# blocking that client's first deploy. A resume is what surfaced it; a flier
+# PDF, the bylaws and an annual report are the same ask for an organization.
+mkdir -p files
+printf '%%PDF-1.4\n' > files/handbook.pdf
+head -c 9000 /dev/urandom >> files/handbook.pdf
+printf '<html>a page on our own origin</html>' > files/page.html
+cat > dl.txt <<'EOF'
+use demo-org
+rune new resource r-handbook
+set r-handbook path 'files/handbook.pdf'
+set r-handbook topic 'governance'
+use report-site
+rune new download dl-btn
+set dl-btn file 'files/handbook.pdf'
+set dl-btn label_en 'Download the handbook'
+set dl-btn caption_en 'PDF, updated September'
+set dl-btn row 30
+rune new download dl-viaresource
+set dl-viaresource file r-handbook
+set dl-viaresource label_en 'Our bylaws'
+set dl-viaresource download_style card
+set dl-viaresource row 31
+rune new download dl-refused
+set dl-refused file 'files/page.html'
+set dl-refused label_en 'Should not publish'
+set dl-refused row 32
+rune new download dl-absent
+set dl-absent file 'files/nowhere.pdf'
+set dl-absent label_en 'Not here'
+set dl-absent row 33
+EOF
+"$CLI" --script dl.txt --atomic >/dev/null 2>&1
+check $? "download blocks apply"
+out=$("$CLI" --allow-effects=render-site effect render-site en report-site 2>&1)
+
+grep -q 'href="assets/handbook.pdf" download' site/index-en.html
+check $? "A1: a file the organization owns is published with a download link"
+[ -f site/assets/handbook.pdf ]
+check $? "...and staged into the site like any other asset"
+grep -q 'class="dl-meta">PDF' site/index-en.html
+check $? "...with the type and size a visitor wants before they tap it"
+grep -q 'class="dl-card' site/index-en.html
+check $? "...and `download_style card` gives the wider shape"
+
+# `file` takes a resource RUNE name too -- which is what finally makes the
+# `resource` glyph reachable. It was declared, editable and rendered by nothing.
+grep -q 'dl-label">Our bylaws<' site/index-en.html
+check $? "...and `file` accepts a `resource` rune name, not just a path"
+
+# the security refusal: model data can arrive by import or merge, and a .html
+# served from our own origin acts with our own authority
+grep -q 'page.html' site/index-en.html
+[ $? -ne 0 ]
+check $? "a .html is never published by this block"
+[ ! -f site/assets/page.html ]
+check $? "...and is not even staged"
+echo "$out" | grep -q "refusing to publish"
+check $? "...and the render says so out loud, with the reason"
+echo "$out" | grep -q "is not on this machine"
+check $? "a file that is absent is reported, not published broken"
+
+# EMAIL: a newsletter cannot carry the file, so it links -- which needs an
+# absolute address
+"$CLI" config set site.base_url 'https://example.org' >/dev/null 2>&1
+"$CLI" --allow-effects=render effect render en report-site >/dev/null 2>&1
+grep -q 'https://example.org/assets/handbook.pdf' exports/*.html
+check $? "the newsletter links the file at an absolute address"
+
+"$CLI" --describe 2>/dev/null | grep -q '"download"'
+check $? "the download glyph is in the briefing an agent reads"
+
+# ── PLATFORM SETS: the download for the visitor's computer (2026-09-08) ────
+# The author asked for OS detection; the Click LaFont report is why it is
+# renderer-owned rather than an author `<script>`, and why it may only reorder
+# and mark. The rule under test is the one that makes it safe: NOTHING IS EVER
+# HIDDEN -- not by the renderer, and not by app.js, which does not run at all
+# for the visitor who has scripting off.
+cat > plat.txt <<'EOF'
+use report-site
+rune new link dl-win
+set dl-win label_en 'Download for Windows'
+set dl-win label_es 'Descargar para Windows'
+set dl-win target 'https://github.com/migriv24/VoidHormiga/releases/latest/download/VoidHormiga-windows-x64-setup.exe'
+set dl-win link_style 'button'
+set dl-win platform 'windows-x64'
+set dl-win row 34
+set dl-win col 0
+set dl-win span 4
+rune new link dl-mac
+set dl-mac label_en 'macOS - not yet'
+set dl-mac target 'roadmap'
+set dl-mac platform 'macos'
+set dl-mac row 34
+set dl-mac col 4
+set dl-mac span 4
+rune new download dl-linux
+set dl-linux file 'files/handbook.pdf'
+set dl-linux label_en 'Linux - build it yourself'
+set dl-linux download_style card
+set dl-linux platform 'linux-x64'
+set dl-linux row 34
+set dl-linux col 8
+set dl-linux span 4
+rune new link dl-typo
+set dl-typo label_en 'Typo'
+set dl-typo target 'https://example.org/x'
+set dl-typo platform 'win64'
+set dl-typo row 35
+set dl-typo col 0
+set dl-typo span 6
+rune new link dl-plain
+set dl-plain label_en 'Read the roadmap'
+set dl-plain target 'roadmap'
+set dl-plain row 35
+set dl-plain col 6
+set dl-plain span 6
+rune new link dl-lonely
+set dl-lonely label_en 'Download for Windows'
+set dl-lonely target 'https://example.org/setup.exe'
+set dl-lonely platform 'windows-x64'
+set dl-lonely row 36
+set dl-lonely col 0
+set dl-lonely span 6
+rune new link dl-nearby
+set dl-nearby label_en 'Release notes'
+set dl-nearby target 'https://example.org/notes'
+set dl-nearby row 36
+set dl-nearby col 6
+set dl-nearby span 6
+EOF
+"$CLI" --script plat.txt --atomic >/dev/null 2>&1
+check $? "platform-set blocks apply"
+out=$("$CLI" --allow-effects=render-site effect render-site en report-site 2>&1)
+
+grep -q 'class="wrow platform-set"' site/index-en.html
+check $? "a row with two or more platform blocks is marked a platform set"
+grep -q 'data-yours="For your computer"' site/index-en.html
+check $? "...and carries the badge text, so app.js never has to know a language"
+grep -q 'data-platform="windows-x64"' site/index-en.html   && grep -q 'data-platform="macos"' site/index-en.html   && grep -q 'data-platform="linux-x64"' site/index-en.html
+check $? "...with each of the three candidates naming its own computer"
+grep -q 'btn[^>]*data-platform="windows-x64"' site/index-en.html
+check $? "...the installer button among them, because it is a link and not a file"
+grep -q 'dl-card[^>]*data-platform="linux-x64"' site/index-en.html
+check $? "...and a download block can name one too"
+
+# the whole design in one assertion: every platform is in the markup. app.js
+# reorders and labels; it has nothing to hide with, by construction.
+grep -q 'macOS - not yet' site/index-en.html
+check $? "...and no platform is left out of the page, which is the whole rule"
+
+# a typo must not read as `any` in silence -- the image_grid.columns failure
+echo "$out" | grep -q "dl-typo: platform 'win64' is not a value"
+check $? "an unknown platform is reported rather than silently treated as any"
+grep -q 'data-platform="win64"' site/index-en.html
+[ $? -ne 0 ]
+check $? "...and never reaches the markup"
+
+# one platform block on a row is not a set: there is nothing to choose between
+grep -q 'class="wrow platform-set" data-yours[^>]*>.*dl-lonely' site/index-en.html
+[ $? -ne 0 ]
+check $? "a row with only one platform block is not a platform set"
+grep -c 'platform-set' site/index-en.html | grep -qx '1'
+check $? "...so exactly one row on this page is one"
+
+"$CLI" --allow-effects=render-site effect render-site es report-site >/dev/null 2>&1
+grep -q 'data-yours="Para tu computadora"' site/index-es.html
+check $? "the badge is in the language of the page it is on"
+
+"$CLI" --describe 2>/dev/null | grep -q '"platform"'
+check $? "the platform field is in the briefing an agent reads"
+
+# ── D1: `site.languages` was accepted, stored and ignored ──────────────────
+# The author declined a one-language switch; the fix is that the key stops
+# pretending to be one.
+"$CLI" config set site.languages 'en' >/dev/null 2>&1
+out=$("$CLI" --allow-effects=render-site effect render-site report-site 2>&1)
+echo "$out" | grep -q "site.languages"
+check $? "D1: setting site.languages is reported as a key nothing reads"
+echo "$out" | grep -q "translation-report"
+check $? "...and names the thing that does exist"
+[ -f site/index-es.html ]
+check $? "...and both languages are still published, which is the decision"
+
+# ── the portfolio's second round (2026-09-03) ──────────────────────────────
+
+# D2: `pack-database` bundled only assets/, so a file a BLOCK points at from
+# anywhere else was silently absent from every bundle -- and a credential must
+# still never be in one.
+mkdir -p papers
+printf 'PDFBYTES' > papers/annual-report.pdf
+printf 'SECRET-DEPLOY-TOKEN' > cf.key
+cat > packref.txt <<'EOF'
+use antfarm
+set gh1 token_file 'cf.key'
+use report-site
+rune new download dl-outside
+set dl-outside file 'papers/annual-report.pdf'
+set dl-outside label_en 'Annual report'
+set dl-outside row 40
+EOF
+"$CLI" --script packref.txt --atomic >/dev/null 2>&1
+out=$("$CLI" --allow-effects=pack-database effect pack-database packtest.miga 2>&1)
+echo "$out" | grep -q "bundled papers/annual-report.pdf"
+check $? "D2: a file a block points at from outside assets/ is bundled"
+python - <<'PYEOF'
+import io, json, sys
+d = json.load(io.open('packtest.miga', encoding='utf-8'))
+keys = list(d.get('assets', {}))
+ok = any(k.endswith('papers/annual-report.pdf') for k in keys)
+leak = any('key' in k or 'token' in k or 'secret' in k for k in keys)
+sys.exit(0 if (ok and not leak) else 1)
+PYEOF
+check $? "...and it is really in the envelope, with no credential beside it"
+
+# A5: a data rune's prose is per-language now. `directory` publishes an
+# organization's own description, and it was the one text a bilingual site
+# could not translate.
+cat > bilingual.txt <<'EOF'
+use demo-org
+rune new organization o-bi
+set o-bi display_name 'Nomad'
+set o-bi bio_en 'A geometry-nodes experiment.'
+set o-bi bio_es 'Un experimento de nodos de geometria.'
+tag o-bi +type:organization +clearance:public
+rune new organization o-legacy
+set o-legacy display_name 'Older Entry'
+set o-legacy bio 'Written before the fields were split.'
+tag o-legacy +type:organization +clearance:public
+use report-site
+rune new directory dir-bi
+set dir-bi kind organization
+set dir-bi query 'type:organization'
+set dir-bi row 41
+EOF
+"$CLI" --script bilingual.txt --atomic >/dev/null 2>&1
+"$CLI" --allow-effects=render-site effect render-site report-site >/dev/null 2>&1
+grep -q 'A geometry-nodes experiment' site/index-en.html
+check $? "A5: an organization's description reaches the English page"
+grep -q 'Un experimento de nodos de geometria' site/index-es.html
+check $? "...and the Spanish page carries the SPANISH one, which it could not before"
+grep -q 'A geometry-nodes experiment' site/index-es.html
+[ $? -ne 0 ]
+check $? "...and not the English one alongside it"
+grep -q 'Written before the fields were split' site/index-es.html
+check $? "...while a legacy `bio` with no language still publishes, on both pages"
+
+# A5.1: an email address has no Spanish, so counting it made 100% unreachable
+# and the warning permanent.
+cat > untrans.txt <<'EOF'
+mantle new solo
+use solo
+rune new page home
+set home slug home
+set home order 0
+rune new link l-mail
+set l-mail label_en 'someone@example.org'
+set l-mail row 0
+rune new link l-tel
+set l-tel label_en '541-555-0100'
+set l-tel row 1
+rune new narrative n-prose
+set n-prose text_en 'Real prose.'
+set n-prose text_es 'Prosa real.'
+set n-prose row 2
+EOF
+"$CLI" --script untrans.txt --atomic >/dev/null 2>&1
+out=$("$CLI" --allow-effects=render-site effect render-site es solo 2>&1)
+echo "$out" | grep -q "fell back"
+[ $? -ne 0 ]
+check $? "A5: a site whose only untranslated values are an address and a number is SILENT"
+out=$("$CLI" --allow-effects=translation-report effect translation-report es 2>&1)
+echo "$out" | grep -q "someone@example.org"
+[ $? -ne 0 ]
+check $? "...and translation-report does not ask anyone to translate an email"
+
+# A6 + A9: one field each, and each deletes a client's CSS hack
+cat > heroparts.txt <<'EOF'
+use report-site
+rune new hero h-portrait
+set h-portrait title_en 'Miguel Rivas'
+set h-portrait portrait 'assets/tone-cover-missing.png'
+set h-portrait row 42
+rune new narrative n-head
+set n-head heading_en 'Void Hormiga'
+set n-head text_en 'Developer, 2026 to present'
+set n-head row 43
+EOF
+"$CLI" --script heroparts.txt --atomic >/dev/null 2>&1
+"$CLI" --allow-effects=render-site effect render-site en report-site >/dev/null 2>&1
+grep -q '<h3 class="prose-heading' site/index-en.html
+check $? "A9: a narrative can carry a heading, instead of a secretly-bold first line"
+grep -q 'prose-heading' site/style.css
+check $? "...and the stylesheet sizes it below the page's own section headings"
+grep -q 'hero-portrait' site/style.css
+check $? "A6: the hero has a round portrait slot in front of its banner"
 cd ..
 
 # A failed command must exit non-zero: a shell and an agent both branch on it.

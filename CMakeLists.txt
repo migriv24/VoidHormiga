@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
-project(voidhormiga CXX C)
+# THE VERSION IS DECLARED HERE AND IN `void.json`, AND `mago doctor` CHECKS
+# THAT THEY AGREE. Void Core shipped 0.2.14 with a manifest still reading
+# 0.2.12 and nothing noticed, because nothing read the two against each other;
+# every verdict about a project is arithmetic over that number, so a stale one
+# does not produce a missing answer, it produces a confident wrong one. It is
+# also what the running binary reports to the update client, which is the other
+# reason it cannot be a literal typed into a third place.
+project(voidhormiga VERSION 0.1.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -150,13 +157,15 @@ add_custom_target(hormiga_web_assets
 # the command bar and an agent are three callers of ONE set of verbs; a verb
 # that reaches one of them is a broken surface.
 add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
-  src/ui/data.cpp src/render/site.cpp
+  src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
-  src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp
+  src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
+  src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
   src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
+  src/publish/github.cpp
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
   src/platform/miga.cpp src/platform/preview_server.cpp src/main/desktop.cpp)
 # Void Core's C ABI header, for the SPEC 6.1 command codec exported in 0.2.7
@@ -166,6 +175,49 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
 # their shipping it as code -- five implementations of that section have been
 # wrong, including ours and including the reference core's own script reader.
 target_include_directories(voidhormiga PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
+# The running binary reports its own version to the update client, and it comes
+# from `project(... VERSION)` at the top of this file -- which `mago doctor`
+# checks against `void.json`. Three places that must agree, reduced to one that
+# is read and one that is checked.
+# ── WHICH COMPUTER THIS BINARY IS FOR (2026-09-08) ──────────────────────────
+#
+# `HORMIGA_PLATFORM` is the key the update client looks itself up under in
+# `void-updates.json`: the feed's `artifacts` object is keyed by exactly these
+# strings, Mago writes those keys from `void.json`'s `platforms` array, and a
+# release with no entry for our key is reported as "there is a newer version and
+# it has no build for your computer" rather than offered.
+#
+# It was previously left undefined and `update.cpp` fell back to a `_WIN32`
+# test that produced "windows-x64" or the literal "unknown". On Windows that was right by accident. Anywhere
+# else it was a binary that would ask a feed for a platform no feed will ever
+# describe -- and would say "up to date" forever, because a release whose
+# artifacts it cannot match still parses fine.
+#
+# THESE STRINGS MUST STAY IN STEP WITH `void.json`'s `platforms` ARRAY, which
+# today lists `windows-x64` alone. Defining the other two here does not make a
+# Linux or macOS build exist; it makes one that is attempted say something true
+# about itself instead of "unknown". See okf/concepts/platform/distribution.md.
+if(WIN32)
+  set(HORMIGA_PLATFORM_TAG "windows-x64")
+elseif(APPLE)
+  # PER-ARCH, not `macos-universal`. Void Core's manifest says `macos-universal`
+  # and we followed it until 2026-09-09, when the release workflow made the
+  # difference matter: a runner produces a binary for ONE architecture, and an
+  # Apple Silicon build calling itself "universal" is a claim an Intel Mac would
+  # believe and then fail to execute. The release publishes both, from a
+  # `macos-14` leg and a `macos-13` leg, under the names below.
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+    set(HORMIGA_PLATFORM_TAG "macos-arm64")
+  else()
+    set(HORMIGA_PLATFORM_TAG "macos-x64")
+  endif()
+elseif(UNIX)
+  set(HORMIGA_PLATFORM_TAG "linux-x64")
+else()
+  set(HORMIGA_PLATFORM_TAG "unknown")
+endif()
+target_compile_definitions(voidhormiga PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
+  HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
 target_include_directories(voidhormiga PRIVATE src vendor/stb vendor/json vendor/fonts
   vendor/icons vendor/blake3 ${HORMIGA_GEN})
 add_dependencies(voidhormiga hormiga_web_assets)
@@ -176,9 +228,15 @@ target_link_libraries(voidhormiga PRIVATE
   sqlite3
   sodium
   hormiga_sync # the merge (Void Palabra) + the LAN transport
-  ws2_32 # the live-preview localhost server (B2; winsock)
 )
 if(WIN32)
+  # ws2_32: the live-preview localhost server (B2; winsock). It was linked
+  # unconditionally until 2026-09-08, which made the very first thing a
+  # non-Windows build hit a missing library rather than the real obstacle --
+  # `src/platform/preview_server.cpp` is winsock with no POSIX branch, and that
+  # is the port somebody has to write. The guard does not create a Linux build;
+  # it makes the failure name the right file.
+  target_link_libraries(voidhormiga PRIVATE ws2_32)
   target_link_libraries(voidhormiga PRIVATE comdlg32) # the OS open-file dialog
 endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -186,9 +244,29 @@ find_package(Threads REQUIRED)
 target_link_libraries(voidhormiga PRIVATE Threads::Threads) # background jobs
 if(NOT MSVC)
   target_compile_options(voidhormiga PRIVATE -Wall -Wextra)
-  # self-contained binaries: no libstdc++/libgcc DLL hunt at load time (a
-  # stale runtime on PATH = 0xc0000139 — diagnosed 2026-07-19, okf/log.md)
-  target_link_options(voidhormiga PRIVATE -static-libstdc++ -static-libgcc)
+  # ---- SELF-CONTAINED BINARIES, and the third runtime that got away --------
+  #
+  # `-static-libstdc++ -static-libgcc` has been here since 2026-07-19 (a stale
+  # runtime on PATH = 0xc0000139, no message, okf/log.md). It was not enough,
+  # and nothing in this repository could have told us: Void Mago's first
+  # staging run read the PE import directory of the built executables and found
+  # **libwinpthread-1.dll**, imported by both, present in the ucrt64 toolchain
+  # directory and on no other machine in the world.
+  #
+  # Nothing in any manifest mentioned it, because no manifest could -- it is a
+  # fact about how the binary was linked, not about what the project declares.
+  # Left alone, the installer compiles cleanly, the files land cleanly, and
+  # Hormiga fails to open on the first device it is tested on, with a dialog
+  # naming a DLL nobody has heard of.
+  #
+  # `-static` covers all three. Shipping the DLL beside the binary instead also
+  # works and is worse: it is a file from a toolchain directory that has to be
+  # found again on every machine that ever builds a release.
+  if(MINGW)
+    target_link_options(voidhormiga PRIVATE -static)
+  else()
+    target_link_options(voidhormiga PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
 endif()
 
 # ── the HEADLESS front-end (Void Maiz's voidmaiz_headless, adopted 2026-08-18) ──
@@ -205,16 +283,20 @@ endif()
 # size, and the alternative was a second renderer.
 add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
   src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
-  src/ui/data.cpp src/render/site.cpp
+  src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
-  src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp
+  src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
+  src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
   src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
+  src/publish/github.cpp
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
   src/platform/miga.cpp src/platform/preview_server.cpp)
 target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
+target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
+  HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
 target_include_directories(voidhormiga-cli PRIVATE src vendor/stb vendor/json vendor/fonts
   vendor/icons vendor/blake3 ${HORMIGA_GEN})
 
@@ -229,28 +311,67 @@ target_include_directories(voidhormiga-cli PRIVATE src vendor/stb vendor/json ve
 # We link Core through Void Maiz, and Maiz stages the DLL only next to its own
 # smoke test. Staging a dependency's runtime artifact beside OUR binary is our
 # job, so it happens here, every build, from wherever Core actually built it.
-find_file(HORMIGA_VOIDCORE_DLL NAMES libvoidcore.dll voidcore.dll
+#
+# ── AND THE SAME TRAP ON THE PLATFORMS NOBODY HAD BUILT (2026-09-08) ─────────
+#
+# The name list above was `libvoidcore.dll voidcore.dll` and the staging was
+# `if(WIN32)`, which is the paragraph above describing a bug and then leaving it
+# in place for two of the three platforms. `add_library(voidcore SHARED ...)`
+# produces `libvoidcore.so` on Linux and `libvoidcore.dylib` on macOS, and a
+# binary that cannot find it fails in exactly the way described above -- the
+# build is green and the program does nothing, with the loader saying at most
+# `error while loading shared libraries`.
+#
+# THE COPY IS NOT ENOUGH ON ITS OWN, which is the part that differs from
+# Windows. Windows looks for a DLL beside the executable; ELF and Mach-O do not,
+# unless the binary carries an rpath saying so. `$ORIGIN` (Linux) and
+# `@loader_path` (macOS) both mean "the directory this executable is in", so the
+# staged copy beside the binary is the one that gets loaded, and the binary stays
+# movable -- which is what an installer, a tarball or somebody's Downloads folder
+# all need.
+#
+# This is Void Maiz's `journal.c` lesson applied to our own tree: a code path no
+# build exercises is a claim, not a behaviour. Written the day the author said
+# they had a Linux machine to test on, so it is about to stop being unexercised.
+find_file(HORMIGA_VOIDCORE_LIB
+          NAMES libvoidcore.dll voidcore.dll libvoidcore.so libvoidcore.dylib
           PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/build/bin"
                 "${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/build"
           NO_DEFAULT_PATH)
-if(WIN32 AND HORMIGA_VOIDCORE_DLL)
+if(HORMIGA_VOIDCORE_LIB)
   foreach(t voidhormiga voidhormiga-cli)
     add_custom_command(TARGET ${t} POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
-              "${HORMIGA_VOIDCORE_DLL}" "$<TARGET_FILE_DIR:${t}>"
-      COMMENT "Staging Void Core's DLL beside ${t}")
+              "${HORMIGA_VOIDCORE_LIB}" "$<TARGET_FILE_DIR:${t}>"
+      COMMENT "Staging Void Core's shared library beside ${t}")
   endforeach()
-elseif(WIN32)
-  message(WARNING "libvoidcore.dll not found - binaries will not start. "
-                  "Build Void Core first.")
+else()
+  message(WARNING "Void Core's shared library was not found - binaries will not "
+                  "start. Build Void Core first: cmake -S ../VoidCore/core "
+                  "-B ../VoidCore/core/build && cmake --build ../VoidCore/core/build")
+endif()
+if(NOT WIN32)
+  # See above: the staged copy is only reachable if the binary says to look
+  # beside itself. Appended to the build rpath rather than replacing it, so
+  # running straight out of the build tree keeps working too.
+  if(APPLE)
+    set(HORMIGA_ORIGIN_RPATH "@loader_path")
+  else()
+    set(HORMIGA_ORIGIN_RPATH "$ORIGIN")
+  endif()
+  foreach(t voidhormiga voidhormiga-cli)
+    set_property(TARGET ${t} APPEND PROPERTY BUILD_RPATH "${HORMIGA_ORIGIN_RPATH}")
+    set_property(TARGET ${t} APPEND PROPERTY INSTALL_RPATH "${HORMIGA_ORIGIN_RPATH}")
+  endforeach()
 endif()
 
 add_dependencies(voidhormiga-cli hormiga_web_assets)
 target_link_libraries(voidhormiga-cli PRIVATE
   voidmaiz_headless # session, lock, journal, effect gate, briefing
   voidmaiz_view     # HormigaApp's other methods live here; never called headless
-  hormiga_allomone sqlite3 sodium hormiga_sync ws2_32 Threads::Threads)
+  hormiga_allomone sqlite3 sodium hormiga_sync Threads::Threads)
 if(WIN32)
+  target_link_libraries(voidhormiga-cli PRIVATE ws2_32) # see the note above
   target_link_libraries(voidhormiga-cli PRIVATE comdlg32)
 endif()
 # What an agent needs, staged BESIDE THE BINARY. A real caller runs this in the
@@ -274,6 +395,32 @@ endif()
 # fonts, no CDN" broken invisibly, into a fallback that looks fine on the
 # developer's machine because there the two paths are the same folder. The
 # renderer now resolves them from `ship_dir`; this is what puts them there.
+#
+# ---- AND THE UI FACES TOO, UNDER THEIR OWN NAME (2026-09-04) ---------------
+#
+# This staged `vendor/fonts/web` to `bin/fonts/web`, which was wrong in two
+# ways that only show up on somebody else's machine.
+#
+# 1. The DESKTOP shell's typefaces were never staged at all. `desktop.cpp` read
+#    Lato, JetBrains Mono and Font Awesome from `current_path()/vendor/fonts`,
+#    so an installed copy -- which has no `vendor/` and is not launched from a
+#    checkout -- fell through every `if (exists)` to `AddFontDefault()`. The
+#    application would have opened on the first test device with a pixelated
+#    bitmap face and NO ICONS: every map marker, section tab and toolbar button
+#    is a Font Awesome codepoint, and a missing merge draws them as blanks.
+#    Silent, per the same guard pattern that cost us the webfonts in August.
+#
+# 2. `fonts/` beside the binary collides with `fonts/` beside the DATABASE,
+#    which `void.json` declares as an organization's own folder and the site
+#    renderer already reads as "the org's own faces". Two different folders
+#    with one name, distinguishable only when `ship_dir != base_dir`.
+#
+# So the whole vendored family is staged under the name it actually has. That
+# also fixes Void Mago's second blocker: `ships_beside_binary` resolves against
+# the CHECKOUT, so it named `fonts/`, staging refused to build a package with a
+# hole in it, and it was right to -- there is no `fonts/` in this repository
+# and there never was. The manifest now says `vendor/fonts/`, which exists,
+# and the dev build tree and the install tree finally have the same shape.
 add_custom_target(hormiga_agent_files ALL
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -281,16 +428,20 @@ add_custom_target(hormiga_agent_files ALL
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           ${CMAKE_CURRENT_SOURCE_DIR}/okf ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/okf
   COMMAND ${CMAKE_COMMAND} -E copy_directory
-          ${CMAKE_CURRENT_SOURCE_DIR}/vendor/fonts/web
-          ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/fonts/web
+          ${CMAKE_CURRENT_SOURCE_DIR}/vendor/fonts
+          ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/vendor/fonts
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/AGENT-GUIDE.md
-  COMMENT "Staging AGENT-GUIDE.md, the OKF bundle and the webfonts beside voidhormiga-cli")
+  COMMENT "Staging AGENT-GUIDE.md, the OKF bundle and vendor/fonts beside the binaries")
 add_dependencies(voidhormiga-cli hormiga_agent_files)
 add_dependencies(voidhormiga hormiga_agent_files) # same renderer, same fonts
 
 if(NOT MSVC)
   target_compile_options(voidhormiga-cli PRIVATE -Wall -Wextra)
-  target_link_options(voidhormiga-cli PRIVATE -static-libstdc++ -static-libgcc)
+  if(MINGW)
+    target_link_options(voidhormiga-cli PRIVATE -static) # see voidhormiga above
+  else()
+    target_link_options(voidhormiga-cli PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
 endif()
 
 enable_testing()
@@ -392,10 +543,10 @@ target_include_directories(hormiga_submission_smoke PRIVATE
   src vendor/json ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
 target_link_libraries(hormiga_submission_smoke PRIVATE voidmaiz_headless)
 add_test(NAME hormiga_submission_smoke COMMAND hormiga_submission_smoke)
-if(WIN32 AND HORMIGA_VOIDCORE_DLL)
+if(WIN32 AND HORMIGA_VOIDCORE_LIB)
   add_custom_command(TARGET hormiga_submission_smoke POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${HORMIGA_VOIDCORE_DLL}" "$<TARGET_FILE_DIR:hormiga_submission_smoke>")
+            "${HORMIGA_VOIDCORE_LIB}" "$<TARGET_FILE_DIR:hormiga_submission_smoke>")
 endif()
 
 # THE PHASE F SUITE (okf/concepts/platform/data-planes.md §7): the merge, on one
@@ -412,10 +563,10 @@ add_executable(hormiga_sync_smoke tests/sync_smoke.cpp)
 target_link_libraries(hormiga_sync_smoke PRIVATE hormiga_sync voidmaiz_headless Threads::Threads)
 target_include_directories(hormiga_sync_smoke PRIVATE src)
 add_test(NAME hormiga_sync_smoke COMMAND hormiga_sync_smoke)
-if(WIN32 AND HORMIGA_VOIDCORE_DLL)
+if(WIN32 AND HORMIGA_VOIDCORE_LIB)
   add_custom_command(TARGET hormiga_sync_smoke POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${HORMIGA_VOIDCORE_DLL}" "$<TARGET_FILE_DIR:hormiga_sync_smoke>")
+            "${HORMIGA_VOIDCORE_LIB}" "$<TARGET_FILE_DIR:hormiga_sync_smoke>")
 endif()
 
 add_executable(hormiga_backup_smoke tests/backup_smoke.cpp src/platform/backup.cpp)
@@ -491,6 +642,23 @@ add_test(NAME hormiga_blake3_smoke COMMAND hormiga_blake3_smoke)
 add_executable(hormiga_gis_smoke tests/gis_smoke.cpp)
 target_include_directories(hormiga_gis_smoke PRIVATE src)
 add_test(NAME hormiga_gis_smoke COMMAND hormiga_gis_smoke)
+
+# THE UPDATE CLIENT, with no network (tests/update_smoke.cpp). Everything it
+# checks is a decision -- version ordering, what the feed says, whether the
+# person was asked, whether a digest matches -- and every one of them is a
+# decision that, made wrong, is invisible until it is on somebody else's
+# machine. A version compare that reports 0.1.10 as older than 0.1.9 does not
+# error; it just means nobody is ever told there is an update.
+#
+# It links `sodium` for the digest and NOTHING ELSE: no Void Core, no view, no
+# database. That is the claim the file makes about itself -- the one machine you
+# cannot attach a debugger to is the one an update broke.
+add_executable(hormiga_update_smoke tests/update_smoke.cpp src/update/update.cpp)
+target_compile_definitions(hormiga_update_smoke PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
+  HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
+target_include_directories(hormiga_update_smoke PRIVATE src vendor/json)
+target_link_libraries(hormiga_update_smoke PRIVATE sodium)
+add_test(NAME hormiga_update_smoke COMMAND hormiga_update_smoke)
 
 add_executable(catgen tools/catgen.cpp)
 target_link_libraries(catgen PRIVATE hormiga_allomone)

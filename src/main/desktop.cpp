@@ -6,6 +6,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "voidmaiz/glhost.hpp" // the GL context this view needs, per platform
 #include <GLFW/glfw3.h>
 
 #include <cstdio>
@@ -127,6 +128,20 @@ static std::string shell_capture(const std::string& cmd) {
 static ImFont* g_mono_font = nullptr; // vendored JetBrains Mono (script IDE)
 
 int main(int argc, char** argv) {
+    /* WHERE THE BINARY LIVES, RESOLVED FIRST because the UI typefaces are
+     * loaded from it and that happens before `HormigaApp` exists. This used to
+     * sit forty lines below, under `app.ship_dir`, which is why the font block
+     * could only reach for `current_path()` -- see the `vendor/fonts` comment
+     * there. Empty means "argv[0] told us nothing"; every use falls back to the
+     * working directory. */
+    std::filesystem::path ship_dir;
+    {
+        std::error_code sec;
+        if (argc > 0)
+            ship_dir = std::filesystem::absolute(argv[0], sec).parent_path();
+        if (sec) ship_dir.clear();
+    }
+
     auto T0 = std::chrono::steady_clock::now();
     auto lap = [&](const char* what) {
         if (std::getenv("HORMIGA_BOOT_TIMING"))
@@ -140,8 +155,26 @@ int main(int argc, char** argv) {
     });
     if (!glfwInit()) return 1;
     lap("glfwInit");
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    /* ── THE GL CONTEXT IS THE LIBRARY'S ANSWER, NOT OURS (2026-09-08) ───────
+     *
+     * These two lines used to be `CONTEXT_VERSION_MAJOR 3` / `MINOR 0` here and
+     * a matching `#version 130` two hundred lines below, copied from Void
+     * Maiz's `canvas_window.cpp` the way every host copies it. Their CI found
+     * what that pair does on macOS, and told us to check ours:
+     *
+     *   macOS ships no OpenGL 3.0. It offers legacy 2.1, or 3.2+ core profile
+     *   with forward compatibility, and nothing between. So the request DOES
+     *   NOT FAIL -- `glfwCreateWindow` succeeds and hands back 2.1 -- and then
+     *   the `#version 130` shader will not compile against it. **The window
+     *   opens and stays blank**, which reads as a rendering bug in our own draw
+     *   code, in a file we did not write the interesting part of.
+     *
+     * `gl_context_hints()` sets the hints and RETURNS the matching GLSL version
+     * string, so the two halves cannot drift apart again -- there is no longer
+     * a second place to write either of them. Windows behaviour is
+     * byte-identical (still 3.0 / `#version 130`); what this buys is a platform
+     * we have not shipped, which is exactly when a fix like this is cheap. */
+    const char* glsl_version = maiz::gl_context_hints();
     GLFWwindow* window = glfwCreateWindow(1360, 800, "Hormiga", nullptr, nullptr);
     if (!window) { glfwTerminate(); return 1; }
     glfwMakeContextCurrent(window);
@@ -155,7 +188,28 @@ int main(int argc, char** argv) {
       // rasterize labels/watermark straight from this same atlas. Font Awesome
       // (icon glyphs) is merged on top for the map-marker icons.
         ImGuiIO& fio = ImGui::GetIO();
-        auto vf = std::filesystem::current_path() / "vendor/fonts";
+        /* ---- THE FACES SHIP BESIDE THE BINARY, NOT BESIDE THE CALLER -----
+         *
+         * This was `current_path() / "vendor/fonts"`, and an installed copy of
+         * Hormiga has no `vendor/` under the folder it was launched from --
+         * nobody launches an installed application from a checkout. Every
+         * `if (exists)` below would have fallen through to `AddFontDefault()`,
+         * so the first device this was ever tested on would have opened a
+         * window in a pixelated bitmap face with NO ICONS AT ALL: the section
+         * tabs, the map markers and half the buttons are Font Awesome
+         * codepoints, and a merge that never happened draws them as blanks.
+         *
+         * Exactly the failure `render_site` had with the webfonts in August,
+         * in the other front-end, found the same way -- by asking what the
+         * path means on a machine that is not this one. CMake stages
+         * `vendor/fonts` beside both binaries; this is the half that reads it.
+         * The working directory stays as a last resort so running the built
+         * binary from the repo root still works. */
+        std::filesystem::path vf = ship_dir.empty()
+                                       ? std::filesystem::path()
+                                       : ship_dir / "vendor" / "fonts";
+        if (vf.empty() || !std::filesystem::exists(vf))
+            vf = std::filesystem::current_path() / "vendor" / "fonts";
         auto lato = vf / "Lato-Regular.ttf";
         ImFontConfig base;
         base.OversampleH = 2; // crisper at small sizes than the default 1
@@ -193,18 +247,20 @@ int main(int argc, char** argv) {
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 #endif
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 130");
+    ImGui_ImplOpenGL3_Init(glsl_version); // the half `gl_context_hints` returned
     lap("imgui init");
 
     HormigaApp app;
     app.mono_font = g_mono_font; // the script editor's monospace face
     app.base_dir = std::filesystem::current_path();
-    {   // where the BINARY lives: shipped files (webfonts) resolve from here,
-        // never from the data folder. Falls back to the working directory.
-        std::error_code sec;
-        if (argc > 0)
-            app.ship_dir = std::filesystem::absolute(argv[0], sec).parent_path();
-    }
+    // where the BINARY lives: shipped files (the fonts, the guide, the OKF
+    // bundle) resolve from here, never from the data folder. Resolved at the
+    // top of main because the typefaces above need it too.
+    app.ship_dir = ship_dir;
+    // A PERSON IS LOOKING AT THIS ONE, so it may offer an update. See
+    // `offer_updates` in app.hpp for why this is a flag the shell sets
+    // rather than something init() infers.
+    app.offer_updates = true;
     /* ── `--state <path>`, ON THIS BINARY TOO (2026-08-21) ───────────────────
      *
      * The CLI has honoured `--state` since it existed; the desktop shell did

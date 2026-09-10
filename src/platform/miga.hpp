@@ -19,7 +19,9 @@
 #pragma once
 
 #include <filesystem>
+#include <map>
 #include <string>
+#include <vector>
 
 namespace hormiga::miga {
 
@@ -28,6 +30,11 @@ struct PackResult {
     std::string error;
     int assets = 0;      // how many asset files were bundled
     long long bytes = 0; // final file size
+    /* The bundled files that were NOT under the assets folder — a
+     * `download.file` in `resume/`, a `hero.image` somewhere else. Reported so
+     * the operator learns where their originals actually are; before 2026-09-03
+     * these were silently absent from every bundle. */
+    std::vector<std::string> beyond_assets;
 };
 
 struct OpenResult {
@@ -39,7 +46,8 @@ struct OpenResult {
     std::string name;    // meta.name if present
 };
 
-/* Pack the working copy (state_json + everything under base_dir/assets/) into
+/* Pack the working copy (state_json + everything under base_dir/assets/, plus
+ * every file `extra` names) into
  * a v3 .miga at out_path. `name` is stored in meta. Write-temp-then-rename. */
 /* `assets_dir` is where THIS database's originals actually live — normally
  * `base_dir/assets`, but movable since 2026-09-01 (`config set paths.assets`).
@@ -49,7 +57,8 @@ struct OpenResult {
  * inside the envelope, so bundles written before the move still open. */
 PackResult pack(const std::string& state_json, const std::filesystem::path& base_dir,
                 const std::filesystem::path& out_path, const std::string& name,
-                const std::filesystem::path& assets_dir);
+                const std::filesystem::path& assets_dir,
+                const std::map<std::string, std::filesystem::path>& extra = {});
 
 /* Open a .miga: parse it, and for a v3 bundle EXTRACT its assets into
  * base_dir/assets/ (overwriting) and return its state document. A v2 legacy

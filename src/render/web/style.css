@@ -42,6 +42,23 @@
 .card img,.band img,.prose img,.hero-in img{max-width:100%;height:auto}
 /* a long link is the usual culprit and deserves to break before its container */
 .card a,.prose a,.meta a{overflow-wrap:anywhere}
+/* ── AND A LINK IN A META LINE HAS A COLOUR (2026-09-02) ────────────────────
+   Field report D3. `.meta a` was mentioned in exactly one rule in this file,
+   the one above, which sets wrapping and nothing else. The `video` block emits
+   `<p class="meta vwatch"><a …>Watch on YouTube</a></p>` under every player, so
+   that anchor rendered in the browser default `#0000EE` — passable on the
+   default cream page, illegible on a dark one, and the only unstyled link on
+   the site, which makes it read as a mistake rather than a choice. */
+.meta a{color:var(--accent)}
+/* ── AND A BARE URL IN PROSE IS A LINK THAT LOOKS LIKE ONE (2026-09-02) ─────
+   Field report D4 brought `linkify` to the website, which means a `narrative`
+   containing `https://…` now emits an anchor where it used to emit plain text.
+   The email domain gives those an inline `color:inherit` because a mail client
+   has no stylesheet to consult; a page does, and this is it. Underlined on
+   hover only, so a paragraph with three URLs in it still reads as a paragraph. */
+.prose a{color:var(--accent);text-decoration:none;
+  border-bottom:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+.prose a:hover{border-bottom-color:var(--accent)}
 /* wide content scrolls INSIDE its frame rather than widening the page */
 .card table,.prose table{display:block;max-width:100%;overflow-x:auto}
 .prose pre{max-width:100%;overflow-x:auto}
@@ -66,7 +83,23 @@ h2.section{font-family:var(--headf);font-size:clamp(1.5rem,1.1rem+1.4vw,2.3rem);
   margin:2.4em 0 .4em;scroll-margin-top:80px;position:relative;padding-bottom:.3em}
 h2.section::after{content:"";position:absolute;left:0;bottom:0;width:64px;height:4px;
   border-radius:3px;background:var(--accent)}
-.site-head{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.72);
+/* ── THE HEADER RIDES THE TOKENS LIKE EVERYTHING ELSE (2026-09-02) ──────────
+   Field report D2. This was the ONE rule in the stylesheet that stated a
+   colour instead of reading one, `rgba(255,255,255,.72)` — sitting directly
+   below the block that computes label colours from WCAG relative luminance and
+   explains at length why the page must receive finished tokens.
+
+   Its own contents were tokens the whole time: `.brand{color:var(--ink)}` and
+   `nav a{color:var(--muted)}`, and `--muted` is rescued AGAINST `--bg`. So on
+   any dark ground the header was pale ink on a white bar at roughly 1.3:1 —
+   and not only on a dark `theme.bg`: with `theme.dark 1` (the default) a
+   visitor whose OS is in dark mode got `--ink:#ededf0` from the media query
+   and the same white bar.
+
+   `color-mix` over `--bg` is what `body.glass` two rules down already does for
+   `--card`. One mechanism, both places. */
+.site-head{position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--bg) 78%,transparent);
   backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
 .site-head .wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:14px 24px}
 .brand{font-weight:800;font-size:20px;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
@@ -138,6 +171,88 @@ a.clickable{display:block;color:inherit;text-decoration:none;cursor:pointer}
 .divider.space{height:32px}
 .divider.dots{height:8px;background-image:radial-gradient(var(--line) 1.5px,transparent 1.5px);
   background-size:14px 8px;background-position:center;background-repeat:repeat-x}
+/* ── PROSE KEEPS THE LINE BREAKS THE AUTHOR TYPED (2026-09-02) ──────────────
+   Field report D4. `narrative` in the EMAIL renderer has carried
+   `white-space:pre-line` since it was written; the website collapsed the same
+   field's newlines into one run. So an eighteen-line tracklist typed into one
+   `narrative` arrived as one paragraph, and the only way to get a line break on
+   a page was one block rune per line.
+
+   `pre-line` and not `pre-wrap`: runs of spaces still collapse (which is what
+   makes pasted text behave), and only the newlines survive. */
+.prose.pre-line{white-space:pre-line}
+/* ── A COLOURED BAR AS A DIVIDER (2026-09-02) ───────────────────────────────
+   Field report A6: a five-colour swatch strip was a brand's strongest
+   repeating device and `line|dots|space` had nowhere to put it. The spans are
+   emitted by `render_site` with a validated background each and no other
+   authored style; the flex row is what makes them equal-width whatever the
+   count. `border-radius` on the container rather than per span so a two-colour
+   bar and a nine-colour bar have the same silhouette. */
+.divider.bar{display:flex;overflow:hidden;border-radius:3px;margin:22px 0}
+.divider.bar>span{flex:1 1 0;min-width:0}
+/* ── AUDIO BLOCK (2026-09-02) ───────────────────────────────────────────────
+   A cover, a title line, and a native `<audio controls>`. No facade and no
+   script: `video` needs one because a YouTube iframe reports every visitor to
+   Google before they press play, and nothing here leaves this site — so
+   `preload="none"` keeps the same promise using the standard instead of our
+   JavaScript, and the player works with scripting off.
+
+   The control itself is left to the browser on purpose. A custom transport
+   would mean rebuilding keyboard access, screen-reader labelling and the
+   media-session integration a phone's lock screen uses, and getting all three
+   right in CSS is not on offer. What is styled is the card around it. */
+.audioblk{margin:20px 0;padding:14px;border:1px solid var(--line);
+  border-radius:12px;background:var(--card)}
+.audio-head{display:flex;gap:14px;align-items:center;margin-bottom:10px}
+.audio-cover{width:72px;height:72px;object-fit:cover;border-radius:8px;
+  flex:0 0 auto}
+.audio-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.audio-title{font-family:var(--headf);font-weight:700;font-size:1.1rem;
+  line-height:1.25}
+.audio-artist{color:var(--muted);font-size:.95rem}
+.audio-dur{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums}
+/* full width, and never wider than the card that holds it */
+.audio-player{width:100%;display:block}
+.audioblk figcaption{margin:10px 0 0}
+/* ── DOWNLOAD BLOCK (2026-09-02) ────────────────────────────────────────────
+   A file a visitor can keep. Two shapes: a `.btn` with the type and size beside
+   the label, and a wider card for a document that deserves a sentence of its
+   own. Both are one `<a download>`; the card is not a container with a button
+   in it, because a target you can miss is worse than a plain button. */
+.dl-wrap{margin:16px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dl-meta{font-weight:500;opacity:.8;font-size:.85em;
+  font-variant-numeric:tabular-nums}
+.btn.download .dl-meta{color:var(--on-accent)}
+.dl-caption{color:var(--muted);font-size:.9rem}
+.dl-card{display:flex;align-items:center;gap:14px;margin:18px 0;padding:14px 16px;
+  border:1px solid var(--line);border-radius:12px;background:var(--card);
+  text-decoration:none;color:var(--ink);transition:border-color .16s,transform .16s}
+.dl-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.dl-icon{flex:0 0 auto;display:grid;place-items:center;width:52px;height:52px;
+  border-radius:10px;background:color-mix(in srgb,var(--accent) 14%,transparent);
+  color:var(--accent);font-weight:800;font-size:.75rem;letter-spacing:.02em}
+.dl-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dl-label{font-weight:700;font-size:1.05rem}
+.dl-card .dl-caption{font-size:.9rem}
+.dl-card .dl-meta{color:var(--muted);font-size:.82rem}
+/* ── PLATFORM SETS (2026-09-08) ─────────────────────────────────────────────
+   The badge `app.js` writes into the .wcol of the download that matches the
+   visitor's computer, plus the emphasis on the card itself. Its TEXT comes from
+   the row's data-yours, not from the script, because one app.js serves the
+   English and the Spanish page. Nothing here hides a sibling and nothing here
+   may: a page that silently offers nothing is indistinguishable from a broken
+   page (okf/concepts/platform/download-page.md §5d). */
+.plat-yours{display:inline-block;margin:0 0 6px;padding:3px 9px;border-radius:999px;
+  font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.wcol.is-yours .dl-card{border-color:var(--accent)}
+.wcol.is-yours .btn{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 26%,transparent)}
+.band.accent .plat-yours,.band.imaged .plat-yours{
+  background:rgba(255,255,255,.22);color:#fff}
+@media(max-width:520px){
+  .audio-head{gap:10px}
+  .audio-cover{width:56px;height:56px}
+}
 /* horizontal band: components sit side-by-side, each spanning its --span/12;
    stacks to one column on narrow screens (W4 responsive, default behavior) */
 .wrow{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--gap,20px);
@@ -314,6 +429,44 @@ nav a.langswitch{margin-left:8px;border:1px solid var(--line);font-weight:600}
 /* the hero's second line: an address, a date, whatever the title needs under it */
 .hero-sub{margin:8px 0 0;font-size:clamp(1rem,2vw,1.2rem);opacity:.92}
 .hero.banner .hero-sub{color:#fff;text-shadow:0 1px 12px rgba(0,0,0,.5)}
+/* ── A PORTRAIT IN FRONT OF THE BANNER (2026-09-03) ─────────────────────────
+   Portfolio report A6: *"the header image of my face doesn't look good, i would
+   like my face to be in a circle thing, with maybe a separate background banner
+   thing."* Every image slot a hero had was the BACKGROUND, so a face put there
+   was cropped to the band — a chin-less headshot under a headline.
+
+   `hero.portrait` is a separate field drawn as a round inset over `image`,
+   which is free to be an actual background again. The same shape `.card.person`
+   already uses for a contact avatar, which is why this is a hero gaining a
+   pattern the codebase had rather than a new idea.
+
+   `object-fit:cover` on a square box is what makes an arbitrary photo crop to a
+   circle without squashing; the ring is `--bg` so the portrait reads as
+   separate from whatever is behind it, on a photo or on a flat band. */
+.hero-portrait{display:block;width:clamp(96px,14vw,152px);aspect-ratio:1;
+  border-radius:50%;object-fit:cover;margin:0 0 14px;
+  border:4px solid var(--bg);box-shadow:0 6px 22px -6px rgba(0,0,0,.45)}
+.hero.plain.withp{padding-top:44px}
+.hero.plain.withp .hero-in{display:flex;flex-direction:column;align-items:center}
+.hero.banner.withp .hero-in{padding-bottom:32px}
+/* on a banner the ring reads better as light: the scrim behind it is dark by
+   construction (`.hero-shade`), whatever the theme is doing elsewhere */
+.hero.banner .hero-portrait{border-color:rgba(255,255,255,.85)}
+
+/* ── A HEADING INSIDE A NARRATIVE (2026-09-03) ──────────────────────────────
+   Report A9. `narrative` was one `<p class="prose pre-line">`, so a role, an
+   employer, a date range and four bullets were one paragraph at one weight —
+   and the workaround was `::first-line{font-weight:800}`, i.e. "the first line
+   of this paragraph is secretly a heading."
+
+   Sized below `h2.section`, which is the PAGE's structure; this is hierarchy
+   inside a block. No accent rule under it, deliberately — `h2.section` has one,
+   and giving both the same decoration would flatten the two levels back into
+   one. */
+.prose-heading{font-family:var(--headf);font-weight:800;
+  font-size:clamp(1.1rem,1rem+.4vw,1.35rem);line-height:1.25;
+  margin:1.6em 0 .2em;letter-spacing:-.01em}
+.prose-heading + .prose{margin-top:0}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
   gap:var(--gap,12px);margin:calc(var(--gap,12px) + 4px) 0}
 .tile{display:block;overflow:hidden;border-radius:12px;border:1px solid var(--line);
@@ -325,6 +478,25 @@ nav a.langswitch{margin-left:8px;border:1px solid var(--line);font-weight:600}
 .gallery.masonry{display:block;column-width:220px;column-gap:12px}
 .gallery.masonry .tile{aspect-ratio:auto;break-inside:avoid;margin:0 0 12px}
 .gallery.masonry .tile img{height:auto}
+/* ── `image_grid.columns`, WHICH WAS DECLARED AND NEVER READ (2026-09-02) ────
+   Field report A6: the field was in the glyph, labelled `combo:2,3,4`, offered
+   in the inspector — and the web renderer never looked at it. Layout came
+   entirely from `auto-fill(minmax(190px,1fr))` and the block's `span`, so
+   getting one album cover to fill its column meant discovering empirically
+   that `span 4` yields one tile and `span 5` yields two with the cover
+   floating left. "A field that does nothing is worse than no field."
+
+   `auto-fill` stays the default — it is the right behaviour for a gallery of
+   unknown length on an unknown screen — and an explicit count overrides it.
+   `minmax(0,1fr)` rather than `1fr`, because a bare `1fr` track is
+   `min-width:auto` underneath and a wide tile would push the row past its
+   container, which is the leak the top of this file exists to prevent. */
+.gallery.cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}
+.gallery.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.gallery.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gallery.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.gallery.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.gallery.cols-6{grid-template-columns:repeat(6,minmax(0,1fr))}
 /* carousel: a horizontal swipe track with snap; prev/next scroll it */
 .carousel-wrap{position:relative;margin:18px 0}
 .gallery.carousel{display:flex;grid-template-columns:none;overflow-x:auto;
@@ -337,7 +509,20 @@ nav a.langswitch{margin-left:8px;border:1px solid var(--line);font-weight:600}
 .carousel-wrap .cbtn.prev{left:-6px}.carousel-wrap .cbtn.next{right:-6px}
 @media(prefers-reduced-motion:reduce){.gallery.carousel{scroll-behavior:auto}}
 .empty{color:var(--muted);font-style:italic}
-/* scroll-reveal: sections rise + fade as they enter (JS adds .in) */
+/* ── scroll-reveal: sections rise + fade as they enter (JS adds .in) ────────
+   `.reveal` starts at `opacity:0`, and until 2026-09-02 the ONLY things that
+   could take it off zero were `app.js` and the reduced-motion media query. So
+   a visitor with JavaScript off got the header, the hero and the `.btn`s, and
+   an empty page under them — every narrative, section header, quote, stat,
+   card and gallery tile invisible, with nothing to indicate anything was
+   missing. That was true of every site this renderer has ever produced,
+   including a real community organization's live one, where the event cards,
+   the directory and the fliers are all `.reveal`.
+
+   The `<noscript>` counterpart lives in `render_site`'s `<head>` — three lines
+   that turn the animation off entirely rather than trying to fake it — and it
+   is emitted there rather than here because a stylesheet cannot ask whether
+   scripting is enabled. Both halves are required; neither works alone. */
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.3,1)}
 .reveal.in{opacity:1;transform:none}
 .site-foot{margin-top:56px;padding:36px 0;border-top:1px solid var(--line);color:var(--muted);
@@ -460,6 +645,11 @@ nav a.langswitch{margin-left:8px;border:1px solid var(--line);font-weight:600}
   /* one column: two 150px cards side by side is worse than one readable one */
   .cards{grid-template-columns:1fr}
   .gallery{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  /* an authored column count is a LAYOUT intent, not a promise to cram six
+     tiles onto a phone. Four or more collapse to two; three and under stand.
+     Same call `.cards` makes one line up. */
+  .gallery.cols-4,.gallery.cols-5,.gallery.cols-6{
+    grid-template-columns:repeat(2,minmax(0,1fr))}
   .band{padding:22px 0;border-radius:0}
   .band .band-inner{padding:0 18px}
   .btn{display:block;text-align:center;padding:14px 20px}

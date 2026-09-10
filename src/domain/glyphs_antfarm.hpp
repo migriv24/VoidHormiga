@@ -76,8 +76,42 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
     // SERVERS / DEPLOYERS — consume a `site` (plug into the publisher's out)
     reg("hol_localhost", "Localhost - local server", L_SERVE, R"("port")",
         R"("port":"Localhost port")", 88, in("site"));
-    reg("hol_github", "GitHub Pages - cloud deploy", CLOUD, R"("repo")",
-        R"__("repo":"Pages repo (user/repo)")__", 56, in("site"));
+    /* ── GITHUB PAGES: the deploy target an organization already has ─────────
+     *
+     * This node has been in the palette since the holidays were registered,
+     * with one `repo` field, a `site` input port and nothing reading any of it.
+     * The 2026-09-02 field report's sentence about `image_grid.columns` applies
+     * exactly: *a field that does nothing is worse than no field* — and this was
+     * a whole holiday of them. `src/publish/github.cpp` now speaks the Git Data
+     * API, so this is the configuration for a publish that happens.
+     *
+     * It is a SEPARATE HOLIDAY rather than a `provider` on `hol_static_host`,
+     * and the difference is real rather than taxonomic: a managed CDN takes an
+     * account id and a project name and receives an upload, and GitHub Pages
+     * takes a repository and a BRANCH and receives a commit. Rollback is a
+     * vendor call on one and a ref move on the other. Collapsing them would
+     * mean four fields on each node that are meaningless on the other, which is
+     * how a node stops being readable at a glance — the thing the Antfarm is
+     * for.
+     *
+     * `branch` is a field because `gh-pages` and `main` are both ordinary
+     * answers and the wrong one publishes into a void: a deploy that succeeds
+     * and changes nothing anyone can see. `effect check-host` reads GitHub's own
+     * Pages settings and says when the two disagree.
+     *
+     * The credential rides the two doors every other one in this application
+     * does — `token_key` in the passphrase-locked vault first (it travels with
+     * the .miga), `token_file` beside the database second — and it never
+     * reaches a command line. */
+    reg("hol_github", "GitHub Pages - cloud deploy", CLOUD,
+        R"("repo","branch","token_key","token_file","message")",
+        R"__("repo":"Repository (owner/repo)",)__"
+        R"__("branch":"Branch GitHub Pages serves (default gh-pages)",)__"
+        R"__("token_key":"Access token, kept in the encrypted vault (travels with the .miga)",)__"
+        R"__("token_file":"...or a token file beside the database (gitignored)",)__"
+        R"__("message":"Commit message for each publish (blank = a generated one)")__", 124,
+        std::string(R"({"name":"site","dir":"in","type":"site"},)") +
+        R"({"name":"domain","dir":"in","type":"domain"})");
 
     /* ── LAN PEER: the other device with this database (2026-08-27) ──────────
      *
@@ -243,7 +277,7 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
      * It is NOT in the Antfarm palette: nobody hand-places a deployment. It is
      * evidence of something that happened. */
     core.register_glyph(
-        R"({"glyph":"deployment","label":"Deployment",)"
+        R"({"glyph":"deployment","label":"Deployment","kind":"act",)"
         R"("fields":["host","url","at","document","lang","state","vendor_id","note"],)"
         R"("hints":{"color":"#2e6b4f","face":{"w":240,"h":96},"category":"History",)"
         R"("editors":{"note":"multiline:60","state":"combo:live,superseded"},)"

@@ -120,6 +120,97 @@ inline bool lang_matches(const maiz::SceneNode& n, std::string_view lang) {
     return false;
 }
 
+/* ── SOME VALUES HAVE NO TRANSLATION, AND COUNTING THEM IS A LIE ─────────────
+ *
+ * The portfolio agent, after translating 96% of a site by hand:
+ *
+ *   > The last two fields standing between us and 100% are
+ *   > `label_es "migriv24@gmail.com"` and `label_es "541-913-5781"`. An email
+ *   > address has no Spanish. The report's own header warns that writing the
+ *   > source value into the `_es` field is "worse than the fallback", so the
+ *   > correct move is to leave them — which means **the warning can never go
+ *   > away**, and a warning that cannot be cleared is a warning people stop
+ *   > reading.
+ *
+ * That last clause is the real damage. This project has spent a lot of comments
+ * on warnings being worth reading, and a permanent one at the bottom of every
+ * render undoes that for all of them.
+ *
+ * Their first suggestion — "not counting a field whose value contains no
+ * letters" — does not survive `migriv24@gmail.com`, which is nearly all
+ * letters. What actually distinguishes these values is that they are
+ * IDENTIFIERS rather than prose: an address, a phone number, a URL, a handle.
+ * They are typed the same in every language because they are not in a language.
+ *
+ * Three shapes, deliberately narrow. Anything that is prose — even one word, even
+ * a proper noun somebody may well want to localise — keeps counting, because
+ * the failure to avoid is silently excusing text that SHOULD have been
+ * translated. An operator with a fourth shape has `lang:none` below.
+ */
+inline bool untranslatable(const std::string& v) {
+    if (v.empty()) return true;
+    // a URL: nothing about it is language
+    if (v.rfind("http://", 0) == 0 || v.rfind("https://", 0) == 0 ||
+        v.rfind("www.", 0) == 0 || v.rfind("mailto:", 0) == 0 ||
+        v.rfind("tel:", 0) == 0)
+        return true;
+    // an email address: exactly one @, no spaces, a dot after it
+    const size_t at = v.find('@');
+    if (at != std::string::npos && at > 0 && v.find('@', at + 1) == std::string::npos &&
+        v.find(' ') == std::string::npos && v.find('.', at) != std::string::npos)
+        return true;
+    // a number-shaped value: a phone, a year, a price, an extension. Digits and
+    // punctuation only -- one letter anywhere makes it prose again.
+    bool has_digit = false, only_number_chars = true;
+    for (unsigned char c : v) {
+        if (std::isdigit(c)) has_digit = true;
+        else if (!std::strchr(" +-().,/x#", c)) only_number_chars = false;
+    }
+    return has_digit && only_number_chars;
+}
+
+/* ── A PER-LANGUAGE FIELD ON A DATA RUNE (2026-09-03) ────────────────────────
+ *
+ * `render_site`'s own `text()` lambda does this for the DOCUMENT — `title_en`
+ * falling back to `title_es` — and it stopped there, so the blocks that publish
+ * an organization's own CONTENT could not be bilingual at all. The portfolio
+ * report is exact about the cost:
+ *
+ *   > Every one of Miguel's five project descriptions — the longest prose on
+ *   > the site, the part a reader actually reads — prints in English on the
+ *   > Spanish page, and `translation-report` says the site is 96% done.
+ *
+ * `organization` declared `bio` and no `bio_es`; `image` declared `description`
+ * and `alt` and no `_es` for either. So the one text on the site that could not
+ * be translated was the text a visitor came to read.
+ *
+ * Their framing is the one that decides it, and it is the author's own
+ * commitment applied one layer down: *"Given the position you took declining
+ * `site.languages` — that Spanish is not a translation of the site, for many
+ * readers it IS the site — this is the same commitment applied one layer
+ * down."*
+ *
+ * The rule the guide already states resolves the shape: per-language THINGS get
+ * sibling runes and a `lang:` tag, per-language STRINGS on one thing get the
+ * `_en`/`_es` suffix. A project description is a string on one thing.
+ *
+ * THE LEGACY FIELD IS STILL READ, last. Every database written before today has
+ * `bio` and no `bio_en`, and a bilingual upgrade that blanked existing prose
+ * would be a worse bug than the one it fixes. Same shape as `render_site`'s
+ * `text_or`, which does this for `summary`/`title` on events. */
+inline std::string lang_text(const maiz::SceneNode& n, const char* base,
+                             std::string_view lang, const char* legacy = nullptr) {
+    const std::string b(base);
+    std::string v = field_value(n, b + "_" + std::string(lang));
+    if (!v.empty()) return v;
+    for (const std::string& other : hormiga::site_langs()) {
+        if (other == lang) continue;
+        v = field_value(n, b + "_" + other);
+        if (!v.empty()) return v;
+    }
+    return legacy ? field_value(n, legacy) : field_value(n, base);
+}
+
 /* Pick the member of `runes` whose `lang:` tag matches the page, falling back
  * to one with no language tag, then to the first. A flier exists in two
  * languages as two runes (per the project rule: per-language THINGS get sibling
@@ -223,8 +314,16 @@ inline std::string lang_shortfall(int shown, int total,
  * WHY THE RENDERER AND NOT THE AUTHOR. A person writing "complete the survey at
  * https://…" in a summary field has written a link; asking them to also wrap it
  * in a `link` block is asking them to know about our block vocabulary in order
- * to get behaviour every mail client already gives them. */
-inline std::string linkify(const std::string& escaped) {
+ * to get behaviour every mail client already gives them.
+ * WHY THE STYLE IS A PARAMETER (2026-09-02). An email has no stylesheet, so a
+ * linkified URL there must carry `style="color:inherit"` inline or the client
+ * paints it `#0000EE`. A web page HAS one, and that same inline style would
+ * override it — so bringing linkification to the website (field report D4) with
+ * the email's attribute attached would have made every bare URL in prose look
+ * exactly like the body text around it. Two domains, one transform, one
+ * difference, stated once here rather than as two copies of this function. */
+inline std::string linkify(const std::string& escaped,
+                           const char* style = " style=\"color:inherit\"") {
     static const std::string kStop = " \t\n<>\"')";
     std::string out;
     out.reserve(escaped.size() + 32);
@@ -238,7 +337,7 @@ inline std::string linkify(const std::string& escaped) {
             // Trailing punctuation belongs to the sentence, not the URL.
             while (e > i && std::strchr(".,;:!?", escaped[e - 1])) --e;
             const std::string url = escaped.substr(i, e - i);
-            out += "<a href=\"" + url + "\" style=\"color:inherit\">" + url + "</a>";
+            out += "<a href=\"" + url + "\"" + style + ">" + url + "</a>";
             i = e;
             continue;
         }
@@ -259,7 +358,7 @@ inline std::string linkify(const std::string& escaped) {
             if (!local.empty() && domain.find('.') != std::string::npos) {
                 const std::string addr = local + "@" + domain;
                 out.erase(s);
-                out += "<a href=\"mailto:" + addr + "\" style=\"color:inherit\">" +
+                out += "<a href=\"mailto:" + addr + "\"" + style + ">" +
                        addr + "</a>";
                 i = e;
                 continue;
@@ -270,10 +369,58 @@ inline std::string linkify(const std::string& escaped) {
     return out;
 }
 
-/* Escaped, then linkified — the pairing every prose field in the email domain
- * wants, named so a future block cannot accidentally use only half of it. */
+/* Escaped, then linkified — the pairing every prose field wants, named so a
+ * future block cannot accidentally use only half of it.
+ *
+ * `web_prose` is the same pairing without the inline colour: a web page has a
+ * stylesheet and `.prose a` in it, and an inline `color:inherit` would win over
+ * that and make every linkified URL look like the paragraph it sits in. */
 inline std::string prose(const std::string& raw) {
     return linkify(html_escape(raw));
+}
+
+inline std::string web_prose(const std::string& raw) {
+    return linkify(html_escape(raw), "");
+}
+
+/* ── A LIST OF CSS COLOURS, VALIDATED (2026-09-02) ──────────────────────────
+ *
+ * For `divider_style bar` — the coloured swatch strip the field report asked
+ * for (A6: "the brand's strongest repeating device and there is no way to put a
+ * coloured bar on a page"). Comma- or space-separated in, safe-to-emit out.
+ *
+ * VALIDATED RATHER THAN ESCAPED, because there is no such thing as a safely
+ * escaped arbitrary CSS value: a field that reaches a `style` attribute is a
+ * field that could carry `;background:url(...)`, and the render seam does not
+ * get an exception for a swatch. A hex triplet or a bare colour word survives;
+ * anything else comes back in `rejected` so the renderer can say what it
+ * dropped, because a silently ignored value is the defect this whole feature
+ * was reported alongside.
+ *
+ * Pure, so a test can hand it `#fff; background:url(x)` and check what comes
+ * back — which is the reason it lives here and not in the emit lambda. */
+inline std::vector<std::string> css_colors(const std::string& raw,
+                                           std::vector<std::string>* rejected) {
+    std::vector<std::string> out;
+    std::string cur;
+    for (size_t i = 0; i <= raw.size(); ++i) {
+        const char c = i < raw.size() ? raw[i] : ',';
+        if (c != ',' && c != ' ' && c != '\t') { cur += c; continue; }
+        if (cur.empty()) continue;
+        bool good = cur.size() <= 24;
+        if (good && cur[0] == '#') {
+            good = (cur.size() == 4 || cur.size() == 7 || cur.size() == 9);
+            for (size_t k = 1; good && k < cur.size(); ++k)
+                good = std::isxdigit((unsigned char)cur[k]) != 0;
+        } else {
+            for (size_t k = 0; good && k < cur.size(); ++k)
+                good = std::isalpha((unsigned char)cur[k]) != 0;
+        }
+        if (good) out.push_back(cur);
+        else if (rejected) rejected->push_back(cur);
+        cur.clear();
+    }
+    return out;
 }
 
 /* Cut to a whole word near `n`, with an ellipsis. Used by the grid `detail`

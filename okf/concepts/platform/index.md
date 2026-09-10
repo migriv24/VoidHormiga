@@ -39,6 +39,21 @@ Read in this order the first time:
   making a change: the admin profile, the signed-in identity, and the contact.
   Three different things that a conventional design would collapse into one
   users table, and why this one does not.
+- [Distribution](/concepts/platform/distribution.md) — **opened 2026-09-04.**
+  How the application reaches a machine that is not the developer's, and how the
+  person on it learns a newer version exists. The seam with Void Mago (a
+  build-time tool that never runs on a user's machine), why the hub is a file
+  rather than a program, side-by-side installs, and the rule that shaped the
+  whole update client: **a check is a network request a person did not make.**
+- [The download page](/concepts/platform/download-page.md) — **half record,
+  half plan (2026-09-08).** The other end of distribution: where the `.exe` is
+  hosted, why the website's button must never carry a version number, which
+  Hormiga blocks build it, and the four things that actually stand between a
+  stranger and a working install. Written to be read by the author and run by an
+  agent — and it has now been run, which corrected three of its numbers. **§5(d)
+  is where the OS detection lives**: `platform` on `download` and `link`, a grid
+  row of them as a platform set, the visitor's own moved first and labelled, and
+  none of them ever hidden. What is still a plan is the release the button needs.
 - [Collaboration](/concepts/platform/collaboration.md) — **opened 2026-08-27.**
   One database, several devices: the merge (Void Palabra's, and correct now),
   the transport (LAN first, S3 as a rendezvous), and the honest statement of

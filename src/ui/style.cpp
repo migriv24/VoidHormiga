@@ -330,20 +330,77 @@ void HormigaApp::draw_style_tab() {
             if (ImGui::IsItemDeactivatedAfterEdit())
                 pending_cmds.push_back(std::string("config set org.name \"") +
                                        org_name + "\"");
-            ImGui::SetNextItemWidth(-70);
+            /* ── BRAND IMAGES COME FROM THE ASSET LIBRARY (2026-09-02) ───────
+             *
+             * The author, from a hands-on session:
+             *
+             *   > when i want to change the image, i have to upload a new image.
+             *   > I would rather just use an image i have in my image assets
+             *   > already. In general, the images we use should be from the
+             *   > image assets. Uploading a NEW image should redirect to
+             *   > creating a new image asset. Sure it can be an option, but the
+             *   > workflow should mostly be in choosing images that are already
+             *   > in the database.
+             *
+             * That inverts the default rather than adding a button, and it is
+             * the same principle the render seam already enforces one layer
+             * down: an image on a page is an `image` RUNE — tagged, queryable,
+             * linked to its event, in the `.miga`, and visible to `mirror`.
+             * A file path typed into config is none of those things. An upload
+             * that does not become a rune is an asset the organization cannot
+             * find again, and `org.logo` was the last place in the application
+             * that produced one.
+             *
+             * So: Choose first, Browse second, and Browse now MINTS A RUNE
+             * (`ingest_image_rune`) instead of copying bytes into `assets/` and
+             * pointing config at them. The typed path stays — it is the escape
+             * hatch for a file somewhere unusual, and removing an affordance
+             * that works is not what "prefer the other one" means. */
+            ImGui::SetNextItemWidth(-190);
             ImGui::InputTextWithHint("##orglogo", "logo image path", org_logo_buf,
                                      sizeof org_logo_buf);
+            if (ImGui::IsItemDeactivatedAfterEdit()) {
+                org_logo = org_logo_buf;
+                pending_cmds.push_back(std::string("config set org.logo \"") +
+                                       org_logo + "\"");
+            }
             ImGui::SameLine();
-            if (ImGui::Button("Browse##logo") && on_pick_file) {
-                std::string pth = on_pick_file(org_logo);
-                if (!pth.empty()) {
+            if (ImGui::Button("Choose##logo")) ImGui::OpenPopup("##pickorglogo");
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("pick one of this organization's images -\n"
+                                  "the usual way to set this");
+            {
+                const std::string picked =
+                    org_image_picker("##pickorglogo", "the organization's images");
+                if (!picked.empty()) {
                     std::snprintf(org_logo_buf, sizeof org_logo_buf, "%s",
-                                  pth.c_str());
-                    org_logo = pth;
+                                  picked.c_str());
+                    org_logo = picked;
                     pending_cmds.push_back(
-                        std::string("config set org.logo \"") + pth + "\"");
+                        std::string("config set org.logo \"") + picked + "\"");
                 }
             }
+            ImGui::SameLine();
+            if (ImGui::Button("Browse##logo") && on_pick_file) {
+                const std::string pth = on_pick_file(org_logo);
+                if (!pth.empty()) {
+                    /* A BROWSED FILE BECOMES AN IMAGE RUNE. This used to point
+                     * config straight at wherever the file happened to live —
+                     * outside `assets/`, unhashed, unbacked-up, and invisible to
+                     * every query in the application. */
+                    const std::string rel = ingest_image_rune(pth);
+                    if (!rel.empty()) {
+                        std::snprintf(org_logo_buf, sizeof org_logo_buf, "%s",
+                                      rel.c_str());
+                        org_logo = rel;
+                        pending_cmds.push_back(
+                            std::string("config set org.logo \"") + rel + "\"");
+                    }
+                }
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("bring a new file in - it becomes an image in\n"
+                                  "this organization's assets, not just a path");
             if (!org_logo.empty()) {
                 HostTexture t = texture_for(org_logo);
                 if (t.id) {

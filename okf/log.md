@@ -3,7 +3,7 @@ type: Log
 title: Log
 description: The development history of Void Hormiga — the decisions that still shape the code, condensed by arc rather than by day.
 tags: [status:current, audience:dev, confidence:asserted]
-timestamp: 2026-09-01T00:00:00Z
+timestamp: 2026-09-02T00:00:00Z
 ---
 
 # How to read this
@@ -353,3 +353,1567 @@ The repository was made ready to be public. Changes worth recording:
   stray `sed -i` had silently rewritten an entire file); `.gitignore` extended
   to cover runtime sidecars, the agent config, and two vendored libsodium
   metadata files that hard-code the builder's home directory.
+---
+
+# 2026-09-02 — a second client, GitHub Pages, and a decision about language
+
+Two things happened on the same day and they belong in one entry, because the
+second is the answer to a question the first asked.
+
+## The Click LaFont report
+
+The first field report from a client that **is not an outreach organization**:
+one person's music project — a character, two albums, and a website meant to be
+explored. Adopting it was the point, which is to say finding where the
+vocabulary runs out. It ran out in twelve places on day one, and the report
+keeps six **defects** apart from six **absences** on purpose. It is kept in
+`okf/reports/` rather than folded away, per the rule the index states: each
+report is a measurement of what an outside caller, following the documentation
+in good faith, actually got.
+
+**Two of the six defects were live on a real community organization's website
+at the time**, which is the strongest argument the report makes for adopting a
+client whose needs are wrong on purpose.
+
+Fixed the same day:
+
+- **D1 — every page this renderer has ever produced was invisible without
+  JavaScript.** `.reveal` starts at `opacity:0` and only `app.js` ever added
+  `.in`, so a visitor with scripting off got the header, the hero and the
+  buttons over an empty page, with nothing to indicate anything was missing.
+  Every event card, directory entry and flier on the community site was a
+  `.reveal`. The fix is the three-line `<noscript>` that `src/render/site.cpp`
+  had already argued for in a different context, and it turns the animation
+  *off* rather than faking it: a no-JS visitor is owed the content, not the
+  choreography.
+- **D2 — `.site-head` hardcoded white.** The one rule in the stylesheet that
+  stated a colour instead of reading a token, sitting directly under the block
+  that computes label colours from WCAG relative luminance. Its own contents
+  were tokens, rescued against `--bg`, so on any dark ground the brand sat at
+  about 1.3:1 — and not only on a dark `theme.bg`: with the default `theme.dark
+  1`, every dark-mode visitor to the live site got it.
+- **D3 — `.meta a` had no colour**, so the "Watch on YouTube" line under every
+  `video` block rendered in browser-default `#0000EE`.
+- **D4 — `narrative` behaved differently in the two renderers.** The email kept
+  the author's line breaks and linkified bare URLs; the website did neither.
+  `AGENT-GUIDE.md §8` documents the linkification without distinguishing them,
+  and the guide is what an agent trusts — so the fix makes the guide true rather
+  than narrowing it. What the divergence had cost, measured: a site with no
+  lists at all, two eighteen-track tracklists as one hyphen-joined paragraph
+  each, and every ordinary paragraph its own block rune. `linkify` grew a style
+  seam at the same time, because the email's inline `color:inherit` is right
+  there and wrong on a page that has a stylesheet.
+- **D6 — the data mantle name is hardcoded, and being wrong about it was
+  silent.** Naming the data mantle after the organization is the obvious first
+  move for a new client, and it is what this one did: every command succeeded,
+  `validate` said `valid`, and `render-site` reported `ok` with every gallery
+  empty and no asset staged. The report explicitly asked for the *cheap* fix
+  rather than the expensive one — a warning at render time, not a configurable
+  name — and that is what shipped. Whether an organization's data namespace
+  should permanently be called `demo-org` is now
+  [Q57](/developer_questions.md).
+- **Part 3 — there was no operator escape hatch for the stylesheet.** Three
+  two-line cosmetic defects on a live public site, each unfixable by the person
+  whose site it is, because `render_site` unconditionally writes `style.css`.
+  A `custom.css` beside the database is now staged and linked after the built
+  one. Not a loosening of the render seam and the distinction is the design: a
+  *field* would be a way to get authored text into a public page through the
+  model, which `video` already refuses; a *file* is the operator's own machine
+  and their own hand, and a `<link rel=stylesheet>` cannot execute anything
+  whatever it contains. It is the pattern `fonts/` has used since it shipped.
+
+**D5 was a misread, and the guide was the reason.** `related` is Void Core's
+*tag*-proximity verb (`usage: related <tag>`) and has never reported edges;
+`links <rune>` is the verb that does. `AGENT-GUIDE.md` warned that `link` does
+not appear in `related` without ever naming the verb that shows it, which is
+how an agent following the guide gets a false negative from the recommended
+check. The guide now names `links`, and the observation that Void Core's
+`(no neighbors)` is misleading when the ref names a rune with edges went
+upstream as `MESSAGE_FOR_VOIDCORE_hormiga-related-verb-2026-09-02.md`.
+
+Also from A6, the "small things, no ask attached", all three of which had an
+ask attached the moment anyone looked:
+
+- **`image_grid.columns` was declared, labelled `combo:2,3,4`, offered in the
+  inspector, and read by nothing.** Layout came entirely from the stylesheet's
+  `auto-fill`, so getting one album cover to fill its column meant discovering
+  empirically that `span 4` yields one tile and `span 5` yields two. The
+  report's sentence for it is the one to keep: *a field that does nothing is
+  worse than no field.*
+- **`og:title` was the page title**, so a home page shares to social as "Home".
+  There is a share title on `page` now, and an unset one falls back to
+  "<page> - <site>" rather than the bare word.
+- **`divider_style` gained `bar`** — a validated coloured swatch strip. A
+  brand's repeating device and an organization's banner stripe are the same
+  request. The colours are validated rather than escaped, because there is no
+  such thing as a safely escaped arbitrary CSS value.
+
+## The language decision
+
+The report's A3 asked for `config set site.languages 'en'` — a way to build one
+language, on the grounds that a solo artist with no Spanish copy gets a nav
+button promising Spanish and a sitemap of duplicate pairs.
+
+**The author declined it**, and the reasoning is now a commitment rather than a
+preference:
+
+> instead of opting to NOT have multi language, the ask should've been "have
+> better and more robust translation tools", so its easier for a site to be in
+> english and spanish. … the website itself should still prioritize multiple
+> languages. We don't want to be lazy in our development. We want MORE
+> features, not less.
+
+Two things followed from taking the evidence seriously and the remedy not:
+
+1. **The duplicate-pair worry was already answered and the report did not know
+   it.** Every page carries `<link rel="alternate" hreflang="…">` in both
+   directions plus `x-default`, which is exactly the mechanism search engines
+   document for one page served in two languages. It is not an SEO liability;
+   it is the SEO answer.
+2. **The real defect is that nobody is told.** `text()` falls back from
+   `title_es` to `title_en` silently, so a site can be 0% translated, render
+   `ok`, publish, and put a Spanish URL in front of a Spanish-speaking reader
+   with an English page behind it — the same class of silence as D6.
+
+So: a render now reports how much of the page was written in the language it
+was asked for, and **`effect translation-report [lang]`** writes a *replayable
+script* rather than a list — every gap as a `set <rune> <field>_es '<the
+English text>'` line with the source text already in place, grouped under the
+`use <mantle>` that makes it apply. A translator edits the right-hand sides and
+replays it with `--script --atomic --actor`, so translating is a logged,
+attributed, replayable batch like every other change. See `src/app/translate.cpp`.
+
+## GitHub Pages
+
+Phase E has said "deploy holidays (folder, GitHub Pages)" since the roadmap was
+written, and `hol_github` has been in the Antfarm palette — a label, a colour, a
+`site` input port and a `repo` field — with nothing reading any of it. That is
+D6's and A6's lesson at the scale of a whole holiday.
+
+`src/publish/github.cpp` speaks the Git Data API: blobs, a tree, a commit, a
+ref move. Notes worth keeping:
+
+- **No `base_tree`.** With one, a publish is a patch over the last one and a
+  page deleted from the model stays live forever. Without one the tree *is* the
+  built folder and the deploy is a mirror — which is what `site/` already is of
+  the database.
+- **`.nojekyll` goes in the tree, not in `site/`.** GitHub runs Jekyll over the
+  branch otherwise and silently drops every path beginning with an underscore.
+  It is a property of this host, so a Cloudflare deploy has no business carrying
+  it.
+- **`CNAME` is written whenever a `hol_dns` node is wired in.** GitHub reads
+  that file, not an API field, as the authority on the custom domain — so a
+  deploy that omits it silently unsets a domain configured in the web UI.
+- **The commit sha is the `vendor_id`.** Rollback is a force-update of the ref
+  back onto it and uploads nothing. On Cloudflare the id has to be recovered
+  from a preview URL; here the history Hormiga keeps and the thing the host
+  needs are the same string, which is the shape `web-platform.md` wants from
+  every host.
+- **It enables Pages on first publish**, which is half of what A5 said
+  `deploy-site` could not do. The other half — creating a Cloudflare Pages
+  project — is still manual.
+
+Two host glyphs meant lifting `find_host` and `host_token` out of the two
+functions that had a copy of each, and that **fixed a real asymmetry rather
+than only removing duplication**: `rollback_site` read `token_file` only, so a
+host configured the recommended way — `token_key` in the vault — could publish
+and could not undo. The one operation an operator reaches for when something
+has gone wrong in public was the one that could not find the credential.
+
+**`effect check-host`** is A5's actual ask: the sibling of `check-store` for the
+other one-way door. It performs the smallest *real* reads a deploy performs and
+never asks a vendor whether a token is valid — the report supplies fresh proof
+for that rule, an account-scoped Cloudflare token that answers `Invalid API
+Token` to `/user/tokens/verify` while working perfectly against every account
+endpoint. It reports several lines rather than a verdict, because "can I
+publish?" is four questions with four different fixes and only one of them is
+the credential. The GUI's "Test this token" button became "Test this host" and
+calls the same verb.
+
+## What was deferred, and where it went
+
+A1 (an `audio` block, a `release` glyph, a `track_list`), A2 (media into the
+object store), A4 (a gated block and a little per-visitor state) are design
+conversations, not fixes. They are [Q54–Q56](/developer_questions.md) with a
+lean on each. The report's own note that a solver counter is analytics — a
+different product and a privacy question this project has not asked — is
+recorded there too, so nobody builds it on the way to the other two.
+
+## And a second note arrived the same day
+
+While the above was being built, the author left seven items from a hands-on
+session with the app: renaming a note, an error linking images, choosing brand
+images from the asset library rather than uploading, a Save button in the
+Builder, text wrap on the canvas, a deleted page's old URL, and — the big one —
+**registering a custom component with the Builder the way a host registers a
+widget with Void Maiz.** Six of the seven were built the same day; what each
+turned out to be is below.
+
+## The seven items, and what they turned out to be
+
+Six of the author's seven are built. Written up in
+[builder-roadmap](/concepts/sections/builder-roadmap.md); the two that are worth
+recording here are the ones where the reported symptom was not the defect.
+
+**"Cant rename notes"** was not a missing widget. The Data tab's detail pane has
+had a rename box since it was written, and `draw_data_body` deliberately skips
+`note` and `rule` runes because both have their own tab — so the one surface
+that could rename a rune never showed the runes in question. The control is in
+`ui/widgets.cpp` now and both tabs call it. It returns a bool meaning *your node
+reference is now dangling*, because a rename reprojects and a caller that keeps
+reading `sel` is reading freed memory; making that the return value is the only
+way a third caller cannot get it wrong.
+
+**"Cant link images together? or there's a weird error"** was not about images
+and the CLI path was fine. The Data tab built its command by string
+concatenation, so a relation typed as `goes with` reached Void Core as
+`--relation goes` — the link written, under a relation nobody asked for, in
+silence — and one containing an apostrophe produced *unterminated quote (SPEC
+§6.1)* at somebody who had typed a word into a text box. That is almost
+certainly the weird error. Both halves go through `json_arg` now.
+
+**"A deleted page should route to 404"** contained its own diagnosis in a
+parenthetical — *"cuz i guess the link still exists"*. `render_site` wrote one
+file per page and removed nothing, so deleting a `page` rune took it out of the
+nav, the sitemap and the model, and left its HTML in the folder the deploy
+uploads. The old page stayed live at its old URL, forever, showing content the
+database no longer contained. There was already a themed 404; what was missing
+is that **`site/` is a mirror of the document** — the property the GitHub
+deployer builds its commit with (no `base_tree`), applied one layer earlier so
+it holds for every host.
+
+The other three: brand images are chosen from the organization's own `image`
+runes and a browsed file now mints one (an upload that does not become a rune is
+an asset the organization cannot find again); the Builder has a Save button with
+a live unsaved count, because the writing was never the missing part and being
+told was; and documents can be renamed and deleted, the Void Core verbs that
+were listed as blocking having landed some time ago with nothing to tell the
+roadmap.
+
+**Two files split, on the ratchet's evidence rather than on a hunch.**
+`ui/documents.cpp` took document and template management out of `builder.cpp`
+(nothing in it draws a canvas or reads a selection — it is the "documents as
+projects" enabler, living in the file it was first typed into), and three
+controls moved to `ui/widgets.cpp`, whose header has said since it was written
+that a widget every section uses belongs to none of them.
+
+## And the direction that came with them
+
+The seventh item is a registry for custom page elements, and the author opened a
+second question in the same breath: a registry for custom **data types**.
+
+> Like do we really think that a 3D object type is as needed as a contact,
+> event, or image? Contacts, events, and images are super universal. But 3D
+> object is a bit more specific. Heck, what if its a unity game showcase, and
+> the data type is webgl Unity games? that's super specific!
+
+That reframes [Q54](/developer_questions.md) — the audio block the Click LaFont
+report asked for — from *should we add audio* into *is a glyph per medium the
+right shape at all*. Both are written up: [Q58](/developer_questions.md) for
+elements, [Q59](/developer_questions.md) for types.
+
+The finding worth carrying into that work is that **most of it already exists**.
+A glyph declaration is data; placement, tags, undo, merge, `.miga` and replay
+are Void Core behaviour that does not know which glyphs exist. The first rung of
+both questions is the same one: let a declaration come from a file beside the
+database. What is genuinely new is a render per (glyph × domain) with an
+explicit *skip* for email, a canvas preview that resembles the output — the same
+wall the canvas text-wrap item runs into — and, only for Q58, script on a public
+page. That last one is where every refusal in this codebase already points, and
+the shape that survives is the one `custom.css` took the same day: a file beside
+the database, never a model field, because model data arrives by import and by
+sync from a device somebody else was using.
+
+## Void Core answered the same day, and both "neither blocks us" items were worse
+
+`MESSAGE_FOR_VOIDHORMIGA_related-signpost-and-two-holes-2026-09-02.md`, shipped
+in **0.2.13**, consumed and deleted per rule 4.
+
+**The signpost is in, worded as we suggested.** `related <rune>` now answers
+`(no tag neighbors; 'x' is a rune with 1 link - try 'links x')` — but *only*
+where the answer was already empty and the ref names a rune with at least one
+edge. They checked the case our own reasoning implies hardest: a rune name that
+doubles as a real tag still answers about the tag and never mentions the link.
+They declined to make `related` report edges, which is what we asked for. It
+still returns `ok: true`, because it found what it was asked for; nothing that
+branches on `ok` moves.
+
+**Q50.2 was not "ignores the flag".** `relate <tagA> <tagB> [weight]` takes the
+weight *positionally* and there is no flag parsing at all, so `--relation`
+landed in the weight slot and reached `atof("--relation")` — **0.0**. The
+association was written at weight zero, "not near at all", which in a proximity
+graph is the inverse of the intent, recorded as success. A silently inverted
+fact rather than a dropped name, and plain typos (`relate a b abc`) went the
+same way. It refuses now. **We are not exposed**: nothing in `src/`, the seeds,
+the templates, the demo transcripts or the tests calls `relate` at all, and the
+one hit is `reyna_import_smoke.cpp`'s list of allowed verb names.
+
+Their framing is worth keeping, because it is a correction to how we reported
+it: *"neither blocks us"* was too generous, and a defect we had characterised as
+cosmetic was writing wrong data.
+
+**Q50.1 was four verbs, not one.** `link`, `links`, `unlink` and `journal` were
+all missing from the flat `verbs` string `--describe` prints — including the
+verb we had just told an agent to use instead of `related`. They acted on the
+*diagnosis* rather than the symptom: there is nothing to introspect (the router
+is an if/else chain across five files with no registry), so instead of
+pretending otherwise the list is now **checked** by a CI test that extracts every
+verb the families answer to and diffs both directions, phantoms included.
+
+**And one back to us.** They point out that the half of the incident that
+actually misled the field agent was ours: their empty answer was ambiguous, but
+our guide sent the agent to the wrong verb and told them to expect nothing from
+it. They also note that `relate`/`link` have the same shape-confusion one layer
+up, with no fix available on their side that would not be guessing at intent —
+an agent writing `relate a b` when it means `link a b` gets tag proximity, `ok:
+true`, and no signpost. The guide now says plainly that `relate` is about tags
+and takes no flags.
+
+Upgrading is drop-in — additive, ABI unchanged. The vendored DLL is picked up by
+the ordinary build.
+
+## Sound, and icons that were already in the building
+
+**The `audio` block.** The Click LaFont report's A1 rung 1, and the reason it
+went in ahead of the registry questions is that it is the part that is certainly
+right: an organization with a podcast, a recorded meeting or a
+Spanish-language radio spot has the same absence a music project does, and for
+that organization the recording is often the most accessible thing on the site
+because it does not require reading.
+
+Two decisions worth keeping:
+
+- **No facade, which is the opposite of `video` and for the same reason.**
+  `video` ships a click-to-load facade because a YouTube iframe reports every
+  visitor to Google whether or not they press play. Nothing here leaves the
+  organization's own site, so the honest thing is the plain element:
+  `preload="none"` fetches no audio until somebody presses play — the same
+  promise, kept by the standard rather than by our JavaScript — and a native
+  `<audio controls>` works with scripting off, which after the `.reveal` finding
+  earlier the same day is a property to choose on purpose.
+- **`src` is a file and not a data rune, and that is a decision with a
+  deadline.** There is no `audio` glyph to tag, query or link to the event it
+  was recorded at, because [Q59](/developer_questions.md) asks whether a glyph
+  per medium is the right shape at all. Adding one now would pre-empt that
+  question in the direction it argues against. The block that plays the file is
+  certainly right; where the file's metadata lives is still being decided.
+
+The MIME tables in `publish/cloudflare.cpp` and `platform/preview_server.cpp`
+both learned audio at the same time. Neither knew what a `.mp3` was, so the
+block would have played locally and offered a download on the deployed site —
+the worst place to find that out.
+
+**Icons, and nothing was downloaded.** The ask was *"if we can download some
+icon assets from somewhere"*, and the answer is that both halves were already
+vendored, each for the surface it suits: **Font Awesome 6 Solid** merged into
+the ImGui atlas (right for a GUI — one glyph, one draw call, inherits colour and
+DPI) and **Lucide** as SVG path data for the web renderer (right for a page,
+where an icon font blocks first paint, renders as a box when it fails, and is
+invisible to a screen reader). Font Awesome had been loaded since the map
+markers shipped and used for nothing else.
+
+So `glyph_icon()` is one table in `app/app_internal.hpp` rather than a tenth
+parameter on `block()` — an icon is a property of THIS front-end, and putting it
+in the glyph declaration would push a desktop concern into the model that the
+web renderer, the newsletter and every headless run have to ignore. An unlisted
+glyph falls back to a neutral square, because a palette where some rows have an
+icon and some have blank space reads as broken rather than as sparse.
+
+The one mechanic worth remembering: window titles are
+`ICON " Name###Name"`. ImGui hashes the part after `###`, so every window kept
+the id it has always had and nobody's saved dock layout moved. Without it,
+adding an icon would have silently renamed four windows and reset the workspace
+of everyone who upgraded.
+
+Still owed: the Antfarm and Allomone palettes are drawn by Void Maiz
+(`maiz::edit_canvas`), so icons there are an upstream ask rather than something
+to patch in here.
+
+## The portfolio client, and the evening the app would not open
+
+A third client, and the difference that produced every finding: **one person
+publishing about themselves.** LON is a network, Click LaFont is a brand; both
+are organizations. Five pages, 62 blocks, deployed to GitHub Pages — and
+`check-host` passed all four checks on the first try, which is the first
+independent use of the day's earlier work.
+
+### The crash, which was ours twice over
+
+The author, in the middle of it: *"i can't open hormiga. i double click the
+desktop shortcut … it briefly opens for a bit (with the terminal) then it
+closes."*
+
+`std::clamp(v, lo, hi)` has a precondition — `hi >= lo` — and violating it is UB
+that libstdc++ with assertions turns into `abort()`. `draw_data_section`
+computes two pane widths as *at least this readable, at most this share of the
+space*, and both bounds cross in a narrow window: the first below 275px, the
+second whenever the remaining width is under 270px, **which its own 160px floor
+guarantees**. The pattern is the natural way to write that constraint, it is
+everywhere in layout code, and it is a hard abort rather than a visible glitch.
+`clamp_fit` now takes `lo` when the bounds cross, on the reasoning that a
+minimum readable size that overflows can still be read and dragged back, while
+taking `hi` collapses the pane to nothing — which looks exactly like the crash
+it replaced. A third crossing site in the calendar (an event longer than the
+visible hour range) was found by the same grep and fixed.
+
+**Why it fired that evening was the second half, and that half was mine.** The
+same day's icon work put icons on window titles as `ICON " Data###Data"`, on the
+reasoning that ImGui hashes what follows `###` so the window id would not move
+and no dock layout would either. The id was right and **the reasoning was
+wrong**: `imgui.ini` keys settings by a different hash —
+`CreateNewWindowSettings` skips to the `###` marker and hashes from *there*, so
+a saved `[Window][Data]` is `hash("Data")` while a window named
+`"X Data###Data"` looks itself up as `hash("###Data")`. Every saved entry was
+orphaned. Position, size and dock assignment gone, silently, and the Data
+section came up narrow enough to cross the clamp.
+
+The titles are plain names again. Icons stay everywhere they cost nothing — the
+Builder palette and its drag ghost, the document toolbar, the Data "+ New" menu,
+the Notes tab. **Putting one on a window title needs an `imgui.ini` migration
+first**, and that is a deliberate piece of work rather than a decoration; the
+note lives at the call site so nobody re-adds it casually.
+
+Two lessons worth separating. The clamp was a latent crash any narrow window
+would have found, and it was not mine. The rename was mine, and its shape is the
+one to remember: **a change that "keeps the id stable" is a claim about two
+hashes agreeing, and I checked one of them.**
+
+### The `download` block
+
+The portfolio's blocking gap, and their diagnosis was unusually complete: three
+of the four pieces already existed. `link` emits the right markup,
+`stage_site_asset` is type-agnostic and would have staged a PDF correctly, and
+`resource` (`path`, `topic`) was declared, editable in the GUI, and **rendered
+by nothing** — the third instance of that trap in a week, after
+`image_grid.columns` and the whole of `hol_github`.
+
+Their four leans were all taken, and two are worth recording:
+
+- **`file` accepts either a path or a `resource` rune name.** One field, two
+  forms, and the dead glyph becomes reachable without inventing a second block —
+  the way `audio.cover` already resolves an `image` rune name.
+- **`.html`, `.svg`, `.js` and friends are refused, out loud.** They raised this
+  against their own proposal, and the comparison they drew is exact:
+  `custom.css` is a file and not a model field precisely because model data
+  arrives by import and by merge, and a merge that can publish an executable
+  page on the organization's own origin is a hole. The refusal is a closed list
+  of dangerous extensions rather than an allow-list, because an allow-list would
+  refuse the `.zip` of photos an organization actually wants to publish.
+
+**No clearance gate, deliberately.** `directory` publishes a query result so it
+must ask permission per person; this publishes the one file an author pointed
+at, and their sentence for it is the right one: *naming the file is the
+consent.* A `download_grid` over `resource` runes would inherit `directory`'s
+question and can arrive later with that conversation attached.
+
+A résumé surfaced it; the thing is general. A flier PDF, the bylaws, an annual
+report, a know-your-rights sheet, a printable calendar — the documents an
+outreach organization is most often asked for, and until now the answer was to
+host them somewhere Hormiga does not manage.
+
+### `site.languages`, which was accepted, stored and ignored
+
+The trust bug, and it is partly a documentation-shape failure of mine.
+`app/translate.cpp` opens by QUOTING the Click LaFont ask — `config set
+site.languages 'en'` — in order to record that the author declined it. An
+unlabelled blockquote reads as a contract, the portfolio agent set the key, Void
+Core's free-form `config` accepted and returned it, and nothing anywhere read
+it. Their framing is the one to keep:
+
+> A config key that accepts, stores and returns a value it does not act on is
+> worse than a missing one, because the read-back confirms it.
+
+The feature is still declined, so the fix is that the key stops pretending:
+`render_site` warns once, names the decision, and points at
+`effect translation-report`. The quote in `translate.cpp` is now labelled as
+declined. Void Core's config cannot know which keys an application honours — the
+check has to live at the seam that would have honoured it, which is why it sits
+in `translate.cpp` rather than in the renderer.
+
+### What was recorded rather than built
+
+`role` before `project` ([Q60](/developer_questions.md),
+[Q61](/developer_questions.md)), on the report's own ordering: *"`role` removes
+a parser that will break; `project` removes labels that are merely wrong."* The
+résumé builder currently parses work history back out of `narrative` prose with
+a line-shape convention — a parser over presentation, which inverts this repo's
+first ground rule and breaks the day a person edits the block by hand.
+
+And one diagnostic worth stealing, from A2: **a privacy control that is
+meaningless for the data it guards means the data is not what the block is
+for.** `directory` refusing to publish a Blender project without
+`clearance:public` is not the gate misbehaving; it is the gate correctly
+reporting that the block is being borrowed.
+
+## 2026-09-03 — the portfolio's second round, and four asks that were already on the list
+
+Five of the seven items were built the day they arrived. What makes this round
+worth its own entry is that **most of it was already somewhere in the OKF**, and
+the report is what made the connections legible.
+
+### D2 — a bundle that was correct, and a site that was correct, and a broken combination
+
+The worst-shaped bug in a while, and the report's own sentence for it is the one
+to keep: *"the site was correct, the bundle was correct, and the combination was
+broken."*
+
+`download.file` is documented as "a path relative to the database", so they put
+a resume in `resume/` beside the database. The render staged it, the deploy
+published it, and `effect pack-database` wrote a `.miga` that **silently did not
+contain it** — because `pack()` bundled the assets folder and nothing else.
+Opened anywhere else, the block reported "This file is not available", correctly
+and unhelpfully. Every individual step said `ok`, and the AGENT-GUIDE's own
+table *documents* that only `assets/` travels — so nothing was wrong except that
+no one connected the rule to the block that invites you to break it.
+
+`pack()` now takes every file the MODEL points at, and the interesting part is
+where the list comes from. Not a hardcoded set of field names — that is exactly
+the trap this codebase has paid for three times (`image_grid.columns`,
+`hol_github`, `resource` were all declared-and-read-by-nothing) and pointing it
+at data loss would be worse. It asks the **glyph declaration**: a projected
+`SceneField` carries its `editor`, so a field an operator picks a file for is
+declared `path`. Add a glyph tomorrow with a `path` field and it is bundled
+without anybody editing that function.
+
+**And a credential does not come along.** `hol_static_host.token_file`,
+`hol_object_store.secret_file` and `hol_sqlite.file` are all paths beside the
+database, and a `.miga` is *not encrypted* — its own docstring says it carries
+the organization's data in readable form. None of them is declared with a `path`
+EDITOR, because an operator types those through the Antfarm rather than through
+the widget registry, so asking the declaration is what keeps them out. That is
+not luck but it is not a guarantee either, so there is a second lock by file
+shape (`.key`, `.token`, `*secret*`, …). Both would have to be wrong at once.
+
+### A5 — the bilingual commitment, one layer down
+
+The sharpest argument in the report, and it is ours quoted back at us:
+
+> Given the position you took declining `site.languages` — that Spanish is not a
+> translation of the site, for many readers it *is* the site — this is the same
+> commitment applied one layer down.
+
+`organization` declared `bio` and no `bio_es`; `image` declared `description` and
+`alt` and no `_es` for either. So `directory` and `image_grid` — the two blocks
+that put an organization's own **content** on a page — published one language of
+prose whatever page they were on, and `translation-report` called the site 96%
+done while every project description printed in English on the Spanish page.
+The one text a visitor came to read was the one text that could not be
+translated.
+
+The rule that resolves it was already written in the guide: *per-language
+THINGS get sibling runes and a `lang:` tag, per-language STRINGS on one thing get
+the `_en`/`_es` suffix.* A description is a string on one thing. `bio_en`/
+`bio_es`, `alt_en`/`alt_es`, `description_en`/`description_es`, with the legacy
+field still read last so no existing database loses a word, and one shared
+`lang_text` helper so `published.hpp` and the renderer cannot drift.
+
+**And the warning can be cleared now**, which was the other half. An email
+address has no Spanish, so counting `label_es "someone@example.org"` as
+untranslated made 100% unreachable — and their observation is the one that
+mattered: *"a warning that cannot be cleared is a warning people stop reading."*
+That costs every other warning this renderer prints, several of which were
+expensive to earn. `untranslatable()` excludes addresses, URLs and
+number-shaped values; a rune tagged `lang:none` opts out wholesale. A site whose
+only untranslated values are a phone number now renders in silence.
+
+### A6 and A9 — one field each, and each deletes a client's CSS
+
+`hero` had `image`, `image_filter`, `image_dim`, `band_image`, `band_bg` — **every
+one of them the background** — so a portrait put there was cropped to a 340px
+band. `hero.portrait` is a round inset in front of it, which is the shape
+`.card.person` already draws for a contact: a pattern the codebase had, on a
+block that lacked it. It replaces 23 lines of their `custom.css`.
+
+`narrative` rendered as one `<p>`, so a role, an employer, a date range and four
+bullets were one paragraph at one weight. Their workaround was
+`::first-line{font-weight:800}` — *"the first line of this paragraph is secretly
+a heading."* `heading_en`/`heading_es` says it instead. Line breaks (2026-09-02)
+had made the structure expressible and left the hierarchy not.
+
+### Where this lined up with what was already planned
+
+The author asked for exactly this reading, and four of the six absences turned
+out to be things already on the list:
+
+| the report's ask | what it meets |
+|---|---|
+| **A10** a glyph registry | **[Q59](/developer_questions.md)**, opened by the author the day before. Same question, from a client instead. |
+| **A7** materials and gradients | **`🔨 presets`** in [builder-roadmap](/concepts/sections/builder-roadmap.md), started in July and never finished — now [Q63](/developer_questions.md). |
+| **A8** a card that opens | `event_grid`'s `detail` axis, which already exists at the block level; `directory` has `display` (layout) and no depth axis. |
+| **A9** heading hierarchy | **[Q60](/developer_questions.md)** (`role`) arriving as a visual complaint. |
+
+Two of those collapse further. **A10's `record_grid` idea is what unblocks
+Q59**: the hard half of [Q58](/developer_questions.md) is that a block needs a
+renderer per output domain, and a *generic* grid over a declared type needs one
+renderer total — so the data-glyph registry can ship without opening the
+block-registry door at all. And **A7's preset-as-authored-bundle wants the same
+loader** the registries want: a declared thing that ships beside the database.
+Building either one carelessly builds half of the other badly.
+
+They also supplied the constraint that makes a registry safe, unprompted, and it
+is now recorded in Q59 as a hard rule: **the privacy seam must not become
+configurable.** `directory`'s clearance gate is trustworthy *because* it knows it
+is publishing people; a generic grid over user-declared types cannot make that
+promise, so a declared glyph must never flow through `directory`.
+
+### What they are owed
+
+An answer, not a feature. Their closing question — *is a declared data glyph a
+thing Void Hormiga wants to have, or does the glyph set grow by hand?* — is a
+decision only the author can make, and it has now been asked twice in two days
+from two directions. They maintain workarounds that are written differently
+depending on whether they are temporary, which is a fair reason to want to know.
+
+## 2026-09-03 — what a glyph actually is, and a message that is architecture
+
+A long design conversation with the author, sent upstream as
+`MESSAGE_FOR_VOIDCORE_hormiga-rune-kinds-and-the-glyph-split-2026-09-03.md`. It
+started from [Q59](/developer_questions.md) — may an organization declare its own
+record type — and did not stay there, because the honest answer turned out to
+depend on what a glyph *is*.
+
+**The finding: `glyph` is doing two unrelated jobs.** It is the SCHEMA — which
+fields exist, what shape `content` has, a fact true in every mantle and every
+context — and it is the PRESENTATION — `hints.color`, `face`, `ports`,
+`editors`, `labels`, plus our own `else if (n->glyph == …)` chains, which are
+facts about a rune *in a modality*, one per modality.
+
+The conflation was natural: for every application built so far there is exactly
+one presentation per type per surface, so the two are in bijection and the
+distinction never pays rent. It stops working the moment a rune has more than one
+representation — a sprite, a sound, a card, a paragraph in an email — because
+then the presentation is not a property of the rune, it is a **function from the
+rune to a modality**. And once it is a function it can be *derived* rather than
+authored, which is the author's original intent for the whole structure: a rune
+is the representation-independent thing, and a glyph is what some renderer —
+eventually a model — makes of it.
+
+**This changed the Q59 recommendation's reasoning, and strengthened it.** A
+hand-written renderer per type is a stopgap standing in for a generative one, so
+hand-adding `project` with bespoke render cases deepens the stopgap. A generic
+`record_grid` is a rendering *derived from the declaration* — a dumb deriver in
+the right shape, swappable later. It is not a compromise made to keep the
+registry cheap; it is the only option pointed where the architecture is going.
+
+**Three kinds of rune** ([Q64](/developer_questions.md)). Entity, action,
+attribute — because *"superman flying across the sky"* is two entities, an
+action and a domain, and Void Core can express only the entities. The argument
+that carries it is **arity**: an edge label can express only a binary relation,
+and that sentence is ternary. Reifying the verb as a node with typed ports is the
+standard answer (RDF reification; neo-Davidsonian event semantics) and is exactly
+an interaction net agent — the model Void Maiz already implements. Not a new
+mechanism; the existing one applied to verbs instead of only to nouns.
+
+The author's first naming — Gamma/Delta/Epsilon — was withdrawn on evidence:
+`../VoidMaiz/include/voidmaiz/reduce.hpp` already uses those letters in Lafont's
+own sense *about glyphs*, and ε is the arity-zero **eraser**, close to the
+opposite of "a concept carrying a value". "Verb" is likewise taken by the
+dispatcher. Suggested `entity` / `act` / `measure`.
+
+**Values on edges** ([Q65](/developer_questions.md)). When an edge points at an
+attribute rune, the weight is the value: `player --[5.0]--> speed`. The attribute
+rune supplies the **unit**, which is the strongest thing about it. The author's
+criterion for when to use it is the useful part — *how much the number actually
+interacts with the mantle* — sharpened here to: **if a number is read by rules
+that produce new structure it belongs on an edge; if it is read only by renderers
+it belongs in a field.**
+
+**Hormiga's answer is no, for a mathematical reason rather than a conservative
+one.** A weight is a magnitude; a date has no magnitude, it has a position. Dates
+and coordinates are **points in an affine space** — subtract two to get a
+duration or a displacement, add one of those to a point, but never add or scale
+two points — while health and speed are **vectors**. That is exactly why "half of
+September 3rd" is meaningless while "a quarter past twelve" is fine. Most of
+Hormiga's numbers are points, so most of Hormiga keeps fields.
+
+**A belief of ours that was wrong, corrected here.** We had assumed Void Core
+stored numbers as text. It does not: `verbs_edit.c` parses every `set` value and
+stores a JSON *number* when the token parses completely. The stringiness is our
+own read side — `field_value()` stringifies and `doc_field_int()` re-parses. That
+is one accessor to fix locally, not an upstream overhaul, and no change to number
+storage was requested.
+
+What we asked for instead is that a value **say what it is**: a field-level
+annotation naming its measurement level (nominal / ordinal / interval / ratio)
+and its unit. Four different things are all called "number", distinguished by
+which operations are legal, and nothing in the model currently records which.
+
+The two older asks went in the same message: glyph descriptors as a documented
+host contract (which deletes our hand-maintained `glyph_fields()` duplicate), and
+**glyph declarations living in the state document** — the one that actually
+blocks Q59, because descriptors live on `VC_Manager` and a `.miga` therefore
+carries runes without their meaning.
+
+**Where the weight of that message actually is, on the author's correction.** The
+first draft measured every ask in diff size and kept calling them small, which
+understated it: the code changes really are additive, and **what is being asked
+for is a moderate rethink of Void Core's own OKF.** Their `concepts/glyph.md`
+opens with the conflation verbatim — *"it declares the rune's content fields,
+which editor drives it, and how to summarize it"*, one schema clause and two
+presentation clauses — and `concepts/rune.md`, `concepts/links.md`,
+`concepts/tag-system.md` and `interaction-nets.md` each carry a sentence this
+changes. The message now names those pages and separates the two costs in its own
+table, because a small diff landing against documentation that says otherwise is
+the worse outcome.
+
+We also offered to draft a **quantity** concept page for them — measurement
+levels, points versus vectors, units — since no such page exists and we worked
+the material out for our own dates and coordinates. Offered as a message for them
+to take or discard, not as an edit: ground rule 4 runs both directions.
+
+## 2026-09-04 — Void Core answered all five, Void Mago tried to ship us, and a font path that was never resolved
+
+Two messages arrived and both were consumed here (ground rule 4: the log is the
+durable record, not the message file).
+
+### Void Core 0.2.14 — all five asks shipped, one name declined on our evidence
+
+`MESSAGE_FOR_VOIDHORMIGA_voidcore-all-five-shipped-0.2.14-2026-09-03.md`,
+answering our message of the day before. Everything in
+[the 2026-09-03 entry](/log.md) is now built: `glyphs` as a documented host
+contract, `state.glyphs` + `glyph declare`, field-level `kind`, `kind` on the
+descriptor, and attribute assertions with the `values` verb.
+
+They varied us in three places and each variance is better than the ask:
+
+1. **`glyphs` grew a resolver**, so a host reads one shape whether a descriptor
+   was declared or registered, with `fields`, `kind` and `source` always
+   present. `source` is what makes a declaration shadowing a registration
+   visible rather than silent.
+2. **Declarations joined the undo slice** (`mantles + active + glyphs`). Their
+   reasoning: a schema is *authored content*, so a rune must never survive an
+   undo that removed the declaration explaining it. The cost is O(the type
+   vocabulary), not O(the data).
+3. **The unit lives on the RUNE, not the glyph** — a new `measure` verb writing
+   a `quantity` object beside `content`. We had written that the attribute rune
+   supplies the unit and then asked for it on the glyph anyway; `health`,
+   `speed` and `strength` share one schema and differ only in what they
+   measure, so a glyph could not have carried it.
+
+**Q64 and Q65 are answered and cleared from
+[developer_questions](/developer_questions.md).** The naming is
+`entity` / `act` / `measure`, taken with our reasoning — γ/δ/ε was declined
+because Void Maiz already uses those letters in Lafont's own sense *about
+glyphs*, and ε is the arity-zero eraser. They also declined the one thing we
+suggested that would have quietly broken something: kinds are **not** a reserved
+`kind:<k>` tag, because `kind:` is already an ordinary application namespace and
+reserving it would have changed what every existing `kind:vegetable` tag
+matches.
+
+They offered to take our **quantity** page and wrote it themselves —
+`../VoidCore/okf/concepts/quantity.md`. The offer was the useful part.
+
+### What we did with it
+
+- **`hormiga::glyph_fields()` is deleted**, which was ask 1's whole point. It
+  was a hand-maintained second copy of every `"fields":[...]` in
+  `register_glyphs`, and it was **already wrong**: `job` appeared twice, so the
+  first arm won and answered `{org, deadline, url}` for a glyph that declares
+  twelve fields and no `url`. A CSV of jobs mapped two real columns, wrote a
+  field nothing declares, and reported that `pay`, `location`, `description`
+  and six others were "no such job field" — a wrong answer delivered with a
+  diagnostic. Nothing could have caught it, because a duplicate of a
+  declaration never disagrees with the declaration; it disagrees with the other
+  duplicate. It now reads `glyphs <name>` from the core.
+- **`hormiga::declare_glyph()`** is a one-line helper and it earns its keep for
+  the reason Core's Python binding grew the same thing: `register_glyph` takes
+  JSON across the C ABI where a string is a string, but `glyph declare` is a
+  *dispatcher command*, so the descriptor is one SPEC §6.1 argument. A label of
+  `"Garden bed"` pasted in raw is three arguments and a refusal. It calls
+  `maiz::arg` — Core's own exported encoder — never a quoter written here.
+- **Their one question, answered with a test rather than a reading.** They
+  asked whether Hormiga ever *reconstructs* a state document rather than
+  round-tripping it, because reconstruction drops `glyphs`. Reading the code
+  says we round-trip (`Storage::save` stores `export_state()` verbatim; the
+  Palabra merge replaces only `mantles`). "We currently round-trip" is a
+  property of today's code and a dropped declaration does not error — it turns
+  an organization's own record type into runes nobody can read. So
+  `tests/spine_smoke.cpp` now declares a glyph, saves through SQLite, reopens on
+  a **core that registers nothing**, and asserts the fields come back and the
+  descriptor is stamped `document`. It also asserts the other half: a merely
+  *registered* glyph must NOT travel.
+- **Five glyphs gained `"kind":"act"`** — `statement`, `revision`,
+  `submission`, `deployment`, `incident`. Each records a happening whose subject
+  is another rune, and each was already reified for Q64's arity reason. `event`
+  deliberately is not one: an event here is the thing a person attends, and its
+  fields are read by renderers rather than filled as the roles of a verb.
+  Marking it would be reading the English word rather than the model. `measure`
+  is unused, which is Q65's answer standing: Hormiga's numbers are points.
+- `link --weight`'s new refusal touches nothing — we never call it. The floor in
+  `void.json` moved to `>=0.2.14`, because a 0.2.13 core answers `glyphs` with
+  an empty descriptor rather than an error, which is the shape of failure a
+  floor exists to refuse.
+
+### Void Mago — two blockers, and the half of updating that is ours
+
+`MESSAGE_FOR_VOIDHORMIGA_mago-shipping-and-the-update-client-2026-09-04.md`.
+Mago staged this repository for the first time and refused to produce a package.
+Both refusals were right and both fixes are here. The whole distribution story
+is now [a concept page](/concepts/platform/distribution.md).
+
+**`libwinpthread-1.dll`.** Both executables imported it. It lives in the ucrt64
+toolchain directory and on no other machine in the world, and **no manifest
+could have mentioned it** — it is a fact about how the binary was linked, not
+about what the project declares. Found by reading the PE import directory, which
+is a check nothing here does. `-static` under MinGW; `objdump -p` afterwards
+names only Windows system DLLs and `libvoidcore.dll`.
+
+**`fonts/` was promised and did not exist**, and fixing it found a third
+blocker nobody had reported. `ships_beside_binary` resolves against the
+checkout; there is no `fonts/` in this repository. But `desktop.cpp` had been
+loading Lato, JetBrains Mono and Font Awesome from
+`current_path()/vendor/fonts` — and an installed copy has no `vendor/` and is
+not launched from a checkout. **Every `if (exists)` would have fallen through to
+`AddFontDefault()`**, so the first device this was ever tested on would have
+opened a window in a bitmap face with **no icons at all**: every section tab,
+toolbar button and map marker is a Font Awesome codepoint, and a merge that
+never happened draws them as blanks.
+
+That is August's empty `site/fonts/` again, in the other front-end, and it is
+worth stating as a rule:
+
+> **A path that resolves on the developer's machine because two folders happen
+> to be the same folder is not resolved; it is unfalsified.** `ship_dir` and
+> `base_dir` are equal in a build tree and different everywhere else.
+
+The whole vendored family is now staged as `vendor/fonts/` — the name it
+actually has — so the build tree and the install tree have one shape, and
+`fonts/` beside the binary stops colliding with `fonts/` beside the *database*,
+which `void.json` declares as the organization's own faces.
+
+`mago stage voidhormiga --platform windows-x64` now reports six files, no
+unresolved imports and nothing missing.
+
+### The update client
+
+Built, in three pieces with one decision-maker.
+
+- **`src/update/`** holds every decision and links the standard library,
+  libsodium and the vendored JSON — no window, no Void Core, no session, no
+  org. `tools/check_layering.py` enforces that, and the reason is not tidiness:
+  *the one machine you cannot attach a debugger to is the one an update broke*,
+  and the ordinary reason somebody wants a newer Hormiga is that this one will
+  not open their database.
+- **`voidhormiga-cli update`** runs in `main()` before any session exists — the
+  same argument as `--restore-backup`: **a recovery tool that requires a
+  working system is not a recovery tool.**
+- **`src/ui/updates.cpp`** contains a thread, a modal and a settings block, and
+  no decisions. Both surfaces print `update::describe()` on the same offer, so
+  the window and the terminal say the same words.
+
+`void.json` said *"no silent updates: the user is told an update exists and
+chooses it"*, and taking the first half seriously is what shaped the design. **A
+check is a network request a person did not make.** So the preference starts at
+`unasked` and a fresh install's first update-related event is a question about
+*the check*, before one exists. Two things fell out of that:
+
+1. **The preference is not `config set`.** Everything else in Settings is
+   config-tier and rides the saved org — so "don't ask me about updates" would
+   have been attached to whichever database was open and would have travelled to
+   another device on the next merge, answering a question that device was never
+   asked. It lives in `%LOCALAPPDATA%/VoidHormiga/updates.json`, the suite
+   folder, which is also the parent of each side-by-side version folder, so the
+   answer survives the update it was given for.
+2. **A near-miss, recorded because it was one line from shipping.** The obvious
+   guard for "is a person looking at this?" was `on_shell_capture` — and the
+   headless front-end sets it too, building a throwaway `HormigaApp` to render a
+   newsletter from. An agent asking for a newsletter would have made a network
+   request. It is an explicit `offer_updates` flag that only the desktop shell
+   sets.
+
+`tests/update_smoke.cpp` runs with no network at all. Most of its cases are the
+*wrong* inputs, because every failure this client can have is silent: a version
+compare that reads `0.1.10` as older than `0.1.9` does not error, it just means
+nobody is ever told. A login page where a feed should be prints "up to date". A
+mismatched installer left on disk is how a bad download gets run a week later by
+somebody who found it in Downloads — so the digest check deletes the file.
+
+`void.json` gained the `release` block Mago asked for. Without it a prompt can
+only say "a new version is available"; with it, it says what changed and who it
+affects — and `behavior_changes` is exactly the category **a version number
+cannot express and a dependency resolver cannot see**.
+
+### What is not proven, said plainly
+
+`makensis` has not been run, no second machine has installed anything, and
+nothing is signed. `voidhormiga-cli update --check` reaches GitHub and gets a
+404, which is the correct answer while no release exists — a real exercise of
+the transport and the status handling, and no exercise at all of a published
+feed. The exit test is the same shape as collaboration's: **a second computer.**
+The author's instruction was to get the installer ready and not launch it while
+Allomone and Palabra are still moving, and that is exactly where this stops.
+
+### One thing that is not ours
+
+`ctest` reports `reduce_conformance` failing 8 of 25 cases. It is **Void
+Maiz's** test, registered into our build by `add_subdirectory`, running Void
+Core's reduce corpus. That corpus grew boxes, adapter ports and a `patch` rule
+through Core 0.2.8–0.2.12; `../VoidMaiz/src/reduce/reduce.cpp` is untouched
+since Maiz's initial commit. It is drift between two siblings, it fails our
+build for a reason that has nothing to do with us, and per ground rule 4 it is
+reported rather than patched. Every one of Hormiga's own 33 tests passes.
+
+## 2026-09-05 — the download page, planned rather than built
+
+The author asked for a plan for the other end of
+[distribution](/concepts/platform/distribution.md): a stranger, a web page, a
+button. Written as [download-page](/concepts/platform/download-page.md) and
+deliberately tagged `status:proposed` — nothing on it exists yet, and a concept
+page that reads like a record when it is a proposal is how an OKF starts lying.
+
+It is addressed to two readers at once, which is unusual here and was the ask:
+the reasoning is written out for the author, and §6 is a build brief an agent
+can run.
+
+**The finding that made it worth writing down.** The author's instinct was that
+downloads should be simple, *"but due to the nature and structure of the void
+core, it's possible"* they are not. That was right, and the specific place is
+narrower and more interesting than expected:
+
+> The website is GENERATED FROM THE DATABASE, so a download button is a rune
+> with fields. Which means **a version number on the download page is data, and
+> data goes stale** — the page, the update feed and `void.json` become three
+> places one number lives, and only one of them is checked by anything.
+
+**The fix is not to solve it but to remove it.** Attach a second, byte-identical
+copy of each release's installer under a version-less name, and
+`releases/latest/download/VoidHormiga-windows-x64-setup.exe` is permanently
+correct. The page then states no version at all, cannot be stale about one, and
+**a new release never requires redeploying the website.** The versioned asset
+stays attached beside it, so a specific build is still citable.
+
+**The blocks needed already exist**, which was worth checking rather than
+assuming — the author's question was whether Hormiga can even put a download
+button on a static site.
+
+- `link` (`target` takes a page slug **or an external URL**, `link_style
+  button`) is the installer button.
+- `download` (2026-09-02, from the portfolio field report) stages a named file
+  into the site, emits `<a download>`, and prints its type and size. It is right
+  for `SHA256SUMS.txt` and for PDFs.
+
+`download` is deliberately **not** the installer's route, and the reason is
+hosting rather than capability: release assets sit outside git's object
+database, while a 25 MB binary in a Pages branch is in that repository's history
+forever, once per release — and `hol_github` base64-encodes every file into a
+JSON body, so it would be a ~33 MB request on every deploy of the whole site.
+
+**Two things the page states because the application already does.** Nothing is
+signed, so SmartScreen will warn; the page has to say what Windows will say
+*before* Windows says it, in the same words the update prompt already uses —
+*the checksum proves the download arrived intact, not who built it.* And there
+is no macOS or Linux build, which a page should say rather than let a visitor
+discover by clicking.
+
+**One HTML fact recorded so nobody rediscovers it as a bug:** the `download`
+attribute on an anchor is ignored cross-origin, so a link to GitHub cannot force
+a save on its own. It saves anyway, because GitHub sends `Content-Disposition:
+attachment`. The result is right and the reason is the header, not the
+attribute — which matters the day the hosting moves.
+
+**Left open with a lean, not decided.** Whether the page should state the
+current version at all. Lean: no, for the staleness reason above. The third
+option — a little JavaScript reading `void-updates.json` at load time — is
+named and explicitly *not* improvised: an author-controlled `<script>` is the
+thing `download_refusal` and the `custom.css`-is-a-file decision both exist to
+prevent, so it would be a block proposal with a design conversation attached,
+the way `download` itself arrived.
+
+---
+
+# 2026-09-08 — the page detects your computer, and hides nothing
+
+The author's instruction, in full: *"it should detect the system (linux,
+windows, mac), and then provide the correct download for hormiga."* Also, the
+same day: **the first download button is going on clicklafont.com**, because
+that site is experimental enough to be safe to break — so the first page that
+offers Void Hormiga to a stranger is hosted by a client that is not an outreach
+organization, and rendered by the same binary it is offering.
+
+## The report that said no, and was right
+
+The Click LaFont agent built the download page from
+[download-page.md](/concepts/platform/download-page.md) §6 and then declined the
+detection ask, which is the correct answer to a request that cannot be
+expressed. Their report is
+`okf/reports/click-lafont-download-page-2026-09-05.md`. Three walls, and the
+third is the one worth keeping:
+
+1. It needs JavaScript, and there is no seam for author-supplied script. That is
+   not an oversight — `custom.css` is a *file* and CSS-only for a stated reason,
+   and an OS-detecting `<script>` in a rune field is the same shape as the
+   `<style>` field that was refused. **They explicitly did not ask us to loosen
+   it.**
+2. §5(d) argued against detection on its own merits, and the argument is the one
+   D6 and the `image_grid` language filter both taught: silence that looks like
+   emptiness.
+3. There is one build. Detection today can only tell a Mac visitor there is
+   nothing for them, which is a sentence, not a feature.
+
+So the page states all three platforms in three cards, and a Mac visitor learns
+the truth without clicking. **Until the capability existed they did not fake
+it**, because the fake would have been the thing §5(d) warns about. That is the
+second time a client has been more disciplined about this codebase's own rules
+than a shortcut would have been.
+
+## What was built: platform sets
+
+Their proposed shape, taken almost unchanged, with one deliberate widening.
+
+- **`download` and `link` gained a `platform` field** — `windows-x64`, `macos`,
+  `macos-arm64`, `linux-x64`, or `any` (the default, so nothing changed for the
+  résumé and the flier PDF `download` was built for). It is the vocabulary
+  `void.json` and `mago plan <app> --platform <name>` already speak, which is
+  what makes it compose past the page that asked for it.
+- **The widening: `link` carries it too, and had to.** The report asked for
+  `download` only. But §3 puts the 7 MB installer on GitHub Releases, so **the
+  installer button is a `link`** — a navigation to another origin, not a staged
+  file. A `platform` field that reached only `download` could not have served
+  the one page that motivated it.
+- **A grid row holding two or more of them is a platform set**, decided by the
+  renderer at build time and stated in the markup: `class="wrow platform-set"`,
+  `data-yours="For your computer"`, `data-platform` per candidate. The badge
+  text rides the markup rather than the script because one `app.js` serves both
+  the English and the Spanish page.
+- **`app.js` moves the matching card first and labels it. It has no branch that
+  hides anything.** §5(d) is now satisfied by construction rather than by an
+  author remembering it, which is the difference between a rule and a design.
+  With scripting off none of it runs and the author's order stands — the same
+  guarantee D1's `<noscript>` bought.
+
+Two decisions inside it that are easy to get wrong:
+
+- **Only the OS family is matched, never the architecture.** A browser will not
+  tell you what architecture it is on; `navigator.platform` still says `Win32`
+  on a 64-bit machine. Matching a family is a guess that is usually right and
+  costs a mislabelled badge when it is wrong. Matching an arch would be a guess
+  that is often wrong about the one thing the visitor cannot check. The arch is
+  carried for the author, the filename and the release.
+- **When the guess is unsafe, nothing is said.** Android and Chrome OS both
+  report themselves as Linux, and a phone, a tablet and a Chromebook run none of
+  these installers — badging the Linux card *"for your computer"* on one of them
+  would be exactly the confident wrongness the whole design is arranged against.
+  Unsure means silent, and silent means the page as rendered.
+
+A `platform` value the renderer does not know is **reported and treated as
+`any`**, because a typo that read as `any` in silence would give an author a row
+that *looks* like a platform set and marks nobody's computer. That is the
+`image_grid.columns` failure in a shape that matters more.
+
+`src/render/site.cpp`'s budget went 2270 → 2295 for it, with everything that
+could leave already gone: the vocabulary, the attribute and the complaint are in
+`render/download.hpp`, the behaviour is `app.js`'s, and what is left in the
+driver is the part that needs to know what shares a row.
+
+## Three corrections to a page that had never been run
+
+All measured by the client, all folded in:
+
+- **The installer is 7.0 MB, not ~25 MB.** NSIS `/SOLID lzma` compresses the
+  46 MB staged tree to 7,327,237 bytes — 15.8%. §3's argument for Releases over
+  the site's `assets/` still stands on permanent git history and base64
+  inflation, but 25 MB was carrying most of its rhetorical weight, and the page
+  now says so about itself.
+- **The apostrophe warning was over-cautious.** It read as though escaping were
+  unavailable; a backslash-escaped apostrophe inside single quotes works exactly
+  as `--describe`'s house rule #3 documents, and ten of them round-tripped
+  through it on the live page. The true, narrower claim is that an *unescaped*
+  apostrophe ends the argument.
+- **§6.2's transcript is runnable**, which it was not when written. It was used
+  nearly verbatim. That is the standard a build brief should be held to.
+
+`translation-report` was accepted as the better answer to their withdrawn A3 —
+and specifically the warning it prints (*"the es site fell back 90 times out of
+90"*), because the silence was the problem, not the second build.
+
+## What is actually blocking the button
+
+**Not us, and this is worth stating plainly because it looks like it is.** There
+are zero releases on `migriv24/VoidHormiga`, so the stable
+`releases/latest/download/…` URL 404s. The page ships with a sentence where the
+button goes, saying so.
+
+And the release is blocked on a real bug that §7 step 3 caught, which is the
+argument for that step existing: **Mago's generated `.nsi` writes a
+`SetOutPath` with a forward slash in `vendor/fonts`, NSIS collapses it, and the
+fonts install into a folder called `vendorfonts`.** An installed Hormiga
+therefore has no icons and warns `no webfonts found beside the binary` on every
+`render-site`. Diagnosed by rebuilding with backslashes; the write-up went to
+the Mago agent. **No release until that lands**, because an install with no
+icons is the first thing a stranger would see.
+
+Phase E's exit test is *"a stranger downloads Void Hormiga from a page Void
+Hormiga deployed, and it updates itself."* The page half is live and now knows
+which computer it is talking to. The other half needs one character in Mago and
+a second machine.
+
+## Two messages drafted for the author to relay
+
+Both at the repo root, both uniquely titled per the 2026-07-21 convention, and
+both to be folded into this log and deleted when their replies land.
+
+- `MESSAGE_FOR_CLICKLAFONT_hormiga-platform-sets-2026-09-08.md` — the capability
+  they proposed, the one place it differs from their proposal (`link` carries
+  `platform` too, and had to), the §6.2b transcript, the three corrections, and
+  the D6 question back to them: **does their `demo-org` have anything in it?**
+  That single answer decides whether the narrow gap above is what they hit or
+  whether there is a third thing going on.
+- `MESSAGE_FOR_VOIDMAGO_hormiga-installer-paths-and-the-stable-asset-name-2026-09-08.md`
+  — the slash, with what Click could not see from outside: that `mago stage` is
+  correct because `fs::path` forgives a forward slash and NSIS does not, so **a
+  correct staging tree compiles into an installer that puts the files somewhere
+  else** and nothing that inspects the tree can find it. Plus the survey that
+  explains why nobody hit it: `vendor/fonts/` is the **first nested
+  `ships_beside_binary` entry in the family** — every other project declares a
+  single top-level segment — so it is the next project's bug as much as ours.
+  A chokepoint `nsis_path()` is the suggested fix rather than the two lines.
+
+  A second item is marked an **ask, not a defect**, and declinable: Mago emits
+  only the versioned installer name, so the version-free copy the download page
+  needs is a human duplicating a file at release time. It is the one unversioned
+  manual step in a generated pipeline and its failure mode is the worst
+  available — **updates keep working while the website button 404s**, because
+  the feed points at the versioned name and only the page uses the stable one.
+
+Recorded as NOT asked for, so it does not come back as somebody else's ask:
+`mago feed` already warns correctly about a feed with no hashes and no base URL,
+and the sha256 warning is load-bearing at our end — `update.cpp` refuses to
+download a release with no usable digest, so a feed built without `--artifacts`
+fails closed here and Mago's warning is what explains why.
+
+## D6 is reported still open, and did not reproduce as written
+
+The report says a data mantle not named `demo-org` still renders an empty site
+with no warning. Reproduced against the binary, per the rule for reports: it
+**warns correctly** — `mantle new clicklafont`, an image rune, `render-site`,
+and the output says *"the data mantle 'demo-org' is empty, but 1 image rune(s)
+live in 'clicklafont'"*.
+
+What is true is narrower, and is a real gap: `warn_if_data_is_elsewhere`
+(`render/assets.cpp`) returns early when the data mantle is **not** empty, so a
+database with anything at all in `demo-org` and its real data somewhere else
+gets no warning and a nearly-empty site. That is almost certainly the state the
+report was written from. Not fixed here — lifting the guard costs one scene
+projection per mantle on every render, which is exactly what the guard is for,
+so the fix is a design call rather than a line. Recorded so it is not
+rediscovered as new.
+
+---
+
+# 2026-09-08, later — Mago fixed it in a day, and we checked rather than believed
+
+The reply to `MESSAGE_FOR_VOIDMAGO_hormiga-installer-paths-and-the-stable-asset-name-2026-09-08.md`
+arrived the same day, shipping **mago 0.1.6**, and it opens with *"Item 1 has
+landed. Go and release."* The message is folded in here and deleted, per the
+convention. What follows is what we verified ourselves, because a claim that
+something is fixed is a claim, and this project's rule for reports applies to
+replies too.
+
+## The separator: fixed, and checked against OUR manifest
+
+They took the chokepoint rather than the two lines. `src/emit_nsis.cpp` has one
+`nsis_path()` and every path written into the script goes through it. Their
+argument for **not** normalizing at manifest parse is better than our suggestion
+was, and it is worth keeping:
+
+> `ships_beside_binary` entries are *portable* paths, and the declared form is
+> correct exactly as written. The error was never in the manifest — it was in
+> treating a script as a filesystem. Normalizing upstream would make `stage`,
+> `feed` and `wizard` all speak NSIS's dialect to make one of them happy.
+
+They verified by diffing the regenerated script against the hand-fixed one Click
+LaFont compiled and installed, and reported it identical. **We verified
+differently, on purpose** — a diff against a tested file is a claim about a file,
+not about our manifest:
+
+- `mago wizard voidhormiga --platform windows-x64` against this repository's own
+  `void.json` now emits `SetOutPath "$INSTDIR\voidhormiga-0.1.0\vendor\fonts"`
+  and `File /r "..\dist\voidhormiga\vendor\fonts\*.*"`. Both backslashed.
+- Ran their general assertion over that real script rather than the toy: **23
+  quoted path arguments, zero forward slashes.**
+- Their whole suite passes, `nsis_smoke` included, and their test carries a
+  `checked > 0` guard — *"an assertion that inspected nothing passes for the
+  wrong reason."*
+
+The toy family now declares a nested `vendor/fonts/` of its own. Our survey
+table was what earned that: every declaration in the family had been one
+top-level segment, so the fixtures only ever exercised the shape that cannot
+break. The toy carries the hard shape now, permanently.
+
+## The stable name: they took option 1 and added the part that matters
+
+`stable_file` is in the feed beside `file`, produced by one rule differing in one
+segment so the two cannot drift. They declined `stable_url`, correctly: the
+versioned asset and the stable one do not share a base, so a URL composed from
+`--base-url` would be confidently wrong. **The feed states the name; the page
+that knows its own hosting composes the URL.**
+
+The part we did not ask for is the part that fixes the failure:
+
+> `stable_file` alone would have made the name checkable by a person. It would
+> not have made anything *check* it — and your own argument was that the failure
+> is invisible from the update side.
+
+`mago feed --artifacts` now hashes the version-free copy. Exercised all three
+states here against a stand-in binary: absent → it says so; present and
+identical → silence; **present and different → it says the download page is
+handing out a different build than the feed describes, most likely the previous
+release.** That second one is the case that matters. A stale copy is present and
+plausible, passes anything that only looks for the name, and hands every new
+visitor the old application while everything reports success.
+
+Option 2 — a `wizard` flag emitting both names, so the last hand-run step
+disappears — they deliberately did not build, and the reason is right: *"we
+would rather one release actually went through the checked version first, so
+that the flag is designed against what the release process turned out to be."*
+Ours to ask for again after 0.1.1.
+
+## What we added on our side
+
+`tests/update_smoke.cpp` §10: **the feed `mago feed` actually wrote**, verbatim,
+as a fixture. The existing `kFeed` was typed by hand from a message, which is the
+kind of fixture that keeps passing after the other side changes.
+
+The assertion that earns it is not *"we read `stable_file`"* — we do not read it
+at all. It is that `r.file` is still the **versioned** name. `file` is what an
+update downloads and `stable_file` is what a website links, and confusing them
+fails in the direction nobody checks: updates would fetch the URL of an asset the
+feed does not describe. The stable name is pinned there too, because this
+repository is the only place that sees both halves — the feed the application
+reads and the button a person types into a `link` rune.
+
+## What is left, and it is not code
+
+Nothing in any repository is blocking. Step 3 needs a second computer and step 4
+needs a person to create a release; `download-page.md` §7 is the order, and it
+gained an **eighth step**, because none of the first seven tests an *update*.
+One release proves the feed parses and says *up to date*. The exit test — *"a
+stranger downloads Void Hormiga from a page Void Hormiga deployed, and it updates
+itself"* — needs a 0.1.1 for the second half to have anywhere to go.
+
+Mago asked for two things back: the installer's real size from a build we ran
+(they have Click's 7,327,237 bytes and say a measured figure is worth more than
+an inferred one), and one plain sentence saying the fonts landed in
+`vendor\fonts` and the icons are there. Both are owed after step 3.
+
+`MESSAGE_FOR_CLICKLAFONT_hormiga-release-unblocked-2026-09-08.md` went out at the
+repo root: their bug is fixed upstream, the family's fixtures are permanently
+safer because of their report, and **their button's URL was checked against the
+name Mago actually emits, and matches.** Worth running rather than assuming — a
+page linking a name the release does not carry fails only for people who do not
+have the application yet, which is every visitor the page exists for and nobody
+who would notice.
+
+---
+
+# 2026-09-08, third entry — 0.1.0 shipped, and the question of the other two computers
+
+## Void Hormiga 0.1.0 exists
+
+Cut as `v0.1.0` after Mago 0.1.6, with the four assets §3 specifies. The Click
+LaFont agent verified it the way a stranger would rather than the way a builder
+would, and the numbers are theirs:
+
+- `VoidHormiga-0.1.0-windows-x64-setup.exe`, **7,355,451 bytes**; the
+  version-free copy byte-identical, same sha256.
+- They followed the URL **the live page actually serves**, not the one in the
+  documentation: `http=200`, and the sha256 matches `SHA256SUMS.txt`.
+- `voidhormiga-cli update --check`, run **from the installed copy**: *"up to
+  date (the feed's latest is 0.1.0)."* That line was an HTTP 404 an hour before.
+- The fonts fix verified a third way — they regenerated with 0.1.6, compiled,
+  uninstalled the previous install, clean-installed, and ran `render-site` from
+  the installed copy. No webfont warning; all seven `.woff2` staged.
+
+**Still owed and still not code:** a second computer, and a 0.1.1 so the feed
+proves something other than *up to date*.
+
+## The platform set, measured on somebody else's machine
+
+Six platforms, by stamping a `navigator.platform` override into a copy of the
+**real rendered page** immediately before the real `app.js` and letting shipped
+code run against shipped markup — spoofing from outside does not move
+`navigator.platform`, so a `--user-agent` flag would have tested nothing.
+
+Windows, macOS and Linux each get moved first and badged. **Android and Chrome
+OS are correctly silent**, which is the pair worth having built: both report a
+Linux platform string and both would otherwise have been told an installer they
+cannot run is "for your computer". And in all six, `data-platform` occurs three
+times in the post-script DOM — counted, rather than inferred from the absence of
+a hiding code path.
+
+## The defect they found, which is a documentation defect
+
+**A set reorders its own row and nothing else.** They built the row from §6.2b
+and then put three detail cards on the next row, column-aligned underneath. On
+their machine it was perfect, because they are on Windows and Windows was
+already first. On a Linux visitor's screen the badge sits over a card describing
+a different operating system. Nothing warns and the render log is clean.
+
+It is the `image_grid` language filter and the `demo-org` mantle again:
+**correct-looking output that is wrong for somebody who is not you.** §6.2b now
+carries the warning as a block quote, because their own analysis is that this is
+a sentence rather than a code change — §6.2b's example does not hit the trap,
+and that is the shape working rather than luck. The trap only opens when an
+author adds explanation, and the honest fix is to say so where they are reading.
+
+**Their ask, which is not taken yet and is the author's call:** `caption_en` /
+`caption_es` on `link`, the same two fields `download`, `video` and `image_grid`
+already carry. Today a platform card is a label and nothing more — `link` has no
+caption, and `download` has one but its `file` is a local path, so it cannot
+point at a release. Two fields would let a card say *"Windows 10 or 11, 64-bit,
+7.4 MB"* under its own label **and travel with the set**, which is the only
+version of the fix that survives reordering. They explicitly did not ask for a
+`platform_group` container, and explicitly did not ask for any way to make a
+different row follow a set — *"that is a positional coupling between blocks and
+it would be a worse thing than the bug."*
+
+## §6.2 was telling agents to undo §4
+
+They declined an instruction from the build brief while building the live page,
+and were right. §6.2 said to publish `SHA256SUMS.txt` with a `download` block,
+which stages a copy into the site — so it is version-specific and goes stale on
+every release, which is exactly the maintenance §4 built the version-free URL to
+abolish. They linked `releases/latest/download/SHA256SUMS.txt` instead.
+
+The general rule now stated in §6.1: **`download` is for a file the SITE owns; a
+`link` is for a file the RELEASE owns.** Anything that changes when a version
+changes belongs to the release.
+
+## D6 is closed, and the hypothesis was wrong for an interesting reason
+
+Their `demo-org` has five runes in it today, which fits the early-return
+hypothesis exactly — and that is not what happened. On 2026-09-02 there was **no
+`demo-org` mantle at all**: they had deleted the auto-created file before
+creating their own state document. The five runes are there now only because
+`mantle rename clicklafont demo-org` is how they fixed it.
+
+So they reproduced the original condition against the current binary instead of
+arguing from memory, and it warns correctly, naming the count and carrying its
+own fix command. D6 closed. **The early-return gap is still real** — leftover
+rune in `demo-org`, real data elsewhere, silence — but nobody has hit it, and it
+is recorded as a known shape rather than a reported bug.
+
+## Linux and macOS: audited, and the answer is upstream
+
+The author asked for working Linux and macOS builds. Audited rather than
+guessed, and the code is far more portable than the platform list suggests:
+every Windows-touching file in `src/` carries a `#else` except one, the HTTP
+layer shells out to `curl`, and the update client already knows about
+`XDG_CONFIG_HOME`, `gmtime_r` and `xdg-open`. Somebody wrote this expecting to
+leave.
+
+Fixed here, both of which were wrong regardless of whether a port ever happens:
+
+- **`ws2_32` was linked unconditionally** on both targets, so the first thing a
+  non-Windows configure hit was a missing library rather than the real obstacle.
+  Guarded. The guard does not create a Linux build; it makes the failure name
+  the right file.
+- **`HORMIGA_PLATFORM` fell back to `"unknown"` off Windows.** That string is
+  the key the update client looks itself up under in the feed's `artifacts`
+  object, so a non-Windows binary would have matched no release ever published
+  and reported *up to date* forever — a true-looking answer to a question never
+  actually asked, which is this project's recurring failure. It is computed per
+  platform in CMake now, and the compile-time fallback is
+  `"unconfigured-platform"`: obviously broken rather than plausibly fine, the
+  same treatment `HORMIGA_VERSION` already had.
+
+**What is left is not ours, and the gate is Void Maiz.** Void Core declares
+`windows-x64`, `macos-universal`, `linux-x64`. Void Maiz declares `windows-x64`
+and `android-arm64` — and both our binaries link it, the GUI through
+`voidmaiz_view` and the headless CLI through `voidmaiz_headless`. There is no
+configuration of Void Hormiga that reaches a Linux or macOS desktop without Void
+Maiz on it.
+
+Our reading is that their `platforms` array records *what has shipped* rather
+than *what compiles*: exactly one file in their `src/` mentions Windows and its
+`_WIN32` is guarded, GLFW and ImGui are portable, and `android-arm64` says
+somebody has already taken that codebase off Windows. But that is a guess, and
+`MESSAGE_FOR_VOIDMAIZ_hormiga-linux-and-macos-2026-09-08.md` asks rather than
+assumes, with three acceptable answers spelled out so that *"nobody has ever
+tried"* is a first-class one.
+
+Ours that remains, whatever they say: **`src/platform/preview_server.cpp` is
+winsock with no POSIX branch.** Mechanical — winsock is BSD sockets with
+different init, teardown and error names — but unwritten, and not worth writing
+before the view's answer arrives.
+
+**And downstream of all of it, Void Mago's `wizard` emits NSIS and nothing
+else** (`--target` is `nsis | plan`), so a non-Windows release would have a
+binary, no installer, and no artifact for the feed to point at. Deliberately not
+raised with them yet: asking for AppImage or `.dmg` support before knowing
+whether the view compiles is asking for work that might have nowhere to run.
+
+**The thing no message fixes:** we have no Linux or macOS machine, and a
+*working* build for a platform means it ran there. It is the same
+second-computer constraint phase F has been carrying since 2026-08-27, one
+platform wider. macOS adds its own: Gatekeeper on an unsigned, un-notarized app
+is a harder wall than SmartScreen, and the download page's honesty problem gets
+correspondingly bigger.
+
+---
+
+# 2026-09-08, fourth entry — a runner is the second computer
+
+Void Maiz answered the Linux/macOS question with **(2): it should build, and
+nobody had ever tried** — and then refused to leave the answer at that. Both
+messages of that exchange are folded in here and deleted.
+
+## They were right that our guess was right, and then made it moot
+
+`platforms` was a record of what had been **built and shipped**, exactly as we
+guessed. That is now stated in their manifest rather than implied, with a
+`platforms_note` — *"a SHIPPING RECORD … not a claim about what compiles"* —
+and **we have adopted the same field for the same reason.** Ours says
+`["windows-x64"]` and will keep saying it until somebody has watched Hormiga
+open a window on another operating system.
+
+The important half of their reply is not the answer, it is the workflow file:
+
+> **A runner is the second computer.** You wrote that you could not verify a
+> Linux build even with a yes from us, and that the same constraint has been in
+> front of your phase F exit test since 2026-08-27. For *compiling*, that
+> constraint is now gone for both of us, and it did not need a machine — it
+> needed a workflow file.
+
+That reframing is worth more than the answer was. The second computer has been
+treated here as a single blocking fact since August, and it turns out to be two
+facts wearing one name: *compiling somewhere else* needs a runner, and *running
+somewhere else* needs a person. Only the second was ever really scarce.
+
+## The bug they found in our code before we did
+
+They predicted it and told us where to look, because it was a bug **with a
+distribution mechanism**: their examples are *"the first thing a new client
+copies"*, and we had copied one.
+
+`src/main/desktop.cpp` asked for **OpenGL 3.0** and initialised ImGui with
+`#version 130` — the pair every host copies. macOS ships no OpenGL 3.0: it
+offers legacy 2.1, or 3.2+ core profile with forward compatibility, and nothing
+between. So the request **does not fail**. `glfwCreateWindow` succeeds, hands
+back 2.1, and the `#version 130` shader will not compile against it. **The
+window opens and stays blank** — which presents as a rendering bug in our own
+draw code, in the one file whose interesting part we did not write.
+
+Fixed by routing through `maiz::gl_context_hints()`
+(`voidmaiz/glhost.hpp`, header-only), which sets the hints and *returns* the
+matching GLSL version string, so the two halves cannot drift apart again —
+there is no longer a second place to write either. Windows behaviour is
+byte-identical. What it buys is a platform we have not shipped, which is exactly
+when a fix like this is cheap.
+
+**The general lesson, theirs:** *a code path no build exercises is a claim, not
+a behaviour.* They found it in their own Android CMake, which had been missing a
+Void Core source file for weeks because the desktop build links the prebuilt DLL
+and never walks that list. Our `ws2_32` and `HORMIGA_PLATFORM` fixes from this
+morning are the same species, and were equally unexercised.
+
+## What we built on top of it
+
+**`src/platform/preview_server.cpp` has a POSIX branch.** It was the one file in
+`src/` with no `#else`, and once the view stopped being the gate it became the
+first real obstacle. The port is a shim rather than a rewrite, because **winsock
+IS BSD sockets** — Berkeley is what Microsoft copied — differing in
+initialization, teardown, and the name of the failure value. Naming those three
+once leaves the body of the file identical on every platform; a translation
+layer touching every call site would have been a second thing to keep right.
+
+The one place they genuinely disagree is worth the comment it got: on Linux a
+`send` to a hung-up peer raises **SIGPIPE, whose default disposition is to kill
+the process** — so closing the preview tab mid-response would have taken the
+application down. `MSG_NOSIGNAL` per call where it exists, `SO_NOSIGPIPE` per
+socket on macOS, nothing on Windows, which has no such signal.
+
+**`.github/workflows/ci.yml`**, modelled on theirs: Void Core, then Hormiga —
+library, CLI, **GUI** and tests — on `windows-latest`, `macos-latest` and
+`ubuntu-latest`, `fail-fast: false` so a red leg cannot hide a green one. The
+GUI is in the build deliberately: `voidhormiga` links `voidmaiz_view`, GLFW and
+ImGui, and it is the only way the macOS GL fix gets checked at all.
+
+Two details taken from their file rather than rediscovered: GLFW 3.4 builds both
+an X11 and a Wayland backend on Linux, so configure needs both sets of headers
+(`xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols`); and
+`reduce_conformance` is excluded from the gating run and reported separately.
+That last one closes a loose end here — the suite has been failing locally
+throughout this arc and had only been established as *"not caused by our
+changes"*. It is Void Core's extended reduce contract from 2026-09-01 (boxes, a
+reserved separator, a `patch` rule) against a port that does not implement them
+yet: **Void Maiz's backlog item, knowingly at 17/25, not a regression.** It must
+not gate a platform verdict, and it must stay visible rather than be silenced.
+
+And one assertion a runner *can* make about a platform it cannot display: that
+the binary starts and knows which computer it is for. The CI greps
+`voidhormiga-cli update` for the expected platform tag per leg, which is what
+keeps this morning's `HORMIGA_PLATFORM` fix from rotting.
+
+## What is still not true
+
+**Nobody has seen Hormiga draw a pixel on a Mac or on Linux**, and CI
+structurally cannot say otherwise. Their caveat is ours:
+
+> CI proves the three desktops COMPILE and that the headless suite RUNS. It does
+> not prove a window opens. No runner has a display, and for a GUI, "it ran
+> there" means a person watched it.
+
+So the macOS context fix is **reasoned and compiled, not witnessed**. The class
+of thing that survives a green build is exactly the class that would bite first:
+a blank window, retina scaling, a menu-bar convention.
+
+Their sequencing advice, taken: **get one person to run it on each platform
+before asking Void Mago for AppImage and `.dmg` support.** That is a smaller ask
+than a packaging feature, it is the only thing that turns the caveat into a
+claim, and it makes the Mago message specific instead of speculative. The Mago
+message stays unwritten for now — the reason has changed (from "it might not
+compile" to "nobody has run it"), but the conclusion has not.
+
+**`platforms` stays one entry long, and the download page keeps saying "no build
+yet" on two of three cards.** Both of those are now true *because* of a stated
+distinction rather than by default, which is the difference between honesty and
+not having gotten around to it.
+
+`MESSAGE_FOR_CLICKLAFONT_hormiga-three-platforms-compile-2026-09-08.md` went out,
+and **most of it is a message telling a client not to change anything.** Their
+first instinct on hearing "it compiles on three platforms now" would reasonably
+be to update the two cards that say *no build yet*, and those cards are still
+exactly right. The optional copy in it — for the full-width narrative, not the
+cards — is bounded by what it must never become: no "coming soon", no month, no
+quarter, nothing a reader could mistake for a build that exists somewhere. Two
+of three cards being honestly empty is the reason a visitor can believe the
+third.
+
+## The author has a Linux machine, and that changes what was worth doing next
+
+Said the same day: *"i have a linux computer, i was gonna download hormiga on it
+and test it."* Which turns the caveat above from a permanent condition into an
+afternoon, and made two things worth fixing before that afternoon rather than
+during it.
+
+**Void Core's shared library was staged on Windows only.** `find_file` looked
+for `libvoidcore.dll voidcore.dll` and the copy was `if(WIN32)` — so this file
+contained a paragraph describing, at length, a failure that had cost a day
+(*"the build is green and the program does nothing at all"*), and then left that
+same failure in place for the two platforms nobody had built. `add_library(...
+SHARED)` produces `libvoidcore.so` and `libvoidcore.dylib`, and neither was
+looked for.
+
+**The copy alone would not have been enough**, which is the part that differs
+from Windows and would have been the actual lost afternoon. Windows looks for a
+DLL beside the executable; ELF and Mach-O do not unless the binary carries an
+rpath saying so. Both binaries now get `$ORIGIN` on Linux and `@loader_path` on
+macOS, appended to the build rpath rather than replacing it, so running from the
+build tree and running a moved binary both work — which is what a tarball, an
+installer and somebody's Downloads folder all need.
+
+**`AGENT-GUIDE.md` §10 was entirely Windows and MinGW**, so the person about to
+do the one thing CI cannot had no recipe. There is one now: the sibling checkout
+layout, the GLFW X11-and-Wayland headers a first-time Linux builder hits first,
+Core before Hormiga, the `curl` dependency, and the two commands worth running
+in order — `voidhormiga-cli update` to see the platform tag come back
+`linux-x64` rather than `unknown`, then the window.
+
+It ends by naming what the run is for, because it is easy to treat a working
+program as unremarkable: **a platform moves into `void.json`'s `platforms` array
+when somebody has looked at a screen, and not before.** The likely failures are
+listed so a first run knows what it is looking at — a blank window (the OpenGL
+context, fixed but unwitnessed), HiDPI scaling, missing icons if `vendor/fonts/`
+did not travel, a file dialog that does nothing because the native one is
+Windows-only and guarded out.

@@ -164,6 +164,14 @@ void HormigaApp::draw_settings() {
         ImGui::TextDisabled("views share the base map; each view carries its\n"
                             "own camera, rules, and position channel");
 
+        /* Updates. Last, and separated from everything above it on purpose:
+         * every other knob in this window is `config set ui.*`, which is
+         * config-tier and rides the saved org. An update preference is a fact
+         * about THIS installation and is stored beside the install -- the
+         * block says so, because a setting whose scope is invisible is a
+         * setting people are surprised by later. */
+        draw_update_settings();
+
         ImGui::SeparatorText("About");
         ImGui::TextWrapped("Hormiga - local-first outreach. Settings live in "
                            "the org's config tier (logged, undo-exempt).");

@@ -46,6 +46,165 @@ std::string HormigaApp::stage_site_asset(const std::string& rel) {
     return "assets/" + src.filename().string(); // site-relative href
 }
 
+/* ── THE OPERATOR'S ESCAPE HATCH FOR THE STYLESHEET (2026-09-02) ─────────────
+ *
+ * Field report, Part 3, and it is the structural one in that document:
+ *
+ *   > `render_site` unconditionally does `write("style.css", site_css(site_th))`.
+ *   > D1, D2 and D3 are each two lines of CSS. Every one of them is blocked on
+ *   > a Hormiga release, because there is nowhere for an operator to put two
+ *   > lines of CSS.
+ *
+ * That is a real structural gap and not a styling preference. Three cosmetic
+ * defects on a live public site, each two lines, each unfixable by the person
+ * whose site it is.
+ *
+ * ── WHY A FILE AND NOT A FIELD ───────────────────────────────────────────────
+ *
+ * A `custom_css` field on a `page` or a `theme` rune would be the shorter
+ * patch, and it is the wrong one. A field is model data: it travels in the
+ * `.miga`, it merges between devices, it can be written by an import, and — the
+ * part that matters — it is a way to get authored text into a `<style>` block
+ * on a public page. `video` already refuses arbitrary embed markup for exactly
+ * this reason, and a stylesheet field would walk it back through a side door.
+ *
+ * A FILE beside the database is a different act. It is the operator's own
+ * machine and the operator's own hand, it does not travel with the data, and a
+ * `<link rel="stylesheet">` cannot execute anything whatever the file contains.
+ * The render seam is untouched: no model value reaches the page that did not
+ * reach it before.
+ *
+ * ── AND IT IS NOT A NEW PATTERN ──────────────────────────────────────────────
+ *
+ * `data_dir("fonts")` has worked this way since the webfonts shipped: an
+ * organization drops its own `.woff2` beside the database, `render_site` stages
+ * it, and an empty folder changes nothing. This is that, with one file and one
+ * `<link>`.
+ *
+ * A missing file is the ordinary case and is silent. A file that IS there is
+ * logged, because a stylesheet an operator forgot they wrote is a very good
+ * explanation for a page that looks wrong six months later.
+ */
+/* ── WHERE THE ORGANIZATION'S DATA IS EXPECTED TO LIVE (2026-09-02) ──────────
+ *
+ * Field report D6, and it is the expensive one in that document because it
+ * cost an hour and produced no error message at any point.
+ *
+ * `kDataMantle` is `"demo-org"`, hardcoded. `render_site`, `render_preview`,
+ * `publish_index` and `effect query` all project THAT mantle; `ls` projects the
+ * ACTIVE one. So a new client doing the obvious first thing —
+ *
+ *     mantle new clicklafont
+ *     rune new image img-cover-sky
+ *     tag img-cover-sky +type:image +cover
+ *
+ * — had every command succeed, `validate` say `valid`, and `render-site` report
+ * `ok` with every gallery on every page empty and no asset staged. What
+ * eventually cracked it was two verbs the guide says are the same grammar over
+ * the same data disagreeing: `ls --tag` found the rune and `effect query` found
+ * nothing.
+ *
+ * ── THE CHEAP FIX, NOT THE EXPENSIVE ONE ─────────────────────────────────────
+ *
+ * The report is explicit that the ask is NOT "make the name configurable":
+ *
+ *   > The cheap version that removes the whole class of failure is a warning at
+ *   > render time. … That is one lookup and one message, and it turns a silent
+ *   > hour into a line of output.
+ *
+ * Making the name configurable is a bigger change with its own failure modes (a
+ * database whose data mantle is named in config, and config that has been lost,
+ * is a database that renders empty for a different reason). A warning removes
+ * the SILENCE, which is the whole defect. Whether `demo-org` should be the
+ * permanent name of a real organization's data namespace is a separate question
+ * and it is in `okf/developer_questions.md`.
+ *
+ * Only runs when the data mantle is empty or absent — a render on a working
+ * database does one scene projection per other mantle and then never speaks.
+ */
+void HormigaApp::warn_if_data_is_elsewhere(const maiz::Scene& data) {
+    if (!data.nodes.empty()) return; // the ordinary case, and it says nothing
+
+    /* The glyphs a block query can actually reach. Deliberately a list rather
+     * than "anything that is not a block": a document mantle full of `hero` and
+     * `narrative` runes is a DOCUMENT, and reporting it here as misplaced data
+     * would make the warning noise on every database with two newsletters. */
+    static const char* kDataGlyphs[] = {"contact", "event",    "image",
+                                        "resource", "location", "organization"};
+    struct Found { std::string mantle; std::map<std::string, int> by_glyph; int total = 0; };
+    std::vector<Found> found;
+
+    for (std::string line : core.dispatch("mantles").lines) {
+        while (!line.empty() && (line.front() == '*' || line.front() == ' '))
+            line.erase(line.begin());
+        if (auto p = line.find(" ("); p != std::string::npos) line.resize(p);
+        while (!line.empty() && line.back() == ' ') line.pop_back();
+        if (line.empty() || line == "(no mantles)" || line == kDataMantle ||
+            line == kAntfarmMantle || line == kAlloMantle || line == kCivicMantle)
+            continue;
+        maiz::ProjectOptions po;
+        po.mantle = line;
+        const maiz::Scene other = maiz::project_scene(core, po);
+        Found f;
+        f.mantle = line;
+        for (const auto& n : other.nodes)
+            for (const char* g : kDataGlyphs)
+                if (n.glyph == g) { ++f.by_glyph[g]; ++f.total; break; }
+        if (f.total) found.push_back(std::move(f));
+    }
+
+    if (found.empty()) {
+        /* An empty data mantle with no data anywhere else is a NEW database,
+         * which is a perfectly ordinary thing to render. Saying nothing here is
+         * what keeps the message above worth reading when it does appear. */
+        return;
+    }
+    for (const Found& f : found) {
+        std::string counts;
+        for (const auto& [g, n] : f.by_glyph) {
+            if (!counts.empty()) counts += ", ";
+            counts += std::to_string(n) + " " + g;
+        }
+        log.push_back(
+            {"warn", "render",
+             std::string("the data mantle '") + kDataMantle +
+                 "' is empty, but " + counts + " rune(s) live in '" + f.mantle +
+                 "'. Every block query, `effect query` and the published index "
+                 "read '" + kDataMantle + "' and nothing else, so those runes "
+                 "were not considered and no asset of theirs was staged. "
+                 "`mantle rename " + f.mantle + " " + kDataMantle +
+                 "` if that mantle is this organization's data."});
+    }
+}
+
+bool HormigaApp::stage_custom_css() {
+    const fs::path src = base_dir / "custom.css";
+    const fs::path dest = data_dir("site") / "custom.css";
+    std::error_code ec;
+    if (!fs::exists(src, ec)) {
+        /* A STALE COPY IS REMOVED. Deleting `custom.css` beside the database
+         * has to actually turn the overrides off — otherwise the file stays in
+         * `site/`, keeps being deployed, and the operator's way of undoing
+         * their own change does nothing. Same reasoning as the sitemap that is
+         * removed when `site.base_url` is unset. */
+        fs::remove(dest, ec);
+        return false;
+    }
+    fs::create_directories(data_dir("site"), ec);
+    fs::copy_file(src, dest, fs::copy_options::overwrite_existing, ec);
+    if (ec) {
+        log.push_back({"warn", "render",
+                       "custom.css is beside the database but could not be "
+                       "staged into site/: " + ec.message()});
+        return false;
+    }
+    log.push_back({"info", "render",
+                   "custom.css staged from " + src.string() +
+                       " and linked after the built stylesheet - it overrides "
+                       "the theme, and deleting it turns the overrides off"});
+    return true;
+}
+
 /* ── a DOWNSCALED derivative for a gallery tile (2026-08-19) ─────────────────
  *
  * Reported from a real build: three of one organization's fliers are 3-5 MB

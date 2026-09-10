@@ -222,9 +222,14 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
     // author's #1 complaint — nothing could resize in fullscreen — fixed here.
     ImVec2 area = ImGui::GetContentRegionAvail();
     float total_w = area.x;
-    float side_w = std::clamp(data_side_frac * total_w, 110.0f, total_w * 0.4f);
+    /* `clamp_fit`, not `std::clamp` — both of these cross their bounds in a
+     * narrow window (`total_w < 275` for the first; the second whenever
+     * `rest_w < 270`, which its own 160 floor guarantees), and a crossed
+     * `std::clamp` is UB that libstdc++ turns into `abort()`. This aborted the
+     * application at boot on 2026-09-02. See app_internal.hpp. */
+    float side_w = clamp_fit(data_side_frac * total_w, 110.0f, total_w * 0.4f);
     float rest_w = std::max(160.0f, total_w - side_w - th);
-    float list_w = std::clamp(data_list_frac * rest_w, 150.0f, rest_w - 120.0f);
+    float list_w = clamp_fit(data_list_frac * rest_w, 150.0f, rest_w - 120.0f);
 
     // ── sidebar: the kinds (the predecessor's tabs, as a rail) ──────────────
     panel_shadow(ImGui::GetCursorScreenPos(),
@@ -259,7 +264,13 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         if (ImGui::Button("+ New...", ImVec2(-1, 0))) ImGui::OpenPopup("new-kind");
         if (ImGui::BeginPopup("new-kind")) {
             for (const auto& e : palette.entries)
-                if (ImGui::MenuItem(e.label.c_str())) new_rune(e.glyph);
+                /* An icon per kind (2026-09-02). This menu is a list of
+                 * words of similar length; the glyph is what a person actually
+                 * recognises when they open it for the hundredth time. */
+                if (ImGui::MenuItem(
+                        (std::string(glyph_icon(e.glyph)) + "  " + e.label)
+                            .c_str()))
+                    new_rune(e.glyph);
             ImGui::EndPopup();
         }
     } else {
@@ -442,31 +453,12 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         ImGui::TextDisabled("or press + New");
     } else {
         // the name is editable: staged, commits ONE `rune rename` on Enter
-        // (the core keeps spirit.id and repoints every reference)
-        if (rename_for != sel->name) {
-            rename_for = sel->name;
-            std::snprintf(rename_buf, sizeof rename_buf, "%s", sel->name.c_str());
+        // (the core keeps spirit.id and repoints every reference). The control
+        // is shared with the Notes tab -- see `rune_rename_control`.
+        if (rune_rename_control(*sel, 220)) {
+            ImGui::EndChild();
+            return; // sel points at the old projection - bail cleanly
         }
-        ImGui::SetNextItemWidth(220);
-        if (ImGui::InputText("##rename", rename_buf, sizeof rename_buf,
-                             ImGuiInputTextFlags_EnterReturnsTrue)) {
-            std::string nn = hormiga::detail::slug(rename_buf);
-            if (!nn.empty() && nn != sel->name) {
-                maiz::Result r = dispatch_and_reproject("rune rename " +
-                                                        sel->name + " " + nn);
-                if (r.ok) {
-                    ed.selection = {nn};
-                    rename_for.clear(); // restage from the new name
-                    toast("renamed to " + nn + " (references repointed)");
-                    ImGui::EndChild();
-                    return; // sel points at the old projection — bail cleanly
-                }
-                toast("rename failed: " + r.text(), true);
-            }
-        }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("edit + Enter to rename (undoable; every link "
-                              "and reference repoints)");
         ImGui::SameLine();
         ImGui::TextDisabled("(%s)", sel->label.c_str());
         if (sel->glyph == "image" && !imgbb_key.empty()) {
@@ -750,8 +742,16 @@ void HormigaApp::draw_relations(const maiz::SceneNode& n,
         const std::string& other = o ? w.to : w.from;
         ImGui::PushID(wi);
         if (ImGui::SmallButton("x"))
-            out.push_back("unlink " + w.from + " " + w.to + " --relation " +
-                          w.relation);
+            /* THE RELATION IS QUOTED, AND OMITTED WHEN IT IS EMPTY (2026-09-02).
+             * `--relation ` with nothing after it is a flag Void Core skips
+             * (it needs a following token), so the unlink silently widened to
+             * "any edge between these two" — which removes the wrong one when
+             * there are several. Naming no relation is the honest way to say
+             * that, and it is what the empty case means. */
+            out.push_back("unlink " + w.from + " " + w.to +
+                          (w.relation.empty()
+                               ? std::string()
+                               : " --relation " + json_arg(w.relation)));
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("unlink (undoable)");
         ImGui::PopID();
         ImGui::SameLine();
@@ -770,8 +770,27 @@ void HormigaApp::draw_relations(const maiz::SceneNode& n,
         [&me](const maiz::SceneNode& x) { return x.name != me && x.glyph != "map"; },
         "link to... (search)");
     if (!picked.empty()) {
-        std::string rel = link_relation[0] ? link_relation : "connected-to";
-        out.push_back("link " + me + " " + picked + " --relation " + rel);
+        /* ── THE RELATION IS FREE TEXT AND WAS SPLICED IN RAW (2026-09-02) ───
+         *
+         * The author reported *"cant link images together? or there's a weird
+         * error"*. Linking images is not special and the CLI path is fine; the
+         * defect is in how this text box reached the dispatcher. The command
+         * was built by concatenation, and the box accepts anything typed:
+         *
+         *   "goes with" → `--relation goes with`: Void Core reads the flag's
+         *                 value as `goes` and drops `with`. The link is
+         *                 written, under a relation nobody asked for, silently.
+         *   "maria's"   → an unterminated quote, and an error quoting SPEC
+         *                 §6.1 at somebody who typed a word into a text box.
+         *                 Almost certainly the "weird error" in the report.
+         *
+         * `json_arg` is this project's §6.1 quoter — the one with the
+         * trailing-backslash fix `maiz::arg` still lacks (app_shared.cpp). The
+         * rune NAMES are slugs and safe, and go through it anyway: a value that
+         * is safe by convention is one convention away from not being. */
+        const std::string rel = link_relation[0] ? link_relation : "connected-to";
+        out.push_back("link " + json_arg(me) + " " + json_arg(picked) +
+                      " --relation " + json_arg(rel));
         toast("linked " + me + " -> " + picked + " (" + rel + ")");
     }
 }
@@ -925,7 +944,8 @@ void HormigaApp::draw_notes_body() {
 
     // left: the filtered note list + create
     ImGui::BeginChild("notes-list", ImVec2(190, 0), ImGuiChildFlags_Borders);
-    if (ImGui::Button("+ New note", ImVec2(-1, 0))) new_rune("note");
+    if (ImGui::Button(ICON_FA_SQUARE_PLUS " New note", ImVec2(-1, 0)))
+        new_rune("note");
     ImGui::Separator();
     int shown = 0;
     for (const auto& n : scene.nodes) {
@@ -950,7 +970,17 @@ void HormigaApp::draw_notes_body() {
     if (!sel || sel->glyph != "note") {
         ImGui::TextDisabled("select a note on the left, or press + New note");
     } else {
-        ImGui::TextDisabled("%s", sel->name.c_str());
+        /* THE NOTE'S NAME IS EDITABLE HERE (2026-09-02). It was `TextDisabled`,
+         * and `draw_data_body` -- the only place with a rename box -- skips
+         * `note` runes because notes have this tab. So a note was the one kind
+         * of rune that could not be renamed, which is what the author reported.
+         * One control, in widgets.cpp, for both. */
+        if (rune_rename_control(*sel, 220)) {
+            ImGui::EndChild();
+            return; // sel points at the old projection - bail cleanly
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("(note)");
         // tags: chips (click x to remove) + a type-ahead to add (skip namespaced)
         for (const auto& t : sel->tags) {
             if (t.find(':') != std::string::npos) continue; // hide type:/icon:/…

@@ -12,6 +12,8 @@
 #include "render/published.hpp" // the shared clearance gate
 #include "render/text.hpp" // the helpers both output domains share
 #include "domain/date_query.hpp" // date: predicates in the block grammar
+#include "render/download.hpp" // a file a visitor can keep
+#include "render/audio.hpp" // the audio block's markup, both domains
 #include "render/video.hpp"      // a pasted video URL, understood
 #include "json.hpp" // theme/menu/embed payloads are JSON on the wire
 #include "stb_image_write.h" // decls only - gallery thumbnails; the ONE
@@ -28,11 +30,39 @@ std::string HormigaApp::render_site(std::string_view lang) {
     dio.mantle = kDataMantle;
     maiz::Scene issue = maiz::project_scene(core, io);
     maiz::Scene data = maiz::project_scene(core, dio);
+    warn_if_data_is_elsewhere(data); // field report D6: the silent empty render
     std::string suf = std::string("_") + std::string(lang);
     std::string alt = (lang == "en") ? "_es" : "_en";
+    /* ── HOW MUCH OF THIS PAGE IS ACTUALLY IN THIS LANGUAGE (2026-09-02) ─────
+     *
+     * `text()` falls back from `title_es` to `title_en` silently, and that
+     * silence is what the 2026-09-02 field report ran into: a site can be 0%
+     * translated, render `ok`, publish, and put a Spanish URL in a sitemap in
+     * front of a Spanish-speaking reader with an English page behind it, and
+     * nothing anywhere says a number.
+     *
+     * The report's proposed fix was a switch to stop building the second
+     * language. The author's answer was the opposite — better translation
+     * tooling, because bilingual is the resting state — so this counts the
+     * fallbacks and the render says what it found. `effect translation-report`
+     * (app/translate.cpp) is the other half: it writes the script that
+     * closes the gap.
+     *
+     * The FALLBACK ITSELF STAYS. A Spanish page showing an English summary is
+     * better than a Spanish page showing a blank, every time; what was missing
+     * was anyone being told it happened. */
+    int lang_hits = 0, lang_fallbacks = 0;
     auto text = [&](const maiz::SceneNode& n, const char* base) {
         std::string v = field_value(n, base + suf);
-        return v.empty() ? field_value(n, base + alt) : v;
+        if (!v.empty()) { ++lang_hits; return v; }
+        std::string o = field_value(n, base + alt);
+        /* AN ADDRESS HAS NO SPANISH (2026-09-03). A `label` holding
+         * `migriv24@gmail.com` fell back on every Spanish render and counted
+         * against a coverage figure that could therefore never reach 100% —
+         * and a warning that cannot be cleared is one people stop reading. The
+         * same test `translation-report` uses, so the two numbers agree. */
+        if (!o.empty() && !untranslatable(o)) ++lang_fallbacks;
+        return o;
     };
     /* ── THE BILINGUAL DATA HELPERS, WHICH THE WEBSITE NEVER GOT ─────────────
      *
@@ -116,7 +146,21 @@ std::string HormigaApp::render_site(std::string_view lang) {
     // carry each page's title/slug/order/nav; a component's `page` field names
     // the page it belongs to (empty = the HOME page). No page runes = the
     // legacy single-page site (fully backward-compatible). ──────────────────
-    struct PageInfo { std::string slug, title, desc; int order; bool in_nav; };
+    struct PageInfo {
+        std::string slug, title, desc;
+        /* THE TITLE A SHARE CARD SHOWS, which is not always the title in the
+         * nav (2026-09-02, field report A6). A home page reasonably called
+         * "Home" in a five-item menu shares to social as "Home" — the one word
+         * least likely to make anyone click. The two jobs genuinely differ: a
+         * nav label is read in the context of the site it is on, and a share
+         * card is read in a feed with no context at all.
+         *
+         * Empty falls back to the page title, so nothing changes for a site
+         * that does not set it. */
+        std::string social;
+        int order;
+        bool in_nav;
+    };
     std::vector<PageInfo> pages;
     for (const auto& n : issue.nodes)
         if (n.glyph == "page") {
@@ -126,6 +170,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
             p.title = text(n, "title");
             if (p.title.empty()) p.title = p.slug;
             p.desc = field_value(n, "meta_desc");
+            p.social = text(n, "social_title");
             p.order = hormiga::doc_field_int(n, "order", 0);
             p.in_nav = field_value(n, "in_nav") != "0";
             pages.push_back(p);
@@ -215,6 +260,11 @@ std::string HormigaApp::render_site(std::string_view lang) {
     bool want_ics = false; // → site/calendar.ics (import into Google/Apple/…)
     const std::string ics_stamp = ics_now_utc(); // one DTSTAMP for the render
     std::string cb = "?v=" + std::to_string((long long)std::time(nullptr));
+    /* THE OPERATOR'S OWN STYLESHEET, staged before any page is written so every
+     * page of every language agrees about whether there is one. See
+     * `stage_custom_css()` in render/assets.cpp for the whole argument; the
+     * short form is that `fonts/` already works exactly this way. */
+    const bool has_custom_css = stage_custom_css();
     SiteTheme site_th = read_site_theme(core); // config = the theme's truth
     std::error_code ec;
     fs::create_directories(data_dir("site"), ec);
@@ -234,10 +284,18 @@ std::string HormigaApp::render_site(std::string_view lang) {
          * The comment two lines below is the promise this broke — and it broke
          * it invisibly, into a fallback that looks fine on a developer's
          * machine, where the two paths are the same folder. */
+        /* THE STAGED LAYOUT IS `vendor/fonts/` SINCE 2026-09-04, and the
+         * reason is that `fonts/` beside the binary and `fonts/` beside the
+         * DATABASE are two different folders with one name -- the second is
+         * declared in `void.json` as the organization's own faces and is read
+         * twenty lines below. They are only distinguishable when
+         * `ship_dir != base_dir`, which is exactly the case a developer never
+         * sees. `fonts/web` stays first as the legacy layout, so a copy staged
+         * by an older build still renders. */
         std::vector<fs::path> roots;
         if (!ship_dir.empty()) {
-            roots.push_back(ship_dir / "fonts" / "web");   // staged beside the EXE
-            roots.push_back(ship_dir / "vendor" / "fonts" / "web");
+            roots.push_back(ship_dir / "fonts" / "web");             // pre-0.1.0 layout
+            roots.push_back(ship_dir / "vendor" / "fonts" / "web");  // staged beside the EXE
         }
         roots.push_back(fs::current_path() / "vendor" / "fonts" / "web"); // checkout
         fs::path fdst = data_dir("site") / "fonts";
@@ -287,6 +345,10 @@ std::string HormigaApp::render_site(std::string_view lang) {
     std::string base_url = cfg("site.base_url"); // e.g. https://our-org.org
     if (!base_url.empty() && base_url.back() == '/') base_url.pop_back();
     std::string site_desc = cfg("site.desc");
+    // `site.languages` was accepted, stored and read by nothing (portfolio
+    // report D1). The check lives in app/translate.cpp, the file that would
+    // have honoured the key and whose header the misreading came from.
+    if (lang == hormiga::site_langs().front()) warn_unread_language_key();
     /* The colophon under the footer: `config site.colophon`. Unset prints the
      * Void Hormiga credit, any value replaces it, "none" prints nothing —
      * "none" and not "" because `config get` hands back the same empty string
@@ -398,13 +460,21 @@ std::string HormigaApp::render_site(std::string_view lang) {
 
         // meta description: the page's own, else the first narrative on the
         // page, else the site default. og:image: the page's hero banner.
-        std::string desc;
+        std::string desc, social_title;
         for (const auto& p : pages)
-            if (p.slug == slug) desc = p.desc;
+            if (p.slug == slug) { desc = p.desc; social_title = p.social; }
         if (desc.empty())
             for (const auto* n : pchain)
                 if (n->glyph == "narrative") { desc = text(*n, "text"); break; }
         if (desc.empty()) desc = site_desc;
+        /* A share card carries the site's name with it or it carries nothing
+         * useful: `og:site_name` is a hint most feeds do not render, so a bare
+         * "Home" arrives as a bare "Home". The `<title>` tag already solves
+         * this by concatenating — this makes `og:title` agree with it, unless
+         * the operator stated a share title, in which case they have said
+         * exactly what they want and it is used verbatim. */
+        if (social_title.empty())
+            social_title = title == site_title ? title : title + " - " + site_title;
         std::string og_img;
         for (const auto* n : pchain)
             if (n->glyph == "hero") {
@@ -429,7 +499,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
           << "<meta property=\"og:type\" content=\"website\">\n"
           << "<meta property=\"og:site_name\" content=\"" << html_escape(site_title)
           << "\">\n"
-          << "<meta property=\"og:title\" content=\"" << html_escape(title) << "\">\n";
+          << "<meta property=\"og:title\" content=\"" << html_escape(social_title)
+          << "\">\n";
         if (!desc.empty())
             h << "<meta property=\"og:description\" content=\"" << html_escape(desc)
               << "\">\n";
@@ -458,8 +529,40 @@ std::string HormigaApp::render_site(std::string_view lang) {
                                           : base_url + "/" + page_file(slug, "en"))
           << "\">\n";
         h << "<meta name=\"twitter:card\" content=\"summary_large_image\">\n"
-          << "<link rel=\"stylesheet\" href=\"style.css" << cb << "\">\n"
-          << "</head>\n<body class=\"" << site_th.body_classes()
+          << "<link rel=\"stylesheet\" href=\"style.css" << cb << "\">\n";
+        /* ── THE OPERATOR'S TWO LINES OF CSS (2026-09-02) ────────────────────
+         *
+         * Field report Part 3: `render_site` unconditionally writes `style.css`,
+         * so three separate two-line cosmetic defects on a live public site were
+         * each blocked on a Hormiga release, because there was nowhere for an
+         * operator to put two lines of CSS.
+         *
+         * NOT a loosening of the render seam, and the distinction is the design.
+         * A `custom_css` FIELD would be a way to put markup — and therefore
+         * script — on a public page through the model, which is what `video`
+         * already refuses. A FILE beside the database is the operator's own
+         * machine and their own hand, and a `<link rel=stylesheet>` cannot
+         * execute anything whatever it contains. The pattern is `fonts/`, which
+         * has worked exactly this way since it shipped. See `stage_custom_css()`
+         * in render/assets.cpp. Linked AFTER our own stylesheet, so later wins
+         * in the cascade and it is an override rather than a default. */
+        if (has_custom_css)
+            h << "<link rel=\"stylesheet\" href=\"custom.css" << cb << "\">\n";
+        /* ── AND THE PAGE IS READABLE WITH JAVASCRIPT OFF (2026-09-02) ───────
+         *
+         * Field report D1, true of every site this renderer has ever produced.
+         * `.reveal` starts at `opacity:0` and only `app.js` adds `.in`, so a
+         * visitor with scripting disabled got the header, the hero and the
+         * buttons and an empty page beneath them — every narrative, header,
+         * quote, stat, card and gallery tile invisible, with nothing to suggest
+         * anything was missing.
+         *
+         * It turns the animation OFF rather than reproducing it: a no-JS visitor
+         * is owed the content, not the choreography, which is the same call
+         * `@media(prefers-reduced-motion:reduce)` already makes. */
+        h << "<noscript><style>.reveal{opacity:1;transform:none}</style>"
+             "</noscript>\n";
+        h << "</head>\n<body class=\"" << site_th.body_classes()
           << "\" style=\"--bdim:" << (site_th.banner_dim / 100.0) << "\">\n"
           << "<!-- generated by Void Hormiga: effect render-site " << lang << " -->\n";
         h << "<header class=\"site-head\"><div class=\"wrap\">\n"
@@ -517,6 +620,18 @@ std::string HormigaApp::render_site(std::string_view lang) {
     // a horizontal band (CSS grid), each component sized by its span — the
     // builder's side-by-side layout now renders side-by-side (author 2026-07-23).
     // A component's link_to wraps it in an <a> ("anything can be a button").
+    /* `platform` is read by two blocks - `download` and `link` - and the
+     * vocabulary and its complaint both live in render/download.hpp. Reading it
+     * HERE, per block, means the complaint is said once whether or not the
+     * block ended up in a platform set. */
+    auto platform_of = [&](const maiz::SceneNode& n) {
+        std::string w;
+        const std::string t =
+            hormiga::platform_field(field_value(n, "platform"), &w);
+        if (!w.empty()) log.push_back({"warn", "render", n.name + ": " + w});
+        return t;
+    };
+
     auto emit = [&](const maiz::SceneNode* n) {
         std::string lt = link_href(field_value(*n, "link_to"));
         if (!lt.empty())
@@ -530,7 +645,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
             std::string tgt = link_href(field_value(*n, "target"));
             std::string cls = field_value(*n, "link_style") == "text" ? "navlink"
                                                                       : "btn";
-            h << "<a class=\"" << cls << "\" href=\"" << html_escape(tgt) << "\">"
+            h << "<a class=\"" << cls << "\" href=\"" << html_escape(tgt) << "\""
+              << hormiga::platform_attr(platform_of(*n)) << ">"
               << html_escape(text(*n, "label")) << "</a>\n";
         } else if (n->glyph == "quote") { // W3: a pull-quote / testimonial
             h << "<blockquote class=\"pullquote reveal\"><p>"
@@ -547,6 +663,38 @@ std::string HormigaApp::render_site(std::string_view lang) {
             std::string ds = field_value(*n, "divider_style");
             if (ds == "space") h << "<div class=\"divider space\"></div>\n";
             else if (ds == "dots") h << "<div class=\"divider dots\"></div>\n";
+            else if (ds == "bar") {
+                /* A COLOURED BAR (2026-09-02, field report A6): a brand's
+                 * repeating swatch strip, which `line|dots|space` had nowhere
+                 * to put. `colors` empty means the theme accent, so
+                 * `divider_style bar` alone is already useful. A flex row of
+                 * spans rather than one `linear-gradient`, because equal-width
+                 * stops need doubled percentages per colour and that is
+                 * unreadable in the one place an operator would check it.
+                 * `css_colors` (render/text.hpp) validates rather than escapes
+                 * — see there for why — and hands back what it dropped so the
+                 * render can say so. */
+                std::vector<std::string> bad;
+                const std::vector<std::string> swatch =
+                    css_colors(field_value(*n, "colors"), &bad);
+                for (const std::string& c : bad)
+                    log.push_back({"warn", "render",
+                                   n->name + ": divider colour '" + c +
+                                       "' is not a hex value or a CSS colour "
+                                       "name and was dropped"});
+                const std::string hgt = field_value(*n, "bar_height");
+                const int hpx = hgt.empty()
+                                    ? 10
+                                    : std::max(2, std::min(80, std::atoi(hgt.c_str())));
+                h << "<div class=\"divider bar reveal\" style=\"height:" << hpx
+                  << "px\">";
+                if (swatch.empty())
+                    h << "<span style=\"background:var(--accent)\"></span>";
+                else
+                    for (const std::string& c : swatch)
+                        h << "<span style=\"background:" << c << "\"></span>";
+                h << "</div>\n";
+            }
             else h << "<hr class=\"divider line\">\n";
         } else if (n->glyph == "hero") {
             // modern full-bleed banner: image behind a legibility gradient with
@@ -565,22 +713,37 @@ std::string HormigaApp::render_site(std::string_view lang) {
             else if (hfil == "none") hfil.clear();
             else hfil = "f-" + hfil;
             const std::string hdim = field_value(*n, "image_dim");
+            /* THE PORTRAIT IS IN FRONT, WHICH IS THE WHOLE POINT (2026-09-03).
+             * `image` is the background and always was; a face put there gets
+             * cropped to the band. This is the round inset over it. It works
+             * with or without a banner, because "a portrait on a plain themed
+             * hero" is the other half of what was asked for. */
+            const std::string portrait = stage_site_asset(field_value(*n, "portrait"));
+            auto hero_portrait = [&] {
+                if (portrait.empty()) return;
+                h << "<img class=\"hero-portrait\" src=\"" << html_escape(portrait)
+                  << "\" alt=\"" << html_escape(text(*n, "title")) << "\">";
+            };
             if (!banner.empty()) {
-                h << "<section class=\"hero banner\"";
+                h << "<section class=\"hero banner" << (portrait.empty() ? "" : " withp")
+                  << "\"";
                 if (!hdim.empty())
                     h << " style=\"--bdim:" << (std::atoi(hdim.c_str()) / 100.0)
                       << "\"";
                 h << "><div class=\"hero-bg " << hfil << "\" "
                      "style=\"background-image:url('"
                   << html_escape(banner) << "')\"></div>"
-                  << "<div class=\"hero-shade\"></div><div class=\"hero-in\">"
-                  << "<h1>" << html_escape(text(*n, "title")) << "</h1>";
+                  << "<div class=\"hero-shade\"></div><div class=\"hero-in\">";
+                hero_portrait();
+                h << "<h1>" << html_escape(text(*n, "title")) << "</h1>";
                 if (!sub.empty())
                     h << "<p class=\"hero-sub\">" << html_escape(sub) << "</p>";
                 h << "</div></section>\n";
             } else {
-                h << "<section class=\"hero plain\"><div class=\"hero-in\"><h1>"
-                  << html_escape(text(*n, "title")) << "</h1>";
+                h << "<section class=\"hero plain" << (portrait.empty() ? "" : " withp")
+                  << "\"><div class=\"hero-in\">";
+                hero_portrait();
+                h << "<h1>" << html_escape(text(*n, "title")) << "</h1>";
                 if (!sub.empty())
                     h << "<p class=\"hero-sub\">" << html_escape(sub) << "</p>";
                 h << "</div></section>\n";
@@ -589,7 +752,34 @@ std::string HormigaApp::render_site(std::string_view lang) {
             h << "<h2 id=\"" << ids[n] << "\" class=\"section reveal\">"
               << html_escape(text(*n, "title")) << "</h2>\n";
         } else if (n->glyph == "narrative") {
-            h << "<p class=\"prose reveal\">" << html_escape(text(*n, "text"))
+            /* A HEADING ABOVE THE PROSE (2026-09-03, portfolio report A9).
+             * `narrative` was one `<p>`, so a role, an employer, a date range
+             * and four bullets were one paragraph at one weight — the client
+             * reached for `::first-line{font-weight:800}`, which means "the
+             * first line of this paragraph is secretly a heading". An `<h3>`
+             * says it instead. `h2.section` stays the page's own structure;
+             * this is a level below it, inside a block. */
+            const std::string nhead = text(*n, "heading");
+            if (!nhead.empty())
+                h << "<h3 class=\"prose-heading reveal\">" << html_escape(nhead)
+                  << "</h3>\n";
+            /* ── THE SAME FIELD, RENDERED THE SAME WAY, IN BOTH DOMAINS ──────
+             *
+             * Field report D4 (2026-09-02). The email emitted
+             * `white-space:pre-line` + `prose()`; this emitted `html_escape()`
+             * and no `pre-line`. One field, one text, two outputs — the email
+             * kept the author's line breaks and linkified bare URLs and
+             * addresses, the website did neither. AGENT-GUIDE §8 documents the
+             * linkification without distinguishing the two, and the guide is
+             * what an agent trusts, so the fix is to make the guide true rather
+             * than to narrow it.
+             *
+             * What the divergence cost, measured: a site with no lists at all —
+             * two eighteen-track tracklists as one hyphen-joined paragraph
+             * each, and every ordinary paragraph its own block rune.
+             *
+             * `prose()` is escape-THEN-linkify, so this opens nothing. */
+            h << "<p class=\"prose pre-line reveal\">" << web_prose(text(*n, "text"))
               << "</p>\n";
         } else if (n->glyph == "event_grid") {
             /* THE SAME BLOCK THE EMAIL GOT ON 2026-08-19, which stopped there.
@@ -716,6 +906,40 @@ std::string HormigaApp::render_site(std::string_view lang) {
             bool carousel = (mode == "carousel");
             std::string gcap = text(*n, "caption");
             const int glimit = hormiga::doc_field_int(*n, "limit", 0);
+            /* ── `columns` IS NOW READ (2026-09-02) ──────────────────────────
+             *
+             * Field report A6. The field was declared on the glyph, labelled
+             * `combo:2,3,4` and offered in the inspector, and this renderer
+             * never looked at it once — layout came entirely from the
+             * stylesheet's `auto-fill(minmax(190px,1fr))` and the block's
+             * `span`, so an operator wanting one album cover to fill its column
+             * had to discover empirically that `span 4` gives one tile and
+             * `span 5` gives two with the cover floating left. Their sentence
+             * for it is the right one: *a field that does nothing is worse than
+             * no field.*
+             *
+             * Empty still means `auto-fill`, the correct default for a gallery
+             * whose length is a query result. A count is clamped to 1-6 because
+             * the value reaches a class name and there is no `.cols-97`; out of
+             * range warns rather than silently doing nothing, since a typo here
+             * looks exactly like the bug this replaces. Masonry and carousel lay
+             * themselves out and say so instead of half-honouring it. */
+            std::string gcols;
+            {
+                const std::string cs = field_value(*n, "columns");
+                const int c = cs.empty() ? 0 : std::atoi(cs.c_str());
+                if (!cs.empty() && (c < 1 || c > 6))
+                    log.push_back({"warn", "render",
+                                   n->name + ": image_grid columns '" + cs +
+                                       "' is outside 1-6 and was ignored"});
+                else if (!cs.empty() && mode != "grid")
+                    log.push_back({"warn", "render",
+                                   n->name + ": image_grid columns is a `grid` "
+                                   "setting; this block is `" + mode +
+                                   "`, which lays itself out"});
+                else if (!cs.empty())
+                    gcols = " cols-" + std::to_string(c);
+            }
             if (!gcap.empty())
                 h << "<p class=\"meta caption\">" << html_escape(gcap) << "</p>\n";
             if (carousel)
@@ -723,7 +947,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
                      "<button class=\"cbtn prev\" aria-label=\"previous\">&lsaquo;"
                      "</button>\n<div class=\"gallery carousel\">\n";
             else
-                h << "<div class=\"gallery " << mode << " reveal\">\n";
+                h << "<div class=\"gallery " << mode << gcols << " reveal\">\n";
             /* ── WHY THIS IS TWO PASSES NOW (2026-08-28) ────────────────
              *
              * The field report: on the Archive page an English reader got five
@@ -803,8 +1027,12 @@ std::string HormigaApp::render_site(std::string_view lang) {
                  * "Flier Escudo Back2school Eng" under a picture. `description`
                  * and `alt` are declared, already populated, and written for a
                  * reader. */
-                std::string icap = field_value(*dn, "description");
-                if (icap.empty()) icap = field_value(*dn, "alt");
+                /* Per-language, with the legacy field last: `description`
+                 * and `alt` are prose an organization wrote, and a caption
+                 * under a flier on the Spanish page is exactly the text a
+                 * Spanish reader needs. */
+                std::string icap = lang_text(*dn, "description", lang);
+                if (icap.empty()) icap = lang_text(*dn, "alt", lang);
                 if (icap.empty()) icap = humanize(dn->name);
                 h << "<a class=\"tile\" href=\"" << html_escape(href)
                   << "\" data-caption=\"" << html_escape(icap)
@@ -865,6 +1093,107 @@ std::string HormigaApp::render_site(std::string_view lang) {
                          "published. From the outside this is indistinguishable "
                          "from the language filter; it is not the same thing."});
             }
+        } else if (n->glyph == "download") {
+            /* A file a visitor can keep. Markup in `render/download.hpp`; what
+             * happens here is resolving `file` — which takes EITHER a path or
+             * the name of a `resource` rune — staging it, and refusing the
+             * extensions that would be executable on this site's own origin. */
+            std::string want = field_value(*n, "file");
+            std::string via_rune;
+            if (!want.empty())
+                for (const auto& dn : data.nodes)
+                    if (dn.glyph == "resource" && dn.name == want) {
+                        via_rune = want;
+                        want = field_value(dn, "path");
+                        break;
+                    }
+            hormiga::DownloadCard dc;
+            dc.label = text(*n, "label");
+            if (dc.label.empty())
+                dc.label = ui("Download", "Descargar");
+            dc.caption = text(*n, "caption");
+            dc.card = field_value(*n, "download_style") == "card";
+            dc.platform = platform_of(*n);
+
+            const std::string refuse =
+                want.empty() ? std::string() : hormiga::download_refusal(want);
+            if (!want.empty() && !refuse.empty()) {
+                log.push_back({"error", "render",
+                               n->name + ": refusing to publish '" + want +
+                                   "' - " + refuse});
+                h << "<p class=\"empty\">"
+                  << html_escape(ui("This file cannot be published.",
+                                    "Este archivo no se puede publicar."))
+                  << "</p>\n";
+            } else {
+                dc.href = want.empty() ? std::string() : stage_site_asset(want);
+                if (dc.href.empty()) {
+                    if (want.empty())
+                        log.push_back({"warn", "render",
+                                       n->name + ": no file set, so this "
+                                       "download button was left off the page"});
+                    else
+                        log.push_back({"warn", "render",
+                                       n->name + ": '" + want + "'" +
+                                           (via_rune.empty()
+                                                ? std::string()
+                                                : " (resource " + via_rune + ")") +
+                                           " is not on this machine, so the "
+                                           "download button was left off the "
+                                           "page rather than published broken"});
+                    h << "<p class=\"empty\">"
+                      << html_escape(ui("This file is not available.",
+                                        "Este archivo no esta disponible."))
+                      << "</p>\n";
+                } else {
+                    /* Size and kind from the STAGED file — the same `stat` the
+                     * staleness check already performs, and the one piece of
+                     * metadata a visitor wants before they tap it on a phone. */
+                    std::error_code se;
+                    const auto sz = fs::file_size(data_dir("site") / dc.href, se);
+                    dc.meta = hormiga::file_kind(dc.href);
+                    if (!se) dc.meta += " \xC2\xB7 " + hormiga::human_size(sz);
+                    h << hormiga::download_web(dc);
+                }
+            }
+        } else if (n->glyph == "audio") {
+            /* The markup is `render/audio.hpp`'s, beside its own concern and
+             * pure — the precedent `video.hpp` set. What only this function can
+             * do is resolve the cover RUNE, stage the file, and pick the
+             * language; see there for why there is no click-to-load facade. */
+            hormiga::AudioCard ac;
+            const std::string asrc = field_value(*n, "src");
+            ac.src = stage_site_asset(asrc);
+            ac.title = text(*n, "title");
+            ac.artist = field_value(*n, "artist");
+            ac.duration = field_value(*n, "duration");
+            ac.caption = text(*n, "caption");
+            const std::string cover_rune = field_value(*n, "cover");
+            if (!cover_rune.empty())
+                for (const auto& dn : data.nodes)
+                    if (dn.glyph == "image" && dn.name == cover_rune)
+                        ac.cover = stage_site_asset(field_value(dn, "path"));
+            /* Two different silences, two different sentences. "No file yet" is
+             * an unfinished block; "not available" is a file this machine does
+             * not have, and only the second is worth a warning. */
+            const std::string miss =
+                asrc.empty()
+                    ? ui("No audio file yet. Set this block's file and it will "
+                         "play here.",
+                         "Aun no hay archivo de audio. Elige el archivo de este "
+                         "bloque y sonara aqui.")
+                    : ui("This recording is not available.",
+                         "Esta grabacion no esta disponible.");
+            if (ac.src.empty() && !asrc.empty())
+                log.push_back({"warn", "render",
+                               n->name + ": audio file '" + asrc +
+                                   "' is not on this machine, so the page has a "
+                                   "message where the player should be. Bring "
+                                   "the file into assets/ (the block's Browse "
+                                   "does it) and render again."});
+            h << hormiga::audio_web(ac, miss,
+                                    ui("Download the audio",
+                                       "Descargar el audio"));
         } else if (n->glyph == "video") {
             /* ── A VIDEO, WITHOUT REPORTING THE READER (2026-08-28) ─────────
              *
@@ -1158,14 +1487,16 @@ std::string HormigaApp::render_site(std::string_view lang) {
                     if (!href.empty()) {
                         published_images.insert(fl->name);
                         const std::string th = site_thumb(href, 900);
-                        std::string icap = field_value(*fl, "description");
-                        if (icap.empty()) icap = field_value(*fl, "alt");
+                        std::string icap =
+                            lang_text(*fl, "description", lang);
+                        if (icap.empty())
+                            icap = lang_text(*fl, "alt", lang);
                         if (icap.empty() && ev) icap = title_of(*ev);
                         h << "<a class=\"tile flier\" href=\"" << html_escape(href)
                           << "\" data-caption=\"" << html_escape(icap)
                           << "\"><img loading=\"lazy\" src=\""
                           << html_escape(th.empty() ? href : th) << "\" alt=\""
-                          << html_escape(field_value(*fl, "alt")) << "\"></a>";
+                          << html_escape(lang_text(*fl, "alt", lang)) << "\"></a>";
                     }
                 }
                 if (ev && !allo_web_hidden(ev->name)) {
@@ -1249,7 +1580,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
              * callers; see that header. */
             auto pub = hormiga::published::directory(
                 data, q, kind,
-                [this](const std::string& rune) { return allo_web_hidden(rune); });
+                [this](const std::string& rune) { return allo_web_hidden(rune); },
+                lang);
             std::vector<hormiga::published::Person>& people = pub.people;
             const int withheld = pub.withheld;
             if (dlimit > 0 && (int)people.size() > dlimit)
@@ -1622,8 +1954,26 @@ std::string HormigaApp::render_site(std::string_view lang) {
                 }
                 h << "<div class=\"band-inner\">\n";
             }
+            /* A PLATFORM SET is a grid row holding two or more blocks that each
+             * name a computer (render/download.hpp): app.js marks the visitor's
+             * own and moves it first, and has nothing to hide it with. Decided
+             * HERE at build time, the way `data-embed` is - the page states what
+             * it is and the script only reacts. One such block on a row is not a
+             * set; there is nothing to choose between. */
+            size_t pset_n = 0;
+            for (size_t k = i; j - i > 1 && k < j; ++k)
+                if (!hormiga::platform_token(field_value(*pchain[k], "platform"))
+                         .empty())
+                    ++pset_n;
+            const bool pset = pset_n > 1;
             if (j - i > 1) { // a real horizontal band
-                h << "<div class=\"wrow\">\n";
+                h << "<div class=\"wrow" << (pset ? " platform-set" : "") << "\"";
+                // the badge text rides the MARKUP: one app.js serves both languages
+                if (pset)
+                    h << " data-yours=\""
+                      << html_escape(ui("For your computer", "Para tu computadora"))
+                      << "\"";
+                h << ">\n";
                 for (size_t k = i; k < j; ++k) {
                     int span = std::clamp(
                         hormiga::doc_field_int(*pchain[k], "span", 12), 1, 12);
@@ -1697,6 +2047,83 @@ std::string HormigaApp::render_site(std::string_view lang) {
                            "section, or its block wants `date:future` in the "
                            "query - `effect query '<the expression> AND "
                            "date:future'` shows what that would publish."});
+    /* ── AND SAY WHAT THIS PAGE IS ACTUALLY IN (2026-09-02) ──────────────────
+     *
+     * Counted by the `text()` lambda at the top of this function. One line
+     * naming the number an operator cannot get any other way: how much of what
+     * a visitor was just handed is written in the language they asked for.
+     * Warn, not info — the failure is invisible from the page, because a Spanish
+     * reader sees English prose under a Spanish URL and cannot tell a gap from a
+     * choice. `effect translation-report` is the other half. */
+    if (lang_fallbacks > 0) {
+        const int seen = lang_hits + lang_fallbacks;
+        log.push_back(
+            {"warn", "render",
+             "the " + std::string(lang) + " site fell back to another language " +
+                 std::to_string(lang_fallbacks) + " time(s) out of " +
+                 std::to_string(seen) + " (" +
+                 std::to_string((int)((lang_hits * 100.0) / seen + 0.5)) +
+                 "% written in " + std::string(lang) +
+                 "). `effect translation-report " + std::string(lang) +
+                 "` writes a script with the source text already in it."});
+    }
+    /* ── A DELETED PAGE HAS TO LEAVE THE SITE (2026-09-02) ───────────────────
+     *
+     * The author: *"sometimes i make a page for the website, then decide it's
+     * not needed. Instead of still navigating to an old version of that page
+     * (cuz i guess the link still exists) it should reroute to a custom 404."*
+     *
+     * The guess in that sentence is the diagnosis. `render_site` wrote one file
+     * per page and removed nothing, so deleting a `page` rune took it out of
+     * the nav, the sitemap and the model — and left `about-en.html` in `site/`,
+     * where the next deploy uploaded it again. The old page stayed live at its
+     * old URL, showing content the database no longer contains.
+     *
+     * A 404 was never the fix and there already is a themed one. The fix is
+     * that `site/` is a MIRROR of the document rather than an accumulation of
+     * every render that ever ran — the property the GitHub deployer builds its
+     * commit with, applied one layer earlier so it holds for every host. Once
+     * the file is gone the host's own 404 serves that URL, which is what was
+     * asked for.
+     *
+     * ONLY files this render would have written: `<name>-<lang>.html` at the top
+     * level, for a language this site publishes. Not `assets/`, `fonts/`,
+     * `index.html`, `404.html`, `sitemap.xml`, `style.css`, `custom.css`,
+     * `app.js` or the calendars; nothing in a subdirectory. `site/` is a folder
+     * on somebody's disk and an operator may have put something there by hand —
+     * a prune reasoning "anything I did not write is stale" would delete it.
+     *
+     * PER-LANGUAGE, because `effect render-site es` is a legitimate preview loop
+     * and must not remove the English pages. Each pass prunes its own suffix. */
+    {
+        std::set<std::string> keep;
+        if (pages.empty()) keep.insert(page_file(""));
+        else
+            for (const auto& p : pages) keep.insert(page_file(p.slug));
+        const std::string suffix = "-" + std::string(lang) + ".html";
+        std::error_code pec;
+        std::vector<fs::path> gone;
+        for (const auto& de : fs::directory_iterator(data_dir("site"), pec)) {
+            if (pec) break;
+            if (!de.is_regular_file(pec)) continue;
+            const std::string fn = de.path().filename().string();
+            if (fn.size() <= suffix.size() ||
+                fn.compare(fn.size() - suffix.size(), suffix.size(), suffix) != 0)
+                continue;
+            if (keep.count(fn)) continue;
+            gone.push_back(de.path());
+        }
+        for (const fs::path& p : gone) {
+            std::error_code rec;
+            fs::remove(p, rec);
+            if (!rec)
+                log.push_back({"info", "render",
+                               "removed " + p.filename().string() +
+                                   " - no page in this document renders to it "
+                                   "any more, so the next publish takes it down "
+                                   "rather than leaving it live at its old URL"});
+        }
+    }
     auto write = [&](const char* name, const std::string& body) {
         std::ofstream o(data_dir("site") / name, std::ios::binary | std::ios::trunc);
         o << body;

@@ -160,6 +160,132 @@ inline constexpr int kBaseSourceCount = hormiga::gis::kBuiltinSourceCount;
 // ── marker styling: icons + colors ARE tags (icon:<name>, color:<name>),
 // chosen from dropdowns rather than typed — the tag system stays the truth,
 // the menu is just a friendlier front-end (author, 2026-07-22) ──────────────
+/* ── A CLAMP THAT SURVIVES A WINDOW TOO SMALL FOR IT (2026-09-02) ────────────
+ *
+ * `std::clamp(v, lo, hi)` has a PRECONDITION: `hi >= lo`. Violating it is
+ * undefined behaviour, and libstdc++ built with assertions on — which is how
+ * this project builds — turns that into `abort()`. Not a wrong layout: the
+ * process dies.
+ *
+ * It killed the application at boot, and the report was *"i double click the
+ * desktop shortcut … it briefly opens for a bit (with the terminal) then it
+ * closes."* The Data section computes its three pane widths as
+ *
+ *     side_w = clamp(frac * total, 110, total * 0.4)
+ *     list_w = clamp(frac * rest,  150, rest - 120)
+ *
+ * and both bounds cross when the pane is narrow: the first at `total < 275`,
+ * the second whenever `rest < 270` — and `rest` has a floor of 160, so the
+ * second inverts *by construction* in a narrow window. The pattern is
+ * everywhere in this codebase's layout code, because it is the natural way to
+ * write "at least this readable, at most this share of the space", and it is
+ * correct right up until the space cannot honour both.
+ *
+ * ── WHY `lo` WINS ───────────────────────────────────────────────────────────
+ *
+ * Every one of these is a MINIMUM READABLE SIZE and a MAXIMUM SHARE. When they
+ * conflict there is no arrangement that satisfies both, and the useful answer
+ * is the minimum: a 110px sidebar that overflows a 200px window can still be
+ * read and dragged back, and ImGui clips it. Taking `hi` instead would collapse
+ * the pane to nothing, which looks exactly like the crash it replaced.
+ *
+ * ── WHY A HELPER AND NOT `std::max(lo, hi)` AT EACH CALL ────────────────────
+ *
+ * Because the next call site will be written the same natural way by somebody
+ * who has not read this comment, and the failure is a hard abort on somebody
+ * else's screen size rather than a visible glitch on ours. One name to reach
+ * for, one place that explains the rule. `tools/find_long.py` cannot catch this;
+ * a grep for `std::clamp` with a computed upper bound can, and that is what
+ * found the other two.
+ */
+template <class T>
+inline T clamp_fit(T v, T lo, T hi) {
+    return hi < lo ? lo : (v < lo ? lo : (hi < v ? hi : v));
+}
+
+/* ── AN ICON FOR EVERY GLYPH (2026-09-02) ────────────────────────────────────
+ *
+ * The author: *"i'd really like to get some icons in this application. like not
+ * just emojis or something, but icons … especially for the builder, like little
+ * icons next to the drag and drop button."*
+ *
+ * ── NOTHING WAS DOWNLOADED, AND THAT IS THE POINT ────────────────────────────
+ *
+ * The ask included *"if we can download some icon assets from somewhere"*, and
+ * the answer is that both halves of it are already vendored and have been for
+ * months, each for the surface it suits:
+ *
+ *   - **Font Awesome 6 Free Solid**, `vendor/fonts/fa-solid-900.ttf`, merged
+ *     into the ImGui atlas in `main/desktop.cpp`. Right for a GUI: one glyph,
+ *     one draw call, and it inherits the text colour and the DPI scale for
+ *     free. It has only ever been used for map markers.
+ *   - **Lucide**, `vendor/icons/lucide_icons.hpp`, as SVG path data. Right for
+ *     a WEB page, where an icon font is a download that blocks first paint,
+ *     renders as a box when it fails, and is invisible to a screen reader.
+ *
+ * So this table is not new capability. It is the GUI half of the icon story
+ * finally being used past the map, and it needs no new dependency, no license
+ * to add (both are already in THIRD-PARTY-NOTICES.md) and no network at all.
+ *
+ * ── WHY A TABLE AND NOT A FIELD ON THE GLYPH ─────────────────────────────────
+ *
+ * `block()` already takes nine parameters and a tenth would be a tenth thing to
+ * get right at every call site. More importantly, an icon is a property of THIS
+ * FRONT-END: the web renderer draws SVG, the newsletter draws nothing, and a
+ * headless run has no atlas. Putting it in the glyph declaration would push a
+ * desktop concern into the model that every other caller has to ignore.
+ *
+ * One table, in one place, that a person can read top to bottom and see whether
+ * two things that should look different do. An unlisted glyph falls back to a
+ * neutral square rather than to nothing, because a palette where some rows have
+ * an icon and some have empty space reads as broken rather than as sparse.
+ */
+inline const char* glyph_icon(std::string_view glyph) {
+    struct Row { const char* glyph; const char* icon; };
+    static const Row kRows[] = {
+        // ── document blocks (the Builder palette) ───────────────────────────
+        {"hero", ICON_FA_PANORAMA},
+        {"narrative", ICON_FA_PARAGRAPH},
+        {"section_header", ICON_FA_HEADING},
+        {"event_grid", ICON_FA_CALENDAR_DAYS},
+        {"event_feature", ICON_FA_STAR},
+        {"event_flier", ICON_FA_RECTANGLE_AD},
+        {"image_grid", ICON_FA_IMAGES},
+        {"job_grid", ICON_FA_BRIEFCASE},
+        {"directory", ICON_FA_ADDRESS_BOOK},
+        {"video", ICON_FA_VIDEO},
+        {"audio", ICON_FA_MUSIC},
+        {"download", ICON_FA_DOWNLOAD},
+        {"footer", ICON_FA_GRIP_LINES},
+        {"link", ICON_FA_LINK},
+        {"quote", ICON_FA_QUOTE_LEFT},
+        {"stat", ICON_FA_CHART_SIMPLE},
+        {"divider", ICON_FA_MINUS},
+        {"map_embed", ICON_FA_MAP},
+        {"calendar_embed", ICON_FA_CALENDAR},
+        {"page", ICON_FA_FILE_LINES},
+        // ── the five kinds of thing, plus the ones that grew beside them ────
+        {"contact", ICON_FA_USER},
+        {"organization", ICON_FA_BUILDING},
+        {"event", ICON_FA_CALENDAR},
+        {"incident", ICON_FA_TRIANGLE_EXCLAMATION},
+        {"job", ICON_FA_BRIEFCASE},
+        {"image", ICON_FA_IMAGE},
+        {"resource", ICON_FA_BOOK_OPEN},
+        {"role", ICON_FA_BRIEFCASE},
+        {"project", ICON_FA_CUBE},
+        {"location", ICON_FA_LOCATION_DOT},
+        {"note", ICON_FA_NOTE_STICKY},
+        {"map", ICON_FA_MAP},
+        {"deployment", ICON_FA_CLOUD_ARROW_UP},
+        {"peer", ICON_FA_USERS},
+        {"submission", ICON_FA_FILE_IMPORT},
+    };
+    for (const Row& r : kRows)
+        if (glyph == r.glyph) return r.icon;
+    return ICON_FA_SQUARE;
+}
+
 struct MarkerIcon { const char* tag; const char* label; const char* glyph; };
 inline const MarkerIcon kMarkerIcons[] = {
     {"house", "House / building", ICON_FA_HOUSE},
