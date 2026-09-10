@@ -13,6 +13,29 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Void Maiz (which itself locates Void Core via its VOIDCORE_ROOT).
+#
+# ── X11 ONLY ON LINUX, AND IT IS NOT A PREFERENCE (2026-09-10) ──────────────
+#
+# GLFW 3.4 builds an X11 AND a Wayland backend by default, and the Wayland one
+# generates client headers from protocol XML in `vendor/glfw/deps/wayland/`.
+# **That directory is not in Void Maiz's vendored drop** — not on GitHub and not
+# in the local checkout — so a Linux configure succeeds and the build then stops
+# with `No rule to make target '…/deps/wayland/xdg-shell.xml'`. Found on the
+# first Linux build anybody has ever run (our release workflow, 2026-09-10),
+# which is the whole argument for running one.
+#
+# Turning the backend off is the right fix here rather than a workaround: an X11
+# build runs on a Wayland desktop through XWayland, so nothing is lost that a
+# person would notice, and the alternative is vendoring files into somebody
+# else's repository, which ground rule 4 forbids. A cache variable set by the
+# superproject before `add_subdirectory` is the ordinary CMake way to say this
+# and touches nothing upstream.
+#
+# Reported to Void Maiz; if they complete the drop this can go.
+if(UNIX AND NOT APPLE)
+  set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Void Maiz's GLFW drop has no Wayland protocol XML" FORCE)
+  set(GLFW_BUILD_X11 ON CACHE BOOL "" FORCE)
+endif()
 set(VOIDMAIZ_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../VoidMaiz" CACHE PATH
     "Path to the Void Maiz repo")
 add_subdirectory("${VOIDMAIZ_ROOT}" voidmaiz)

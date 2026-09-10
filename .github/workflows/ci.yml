@@ -76,7 +76,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols
+          # X11 only: Void Maiz's vendored GLFW has no Wayland protocol XML, so
+          # the top-level CMakeLists turns that backend off. See the note there.
+          sudo apt-get install -y xorg-dev
 
       # Void Core is linked as a prebuilt shared library on desktop, so it has
       # to exist before we configure. Same command its own CI uses.
@@ -129,6 +131,6 @@ jobs:
           echo "$out" | grep -qv "unconfigured-platform"
           case "${{ matrix.os }}" in
             windows-latest) echo "$out" | grep -q "windows-x64" ;;
-            macos-latest)   echo "$out" | grep -q "macos-universal" ;;
+            macos-latest)   echo "$out" | grep -qE "macos-(arm64|x64)" ;;
             ubuntu-latest)  echo "$out" | grep -q "linux-x64" ;;
           esac

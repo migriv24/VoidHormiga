@@ -6,7 +6,18 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include "voidmaiz/glhost.hpp" // the GL context this view needs, per platform
+/* The GL context this view needs, per platform. GUARDED, because the header is
+ * newer than the Void Maiz commit currently on GitHub — our CI clones the
+ * sibling repos from there, and a hard include makes every macOS and Linux
+ * build fail on a file that exists only in the author's working copy. The
+ * fallback below does the same thing and deletes itself the day upstream
+ * ships; see the note at the call site for why it is not simply duplicated. */
+#if defined(__has_include)
+#if __has_include("voidmaiz/glhost.hpp")
+#include "voidmaiz/glhost.hpp"
+#define HORMIGA_HAS_MAIZ_GLHOST 1
+#endif
+#endif
 #include <GLFW/glfw3.h>
 
 #include <cstdio>
@@ -174,7 +185,32 @@ int main(int argc, char** argv) {
      * a second place to write either of them. Windows behaviour is
      * byte-identical (still 3.0 / `#version 130`); what this buys is a platform
      * we have not shipped, which is exactly when a fix like this is cheap. */
+#ifdef HORMIGA_HAS_MAIZ_GLHOST
     const char* glsl_version = maiz::gl_context_hints();
+#else
+    /* THE SAME ANSWER, WHILE UPSTREAM'S IS UNPUBLISHED. This is a copy, and a
+     * copy is the thing `gl_context_hints()` exists to abolish — so it is here
+     * under `__has_include` rather than as a choice: the moment Void Maiz's
+     * commit reaches GitHub this branch stops compiling into anything and the
+     * library's answer wins again. Keeping the hints and the version string
+     * adjacent, in one block, is what stops THIS copy from drifting the way the
+     * original pair did across two hundred lines. */
+    const char* glsl_version;
+#if defined(__APPLE__)
+    /* macOS has no OpenGL 3.0: legacy 2.1, or 3.2+ core with forward
+     * compatibility, and nothing between. The three hints are a set — a core
+     * profile without FORWARD_COMPAT is rejected outright. */
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+    glsl_version = "#version 150";
+#else
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glsl_version = "#version 130";
+#endif
+#endif
     GLFWwindow* window = glfwCreateWindow(1360, 800, "Hormiga", nullptr, nullptr);
     if (!window) { glfwTerminate(); return 1; }
     glfwMakeContextCurrent(window);
