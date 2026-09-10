@@ -115,13 +115,50 @@ target_compile_definitions(sqlite3 PRIVATE
 
 # Vendored libsodium (ISC — vendor/libsodium/README.md): the one crypto
 # dependency, built from source with the ucrt64 toolchain (no hand-rolling).
-add_library(sodium STATIC IMPORTED)
-set_target_properties(sodium PROPERTIES
-  IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libsodium/lib/libsodium.a")
-target_include_directories(sodium INTERFACE vendor/libsodium/include)
-# static libsodium requires SODIUM_STATIC/SODIUM_EXPORT=empty so headers don't
-# emit dllimport decorations
-target_compile_definitions(sodium INTERFACE SODIUM_STATIC=1)
+#
+# ── AND IT IS A WINDOWS BINARY, WHICH "VENDOR" HAD BEEN HIDING (2026-09-10) ──
+#
+# `vendor/libsodium/` holds headers and a PREBUILT `lib/libsodium.a` and no
+# sources at all. That artifact is a ucrt64 build: the first Linux link failed on
+# `__imp_EnterCriticalSection`, `__imp__errno` and `___chkstk_ms`, which are
+# Windows symbols sitting inside a file the tree calls "vendored".
+#
+# Which is worth naming precisely, because ground rule 5 says *vendor, don't
+# depend* and this looked like compliance. Every other vendored piece — SQLite,
+# BLAKE3, the single-file headers — is SOURCE, and source is portable by
+# construction. A vendored BINARY is a dependency on one toolchain wearing a
+# vendor's clothes, and it is single-platform whether or not anybody noticed.
+#
+# THE PROPER FIX IS TO VENDOR THE SOURCES, the way SQLite already is, and it is
+# not this commit's job: it is a re-vendor with a version to record, and doing it
+# inside a change whose purpose is "get a build onto two platforms" is the
+# refactor-riding-along that this project has already learned about once. So for
+# now, on the platforms where the vendored artifact CANNOT work, the system
+# library is used and the deviation is stated rather than silent. See
+# okf/developer_questions.md.
+if(WIN32)
+  add_library(sodium STATIC IMPORTED)
+  set_target_properties(sodium PROPERTIES
+    IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libsodium/lib/libsodium.a")
+  target_include_directories(sodium INTERFACE vendor/libsodium/include)
+  # static libsodium requires SODIUM_STATIC/SODIUM_EXPORT=empty so headers don't
+  # emit dllimport decorations
+  target_compile_definitions(sodium INTERFACE SODIUM_STATIC=1)
+else()
+  find_library(HORMIGA_SODIUM_LIB NAMES sodium libsodium)
+  find_path(HORMIGA_SODIUM_INC sodium.h)
+  if(NOT HORMIGA_SODIUM_LIB OR NOT HORMIGA_SODIUM_INC)
+    message(FATAL_ERROR
+      "libsodium was not found, and the copy in vendor/ is a Windows binary so "
+      "it cannot be used here. Install it:  apt install libsodium-dev  |  "
+      "brew install libsodium. Vendoring the sources instead is the real fix.")
+  endif()
+  add_library(sodium INTERFACE IMPORTED)
+  target_link_libraries(sodium INTERFACE "${HORMIGA_SODIUM_LIB}")
+  target_include_directories(sodium INTERFACE "${HORMIGA_SODIUM_INC}")
+  message(STATUS "libsodium: system copy at ${HORMIGA_SODIUM_LIB} "
+                 "(vendor/ holds a Windows-only binary)")
+endif()
 
 # Hormiga's DOMAIN Allomone (src/domain/hormiga_allomone.hpp): the small library the
 # Void Maiz host protocol asks every adopter to supply — subjects, properties +
@@ -288,7 +325,9 @@ if(NOT MSVC)
   if(MINGW)
     target_link_options(voidhormiga PRIVATE -static)
   else()
-    target_link_options(voidhormiga PRIVATE -static-libstdc++ -static-libgcc)
+    if(NOT APPLE)
+      target_link_options(voidhormiga PRIVATE -static-libstdc++ -static-libgcc)
+    endif()
   endif()
 endif()
 
@@ -463,7 +502,9 @@ if(NOT MSVC)
   if(MINGW)
     target_link_options(voidhormiga-cli PRIVATE -static) # see voidhormiga above
   else()
-    target_link_options(voidhormiga-cli PRIVATE -static-libstdc++ -static-libgcc)
+    if(NOT APPLE)
+      target_link_options(voidhormiga-cli PRIVATE -static-libstdc++ -static-libgcc)
+    endif()
   endif()
 endif()
 
@@ -688,11 +729,21 @@ target_link_libraries(catgen PRIVATE hormiga_allomone)
 target_include_directories(catgen PRIVATE src vendor/json) # seed.hpp uses nlohmann
 
 if(NOT MSVC)
-  target_link_options(hormiga_replay_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  target_link_options(hormiga_spine_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  target_link_options(hormiga_vault_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  target_link_options(hormiga_miga_smoke PRIVATE -static-libstdc++ -static-libgcc)
-  target_link_options(hormiga_allomone_smoke PRIVATE -static-libstdc++ -static-libgcc)
+  if(NOT APPLE)
+    target_link_options(hormiga_replay_smoke PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
+  if(NOT APPLE)
+    target_link_options(hormiga_spine_smoke PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
+  if(NOT APPLE)
+    target_link_options(hormiga_vault_smoke PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
+  if(NOT APPLE)
+    target_link_options(hormiga_miga_smoke PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
+  if(NOT APPLE)
+    target_link_options(hormiga_allomone_smoke PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
   target_link_options(hormiga_civic_smoke PRIVATE -static-libstdc++ -static-libgcc)
   target_link_options(hormiga_reyna_import_smoke PRIVATE -static-libstdc++ -static-libgcc)
 endif()

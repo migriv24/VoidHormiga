@@ -74,7 +74,13 @@ jobs:
           sudo apt-get update
           # X11 only: Void Maiz's vendored GLFW has no Wayland protocol XML, so
           # the top-level CMakeLists turns that backend off. See the note there.
-          sudo apt-get install -y xorg-dev
+          # libsodium: vendor/ holds a Windows-only prebuilt .a, so off Windows
+          # the system copy is used. See the note in CMakeLists.txt.
+          sudo apt-get install -y xorg-dev libsodium-dev
+
+      - name: macOS libsodium (vendor/ is a Windows binary)
+        if: startsWith(matrix.os, 'macos')
+        run: brew install libsodium
 
       - name: Build Void Core
         shell: bash
