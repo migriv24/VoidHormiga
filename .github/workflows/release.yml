@@ -120,9 +120,14 @@ jobs:
           STAGE="VoidHormiga-${VERSION}-${{ matrix.platform }}"
           mkdir -p "dist/$STAGE"
           cp -R VoidHormiga/build/bin/. "dist/$STAGE/"
-          # test executables, the dataset generator, and CMake leftovers are not
-          # part of what somebody downloads
+          # Not part of what somebody downloads. `maiz_*` are Void Maiz's own
+          # examples and conformance test, which land in our bin/ because we
+          # add_subdirectory their repo — the first archive shipped six of them,
+          # including `maiz_reduce_conformance`, a KNOWN-FAILING test binary, to
+          # people who asked for an outreach application. Six megabytes of
+          # somebody else's build in a twelve-megabyte download.
           rm -f  "dist/$STAGE"/*smoke* "dist/$STAGE"/catgen* || true
+          rm -f  "dist/$STAGE"/maiz_* || true
           rm -rf "dist/$STAGE"/CMakeFiles || true
           cp VoidHormiga/LICENSE VoidHormiga/THIRD-PARTY-NOTICES.md "dist/$STAGE/" || true
           cat > "dist/$STAGE/READ-ME-FIRST.txt" <<EOF
