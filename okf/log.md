@@ -2659,3 +2659,54 @@ Nothing is signed. `platforms` stays `["windows-x64"]` — it is a shipping
 record, and nobody has watched a window open on the other two. The exit test is
 not this file; it is the installed 0.1.0 finding 0.1.1, showing those four
 behavior changes to a person, and replacing itself.
+
+## 0.1.1 shipped, and an installed 0.1.0 found it
+
+Published to `v0.1.1`: the 8.18 MB Windows installer under both its versioned
+and version-free names, `void-updates.json`, and `SHA256SUMS.txt`. The tag push
+also started `release-builds` for the three non-Windows legs.
+
+**The feed resolves through the URL compiled into 0.1.0.**
+`releases/latest/download/void-updates.json` answers `"latest": "0.1.1"` with
+all four behavior changes intact.
+
+**And then the part that had never been done.** The copy installed at
+`%LOCALAPPDATA%\VoidHormiga\voidhormiga-0.1.0\` — a real install, not a build
+tree — was asked:
+
+```
+Void Hormiga 0.1.0  (windows-x64)
+  last checked 2026-09-08T19:30:26Z
+
+Hormiga 0.1.1  (2026-09-10)
+you are running 0.1.0
+…
+things that behave differently
+  - TIMES ON THE CALENDAR GRID MOVE, and it is a fix rather than a change of mind…
+      affects: Anyone whose events store a 12-hour time with AM/PM, which is
+               most organizations…
+```
+
+Phase G's note said *"one release proves the feed parses and nothing more, and
+the exit test is that it updates itself."* The feed now parses **from a
+different version than the one that wrote it**, which is the thing a single
+release structurally could not show: 0.1.0's parser, compiled on 2026-09-04,
+read a document generated six days later and rendered every field of it. That
+is the compatibility claim, tested rather than asserted.
+
+**The `affects:` lines are the vindication of the Mago finding.** Had the
+entries stayed strings they would have been dropped silently and this prompt
+would have read *"things that behave differently"* followed by nothing — on the
+release whose headline is that events move. Instead the person deciding is told
+that it affects "anyone whose events store a 12-hour time with AM/PM, which is
+most organizations", and separately that only "anyone with an existing published
+feed that people have already subscribed to" pays the UID cost. Two different
+audiences, correctly distinguished, which is precisely what the object shape is
+for and what a bare string could not have carried.
+
+**What is still not done: `update --install`.** It downloads, checks the digest
+and launches an interactive installer, which is a window on the author's screen
+and a change to their installed software — left for them to run rather than
+done on their behalf. So the exit test is proven up to the last command: the
+check, the feed, the cross-version parse and the prompt are all witnessed; the
+replacement is not.
