@@ -766,6 +766,22 @@ maiz::HostApp build_app() {
             if (n < 0) return {};
             return std::to_string(n);
         }
+        if (op == "export-calendar-ics") {
+            /* The calendar as a file anybody can import. Through
+             * `render_through_app`, the seam the renderers use, so it inherits
+             * the replay, the glyph registration and `refresh_allo_rules()` —
+             * which matters because Allomone decides what a calendar entry
+             * looks like and whether it is published at all. */
+            const std::string path =
+                render_through_app("export-calendar-ics", "en", "");
+            if (path.empty()) {
+                std::cerr << "nothing to export (no dated runes in "
+                          << kDataMantle << ")\n";
+                return {};
+            }
+            std::cerr << "wrote " << path << "\n";
+            return "\"" + path + "\"";
+        }
         if (op == "publish-index") {
             /* The published subset as DATA. Reached through the SAME seam as
              * the renderers (`render_from_state`), which is what guarantees it
@@ -1022,6 +1038,18 @@ std::string HormigaApp::render_from_state(const std::string& state_json,
      * this line — replay, register, project, and especially
      * `refresh_allo_rules()` — is exactly what it needs and is exactly what is
      * easy to forget when writing a second one. */
+    /* THE CALENDAR'S `.ics` JOINS HERE for the reason `publish-index` did, and
+     * needs one thing the renderers do not: the DATA mantle. A calendar is a
+     * projection over dated runes, which live there by definition, so an
+     * unnamed document cannot mean "the active one" as it does for a site. The
+     * PNG twin is deliberately absent — it blits from a baked ImGui font atlas
+     * and cannot run without a window. */
+    if (op == "export-calendar-ics") {
+        maiz::ProjectOptions dio;
+        dio.mantle = kDataMantle;
+        scene = maiz::project_scene(core, dio);
+        return export_calendar_ics();
+    }
     std::string path = op == "publish-index" ? publish_index()
                        : op == "render-site" ? render_site(lang)
                                              : render_preview(lang);

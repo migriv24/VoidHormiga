@@ -12,7 +12,10 @@
  * is its own concern for the same reason.
  */
 #include "app/app_internal.hpp"
+#include "domain/ical.hpp" // THE PIVOT: the second caller, which is the point
 #include "stb_image_write.h" // decls only — the ONE implementation is in app.cpp
+
+#include <fstream>
 
 /* The static calendar export (the newsletter's month): the month grid composed
  * CPU-side like the map export — white grid, day numbers, rule-colored entry
@@ -142,3 +145,93 @@ void HormigaApp::export_calendar_png() {
     }
 }
 
+
+/* ── THE `.ics` EXPORT (C5b, and the proof X0 was worth doing) ───────────────
+ *
+ * The calendar's iCalendar twin was reachable exactly one way before this: by
+ * rendering a whole website whose page happened to carry a `calendar_embed`
+ * block. An organization that wanted to hand a partner a file, or subscribe to
+ * its own calendar in Google, had to deploy a site first.
+ *
+ * The argument for extracting the lens (`domain/ical.hpp`) was that a writer
+ * living inside a render loop "could only ever serve one caller". This is the
+ * second caller, and it cost about thirty lines because the hard parts — the
+ * folding, the escaping, the UID, the all-day DTEND, the tag allowlist — are
+ * already written down once.
+ *
+ * IT EXPORTS WHAT THE GRID SHOWS, which is the privacy design and not a
+ * shortcut. `cal_entries_on` applies the kind filter and the tag filter, so a
+ * saved "Public Events" calview (C4d) bakes its choice into the file exactly as
+ * it already does for the PNG — the same rule `calendar.md` states, that the
+ * view's filter decides what leaves the machine. Exporting while "Incidents
+ * only" is active is a deliberate act; exporting everything by accident is not
+ * possible from here. */
+std::string HormigaApp::export_calendar_ics() {
+    if (cal_year == 0) cal_today(cal_year, cal_month, cal_day);
+    /* A YEAR around the anchor, not the visible month. A file somebody hands to
+     * a partner or subscribes to is worth more than the twenty-nine days that
+     * happen to be on screen, and the filter — not the viewport — is what this
+     * feature treats as the privacy boundary. */
+    std::vector<hormiga::ical::Event> out;
+    int y = cal_year, m = cal_month, d = 1;
+    cal_add_days(y, m, d, -180);
+    for (int i = 0; i < 545; ++i) {
+        for (const auto& e : cal_entries_on(y, m, d)) {
+            const maiz::SceneNode& n = *e.node;
+            hormiga::ical::Event ie;
+            // the FROZEN id: a UID from the editable name tells a subscriber
+            // that renaming an event deleted it
+            ie.uid = (n.id.empty() ? n.name : n.id) + "@voidhormiga";
+            std::string t = hormiga::temper::field_value(n, "title_en");
+            ie.summary = t.empty() ? n.name : t;
+            ie.description = hormiga::temper::field_value(
+                n, n.glyph == "incident" ? "description" : "summary_en");
+            ie.location = hormiga::temper::field_value(n, "venue");
+            ie.geo = hormiga::temper::field_value(n, "geo");
+            ie.categories = hormiga::ical::public_categories(n.tags);
+            char ds[16];
+            std::snprintf(ds, sizeof ds, "%04d-%02d-%02d", y, m, d);
+            ie.date = ds;
+            ie.start_time = hormiga::temper::field_value(n, "start_time");
+            if (ie.start_time.empty() && e.incident)
+                ie.start_time = hormiga::temper::field_value(n, "time");
+            ie.end_time = hormiga::temper::field_value(n, "end_time");
+            ie.cancelled = std::find(n.tags.begin(), n.tags.end(),
+                                     "status:cancelled") != n.tags.end();
+            out.push_back(ie);
+        }
+        cal_add_days(y, m, d, 1);
+    }
+    if (out.empty()) {
+        toast("nothing to export in this view (check the filter)", true);
+        return {};
+    }
+    hormiga::ical::Options opt;
+    // the saved view's name, so four subscribed calendars are four names
+    opt.name = cal_view.empty() ? "Hormiga Calendar" : cal_view;
+    if (const maiz::SceneNode* v = cal_view.empty() ? nullptr : scene.find(cal_view)) {
+        std::string t = hormiga::temper::field_value(*v, "title");
+        if (!t.empty()) opt.name = t;
+    }
+    const std::string body =
+        hormiga::ical::to_vcalendar(out, opt, hormiga::ical::now_utc());
+
+    std::error_code ec;
+    fs::create_directories(data_dir("exports"), ec);
+    char stampt[32];
+    std::time_t t = std::time(nullptr);
+    std::strftime(stampt, sizeof stampt, "%Y%m%d-%H%M%S", std::localtime(&t));
+    fs::path out_path =
+        data_dir("exports") / ("calendar-" + std::string(stampt) + ".ics");
+    std::ofstream f(out_path, std::ios::binary); // binary: the RFC says CRLF
+    if (!f) {
+        toast("calendar .ics export failed: " + out_path.string(), true);
+        return {};
+    }
+    f << body;
+    f.close();
+    toast("exported " + out_path.filename().string() + " - " +
+          std::to_string(out.size()) + " entries, importable anywhere");
+    if (on_open) on_open(out_path.string());
+    return out_path.string();
+}

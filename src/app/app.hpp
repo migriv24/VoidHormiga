@@ -872,6 +872,11 @@ private:
     void draw_calendar_toolbar();                 // views, nav, filter, quick-add
     void draw_calendar_body();                    // the grid + selection
     void export_calendar_png();                   // static export (newsletter)
+    /* C5b: this view as an iCalendar file. Returns the path written ("" on
+     * failure) so the headless front-end can report it — unlike the PNG, which
+     * needs a baked ImGui font atlas and therefore cannot run without a
+     * window. */
+    std::string export_calendar_ics();
     // C1 creation & manipulation state (okf/concepts/sections/calendar.md toolset)
     int cal_ctx_y = 0, cal_ctx_m = 0, cal_ctx_d = 0; // day under a context menu
     std::string cal_daytag_date; // "YYYY-MM-DD" of the day being tagged ("" none)

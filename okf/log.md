@@ -2547,3 +2547,115 @@ X2 (the org timezone — the `tzid` field exists and is empty, so times are stil
 floating), X3 (the importer, the reader half of the lens), X4 (`hol_ics_feed`,
 the highest-leverage item in the track), X5, X6. `reduce_conformance` still
 fails and still failed identically at HEAD; the other 34 pass.
+
+# 2026-09-10, fifth entry — 0.1.1, and the field that makes an update prompt worth reading was silently empty
+
+The author's call: ship what the calendar work amounts to, as a mini test of the
+update client against a real installed 0.1.0. This is the 0.1.1 the phase G
+notes have been asking for — *"one release proves the feed parses and nothing
+more, and the exit test is that it updates itself."*
+
+## The bow: the lens got its second caller
+
+Before packaging, one addition, chosen because it *tests the claim the previous
+entry made*. The argument for extracting `domain/ical.hpp` was that a writer
+living inside a render loop "could only ever serve one caller". So: **Export
+.ics**, from the Calendar toolbar and from `effect export-calendar-ics`.
+
+It cost about thirty lines, because the folding, the escaping, the UID, the
+all-day `DTEND` and the tag allowlist are already written down once. That is the
+whole return on X0, collected in the same day.
+
+**It exports what the FILTER shows, not what the viewport shows** — a saved
+"Public Events" calview bakes its privacy choice into the file, exactly as it
+already does for the PNG. The window is not the boundary; the filter is.
+
+## And the defect that found
+
+Wiring the CLI path turned up something older. `effect export-calendar` — the
+PNG, registered since the calendar was built — **is in the DESKTOP effect table
+and has never been in the headless one.** From the CLI it has answered `done`
+and written no file for as long as it has existed.
+
+That is the 2026-09-02 field report's *"a field that does nothing is worse than
+no field"* one layer up, and it contradicts founding commitment 1 directly:
+*the CLI, the GUI and any agent are three callers of the same verbs.* An effect
+that works in one of them is that sentence being false.
+
+The `.ics` twin does not repeat it: it goes through `render_from_state`, the
+same seam the renderers use, so it inherits the replay, the glyph registration
+and `refresh_allo_rules()` — the last of which matters because Allomone decides
+what a calendar entry looks like and whether it is published at all. The
+comment there already said why `publish-index` joined that seam rather than
+getting its own boot; this took the invitation.
+
+**The PNG stays desktop-only, and that is a real difference rather than an
+oversight**: it blits from a baked ImGui font atlas, which does not exist
+without a window. Said out loud in both files so the asymmetry is a decision
+somebody can disagree with rather than a gap.
+
+## `mago feed` wrote `"behavior_changes": []` and said nothing
+
+0.1.1 **moves where existing events are drawn** — that is the entire category
+`behavior_changes` exists for, and the reason this release needed four of them
+rather than none. We wrote four. `mago feed` ran, reported success, and emitted
+an empty array.
+
+The cause, in `mago/src/manifest.cpp`: entries must be **objects** with `what`
+and `who_is_affected`, and a non-object is `continue`d. An object missing
+`what` throws a named `ManifestError`; a string is discarded in silence. **The
+strict path and the silent path are the wrong way round** — the wrong shape is
+the easier mistake and it is the one that says nothing.
+
+It lands on the one field whose absence cannot be inferred from anything else.
+A dropped `adds` entry is a missing bullet; a dropped behavior change is the
+warning that never reached the person being asked to update. Mago's own feed
+writes *"`behavior_changes` is what makes the asking worth anything"* into every
+document it generates, which is precisely why this is the worst field for it to
+happen on.
+
+Caught by diffing the generated feed against the manifest by hand, and only
+because the empty array looked wrong. Reported as
+`MESSAGE_FOR_VOIDMAGO_hormiga-behavior-changes-dropped-silently-2026-09-10.md`
+with a one-`else` fix and a permissive alternative; ours rewritten in the object
+shape with `who_is_affected` on all four. Nothing in Mago patched — rule 4.
+
+## The four behavior changes, because they are the interesting part of the release
+
+1. **Times on the grid move, and it is a fix.** `3:00 PM` was drawn at 3 AM;
+   `9 AM` was treated as all-day and never appeared on the time grid. Nothing in
+   anybody's database changed — what changed is where those entries are drawn.
+   A calendar that looked wrong should now look right, and one that looked right
+   was already exporting correctly.
+2. **Feeds carry `CATEGORIES`, from `kw:` tags only.** Additive, and errs toward
+   withholding.
+3. **A cancelled event is published as `STATUS:CANCELLED`** instead of
+   disappearing. One that merely disappears stays on a subscriber's calendar
+   forever.
+4. **UIDs come from the permanent id, not the editable name.** Anyone already
+   subscribed sees the entries re-added **once** — stated plainly, because it is
+   a real cost and the person deciding whether to update is the one who pays it.
+
+Item 4 is why the object shape matters: `who_is_affected` there is "anyone with
+an existing published feed that people have already subscribed to", which is a
+much smaller set than "everyone", and a string entry could not have said so.
+
+## What was built
+
+`mago doctor` clean for us (its two errors are VoidCore/VoidPalabra's seam
+disagreement, unchanged and not ours). `mago stage` → 6 files, 27 MB →
+`makensis` → **8.18 MB installer**, up from 7.36. `mago feed --artifacts`
+hashed it and checked the version-free copy. Checksum verified against the file
+by hand before anything left the machine.
+
+The whole Mago pipeline behaved exactly as documented apart from the one finding
+above, and the installer built on the first attempt — which is worth recording
+because the last time this repository met Void Mago (2026-09-04) it was refused
+twice and a third blocker turned up behind the second.
+
+## Still not true
+
+Nothing is signed. `platforms` stays `["windows-x64"]` — it is a shipping
+record, and nobody has watched a window open on the other two. The exit test is
+not this file; it is the installed 0.1.0 finding 0.1.1, showing those four
+behavior changes to a person, and replacing itself.

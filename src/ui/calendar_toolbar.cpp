@@ -174,9 +174,18 @@ void HormigaApp::draw_calendar_toolbar() {
     ImGui::SameLine();
     if (ImGui::SmallButton("Export PNG")) export_calendar_png();
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("the month grid as a PNG (exports/) - for the\n"
-                          "newsletter; the interactive web version is the\n"
-                          "planned dynamic export");
+        ImGui::SetTooltip("the month grid as an image (exports/) - for the\n"
+                          "newsletter, WYSIWYG with what is on screen");
+    ImGui::SameLine();
+    /* C5b: the same view as a FILE ANYBODY CAN IMPORT. Until now the `.ics`
+     * twin existed only inside a rendered website, so handing a partner a
+     * calendar meant deploying a site first. */
+    if (ImGui::SmallButton("Export .ics")) export_calendar_ics();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("this view as an iCalendar file (exports/) -\n"
+                          "import it into Google, Apple, Outlook, Nextcloud.\n"
+                          "It exports what the FILTER shows, so a saved\n"
+                          "'Public Events' view bakes that choice into the file.");
     // ── C4a: the FILTER row — kind + tag query. Privacy-blocking: a published
     // calendar shows only what you choose (incidents can be sensitive). ──────
     ImGui::SetNextItemWidth(130);

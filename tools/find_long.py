@@ -222,7 +222,18 @@ BUDGET = {
     # a recovery tool. The verb ITSELF went to `src/update/cli.cpp` rather than
     # here, which is the ratchet working: 130 lines landed in the folder they
     # belong to instead of on this file's total.
-    'src/main/headless.cpp': 1230,
+    # 1230 -> 1260 (2026-09-10): `effect export-calendar-ics`, the calendar as a
+    # file anybody can import, plus the dispatch branch that gives it the DATA
+    # mantle. The reason it is worth the lines is the defect it does not repeat:
+    # `export-calendar` was registered in the DESKTOP effect table and never in
+    # this one, so from the CLI it has answered "done" and written nothing for
+    # as long as it has existed -- the 2026-09-02 field report's "a field that
+    # does nothing is worse than no field", one layer up, and a direct
+    # contradiction of founding commitment 1's claim that the CLI and the GUI
+    # are two callers of the same verbs. Everything the export actually computes
+    # is in `domain/ical.hpp` and `ui/calendar_export.cpp`; what landed here is
+    # argument handling and the boot, which is what this file is for.
+    'src/main/headless.cpp': 1260,
     # NEW ENTRY 2026-09-02 (was on the 1000 default): the Data tab lost 168 lines
     # to `ui/widgets.cpp` the same afternoon -- the rune-rename control (shared
     # with the Notes tab, which is why a note could not be renamed at all), the

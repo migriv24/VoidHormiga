@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -196,23 +196,47 @@
     "relocatable": "config set paths.<name> <path>"
   },
 
-  "platforms": ["windows-x64"],
+  "platforms": [
+    "windows-x64"
+  ],
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen.",
 
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.1.0",
-    "_previous_note": "No `previous`: this is the first release, so there is nothing anybody is moving FROM. `mago blast` and `mago notify` need --to until there is.",
+    "version": "0.1.1",
+    "previous": "0.1.0",
     "change": "compatible",
-    "date": "2026-09-04",
-    "summary": "the first release: an outreach organization's people, events and images as tagged runes, composed into newsletters and websites",
+    "date": "2026-09-10",
+    "summary": "the Calendar becomes usable: one time parser instead of two, overlapping events visible, quick-add, keyboard navigation, and a conformant .ics anything can import",
     "adds": [
-      "voidhormiga-cli update -- check, download, verify and launch a newer version",
-      "glyph declare: an organization's own record type travels inside its .miga",
-      "hol_github: publish to GitHub Pages natively, beside Cloudflare Pages"
+      "Calendar quick-add: type 'Food drive 3pm-5pm' and press Enter",
+      "Calendar keyboard navigation, jump-to-date, and double-click to create",
+      "Overlapping events draw side by side instead of on top of each other",
+      "Export .ics from the Calendar, and `effect export-calendar-ics` from the CLI"
     ],
-    "behavior_changes": [],
-    "read_more": ["README.md", "AGENT-GUIDE.md", "okf/index.md"]
+    "behavior_changes": [
+      {
+        "what": "TIMES ON THE CALENDAR GRID MOVE, and it is a fix rather than a change of mind. The grid parsed times with sscanf while the renderers used a real parser, so an event stored as '3:00 PM' -- what a flier prints -- was DRAWN AT 3 AM, and one stored as '9 AM' was treated as all-day and never appeared on the time grid. Both now read the way the .ics export has always read them. Nothing in your database changed; what changed is where those entries are drawn.",
+        "who_is_affected": "Anyone whose events store a 12-hour time with AM/PM, which is most organizations. Their calendar looked wrong and should now look right; what they exported was always correct."
+      },
+      {
+        "what": "A published calendar feed now carries CATEGORIES, built from `kw:` tags ONLY. Every other namespace -- including any an organization invented -- is deliberately withheld, because a list of what to EXCLUDE cannot know about a namespace coined tomorrow.",
+        "who_is_affected": "Anyone publishing a calendar. It is additive and errs toward withholding, so nothing that was private becomes public."
+      },
+      {
+        "what": "A cancelled event (tagged `status:cancelled`) is published as STATUS:CANCELLED instead of being dropped from the feed. An entry that merely disappears stays on a subscriber's calendar forever, because the client cannot tell 'cancelled' from 'filtered out'.",
+        "who_is_affected": "Anyone whose published calendar has subscribers."
+      },
+      {
+        "what": "VEVENT UIDs are built from the rune's permanent id rather than its editable name, so renaming an event no longer tells subscribers the old one was deleted. Anyone already subscribed to a published feed sees its entries re-added ONCE -- the one-time cost of the fix.",
+        "who_is_affected": "Anyone with an existing published .ics feed that people have already subscribed to."
+      }
+    ],
+    "read_more": [
+      "README.md",
+      "okf/concepts/sections/calendar-roadmap.md",
+      "okf/index.md"
+    ]
   },
 
   "update": {

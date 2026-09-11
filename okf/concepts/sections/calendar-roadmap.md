@@ -421,6 +421,21 @@ listed in [calendar.md](/concepts/sections/calendar.md) and not repeated here.
 - ⬜ **C2b — year view as a density heat map**, GitHub-contributions style,
   clicking into month. The author's "idk how we can do that"; the grounding is
   already recorded in `calendar.md` and it is genuinely cheap.
+- ✅ **C5b — `.ics` export from the Calendar** (2026-09-10) — a toolbar button
+  and `effect export-calendar-ics`, so handing a partner a calendar no longer
+  means deploying a website first. It cost about thirty lines, which is the
+  return on [X0](#x-track--the-exchange) collected: the folding, the UID, the
+  all-day `DTEND` and the tag allowlist are written down once. It exports what
+  the **filter** shows rather than what the viewport shows, so a saved "Public
+  Events" calview bakes the privacy choice into the file.
+
+  It also found an older defect: **`effect export-calendar` (the PNG) is in the
+  desktop effect table and has never been in the headless one**, so from the CLI
+  it has answered `done` and written nothing for as long as it has existed —
+  founding commitment 1's "three callers of the same verbs" being false. The
+  `.ics` goes through `render_from_state` instead. The PNG stays desktop-only
+  because it blits a baked ImGui font atlas, which is a real difference and is
+  now said out loud in both files.
 - ⬜ **C5a — week / 3-day PNG export** (month is built).
 - ⬜ **C4b / C4c — temporal-linkage badges and relation jumps** (an event
   `responds-to` an incident).

@@ -332,10 +332,12 @@ void HormigaApp::install_host() {
             else toast("no view to export - create one in the Map tab", true);
             return {};
         }
-        if (op == "export-calendar") { // the month grid as a PNG
-            export_calendar_png();
-            return {};
-        }
+        if (op == "export-calendar") { export_calendar_png(); return {}; }
+        // What the operator is looking at, filter included. The CLI reaches the
+        // same function via main/headless.cpp -- unlike `export-calendar`, which
+        // lives only here and so writes nothing there. The PNG is desktop-only:
+        // it blits a baked ImGui font atlas.
+        if (op == "export-calendar-ics") { export_calendar_ics(); return {}; }
         if (op == "preview-live") { // start the live preview (agent-reachable)
             preview_start();
             return {};
