@@ -178,7 +178,18 @@ BUDGET = {
     # recording a near-miss -- the obvious guard for "is a person looking at
     # this?" was `on_shell_capture`, which the HEADLESS front-end also sets, so
     # an agent asking for a newsletter would have made a network request.
-    'src/app/app.hpp': 1150,
+    # 1150 -> 1160 (2026-09-10): the Calendar's UX pass — six members for the
+    # quick-add box, the jump-to-date buffer, the two "which cell is expanded"
+    # indices that replaced silently-truncated entry lists, and the time grid's
+    # full-day toggle. The alternative was clawing four lines back out of
+    # unrelated declarations to stay under a number, which makes the file worse
+    # rather than smaller. The calendar code itself did NOT take this route:
+    # `calendar.cpp` went 898 -> 1339 in the same pass and was split into
+    # `calendar_toolbar.cpp` and `calendar_export.cpp` (and a pure, testable
+    # `domain/quick_add.hpp`) rather than given a bigger budget — which is the
+    # distinction this table is for. A class declaration grows when the class
+    # grows; a 1,300-line function file has a seam in it.
+    'src/app/app.hpp': 1160,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

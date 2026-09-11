@@ -6,7 +6,7 @@
  * calendar; everything else about drawing a month is local to this file.
  */
 #include "app/app_internal.hpp"
-#include "stb_image_write.h" // decls only - the month exports as a PNG; the ONE implementation lives in app.cpp
+#include "domain/quick_add.hpp" // C1f: the one-line creation grammar (pure)
 
 // ── the CALENDAR (okf/concepts/sections/calendar.md): dated runes on a time grid,
 // styled by the SAME rules engine as the map. Model grounds in RFC 5545
@@ -17,11 +17,21 @@
  * Timed when t0/t1 are given (drag-created); all-day otherwise. ONE commit,
  * selected so the inspector opens ready for the name/details. */
 void HormigaApp::cal_new_dated(const char* glyph, int y, int m, int d, float t0,
-                               float t1) {
+                               float t1, const char* title) {
+    /* NAMED FROM THE TITLE WHEN THERE IS ONE (2026-09-10, for quick-add).
+     * Without a title this still mints `event-3`, which is why creating an
+     * entry always meant a follow-up trip to the inspector to rename it. A
+     * quick-add line already said what the thing is called, so the slug comes
+     * from that and the human-readable form goes in the title field the
+     * renderers actually print. */
     std::string name;
-    for (int i = 1;; ++i) {
-        name = std::string(glyph) + "-" + std::to_string(i);
-        if (!scene.find(name)) break;
+    if (title && *title) name = hormiga::quick::slug(title);
+    if (name.empty() || scene.find(name)) {
+        std::string base = name.empty() ? std::string(glyph) : name;
+        for (int i = name.empty() ? 1 : 2;; ++i) {
+            name = base + "-" + std::to_string(i);
+            if (!scene.find(name)) break;
+        }
     }
     char date[16];
     std::snprintf(date, sizeof date, "%04d-%02d-%02d", y, m, d);
@@ -29,6 +39,11 @@ void HormigaApp::cal_new_dated(const char* glyph, int y, int m, int d, float t0,
         "rune new " + std::string(glyph) + " " + name,
         "set " + name + " date \"" + date + "\"",
         "tag " + name + " +type:" + glyph};
+    if (title && *title) // `incident` has no title_en; its prose field is
+        cmds.push_back("set " + name +                       // `description`
+                       (std::string(glyph) == "incident" ? " description "
+                                                         : " title_en ") +
+                       json_str(title));
     if (t0 >= 0) {
         if (std::string(glyph) == "incident") // a POINT in time, not a span
             cmds.push_back("set " + name + " time \"" + cal_fmt_hhmm(t0) + "\"");
@@ -43,7 +58,7 @@ void HormigaApp::cal_new_dated(const char* glyph, int y, int m, int d, float t0,
     ed.selection = {name};
     toast("created " + name + " on " + date +
           (t0 >= 0 ? " " + cal_fmt_hhmm(t0) + "-" + cal_fmt_hhmm(t1) : "") +
-          " - name it in the inspector");
+          (title && *title ? "" : " - name it in the inspector"));
 }
 
 /* Everything dated on one day, styled: the selected map view's rules give
@@ -128,139 +143,49 @@ void HormigaApp::cal_apply_view(const maiz::SceneNode& v) {
 }
 
 void HormigaApp::draw_calendar_body() {
-    if (cal_year == 0) cal_today(cal_year, cal_month, cal_day);
-    // ── C4d: saved calendar VIEWS (a `calview` = filter + kind + granularity,
-    // named and persistent — so a "Public Events" view bakes the privacy
-    // choice in). Gather them from the data the calendar reads. ──────────────
-    std::vector<const maiz::SceneNode*> calviews;
-    for (const auto& n : scene.nodes)
-        if (n.glyph == "calview") calviews.push_back(&n);
-    // ── C4d: the saved-view picker (ad-hoc + saved calendars) ──────────────
-    ImGui::TextDisabled("view:");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(150);
-    std::string vlabel = cal_view.empty() ? "(ad-hoc)" : cal_view;
-    if (ImGui::BeginCombo("##calview", vlabel.c_str())) {
-        if (ImGui::Selectable("(ad-hoc)", cal_view.empty())) {
-            cal_view.clear();
-            cal_filter[0] = 0; cal_kind = 0;
-        }
-        for (auto* v : calviews) {
-            std::string t = hormiga::temper::field_value(*v, "title");
-            if (t.empty()) t = v->name;
-            if (ImGui::Selectable(t.c_str(), cal_view == v->name))
-                cal_apply_view(*v);
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::SameLine();
-    if (cal_view.empty()) { // ad-hoc → save the current filter as a new view
-        if (ImGui::SmallButton("Save as view")) ImGui::OpenPopup("##savecalview");
-    } else { // a view is active → write current filter/kind/mode back, or delete
-        if (ImGui::SmallButton("Update")) {
-            const char* km = cal_kind == 1 ? "events"
-                             : cal_kind == 2 ? "incidents" : "all";
-            const char* mm = cal_mode == 1 ? "week" : cal_mode == 2 ? "3day"
-                             : cal_mode == 3 ? "agenda" : "month";
-            pending_cmds.push_back(maiz::compile_commit(
-                {"set " + cal_view + " filter " + json_str(cal_filter),
-                 "set " + cal_view + " kind \"" + km + "\"",
-                 "set " + cal_view + " mode \"" + mm + "\""}));
-            toast("updated view '" + cal_view + "'");
-        }
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Delete##cv")) {
-            pending_cmds.push_back("rm " + cal_view);
-            cal_view.clear();
-            cal_filter[0] = 0; cal_kind = 0;
-        }
-    }
-    if (ImGui::BeginPopup("##savecalview")) {
-        ImGui::TextDisabled("save this filter as a named calendar view");
-        ImGui::SetNextItemWidth(180);
-        bool go = ImGui::InputTextWithHint("##cvname", "view name...",
-                                           cal_view_name, sizeof cal_view_name,
-                                           ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::SameLine();
-        if ((ImGui::Button("Save") || go) && cal_view_name[0]) {
-            std::string slug = cal_view_name;
-            for (char& c : slug)
-                if (!std::isalnum((unsigned char)c) && c != '-') c = '-';
-            const char* km = cal_kind == 1 ? "events"
-                             : cal_kind == 2 ? "incidents" : "all";
-            const char* mm = cal_mode == 1 ? "week" : cal_mode == 2 ? "3day"
-                             : cal_mode == 3 ? "agenda" : "month";
-            pending_cmds.push_back(maiz::compile_commit(
-                {"rune new calview " + slug,
-                 "set " + slug + " title " + json_str(cal_view_name),
-                 "set " + slug + " filter " + json_str(cal_filter),
-                 "set " + slug + " kind \"" + km + "\"",
-                 "set " + slug + " mode \"" + mm + "\""}));
-            cal_view = slug;
-            toast("saved calendar view '" + std::string(cal_view_name) + "'");
-            cal_view_name[0] = 0;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("a saved view remembers its filter - a 'Public\n"
-                          "Events' view can exclude incidents by design");
-    ImGui::Separator();
+    draw_calendar_toolbar();
 
-    // ── toolbar: granularity, stride navigation, export ────────────────────
-    const char* modes[] = {"Month", "Week", "3 days", "Agenda"};
-    ImGui::SetNextItemWidth(100);
-    ImGui::Combo("##calmode", &cal_mode, modes, 4);
-    ImGui::SameLine();
-    int stride = cal_mode == 0 ? 0 : (cal_mode == 1 ? 7 : 3); // 0 = month step
-    ImGui::BeginDisabled(cal_mode == 3); // agenda navigates from today
-    if (ImGui::SmallButton("<")) {
-        if (stride) cal_add_days(cal_year, cal_month, cal_day, -stride);
-        else { cal_day = 1; if (--cal_month < 1) { cal_month = 12; --cal_year; } }
+
+    /* ── C2c: KEYBOARD NAVIGATION ───────────────────────────────────────────
+     *
+     * Only when the section is focused and nothing is capturing text, so typing
+     * "Tuesday" into quick-add does not teleport the view to today on the T.
+     * Strides match the visible granularity, which is the thing that makes
+     * arrows feel right in a month grid and in a week grid at the same time. */
+    if (!ImGui::GetIO().WantCaptureKeyboard &&
+        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
+        const bool shift = ImGui::GetIO().KeyShift;
+        auto step = [&](int days) {
+            cal_add_days(cal_year, cal_month, cal_day, days);
+        };
+        if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) step(shift ? -7 : -1);
+        if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) step(shift ? 7 : 1);
+        if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) step(-7);
+        if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) step(7);
+        if (ImGui::IsKeyPressed(ImGuiKey_PageUp)) {
+            cal_day = 1;
+            if (--cal_month < 1) { cal_month = 12; --cal_year; }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_PageDown)) {
+            cal_day = 1;
+            if (++cal_month > 12) { cal_month = 1; ++cal_year; }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_Home) || ImGui::IsKeyPressed(ImGuiKey_T))
+            cal_today(cal_year, cal_month, cal_day);
+        if (ImGui::IsKeyPressed(ImGuiKey_G)) {
+            std::snprintf(cal_jump, sizeof cal_jump, "%04d-%02d-%02d", cal_year,
+                          cal_month, cal_day);
+            cal_jump_open = true;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_N)) cal_quick_focus = true;
+        if (ImGui::IsKeyPressed(ImGuiKey_M)) cal_mode = 0;
+        if (ImGui::IsKeyPressed(ImGuiKey_W)) cal_mode = 1;
+        if (ImGui::IsKeyPressed(ImGuiKey_D)) cal_mode = 2;
+        if (ImGui::IsKeyPressed(ImGuiKey_A)) cal_mode = 3;
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) ed.selection.clear();
+        // the day the anchor landed on may not exist in a shorter month
+        cal_day = std::clamp(cal_day, 1, cal_dim(cal_year, cal_month));
     }
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Today")) cal_today(cal_year, cal_month, cal_day);
-    ImGui::SameLine();
-    if (ImGui::SmallButton(">")) {
-        if (stride) cal_add_days(cal_year, cal_month, cal_day, stride);
-        else { cal_day = 1; if (++cal_month > 12) { cal_month = 1; ++cal_year; } }
-    }
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    ImGui::Text("%s %d", kMonthNames[cal_month - 1], cal_year);
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Export PNG")) export_calendar_png();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("the month grid as a PNG (exports/) - for the\n"
-                          "newsletter; the interactive web version is the\n"
-                          "planned dynamic export");
-    // ── C4a: the FILTER row — kind + tag query. Privacy-blocking: a published
-    // calendar shows only what you choose (incidents can be sensitive). ──────
-    ImGui::SetNextItemWidth(130);
-    ImGui::Combo("##calkind", &cal_kind, "All kinds\0Events only\0Incidents only\0");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(150);
-    ImGui::InputTextWithHint("##calfilter", "tag filter (e.g. @summer)",
-                             cal_filter, sizeof cal_filter);
-    ImGui::SameLine();
-    // the reusable tag picker appends to the AND-filter (no hand-typing AND/OR)
-    std::string ftag = tag_picker("##calftag", cal_filter_tag, sizeof cal_filter_tag,
-                                  "+ tag");
-    if (!ftag.empty()) {
-        std::string cur = cal_filter;
-        std::string add = cur.empty() ? ftag : cur + " AND " + ftag;
-        std::snprintf(cal_filter, sizeof cal_filter, "%s", add.c_str());
-    }
-    if (cal_filter[0]) {
-        ImGui::SameLine();
-        if (ImGui::SmallButton("clear##calf")) cal_filter[0] = 0;
-    }
-    ImGui::SameLine();
-    ImGui::TextDisabled("%s", map_sel.empty()
-                                  ? "(glyph colors)"
-                                  : ("rules: " + map_sel).c_str());
-    ImGui::Separator();
 
     // ── the grid + an inspector pane when something is selected ────────────
     bool have_sel = !ed.selection.empty() && scene.find(ed.selection.front());
@@ -327,11 +252,24 @@ void HormigaApp::draw_calendar_body() {
                     if (dnum < 1 || dnum > dim) continue;
                     ImGui::PushID(dnum);
                     bool is_today = cal_year == ty && cal_month == tm2 && dnum == td2;
+                    bool is_focus = dnum == cal_day;
                     if (is_today)
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg,
                                                IM_COL32(255, 236, 190, 100));
+                    else if (is_focus) // the quick-add / keyboard target
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg,
+                                               IM_COL32(120, 150, 200, 40));
                     float cell_y0 = ImGui::GetCursorPosY();
-                    ImGui::Text("%d", dnum);
+                    /* The focused day is drawn in the accent and marked, because
+                     * quick-add and every arrow key act on it — a target you
+                     * cannot see is a target you have to guess at. */
+                    if (is_focus)
+                        ImGui::TextColored(ImVec4(theme_accent[0], theme_accent[1],
+                                                  theme_accent[2], 1.0f),
+                                           "%d %s", dnum,
+                                           is_today ? "* today" : "*");
+                    else
+                        ImGui::Text("%d", dnum);
                     { // C-day: subtle indicator for a tagged (event-less) day
                         char d[16];
                         std::snprintf(d, sizeof d, "%04d-%02d-%02d", cal_year,
@@ -351,16 +289,58 @@ void HormigaApp::draw_calendar_body() {
                             }
                         }
                     }
-                    for (const auto& e : cal_entries_on(cal_year, cal_month, dnum))
-                        entry_row(e, false, 0);
+                    {
+                        /* A CAP, WITH THE OVERFLOW COUNTED (2026-09-10). The
+                         * cell used to draw every entry, so a day with eleven
+                         * things on it silently grew the whole week's row
+                         * height and pushed the rest of the month off screen.
+                         * Four, then "+N more" — which expands this cell, and
+                         * whose real value is that the number is VISIBLE: the
+                         * failure mode being fixed everywhere in this pass is
+                         * entries that are neither shown nor accounted for. */
+                        auto es = cal_entries_on(cal_year, cal_month, dnum);
+                        const int cap = cal_more_day == dnum ? (int)es.size() : 4;
+                        for (int i = 0; i < (int)es.size() && i < cap; ++i)
+                            entry_row(es[i], false, 0);
+                        if ((int)es.size() > cap) {
+                            char more[24];
+                            std::snprintf(more, sizeof more, "+%d more",
+                                          (int)es.size() - cap);
+                            if (ImGui::SmallButton(more)) cal_more_day = dnum;
+                        } else if (cal_more_day == dnum && (int)es.size() > 4) {
+                            if (ImGui::SmallButton("less")) cal_more_day = -1;
+                        }
+                    }
                     // the cell's empty remainder is the "create here" surface.
                     // BOUNDED by the row height — GetContentRegionAvail().y in
                     // a table cell reports the WINDOW's remainder, and an
                     // unbounded Dummy inflates the row to fill it (the
                     // month-view-never-expands bug, 2026-07-22)
                     float used = ImGui::GetCursorPosY() - cell_y0;
-                    ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x,
-                                        std::max(8.0f, cell_h - used - 6)));
+                    /* An InvisibleButton rather than a Dummy (2026-09-10), so
+                     * the empty part of a day is a real target: ONE CLICK
+                     * focuses the day (which is what quick-add and the arrow
+                     * keys act on) and a DOUBLE-CLICK creates an all-day event
+                     * on it. Creating an entry used to require a right-click,
+                     * a menu item, and then a trip to the inspector to name the
+                     * thing; double-click is what every calendar has trained
+                     * people to try first, and it cost a widget swap. */
+                    ImGui::InvisibleButton(
+                        "##cell",
+                        ImVec2(std::max(1.0f, ImGui::GetContentRegionAvail().x),
+                               std::max(8.0f, cell_h - used - 6)),
+                        ImGuiButtonFlags_MouseButtonLeft |
+                            ImGuiButtonFlags_MouseButtonRight);
+                    if (ImGui::IsItemHovered() &&
+                        ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                        cal_day = dnum;
+                        cal_new_dated("event", cal_year, cal_month, dnum);
+                    } else if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                        cal_day = dnum; // focus follows the click
+                    }
+                    if (ImGui::IsItemHovered() && dnum != cal_day)
+                        ImGui::SetTooltip("click to focus - double-click for a\n"
+                                          "new all-day event - right-click for more");
                     // C1d: this cell is a drop target — drop a dragged entry
                     // here to reschedule it to this day (one `set date`)
                     if (ImGui::BeginDragDropTarget()) {
@@ -479,7 +459,44 @@ void HormigaApp::draw_calendar_body() {
         int sy = cal_year, sm = cal_month, sd = cal_day;
         if (cal_mode == 1) // week starts on its Sunday
             cal_add_days(sy, sm, sd, -cal_dow(sy, sm, sd));
-        const float H0 = 6.0f, H1 = 22.0f, hour_h = 44.0f, gutter = 46.0f;
+        /* THE VISIBLE HOUR RANGE, FITTED TO THE DAY (2026-09-10).
+         *
+         * This was `H0 = 6, H1 = 22` and nothing else, so a 05:30 setup call or
+         * an 11pm incident was drawn clamped onto the edge of the grid — at the
+         * wrong time, indistinguishable from something at 6am. `clamp` made it
+         * silent rather than absent, which is worse.
+         *
+         * 06:00-22:00 is still the RESTING range, because it is the right one
+         * for almost every community organization's week and a full 24 rows
+         * wastes half the screen on hours nothing happens in. But the range now
+         * EXPANDS to contain whatever the visible days actually hold, and the
+         * "24h" toggle forces the whole day for anyone who would rather have a
+         * stable grid than a fitted one. A hub takes events at arbitrary hours
+         * by definition, so this stops being a nicety the moment a feed lands. */
+        float H0 = 6.0f, H1 = 22.0f;
+        if (cal_full_day) { H0 = 0.0f; H1 = 24.0f; }
+        else {
+            int fy = sy, fm = sm, fd = sd;
+            for (int c = 0; c < n; ++c) {
+                for (const auto& e : cal_entries_on(fy, fm, fd)) {
+                    float t0 = cal_parse_hhmm(
+                        hormiga::temper::field_value(*e.node, "start_time"));
+                    if (t0 < 0 && e.incident)
+                        t0 = cal_parse_hhmm(
+                            hormiga::temper::field_value(*e.node, "time"));
+                    if (t0 < 0) continue; // all-day → the chip lane, not here
+                    float t1 = cal_parse_hhmm(
+                        hormiga::temper::field_value(*e.node, "end_time"));
+                    if (t1 <= t0) t1 = t0 + 1.0f;
+                    H0 = std::min(H0, std::floor(t0));
+                    H1 = std::max(H1, std::ceil(t1));
+                }
+                cal_add_days(fy, fm, fd, 1);
+            }
+            H0 = std::clamp(H0, 0.0f, 23.0f);
+            H1 = std::clamp(H1, H0 + 1.0f, 24.0f);
+        }
+        const float hour_h = 44.0f, gutter = 46.0f;
         float avail_w = ImGui::GetContentRegionAvail().x - 16; // scrollbar room
         float col_w = std::max(60.0f, (avail_w - gutter) / n);
         // day headers + the all-day lane (untimed entries as chips)
@@ -495,19 +512,40 @@ void HormigaApp::draw_calendar_body() {
                 cal_add_days(cy, cm, cd, 1);
             }
             cy = sy; cm = sm; cd = sd;
-            for (int c = 0; c < n; ++c) { // all-day chips, up to two per column
+            /* The all-day lane used to be `if (++shown >= 2) break;` — a third
+             * all-day event on a day simply was not there, and nothing said so.
+             * A silent truncation is the worst way to run out of room: the
+             * operator has no way to learn the entry exists. Now the cap is a
+             * per-column expand toggle and the overflow is COUNTED. */
+            for (int c = 0; c < n; ++c) {
                 auto es = cal_entries_on(cy, cm, cd);
-                int shown = 0;
+                std::vector<CalEntry> allday;
                 for (const auto& e : es) {
                     bool timed = cal_parse_hhmm(hormiga::temper::field_value(
                                      *e.node, "start_time")) >= 0 ||
                                  (e.incident &&
                                   cal_parse_hhmm(hormiga::temper::field_value(
                                       *e.node, "time")) >= 0);
-                    if (timed) continue; // → lives on the grid below
+                    if (!timed) allday.push_back(e); // timed → the grid below
+                }
+                const int cap = cal_allday_open == c ? (int)allday.size() : 2;
+                for (int i = 0; i < (int)allday.size() && i < cap; ++i) {
                     ImGui::SetCursorPosX(gutter + c * col_w + 4);
-                    entry_row(e, false, col_w - 10);
-                    if (++shown >= 2) break;
+                    entry_row(allday[i], false, col_w - 10);
+                }
+                if ((int)allday.size() > cap) {
+                    ImGui::SetCursorPosX(gutter + c * col_w + 4);
+                    ImGui::PushID(1000 + c);
+                    char more[32];
+                    std::snprintf(more, sizeof more, "+%d more",
+                                  (int)allday.size() - cap);
+                    if (ImGui::SmallButton(more)) cal_allday_open = c;
+                    ImGui::PopID();
+                } else if (cal_allday_open == c && (int)allday.size() > 2) {
+                    ImGui::SetCursorPosX(gutter + c * col_w + 4);
+                    ImGui::PushID(2000 + c);
+                    if (ImGui::SmallButton("less")) cal_allday_open = -1;
+                    ImGui::PopID();
                 }
                 cal_add_days(cy, cm, cd, 1);
             }
@@ -576,9 +614,25 @@ void HormigaApp::draw_calendar_body() {
         const maiz::SceneNode* hit = nullptr;
         float hit_t0 = 0, hit_t1 = 0, hit_bottom = 0;
         int hit_col = -1;
+        /* LANES: overlapping blocks side by side, not stacked (2026-09-10).
+         *
+         * Every block used to span the full column width, so two events at 3pm
+         * were drawn one exactly on top of the other and only the last one
+         * painted was visible OR clickable — the earlier one was not hidden,
+         * it was unreachable. A hub full of subscribed feeds has concurrent
+         * events constantly, so this is load-bearing rather than cosmetic.
+         *
+         * The standard treatment, and the one every calendar UI converges on:
+         * group entries into CLUSTERS of transitively-overlapping blocks, give
+         * each block the first lane free at its start time, and divide the
+         * column by the lane count OF ITS OWN CLUSTER. Per-cluster rather than
+         * per-day is what keeps a single 9am collision from shrinking an
+         * otherwise empty afternoon to half width. */
+        struct Blk { CalEntry e; float t0, t1; int lane = 0, lanes = 1; };
         for (int c = 0; c < n; ++c) {
             int cy, cm, cd;
             day_of_col(c, cy, cm, cd);
+            std::vector<Blk> blks;
             for (const auto& e : cal_entries_on(cy, cm, cd)) {
                 float t0 = cal_parse_hhmm(
                     hormiga::temper::field_value(*e.node, "start_time"));
@@ -589,10 +643,48 @@ void HormigaApp::draw_calendar_body() {
                 float t1 = cal_parse_hhmm(
                     hormiga::temper::field_value(*e.node, "end_time"));
                 if (t1 <= t0) t1 = t0 + 1.0f;
+                blks.push_back({e, t0, t1});
+            }
+            std::stable_sort(blks.begin(), blks.end(),
+                             [](const Blk& x, const Blk& y) {
+                                 return x.t0 != y.t0 ? x.t0 < y.t0 : x.t1 > y.t1;
+                             });
+            {
+                size_t cs = 0;             // first index of the open cluster
+                float cluster_end = -1e9f; // latest end time seen in it
+                std::vector<float> lane_end;
+                for (size_t i = 0; i < blks.size(); ++i) {
+                    if (blks[i].t0 >= cluster_end) { // a gap closes the cluster
+                        for (size_t j = cs; j < i; ++j)
+                            blks[j].lanes = (int)lane_end.size();
+                        cs = i;
+                        lane_end.clear();
+                    }
+                    int lane = -1;
+                    for (size_t L = 0; L < lane_end.size(); ++L)
+                        if (blks[i].t0 >= lane_end[L]) { lane = (int)L; break; }
+                    if (lane < 0) {
+                        lane = (int)lane_end.size();
+                        lane_end.push_back(0.0f);
+                    }
+                    lane_end[lane] = blks[i].t1;
+                    blks[i].lane = lane;
+                    cluster_end = std::max(cluster_end, blks[i].t1);
+                }
+                for (size_t j = cs; j < blks.size(); ++j)
+                    blks[j].lanes = (int)std::max<size_t>(1, lane_end.size());
+            }
+            for (const auto& bk : blks) {
+                const CalEntry& e = bk.e;
+                const float t0 = bk.t0, t1 = bk.t1;
                 float y0 = p0.y + (std::clamp(t0, H0, H1) - H0) * hour_h;
                 float y1 = p0.y + (std::clamp(t1, H0, H1) - H0) * hour_h;
-                ImVec2 a(p0.x + gutter + c * col_w + 3, y0 + 1);
-                ImVec2 b(p0.x + gutter + (c + 1) * col_w - 5, y1 - 1);
+                float cx0 = p0.x + gutter + c * col_w + 3;
+                float cx1 = p0.x + gutter + (c + 1) * col_w - 5;
+                float lw = (cx1 - cx0) / (float)bk.lanes;
+                ImVec2 a(cx0 + bk.lane * lw, y0 + 1);
+                ImVec2 b(cx0 + (bk.lane + 1) * lw - (bk.lanes > 1 ? 2.0f : 0.0f),
+                         y1 - 1);
                 bool sel = ed.selected(e.node->name);
                 ImU32 fill = (e.col & 0x00FFFFFF) | (sel ? 0xE0000000 : 0x59000000);
                 dl->AddRectFilled(a, b, fill, 4.0f);
@@ -600,6 +692,10 @@ void HormigaApp::draw_calendar_body() {
                 std::string bl;
                 if (e.incident) bl += "! ";
                 bl += e.node->name;
+                /* Clipped to the block: once lanes divide a column three ways
+                 * an unclipped label runs straight across its neighbours and
+                 * the grid reads as noise. */
+                dl->PushClipRect(ImVec2(a.x + 2, a.y), ImVec2(b.x - 2, b.y), true);
                 dl->AddText(ImVec2(a.x + 4, a.y + 2),
                             sel ? IM_COL32(255, 255, 255, 255)
                                 : IM_COL32(30, 30, 35, 255),
@@ -608,6 +704,7 @@ void HormigaApp::draw_calendar_body() {
                     dl->AddText(ImVec2(a.x + 4, a.y + 18),
                                 IM_COL32(90, 90, 95, 255),
                                 (cal_fmt_hhmm(t0) + "-" + cal_fmt_hhmm(t1)).c_str());
+                dl->PopClipRect();
                 // a resize grip on the bottom edge (visual hint on hover)
                 if (hovered && mouse.x >= a.x && mouse.x <= b.x &&
                     mouse.y >= b.y - 6 && mouse.y <= b.y + 2)
@@ -625,7 +722,20 @@ void HormigaApp::draw_calendar_body() {
         auto snap = [](float t) { return std::round(t * 2.0f) / 2.0f; };
         // grab: on a block → MOVE (or RESIZE if near its bottom edge); on empty
         // → CREATE. Incidents are a point in time (no resize/duration).
-        if (ImGui::IsItemActivated() && hovered &&
+        /* DOUBLE-CLICK EMPTY TIME = a one-hour event there (2026-09-10).
+         * Drag-to-size already existed and is the better gesture when you know
+         * the length; double-click is the one people try first, and without it
+         * a short decisive click did nothing at all. Checked BEFORE the grab
+         * handler so a double-click never also starts a zero-length drag. */
+        if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && !hit) {
+            if (int c = col_of(mouse.x); c >= 0) {
+                int cy, cm, cd;
+                day_of_col(c, cy, cm, cd);
+                float st = snap(hour_of(mouse.y));
+                cal_new_dated("event", cy, cm, cd, st, st + 1.0f);
+                cal_drag_col = -1; // the grab below must not also fire
+            }
+        } else if (ImGui::IsItemActivated() && hovered &&
             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             if (hit) {
                 cal_move = hit->name;
@@ -767,132 +877,3 @@ void HormigaApp::draw_calendar_body() {
         ImGui::EndChild();
     }
 }
-
-/* The static calendar export (the newsletter's month): the month grid composed
- * CPU-side like the map export — white grid, day numbers, rule-colored entry
- * chips, atlas-blitted text. WYSIWYG with the live view's styling. */
-void HormigaApp::export_calendar_png() {
-    if (cal_year == 0) cal_today(cal_year, cal_month, cal_day);
-    ImFontBaked* font = ImGui::GetFontBaked();
-    float font_px = font ? font->Size : 14.0f;
-    unsigned char* atlas = nullptr;
-    int aw = 0, ah = 0, abpp = 4;
-    if (ImTextureData* tex = ImGui::GetIO().Fonts->TexRef._TexData)
-        if (tex->Pixels) {
-            atlas = tex->Pixels; aw = tex->Width; ah = tex->Height;
-            abpp = tex->BytesPerPixel;
-        }
-    const int W = 1200, H = 850;
-    std::vector<unsigned char> img((size_t)W * H * 3, 255);
-    auto fill_rect = [&](int x0, int y0, int x1, int y1, unsigned char r,
-                         unsigned char g, unsigned char b) {
-        x0 = std::max(0, x0); y0 = std::max(0, y0);
-        x1 = std::min(W, x1); y1 = std::min(H, y1);
-        for (int y = y0; y < y1; ++y)
-            for (int x = x0; x < x1; ++x) {
-                unsigned char* p = &img[((size_t)y * W + x) * 3];
-                p[0] = r; p[1] = g; p[2] = b;
-            }
-    };
-    auto stamp = [&](float px, float py, float scale, const std::string& text,
-                     unsigned char tr, unsigned char tg, unsigned char tb) {
-        if (!atlas || !font) return;
-        float penx = px;
-        for (unsigned char ch2 : text) {
-            const ImFontGlyph* gl = font->FindGlyph((ImWchar)ch2);
-            if (!gl) continue;
-            if (gl->Visible) {
-                float gx0 = penx + gl->X0 * scale, gy0 = py + gl->Y0 * scale;
-                float gx1 = penx + gl->X1 * scale, gy1 = py + gl->Y1 * scale;
-                for (int yy = (int)gy0; yy < (int)std::ceil(gy1); ++yy) {
-                    if (yy < 0 || yy >= H) continue;
-                    float v = (yy + 0.5f - gy0) / (gy1 - gy0);
-                    int ay = std::clamp(
-                        (int)((gl->V0 + v * (gl->V1 - gl->V0)) * ah), 0, ah - 1);
-                    for (int xx = (int)gx0; xx < (int)std::ceil(gx1); ++xx) {
-                        if (xx < 0 || xx >= W) continue;
-                        float u = (xx + 0.5f - gx0) / (gx1 - gx0);
-                        int ax = std::clamp(
-                            (int)((gl->U0 + u * (gl->U1 - gl->U0)) * aw), 0,
-                            aw - 1);
-                        float a =
-                            atlas[((size_t)ay * aw + ax) * abpp +
-                                  (abpp == 4 ? 3 : 0)] / 255.0f;
-                        if (a <= 0.02f) continue;
-                        unsigned char* p = &img[((size_t)yy * W + xx) * 3];
-                        p[0] = (unsigned char)(p[0] * (1 - a) + tr * a);
-                        p[1] = (unsigned char)(p[1] * (1 - a) + tg * a);
-                        p[2] = (unsigned char)(p[2] * (1 - a) + tb * a);
-                    }
-                }
-            }
-            penx += gl->AdvanceX * scale;
-        }
-    };
-    // header: month title + weekday names
-    char title[48];
-    std::snprintf(title, sizeof title, "%s %d", kMonthNames[cal_month - 1],
-                  cal_year);
-    stamp(24, 18, 2.0f, title, 30, 30, 30);
-    int first = cal_dow(cal_year, cal_month, 1);
-    int dim = cal_dim(cal_year, cal_month);
-    int rows = (first + dim + 6) / 7;
-    const int gx = 12, gy = 84, gw = W - 24;
-    const int gh = H - gy - 12;
-    float cw = gw / 7.0f, chh = (float)gh / rows;
-    for (int c = 0; c < 7; ++c)
-        stamp(gx + c * cw + 8, gy - 22, 1.0f, kDowNames[c], 90, 90, 95);
-    // grid lines
-    for (int c = 0; c <= 7; ++c)
-        fill_rect(gx + (int)(c * cw), gy, gx + (int)(c * cw) + 1, gy + gh, 205,
-                  205, 208);
-    for (int r = 0; r <= rows; ++r)
-        fill_rect(gx, gy + (int)(r * chh), gx + gw, gy + (int)(r * chh) + 1,
-                  205, 205, 208);
-    // cells: day number + entry chips (color square + name; cap + "+N")
-    for (int r = 0; r < rows; ++r)
-        for (int c = 0; c < 7; ++c) {
-            int dnum = r * 7 + c - first + 1;
-            if (dnum < 1 || dnum > dim) continue;
-            int cx0 = gx + (int)(c * cw), cy0 = gy + (int)(r * chh);
-            char dn[8];
-            std::snprintf(dn, sizeof dn, "%d", dnum);
-            stamp(cx0 + 6, cy0 + 4, 1.0f, dn, 60, 60, 65);
-            auto es = cal_entries_on(cal_year, cal_month, dnum);
-            int line = 0, maxlines = (int)((chh - 26) / (font_px + 4));
-            for (const auto& e : es) {
-                if (line >= maxlines) {
-                    char more[16];
-                    std::snprintf(more, sizeof more, "+%d more",
-                                  (int)es.size() - line);
-                    stamp(cx0 + 6, cy0 + 24 + line * (font_px + 4), 0.9f, more,
-                          120, 120, 125);
-                    break;
-                }
-                float ey = cy0 + 24 + line * (font_px + 4);
-                fill_rect(cx0 + 6, (int)ey + 2, cx0 + 15, (int)ey + 11,
-                          e.col & 0xFF, (e.col >> 8) & 0xFF,
-                          (e.col >> 16) & 0xFF);
-                std::string nm = (e.incident ? "! " : "") + e.node->name;
-                stamp(cx0 + 19, ey, 0.9f, nm, 40, 40, 45);
-                ++line;
-            }
-        }
-    std::error_code ec;
-    fs::create_directories(data_dir("exports"), ec);
-    char stampt[32];
-    std::time_t t = std::time(nullptr);
-    std::strftime(stampt, sizeof stampt, "%Y%m%d-%H%M%S", std::localtime(&t));
-    char fn[64];
-    std::snprintf(fn, sizeof fn, "calendar-%04d-%02d-%s.png", cal_year,
-                  cal_month, stampt);
-    fs::path out = data_dir("exports") / fn;
-    if (stbi_write_png(out.string().c_str(), W, H, 3, img.data(), W * 3)) {
-        toast("exported " + out.filename().string() +
-              " - the newsletter's month");
-        if (on_open) on_open(out.string());
-    } else {
-        toast("calendar export failed: " + out.string(), true);
-    }
-}
-

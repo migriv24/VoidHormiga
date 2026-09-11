@@ -29,6 +29,7 @@
 #include <string_view>
 #include <vector>
 
+#include "domain/clock.hpp"      // parse_clock — the one wall-clock parser
 #include "domain/scene_value.hpp" // tag_value, field_value
 
 
@@ -463,46 +464,20 @@ inline std::string email_button(const std::string& href, const std::string& labe
  * whatever a person typed off a flier. These three are the whole fix.
  */
 
-/* A wall-clock time as a human writes it → 24-hour (h, m). Accepts `9:00 AM`,
- * `09:00`, `9 AM`, `3:00 p.m.`, `15:00`, `noon`, `midnight`. Returns false when
- * there is no time in there at all, which is an ALL-DAY event and not an error.
+/* `parse_clock` MOVED to `domain/clock.hpp` (2026-09-10) and is reachable from
+ * here through that include, so every existing call site is unchanged.
  *
- * Deliberately permissive on input and strict on output: the model stores what
- * the flier said, and the calendar file is the one place that has to be exact. */
-inline bool parse_clock(const std::string& raw, int& hh, int& mm) {
-    std::string s;
-    for (char c : raw) s += (char)std::tolower((unsigned char)c);
-    if (s.find("noon") != std::string::npos) { hh = 12; mm = 0; return true; }
-    if (s.find("midnight") != std::string::npos) { hh = 0; mm = 0; return true; }
-    size_t i = 0;
-    while (i < s.size() && !std::isdigit((unsigned char)s[i])) ++i;
-    if (i >= s.size()) return false;
-    int h = 0, m = 0;
-    while (i < s.size() && std::isdigit((unsigned char)s[i]))
-        h = h * 10 + (s[i++] - '0');
-    if (i < s.size() && s[i] == ':') {
-        ++i;
-        int digits = 0;
-        while (i < s.size() && std::isdigit((unsigned char)s[i]) && digits < 2) {
-            m = m * 10 + (s[i++] - '0');
-            ++digits;
-        }
-    }
-    if (h > 23 || m > 59) return false;
-    // the meridiem, which the old arithmetic threw away — the difference
-    // between a 3 PM meeting and one at three in the morning
-    const size_t p = s.find('p', i ? i - 1 : 0);
-    const size_t a = s.find('a', i ? i - 1 : 0);
-    const bool pm = p != std::string::npos && p + 1 < s.size() &&
-                    (s[p + 1] == 'm' || s[p + 1] == '.');
-    const bool am = a != std::string::npos && a + 1 < s.size() &&
-                    (s[a + 1] == 'm' || s[a + 1] == '.');
-    if (pm && h < 12) h += 12;
-    if (am && h == 12) h = 0;   // 12:30 AM is 00:30
-    hh = h;
-    mm = m;
-    return true;
-}
+ * The move was forced by a good question: this header's own docstring says its
+ * helpers are "pure — string in, string out, no HormigaApp, no ImGui, no I/O",
+ * and every function in it is. But the HEADER is not: line 21 includes
+ * `app/app_internal.hpp`, which reaches ImGui and the whole application. So a
+ * function here is pure and still un-shareable — the calendar could not use the
+ * one time parser without dragging a window in behind it, which is precisely
+ * why the grid grew a second, worse one and disagreed with this file for three
+ * weeks about what time a 3 PM meeting is.
+ *
+ * `domain/clock.hpp` includes nothing but `<cctype>` and `<string>`, which is
+ * what makes "one time parser" a property of the build rather than a promise. */
 
 /* Escape a TEXT value: RFC 5545 §3.3.11 gives `\` `;` `,` and newline meaning
  * inside one, so a venue like "Springfield, OR" silently ends the property and

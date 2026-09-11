@@ -239,6 +239,7 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
+  src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
@@ -365,6 +366,7 @@ add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
+  src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
@@ -696,6 +698,15 @@ add_test(NAME hormiga_allomone_smoke COMMAND hormiga_allomone_smoke)
 # a volunteer can paste, and every shape that must NOT parse), and the flier
 # date-mismatch check. Links no renderer and no view, which is the claim: all
 # three are pure functions over a projection.
+# The Calendar's two PURE grammars: the shared time parser (the grid and the
+# .ics export used to disagree about what time an event was) and the C1f
+# quick-add line. Links no view and no Void Core -- which is the point of
+# `domain/quick_add.hpp` existing as a header rather than as a lambda in the
+# middle of a 1,300-line ImGui file.
+add_executable(hormiga_calendar_smoke tests/calendar_smoke.cpp)
+target_include_directories(hormiga_calendar_smoke PRIVATE src vendor/json)
+add_test(NAME hormiga_calendar_smoke COMMAND hormiga_calendar_smoke)
+
 add_executable(hormiga_dates_smoke tests/dates_smoke.cpp)
 target_link_libraries(hormiga_dates_smoke PRIVATE voidmaiz)
 target_include_directories(hormiga_dates_smoke PRIVATE src vendor/json)

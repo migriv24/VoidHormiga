@@ -100,6 +100,12 @@ with it.
 - [Calendar](/concepts/sections/calendar.md) — dated runes on a time grid:
   3-day/week/month views styled by the map's rules engine; static + web
   exports; grounded in RFC 5545 (model) and FullCalendar (view vocabulary).
+- [Calendar roadmap](/concepts/sections/calendar-roadmap.md) — the calendar's
+  do-list, reorganized 2026-09-10 around the author's identity statement: Hormiga
+  is **the compatible calendar, a hub of all other calendars**, not a super
+  calendar. The X-track (exchange) makes "we are not exclusive" a property of the
+  mechanism — one `VEVENT ⟷ rune` lens, and every calendar system a transport
+  onto it.
 - [Territory](/concepts/sections/territory.md) — the map: location-faceted
   runes on a canvas over a swappable map source (not assumed to be Earth); the
   Neighborhood analysis and its clean mapping to runes/holidays/tags/Scry;

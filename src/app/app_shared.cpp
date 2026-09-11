@@ -12,6 +12,7 @@ extern "C" {
 #include "app/app_internal.hpp"
 
 #include "json.hpp" // unjson_str decodes a setjson-escaped field
+#include "domain/clock.hpp" // parse_clock — ONE time parser, grid and .ics alike
 
 std::string json_str(const std::string& s) {
     std::string out = "\"";
@@ -153,10 +154,33 @@ void cal_add_days(int& y, int& m, int& d, int delta) {
     }
 }
 
-float cal_parse_hhmm(const std::string& s) { // "HH:MM" → hours; <0 = none
-    int h, mi;
-    if (std::sscanf(s.c_str(), "%d:%d", &h, &mi) != 2) return -1.0f;
-    if (h < 0 || h > 23 || mi < 0 || mi > 59) return -1.0f;
+/* A stored time as hours; <0 = "no time here", which means ALL-DAY and is not
+ * an error.
+ *
+ * ── WHY THIS DELEGATES (2026-09-10) ─────────────────────────────────────────
+ *
+ * This was `sscanf("%d:%d")`, and the renderers have used `parse_clock` since
+ * 2026-08-19 — so the calendar GRID and the `.ics` EXPORT had two different
+ * ideas of what time an event was, which is the same class of bug the OKF calls
+ * "the absence of a second styling system" a feature for avoiding.
+ *
+ * The divergence was not academic. `render/text.hpp` says it out loud: *"Every
+ * time in a real community database is 12-hour with a meridiem, because that is
+ * what a flier prints."* Against that input, the old parser here:
+ *
+ *   "3:00 PM"  → sscanf reads 3 and 0, discards the meridiem → drawn at 03:00.
+ *                A three-in-the-afternoon meeting rendered at three in the
+ *                morning, silently, in week and 3-day view.
+ *   "9 AM"     → no colon, sscanf fails → treated as ALL-DAY, so a timed event
+ *                vanished off the time grid into the chip lane.
+ *   "noon"     → same: invisible on the grid.
+ *
+ * The export got all three right and the screen got all three wrong, which is
+ * the worst arrangement available: what you check is correct and what you look
+ * at is not. One parser, both surfaces. */
+float cal_parse_hhmm(const std::string& s) {
+    int h = 0, mi = 0;
+    if (!parse_clock(s, h, mi)) return -1.0f;
     return h + mi / 60.0f;
 }
 

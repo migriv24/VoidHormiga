@@ -11,6 +11,70 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q69 — Google Calendar WRITE needs an OAuth client secret, and this repo is
+  public. Do we ship one?** (Opened 2026-09-10, by the calendar hub reframe.)
+  **Lean: the operator brings their own client; the secret ICS address is the
+  path that needs none of it.**
+
+  Reading a Google calendar is already solved and costs nothing: every Google
+  calendar exposes a **"secret address in iCal format"**, which is an ordinary
+  ICS URL, which is
+  [X4](/concepts/sections/calendar-roadmap.md)'s `hol_ics_feed` with no
+  credential, no OAuth consent screen, and nothing to revoke. **Writing** is the
+  question, and it needs the Calendar API, and the API needs a client id and
+  secret.
+
+  **Why this is a rule question and not a plumbing question.** Ground rule 2:
+  *the repo root is a public artifact — no credentials, ever, in any commit.*
+  And a desktop binary is not a secret store either; current OAuth guidance is
+  explicit that installed apps are **public clients** and must not depend on an
+  embedded secret staying secret. So "ship a client secret with Hormiga" is not
+  a thing that can be done badly — it is a thing that cannot be done.
+
+  **The two honest options.** (i) The operator creates their own Google Cloud
+  project and pastes the client id into the holiday, credential in the
+  passphrase-locked vault — the exact posture `config set tools.image_text`
+  already takes for the OCR recognizer the binary deliberately does not contain,
+  and `hol_github`'s `token_key` already takes for a deploy token. (ii) We do
+  not ship Google *write* at all, and CalDAV — which most servers accept an
+  **app password** for — is the two-way story.
+
+  **What settles it:** whether any real organization asks to push events *into*
+  Google rather than read from it. Reading covers the hub thesis; writing is a
+  convenience with a setup cost that (i) makes visible and honest. Until
+  somebody asks, (ii) is free and (i) is a page of documentation nobody reads.
+
+- **Q68 — is an outreach org's calendar ever genuinely multi-timezone?**
+  (Opened 2026-09-10, by the calendar hub reframe.) **Lean: no — one org
+  timezone, stated once, with a per-event override field reserved and unused.**
+
+  The `.ics` we publish today emits **floating** times: no `TZID`, no trailing
+  `Z`, no `VTIMEZONE`. A floating time means "whatever o'clock it is where the
+  reader is," which is invisible until the first subscriber is in another state
+  and then is wrong twice a year besides. It has to be fixed
+  ([X2](/concepts/sections/calendar-roadmap.md)); the question is how much
+  machinery the fix buys.
+
+  **For one org timezone:** a community organization's events are where the
+  community is. `config set org.timezone "America/Los_Angeles"` alongside
+  `deploy_cmd`, one `VTIMEZONE` per file, done. And it avoids the real cost —
+  full per-event timezones want the IANA tzdb, which is a vendored dataset with
+  a release cadence, and [Q67](/developer_questions.md) is open right now
+  precisely because a vendored artifact was less portable than it looked.
+
+  **Against:** a partner org one state over, a virtual event announced in two
+  timezones, and — the one that will actually happen — **imported** events that
+  arrive carrying a `TZID` we did not choose. That last one is not hypothetical
+  the moment X3 lands, and it means the *import* side needs to understand
+  arbitrary zones even if the *authoring* side only offers one.
+
+  **The shape of the lean, then:** read any zone, normalize to the org zone on
+  import, author in one. Ship a table of the ~40 zones a US / Latin-American
+  community org actually uses, and for anything outside it fall through to
+  floating **with a visible warning rather than silently** — compatible for the
+  95%, and honest about where it stops, which is the same posture the
+  [download page](/concepts/platform/download-page.md) took with SmartScreen.
+
 - **Q67 — libsodium is vendored as a WINDOWS BINARY. Re-vendor the sources?**
   (Opened 2026-09-10, found by the first Linux build.) **Lean: yes, vendor the
   sources, the way SQLite already is.**

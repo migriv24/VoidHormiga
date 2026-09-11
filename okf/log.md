@@ -2130,3 +2130,296 @@ rather than on a command line, and **it must be revoked.** Its scopes were far
 wider than this needed: `admin:org`, `admin:enterprise`, `repo`, `workflow` and
 a dozen more, where a fine-grained token with contents+workflows on one
 repository would have done.
+
+# 2026-09-10, second entry — the calendar is a hub, and four conformance defects nobody had looked for
+
+## The direction
+
+The author moved off release work and onto the Calendar, with an identity
+statement rather than a feature request:
+
+> "We are not trying to make the calendar on Hormiga *the super calendar with
+> everything*, but rather **the compatible calendar, that can use any other
+> existing calendar system and integrate it**. […] This calendar is a hub of all
+> other possible calendars. We are NOT exclusive. We are the opposite of Apple
+> or Microsoft for this."
+
+— with the Antfarm's Google Sheets node named as the precedent for what a Google
+Calendar integration should look like, and a note that the in-app UX still has
+"a lot to be desired."
+
+## What the reframe actually changed
+
+[calendar.md](/concepts/sections/calendar.md) had already grounded the model in
+RFC 5545 and called `.ics` "the calendar's cloud-interop holiday" back in July.
+That was right, and it was **filed in the wrong place**: under **C5 — exports**,
+one item among five tracks, as though interoperability were an output format.
+Under the author's framing it is the thesis, so the do-list had to be
+reorganized around it rather than extended. New page:
+[calendar-roadmap.md](/concepts/sections/calendar-roadmap.md), same shape as the
+[Builder roadmap](/concepts/sections/builder-roadmap.md) — an **X-track** (the
+exchange) and the continuing **C-track** (the room).
+
+**The architecture was already written down, in another folder.** A hub that
+speaks *N* calendar systems is N² adapters written pairwise and N with a pivot
+in the middle, and [Void Reyna](/concepts/projects/void-reyna.md) states the
+**pivot rule** outright — *never write a direct A→B adapter when A→pivot→B
+exists* — along with the shape that earns it: a holiday is an effect boundary
+plus a pure `Lens`, and lenses compose. So the design is one sentence: **the
+pivot is the dated rune, and RFC 5545's `VEVENT` is its interchange
+serialization.** Google Calendar, Outlook, iCloud, Nextcloud, Radicale, a
+school district's feed and a `.ics` somebody emailed are then all *transports*,
+and none of them ever learns what a Hormiga `event` is.
+
+That is worth saying precisely because it makes "we are not exclusive" a
+**property of the mechanism** instead of a promise somebody has to keep — the
+same move the [download page](/concepts/platform/download-page.md) made two days
+ago when "never hide a platform" stopped being a rule and became platform sets.
+
+It also *sharpens* the existing boundary rather than loosening it. `calendar.md`
+says **not a scheduler** — no invitations, no attendees, no free/busy. The hub
+framing keeps that: we translate and aggregate, we do not negotiate. A hub that
+started emitting iTIP invitations would be competing with Google Calendar, which
+is the one thing the author said not to do.
+
+## Four defects, found by reading the writer rather than by a report
+
+The `.ics` writer has been shipping since 2026-07-22 and lives **inline in the
+render loop** (`src/render/site.cpp:1846`, inside the loop that builds the web
+embed's JSON), which is why it can only ever serve one caller. Reading it to
+plan the extraction turned up four things, all confirmed in the code, none of
+them previously reported:
+
+1. **No line folding.** RFC 5545 §3.1 caps a content line at 75 octets; there is
+   no folding anywhere in the writer. A long `SUMMARY` emits an over-length line
+   that strict parsers reject. And the fold has to count **octets, not code
+   points**, without splitting a UTF-8 sequence — which this application hits
+   immediately rather than theoretically, because it is bilingual by decision
+   (2026-09-02) and every Spanish title carries multi-byte characters.
+2. **`UID` is built from the rune's editable `name`** (`src/render/site.cpp:1849`).
+   Void Core's rune spec is explicit that `spirit.id` is "minted once, never
+   reused" and `name` is "editable", and `maiz::SceneNode` carries both. So
+   **renaming an event today tells every subscriber that the old event was
+   deleted and an unrelated new one created.** One field. Existing feeds change
+   UID once, unavoidably, which is the argument for doing it now while the
+   number of subscribers in the world is approximately zero.
+3. **The `VCALENDAR` header carries `VERSION` and `PRODID` and nothing else.**
+   Missing: `CALSCALE`, `METHOD`, `REFRESH-INTERVAL`/`X-PUBLISHED-TTL`, and
+   `X-WR-CALNAME` — which for a hub is not cosmetic, it is how a person tells
+   four subscribed calendars apart in their own client.
+4. **Times are floating** — no `TZID`, no `Z`, no `VTIMEZONE`. Every source
+   consulted agrees this is where the "off by N hours" bugs live: a floating
+   time means "whatever o'clock it is where the reader is." Invisible until the
+   first subscriber is in another state, and wrong twice a year besides.
+
+There is also **no importer at all** — the one grep that matters, `BEGIN:VEVENT`
+as a thing being *parsed*, has no hits. For a page whose thesis is now "hub",
+that is the headline gap, and it is X3.
+
+The pattern here is the one the 2026-09-02 field report already named about
+`image_grid.columns`: *a field that does nothing is worse than no field*. A feed
+that is 90% conformant is the same shape of problem — it works in the client you
+tested and fails in the one you did not, and nobody tells you.
+
+## What the research changed, and what it didn't
+
+Surveyed the field because the author asked: libical, CalDAV, Nextcloud,
+Radicale, Baïkal, DAVx5 / Etar / Fossify, the Google and Graph APIs, and the
+commercial "calendar hub" products (Morgen, Cal.com). The table is in the
+roadmap. Three findings worth the log:
+
+- **The highest-leverage feature needs no credentials from anybody.** Google,
+  Outlook, Apple, Nextcloud, Meetup, Eventbrite, city councils and school
+  districts all publish an **ICS URL**. One `hol_ics_feed` holiday reads all of
+  them, and it registers in the existing `glyphs_antfarm.hpp` table with no new
+  mechanism — `CLOUD`-coloured, a `records` port, precisely the shape of
+  `hol_sheets`, which is the analogy the author drew unprompted. Google
+  Calendar's "secret address in iCal format" *is* that URL, so **the entire
+  Google read integration is a text field.**
+- **Google write cannot be shipped the obvious way, and that is a rule
+  collision rather than a plumbing problem.** The Calendar API needs an OAuth
+  client id and secret; ground rule 2 says no credentials in a public repo, and
+  current OAuth guidance says an installed app is a *public client* that must
+  not depend on an embedded secret staying secret. Opened
+  [Q69](/developer_questions.md) — lean: the operator brings their own client,
+  the same posture `config set tools.image_text` already takes for the OCR the
+  binary deliberately does not contain. CalDAV goes first regardless, because
+  most servers accept an app password, which is a string in the vault we
+  already have.
+- **libical is allowed by ground rule 5 and is still the wrong call.** MPL-2.0 /
+  LGPL-2.1, so vendoring is permitted, and it is the implementation behind
+  Evolution, Kontact and Cyrus. But it is a CMake project with generated sources
+  and an optional ICU dependency — a different kind of vendoring than SQLite's
+  one amalgamation `.c` — and [Q67](/developer_questions.md) is open **right
+  now** because a vendored artifact turned out to be less portable than it
+  looked. The subset we need is small and, more to the point, a hand-rolled
+  parser can be *forgiving* in the way a hub must be: **never reject a file for
+  containing something you do not model.** libical's honest role is a
+  conformance oracle in tests.
+
+## Opened
+
+- **[Q68](/developer_questions.md)** — is an outreach org's calendar ever
+  genuinely multi-timezone? Lean: no, one org timezone; but read any zone,
+  normalize on import, author in one — because imported events arrive carrying a
+  `TZID` we did not choose the moment X3 lands.
+- **[Q69](/developer_questions.md)** — the Google OAuth secret, above.
+
+## Not built
+
+Nothing was compiled this session. The deliverable the author asked for was the
+roadmap, and the four defects are recorded rather than fixed so that the
+extraction in X0 happens once, with them, instead of twice. The recommended
+order is at the foot of the roadmap; the first step is X0, which changes no
+behavior and is what makes the rest reachable at all.
+
+# 2026-09-10, third entry — the calendar grid had its own idea of what time it is
+
+Building the C-track from the roadmap drafted earlier the same day, on the
+author's direction to focus on UI/UX and specifically on *"better gestures that
+actually create an event"*. Everything below is built, tested and in the binary.
+
+## The bug that was not on any list
+
+The C-track was supposed to start with navigation. It started here instead,
+because opening `app_shared.cpp` to look at the date helpers turned up this:
+
+```
+float cal_parse_hhmm(const std::string& s) {   // the CALENDAR GRID
+    if (std::sscanf(s.c_str(), "%d:%d", &h, &mi) != 2) return -1.0f;
+```
+
+while `render/text.hpp` — used by the site renderer and the `.ics` export since
+2026-08-19 — has `parse_clock`, and says in its own comment why it exists:
+
+> "Every time in a real community database is 12-hour with a meridiem, because
+> that is what a flier prints."
+
+So against the input the application is actually given:
+
+| stored | export | **grid** |
+|---|---|---|
+| `3:00 PM` | 15:00 | **03:00** — drawn twelve hours early |
+| `9 AM` | 09:00 | **all-day** — off the time grid entirely |
+| `noon` | 12:00 | **all-day** |
+
+`sscanf` took the 3, discarded the meridiem, and the block landed at three in
+the morning. With no colon it failed outright and the entry fell into the
+all-day chip lane. **The export was right and the screen was wrong**, which is
+the worst arrangement available: what you check is correct and what you look at
+is not. This had been shipping since the time grid was built on 2026-07-23.
+
+## Why the second parser existed, which is the part worth keeping
+
+`parse_clock` was already pure — string in, `(h, m)` out, no state. It was also
+**unreachable**. It lives in `render/text.hpp`, whose docstring promises:
+
+> "All pure: string in, string out, no `HormigaApp`, no ImGui, no I/O. That is
+> what makes them testable on their own."
+
+True of every function in that file and false of the file: line 21 is
+`#include "app/app_internal.hpp"`, which reaches ImGui and the whole
+application. A `ui/` file including it would have been fine — the layering
+allows it — but `domain/` could not, and neither could a test that wanted to
+check the grammar without standing up a window.
+
+**A function can be pure and still not shareable, and the header is what
+decides.** That gap is the entire explanation for how a second, worse time
+parser came to exist thirty feet away from a correct one. So `parse_clock`
+moved to `domain/clock.hpp`, which includes `<cctype>` and `<string>` and
+nothing else. One parser is now a property of the build rather than a promise
+in a comment — the same argument the OKF already makes about the map and
+calendar sharing a rules engine, where the value is *"the absence of a second
+styling system."*
+
+## The three time-grid defects, fixed
+
+All three, reported in this morning's roadmap, are the same failure: **entries
+that are neither shown nor accounted for.** A view that runs out of room and
+says nothing leaves the operator no way to learn the entry exists.
+
+- **Overlap lanes.** Every timed block spanned the full column width, so two
+  events at 3pm drew one exactly on top of the other — and the earlier one was
+  not merely hidden, it was *unreachable*, because the hit test found the last
+  one drawn. Now entries group into clusters of transitively-overlapping blocks,
+  each takes the first lane free at its start time, and the column divides by
+  the lane count **of its own cluster**. Per-cluster rather than per-day is what
+  keeps one 9am collision from shrinking an empty afternoon to half width.
+  Labels clip to their lane.
+- **The all-day lane counted its overflow.** `if (++shown >= 2) break;` became a
+  "+N more" / "less" toggle per column.
+- **The hour range fits the day.** 06:00–22:00 stays the resting range — it is
+  right for nearly every community organization, and 24 rows waste half a screen
+  on hours nothing happens in — but it now expands to contain whatever the
+  visible days hold, so a 05:30 setup call is drawn at 05:30 instead of clamped
+  onto the top edge at 6, indistinguishable from something an hour later. A
+  **24h** checkbox forces the whole day.
+- The month grid had the same disease in a different shape: it drew *every*
+  entry, so a day with eleven things grew the whole week's row and pushed the
+  rest of the month off screen. Four, then "+N more".
+
+## The gestures
+
+The author asked for better ways to do the same thing. Creating an entry used
+to be: right-click, menu item, then a trip to the inspector because the rune was
+called `event-3`.
+
+- **Quick-add** — one line, Enter, a named dated rune. `Food drive 3pm-5pm`,
+  `Standup 9am` (a start alone means an hour), `Volunteer training` (all-day),
+  `!Road closure 2pm` (an incident — the kinds stay visibly distinct at the
+  point of entry, per the standing directive). It targets the **focused day**,
+  which the month grid now marks in the accent, and which a click or the arrow
+  keys move — so where the entry will land is never a guess.
+- **Double-click to create** — an empty month cell for an all-day event, empty
+  time in week/3-day for an hour. Drag-to-size is still better when you know the
+  length; double-click is what people try first, and a short decisive click used
+  to do *nothing*.
+- **Keyboard** — arrows a day, shift+←/→ and ↑/↓ a week, PgUp/PgDn a month,
+  Home/`T` today, `G` jump, `N` quick-add, `M`/`W`/`D`/`A` the granularities,
+  Escape deselect. The month/year label became a button that opens a date field
+  taking `2026-12-01`, `12/1/2026`, `12/1`, or a bare `14`. Reaching next April
+  was seven clicks on "Next".
+
+### What quick-add refuses is the design
+
+`parse_clock` is deliberately permissive because it reads fliers, and that makes
+it completely unfit to drive a creation gesture: it finds a time in "Ward 5
+meeting". **A quick-add that guesses wrong is slower than one that does
+nothing** — you have to notice it guessed, undo, and retype. So a trailing token
+counts as a time only if it carries a colon or a meridiem or is
+`noon`/`midnight`, and a line that is *only* a time is refused rather than
+minting an all-day event named "3pm". Most of the new test is those negative
+cases, and the test earned its keep twice while being written: it caught a
+`continue` that had become a `break` (so `Food drive 3pm-5pm` — three tokens,
+tried at three first — never reached the suffix that worked), and then the bare
+`3pm` case the first fix exposed.
+
+## What the file-length budget was for
+
+`calendar.cpp` went 898 → 1339 and `tools/find_long.py` went red. The budget
+did exactly the job it exists to do: the growth had a seam in it.
+
+- `domain/quick_add.hpp` — the grammar, **pure, linking nothing**, which is what
+  `tests/calendar_smoke.cpp` checks with no window and no Void Core.
+- `ui/calendar_toolbar.cpp` — the chrome: views, navigation, filter, quick-add.
+  It decides *what and when* the grid shows and touches no cell.
+- `ui/calendar_export.cpp` — the PNG. Draws no ImGui; composes pixels and writes
+  a file.
+
+`calendar.cpp` is 879 and under budget without the number moving. `app.hpp`'s
+budget did move, 1150 → 1160, and the reason is written into the table: a class
+declaration grows when the class grows, and clawing four lines back out of
+unrelated declarations to stay under a number makes the file worse rather than
+smaller. The distinction the table is for is exactly the one this pass
+demonstrates — a 1,300-line function file has a seam; a struct definition does
+not.
+
+## Not done
+
+`reduce_conformance` fails, and failed identically at HEAD before any of this —
+it is Void Core's reduce suite, not ours. The other 34 tests pass.
+
+The X-track is untouched: the `.ics` writer still has the four conformance
+defects recorded this morning (no line folding, `UID` from the editable `name`,
+a bare header, floating times) and there is still no importer. `domain/clock.hpp`
+was extracted with X0 in mind — the lens will want the one parser too.

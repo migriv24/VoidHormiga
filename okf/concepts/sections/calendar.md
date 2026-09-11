@@ -6,6 +6,20 @@ tags: [status:current, audience:all, confidence:asserted]
 timestamp: 2026-07-22T00:00:00Z
 ---
 
+> **The identity, sharpened 2026-09-10 (author).** Hormiga is **the
+> *compatible* calendar, not the super calendar** — "a hub of all other
+> possible calendars… we are NOT exclusive, we are the opposite of Apple or
+> Microsoft for this." Everything below still holds; what changed is that
+> interoperability stopped being C5 (one track of five, filed under *exports*)
+> and became the thesis. **The do-list, including the whole exchange track,
+> now lives in [calendar-roadmap.md](/concepts/sections/calendar-roadmap.md)**
+> — this page stays the design and rationale. The one-line architecture: the
+> **pivot is the dated rune** and RFC 5545's `VEVENT` is its interchange
+> serialization, so every calendar system is a *transport* onto one lens rather
+> than an adapter of its own. That is Void Reyna's pivot rule
+> ([void-reyna](/concepts/projects/void-reyna.md)) making "we are not
+> exclusive" a property of the mechanism instead of a promise.
+
 The **Calendar** is Void Hormiga's fifth workflow: **anything carrying a
 `date` appears on a time grid**. It is not a separate data store — like the
 map, it is a *projection surface* over the same runes; a date is to the
@@ -91,7 +105,9 @@ entity selected on the map is selected here — one `ed`).
 # The toolset (the feature inventory, 2026-07-22)
 
 The author's direction: list EVERYTHING calendar tools should do, then build
-one by one (or flag what wants Void Maiz). The inventory, grounded in the
+one by one (or flag what wants Void Maiz). **Statuses below are the 2026-07
+snapshot; the live checklist — plus the X-track the hub reframe added — is
+[calendar-roadmap.md](/concepts/sections/calendar-roadmap.md).** The inventory, grounded in the
 FullCalendar / Google-Calendar-class feature space, phased like Territory's
 T-track. **Upstream column: everything here is host-buildable on ImGui
 primitives (the map canvas already proved the input model); the only

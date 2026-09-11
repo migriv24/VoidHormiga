@@ -29,6 +29,10 @@ rather than a rewrite ([application boundaries](/concepts/foundation/application
 - [Calendar](/concepts/sections/calendar.md) — dated runes on a time grid:
   3-day / week / month views styled by the map's rules engine; static and web
   exports; grounded in RFC 5545 (model) and FullCalendar (view vocabulary).
+- [Calendar roadmap](/concepts/sections/calendar-roadmap.md) — the do-list: the
+  **X-track** (the exchange — the iCalendar lens, conformance, time, import,
+  subscriptions, two-way) added by the 2026-09-10 reframe of the calendar as a
+  *hub* rather than a destination, plus the continuing C-track (the room).
 - [Territory](/concepts/sections/territory.md) — the map: location-faceted
   runes on a canvas over a swappable map source (not assumed to be Earth); the
   Neighborhood analysis and its mapping to runes / holidays / tags / Scry;

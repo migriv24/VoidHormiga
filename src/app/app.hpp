@@ -869,7 +869,8 @@ private:
     std::string cal_view;     // C4d: the active saved calendar view ("" = ad-hoc)
     char cal_view_name[48] = {}; // "Save as view" name buffer
     void cal_apply_view(const maiz::SceneNode& v); // load a calview's settings
-    void draw_calendar_body();                    // toolbar + grid + selection
+    void draw_calendar_toolbar();                 // views, nav, filter, quick-add
+    void draw_calendar_body();                    // the grid + selection
     void export_calendar_png();                   // static export (newsletter)
     // C1 creation & manipulation state (okf/concepts/sections/calendar.md toolset)
     int cal_ctx_y = 0, cal_ctx_m = 0, cal_ctx_d = 0; // day under a context menu
@@ -883,10 +884,15 @@ private:
     bool cal_resize = false;     // true = resizing end_time; false = moving
     float cal_grab_t0 = 0, cal_grab_t1 = 0, cal_grab_off = 0; // block times @ grab
     int cal_grab_col = 0;        // the block's day column at grab (stays valid mid-drag)
+    // UI/UX pass 2026-09-10 (okf/concepts/sections/calendar-roadmap.md C-track)
+    int cal_allday_open = -1, cal_more_day = -1; // expanded all-day col / month cell
+    char cal_quick[160] = {}, cal_jump[16] = {}; // C1f quick-add, C2c jump-to-date
+    bool cal_full_day = false;   // time grid: the whole day, not the fitted range
+    bool cal_quick_focus = false, cal_jump_open = false; // focus/open next frame
     // mint a dated rune (event/incident) on a day, optionally timed (t in
     // hours, snapped) — ONE commit, selected for immediate editing
     void cal_new_dated(const char* glyph, int y, int m, int d, float t0 = -1,
-                       float t1 = -1);
+                       float t1 = -1, const char* title = nullptr);
     // dated runes for a given day, styled: name/glyph + resolved icon/color
     struct CalEntry {
         const maiz::SceneNode* node;
