@@ -7,6 +7,7 @@
  */
 #include "app/app_internal.hpp"
 #include "domain/quick_add.hpp" // C1f: the one-line creation grammar (pure)
+#include "domain/rrule.hpp"     // C3a: recurrence, expanded for the grid
 
 // ── the CALENDAR (okf/concepts/sections/calendar.md): dated runes on a time grid,
 // styled by the SAME rules engine as the map. Model grounds in RFC 5545
@@ -78,7 +79,28 @@ std::vector<HormigaApp::CalEntry> HormigaApp::cal_entries_on(int y, int m,
         int yy, mm, dd;
         std::string ds = hormiga::temper::field_value(node, "date");
         if (std::sscanf(ds.c_str(), "%d-%d-%d", &yy, &mm, &dd) != 3) continue;
-        if (yy != y || mm != m || dd != d) continue;
+        /* RECURRENCE (C3a, 2026-09-11). An entry lands on this day if its own
+         * date IS this day, or if its rule puts an occurrence here.
+         *
+         * Before this, a recurring event appeared on NO day at all: `days` was
+         * free text the newsletter printed and the grid could not read, so a
+         * standing monthly meeting — the most ordinary thing an outreach
+         * organization owns — was invisible on its own calendar while the
+         * importer could read somebody else's. The occurrence is a PROJECTION,
+         * never a stored rune: `calendar.md`'s standing rule is *recurrence is
+         * modeled, not simulated*, and phantom runes are what that forbids. */
+        bool hit = (yy == y && mm == m && dd == d);
+        if (!hit) {
+            const std::string rr = hormiga::temper::field_value(node, "rrule");
+            if (rr.empty()) continue;
+            const hormiga::rrule::Rule rule = hormiga::rrule::parse(rr);
+            if (rule.freq == hormiga::rrule::Freq::None || !rule.understood)
+                continue;
+            const hormiga::rrule::Date start{yy, mm, dd}, here{y, m, d};
+            if (hormiga::rrule::expand(start, rule, here, here).empty()) continue;
+            hit = true;
+        }
+        if (!hit) continue;
         // C4a: kind + tag FILTER (privacy — a published calendar shows only
         // what's chosen; incidents can be sensitive, so hide them by default
         // of the kind filter, never by accident)

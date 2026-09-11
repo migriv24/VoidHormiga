@@ -21,7 +21,43 @@ and not a feature request:
 > all other possible calendars. We are NOT exclusive. We are the opposite of
 > Apple or Microsoft for this."
 
-# What that reframe actually changes
+# The correction that reorders this list (author, 2026-09-11)
+
+> *"We shouldn't NEED other calendars. Just like the database, where we have a
+> local version of our own data, the calendar data doesn't NEED to live
+> somewhere outside of us. We can also create it."*
+
+**Compatible is not dependent, and the X-track had started to read as though it
+were.** Founding commitment 2 is that local-first is the *resting state*: the
+default install works forever with no network, and the network is something an
+admin adds. The calendar is no different from the database. Import and export
+are doors; they are not the floor.
+
+**The proof that this needed saying is one measurement.** Give Hormiga a
+community organization's most ordinary recurring thing —
+
+```
+rune new event standing
+set standing title_en "Riverton Community Meeting"
+set standing days "Last Friday of the Month"
+```
+
+— and it appears **nowhere**. Not on the month grid, not in week view, not in
+the agenda, not in the `.ics` export, not to a subscriber. `days` is free text
+that the newsletter prints and the calendar cannot read, and `cal_entries_on`
+needs a parseable `date`, which a recurring event does not have.
+
+Meanwhile [X3](#x3) will happily import a recurring event from Google and store
+its `RRULE`. **So today Hormiga can read somebody else's standing meeting and
+cannot express its own.** That is exactly backwards, and it is a hole in our
+calendar rather than an argument for anybody else's.
+
+So the order changes: **C3a is no longer item 4 on the recommended list, it is
+next.** The rule this establishes for everything after it — *a capability we
+can only get by importing it is a missing feature, not an integration* — is
+worth more than the item.
+
+# What the hub reframe actually changes
 
 [calendar.md](/concepts/sections/calendar.md) already grounded the model in RFC
 5545 and called `.ics` "the calendar's cloud-interop holiday". That was right,
@@ -413,7 +449,37 @@ listed in [calendar.md](/concepts/sections/calendar.md) and not repeated here.
   its first day, so a two-day festival is invisible on its second. Also the
   thing that makes imported feeds render correctly, since multi-day `VEVENT`s
   are common in the wild.
-- ⬜ **C3a — recurrence.** `days` renders as concrete occurrences, per
+- ✅ **C3a — recurrence, AUTHORED HERE** (2026-09-11) —
+  [domain/rrule.hpp](src/domain/rrule.hpp). A recurring event is `date` +
+  `rrule`, which is what RFC 5545 says and what our two fields already were, so
+  this is not a second recurrence model beside the interop one — **it is the
+  interop one, authored from our side.** The grid expands occurrences as a
+  *projection* (never stored runes: `calendar.md`'s rule is *recurrence is
+  modeled, not simulated*), and the export emits **one VEVENT carrying the
+  rule** rather than one per occurrence. Round trip verified exact: a monthly
+  meeting exports as one event and re-imports as one event, not twelve.
+
+  The authored vocabulary is deliberately the subset every client honours —
+  every N days, weekly on chosen weekdays, monthly on a date, monthly on the
+  Nth (or last) weekday, yearly — because this roadmap's own research says
+  *"Outlook desktop is the strictest… stick to weekly/monthly with simple BYDAY
+  clauses."* A richer rule arriving from a feed is **kept verbatim, expanded if
+  it is one of these shapes, and otherwise shown on its start date with a plain
+  sentence saying so.** A wrong date is worse than an honest absence, and
+  silence is worse than both.
+
+  Two things the tests caught before anything was wired to them: the 31st is
+  **skipped** in a 30-day month rather than clamped (RFC 5545 §3.3.10 — "the
+  31st" in November is nothing, and clamping silently invents a meeting), and
+  `add_days` silently ignored negative deltas, which anchored every weekly rule
+  to the wrong weekday by a consistent offset.
+- ⬜ **`days` → `rrule` for data that already exists.** The legacy `days` field
+  is free text a newsletter prints ("Last Friday of the Month"); it is **not**
+  auto-converted, so an organization with recurring events written that way
+  still sees nothing on the grid until an `rrule` is set. Parsing the common
+  phrasings and *offering* the rule — proposing, not rewriting — is the next
+  step and is small now that `rrule::parse`/`describe` exist.
+- ⬜ **C3a (original entry) — recurrence.** `days` renders as concrete occurrences, per
   `calendar.md`'s standing rule: *recurrence is modeled, not simulated* — no
   phantom entries. **Sequence this together with X3's `RRULE` parsing**: they
   are the same code, and building them apart means writing an expander twice
@@ -474,6 +540,14 @@ listed in [calendar.md](/concepts/sections/calendar.md) and not repeated here.
 ---
 
 # Recommended order
+
+> **Reordered 2026-09-11.** Authoring first, interop second — see the correction
+> at the top. What was item 4 is now item 1, and X4 waits until Hormiga's own
+> calendar can express what it is being asked to subscribe to.
+
+0. **C3a + C3b — recurrence and multi-day spans, authored HERE.** The calendar
+   cannot currently state a standing monthly meeting. Nothing else in this list
+   matters as much as that.
 
 1. **X0** — extract the lens. Nothing else in the track is reachable through a
    renderer-internal function, and it changes no behavior.

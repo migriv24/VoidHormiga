@@ -6,6 +6,25 @@ tags: [status:current, audience:all, confidence:asserted]
 timestamp: 2026-07-22T00:00:00Z
 ---
 
+> **Corrected 2026-09-11 (author): COMPATIBLE IS NOT DEPENDENT.**
+> *"We shouldn't NEED other calendars. Just like the database, where we have a
+> local version of our own data, the calendar data doesn't NEED to live
+> somewhere outside of us. We can also create it."*
+>
+> The hub framing below is right and stays. What it must never be read as is
+> *Hormiga is a viewer for other people's calendars* — that would contradict
+> **founding commitment 2**, which is not a feature but the resting state: *the
+> default install works forever with no network.* The calendar is the same as
+> the database. **Hormiga's calendar is authoritative on its own.** You create
+> events here, they live here, they are complete here. Import and export are
+> **doors**, not foundations — opt-in, one Antfarm holiday each, exactly like
+> every other backend.
+>
+> So the precedence is: **authoring first, interop second.** A capability we
+> can only get by importing it from Google is a hole in *our* calendar, not an
+> argument for Google. That was not hypothetical when this was written — see
+> the recurrence note in [the roadmap](/concepts/sections/calendar-roadmap.md).
+
 > **The identity, sharpened 2026-09-10 (author).** Hormiga is **the
 > *compatible* calendar, not the super calendar** — "a hub of all other
 > possible calendars… we are NOT exclusive, we are the opposite of Apple or

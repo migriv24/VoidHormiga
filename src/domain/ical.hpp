@@ -73,6 +73,17 @@ struct Event {
     std::string start_time;  // as stored, in any human form; "" = all-day
     std::string end_time;
     std::string last_modified; // UTC stamp; "" = omit
+    /* The recurrence rule, if this entry repeats — emitted as `RRULE` beside a
+     * single `DTSTART`.
+     *
+     * ONE VEVENT WITH A RULE, NEVER ONE PER OCCURRENCE. `calendar.md`'s
+     * standing rule is *recurrence is modeled, not simulated*, and the export
+     * is where that stops being an internal nicety: a subscriber who receives
+     * twelve copies of a monthly meeting has twelve things to edit and no
+     * series, the file is twelve times larger, and re-importing it produces
+     * twelve events where there was one. Modelling it makes the round trip
+     * exact, which is the whole claim of having a pivot format. */
+    std::string rrule;
     long sequence = 0;       // bumped when an entry is revised
     bool cancelled = false;  // STATUS:CANCELLED — a tombstone, see to_vevent
 };
@@ -256,6 +267,7 @@ inline std::string to_vevent(const Event& e, const Options& opt,
         o += fold("DTEND;VALUE=DATE:" + next_day_compact(y, m, d));
     }
 
+    if (!e.rrule.empty()) o += fold("RRULE:" + e.rrule);
     if (!e.last_modified.empty())
         o += fold("LAST-MODIFIED:" + e.last_modified);
     /* SEQUENCE says "this is a revision of the entry you already have" rather

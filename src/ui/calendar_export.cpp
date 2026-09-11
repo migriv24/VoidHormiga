@@ -16,6 +16,7 @@
 #include "stb_image_write.h" // decls only — the ONE implementation is in app.cpp
 
 #include <fstream>
+#include <set>
 
 /* The static calendar export (the newsletter's month): the month grid composed
  * CPU-side like the map export — white grid, day numbers, rule-colored entry
@@ -173,11 +174,21 @@ std::string HormigaApp::export_calendar_ics() {
      * happen to be on screen, and the filter — not the viewport — is what this
      * feature treats as the privacy boundary. */
     std::vector<hormiga::ical::Event> out;
+    /* ONE ENTRY PER RUNE, NOT ONE PER OCCURRENCE. `cal_entries_on` expands a
+     * recurring event onto every day its rule reaches — right for a grid, wrong
+     * for a file. `calendar.md`: *recurrence is modeled, not simulated*. A
+     * subscriber who receives twelve copies of a monthly meeting has twelve
+     * things to edit and no series, and re-importing that file would create
+     * twelve events where there was one — which would break the round trip
+     * this format exists to make exact. So a rune seen on any day is written
+     * ONCE, from its own start date, carrying its rule. */
+    std::set<std::string> written;
     int y = cal_year, m = cal_month, d = 1;
     cal_add_days(y, m, d, -180);
     for (int i = 0; i < 545; ++i) {
         for (const auto& e : cal_entries_on(y, m, d)) {
             const maiz::SceneNode& n = *e.node;
+            if (!written.insert(n.name).second) continue;
             hormiga::ical::Event ie;
             // the FROZEN id: a UID from the editable name tells a subscriber
             // that renaming an event deleted it
@@ -189,9 +200,10 @@ std::string HormigaApp::export_calendar_ics() {
             ie.location = hormiga::temper::field_value(n, "venue");
             ie.geo = hormiga::temper::field_value(n, "geo");
             ie.categories = hormiga::ical::public_categories(n.tags);
-            char ds[16];
-            std::snprintf(ds, sizeof ds, "%04d-%02d-%02d", y, m, d);
-            ie.date = ds;
+            /* the rune's OWN start date, not the day we happened to see it
+             * on: a recurrence is anchored to its first occurrence */
+            ie.date = hormiga::temper::field_value(n, "date");
+            ie.rrule = hormiga::temper::field_value(n, "rrule");
             ie.start_time = hormiga::temper::field_value(n, "start_time");
             if (ie.start_time.empty() && e.incident)
                 ie.start_time = hormiga::temper::field_value(n, "time");

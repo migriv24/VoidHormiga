@@ -28,6 +28,7 @@
  */
 #include "../src/domain/ical.hpp"
 #include "../src/domain/quick_add.hpp"
+#include "../src/domain/rrule.hpp"
 
 #include <iostream>
 #include <string>
@@ -431,6 +432,130 @@ int main() {
             CHECK(g.end_time == "17:00");
             CHECK(!g.all_day);
         }
+    }
+
+
+    // ── 7. RECURRENCE, AUTHORED HERE (C3a) ──────────────────────────────────
+    //
+    // The gap this closes, stated as a fact rather than a feature: before
+    // 2026-09-11 a standing monthly meeting set with `days "Last Friday of the
+    // Month"` appeared on no grid, in no export and to no subscriber, while the
+    // importer could read the same thing out of Google. Hormiga could express
+    // somebody else's recurrence and not its own.
+    {
+        using namespace hormiga::rrule;
+        auto D = [](int y, int m, int d) { return Date{y, m, d}; };
+        auto dates = [](const std::vector<Date>& v) {
+            std::string s;
+            for (const auto& x : v) s += (s.empty() ? "" : " ") + to_string(x);
+            return s;
+        };
+
+        // THE ONE FROM THE GOLDEN FIXTURE: last Friday of every month.
+        {
+            const Rule r = parse("FREQ=MONTHLY;BYDAY=-1FR");
+            CHECK(r.understood);
+            CHECK(r.freq == Freq::Monthly);
+            CHECK(r.set_pos == -1);
+            const auto occ = expand(D(2026, 9, 25), r, D(2026, 9, 1), D(2026, 12, 31));
+            // Sep 25, Oct 30, Nov 27, Dec 25 2026 are all last Fridays
+            CHECK(dates(occ) == "2026-09-25 2026-10-30 2026-11-27 2026-12-25");
+            CHECK(describe(r) == "every month on the last Friday");
+            CHECK(to_string(r) == "FREQ=MONTHLY;BYDAY=-1FR");
+        }
+        // weekly on two days
+        {
+            const Rule r = parse("FREQ=WEEKLY;BYDAY=TU,TH");
+            CHECK(r.understood);
+            const auto occ = expand(D(2026, 9, 1), r, D(2026, 9, 1), D(2026, 9, 15));
+            CHECK(dates(occ) ==
+                  "2026-09-01 2026-09-03 2026-09-08 2026-09-10 2026-09-15");
+        }
+        // every other week
+        {
+            const Rule r = parse("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO");
+            const auto occ = expand(D(2026, 9, 7), r, D(2026, 9, 1), D(2026, 10, 31));
+            CHECK(dates(occ) == "2026-09-07 2026-09-21 2026-10-05 2026-10-19");
+        }
+        // COUNT stops it, and counts OCCURRENCES rather than window hits
+        {
+            const Rule r = parse("FREQ=DAILY;COUNT=3");
+            const auto occ = expand(D(2026, 9, 1), r, D(2026, 9, 1), D(2026, 12, 31));
+            CHECK(dates(occ) == "2026-09-01 2026-09-02 2026-09-03");
+            // asking only about a LATER window must not restart the count
+            const auto later = expand(D(2026, 9, 1), r, D(2026, 9, 3), D(2026, 12, 31));
+            CHECK(dates(later) == "2026-09-03");
+        }
+        // UNTIL is inclusive
+        {
+            const Rule r = parse("FREQ=WEEKLY;BYDAY=FR;UNTIL=20261016T000000Z");
+            const auto occ = expand(D(2026, 10, 2), r, D(2026, 10, 1), D(2026, 12, 31));
+            CHECK(dates(occ) == "2026-10-02 2026-10-09 2026-10-16");
+        }
+        /* THE 31st IS SKIPPED, NOT CLAMPED (RFC 5545 §3.3.10). "The 31st" in
+         * November is not the 30th, it is nothing — clamping silently invents
+         * a meeting on a day nobody scheduled one. */
+        {
+            const Rule r = parse("FREQ=MONTHLY;BYMONTHDAY=31");
+            const auto occ = expand(D(2026, 1, 31), r, D(2026, 1, 1), D(2026, 6, 30));
+            CHECK(dates(occ) == "2026-01-31 2026-03-31 2026-05-31");
+        }
+        // yearly, and a leap day that only exists some years
+        {
+            const Rule r = parse("FREQ=YEARLY");
+            const auto occ = expand(D(2026, 7, 4), r, D(2026, 1, 1), D(2029, 12, 31));
+            CHECK(dates(occ) == "2026-07-04 2027-07-04 2028-07-04 2029-07-04");
+        }
+        // the window clips without changing the phase
+        {
+            const Rule r = parse("FREQ=MONTHLY;BYDAY=1MO");
+            const auto occ = expand(D(2026, 1, 5), r, D(2026, 4, 1), D(2026, 6, 30));
+            CHECK(dates(occ) == "2026-04-06 2026-05-04 2026-06-01");
+        }
+        /* A RULE WE DO NOT EXPAND IS KEPT AND SAID SO, never guessed at. A
+         * wrong date is worse than an honest absence, and silence is worse
+         * than both. */
+        {
+            const Rule r = parse("FREQ=MONTHLY;BYSETPOS=2;BYDAY=MO,TU,WE,TH,FR");
+            CHECK(!r.understood);
+            const auto occ = expand(D(2026, 9, 8), r, D(2026, 9, 1), D(2026, 12, 31));
+            CHECK(dates(occ) == "2026-09-08");   // the start date, and no more
+            CHECK(describe(r).find("outside what this calendar expands") !=
+                  std::string::npos);
+        }
+        {
+            const Rule r = parse("FREQ=HOURLY");     // real, and not ours
+            CHECK(!r.understood);
+        }
+        {
+            const Rule r = parse("");
+            CHECK(r.freq == Freq::None);
+            CHECK(describe(r) == "does not repeat");
+            // no rule = the one date it has
+            const auto occ = expand(D(2026, 9, 15), r, D(2026, 1, 1), D(2027, 1, 1));
+            CHECK(dates(occ) == "2026-09-15");
+        }
+        // an `RRULE:` prefix, as it appears in a file, is accepted
+        CHECK(parse("RRULE:FREQ=WEEKLY;BYDAY=WE").understood);
+        // round trip: a rule we build parses back to itself
+        {
+            Rule r;
+            r.freq = Freq::Weekly;
+            r.interval = 2;
+            r.by_day = {1, 3};
+            r.understood = true;
+            const std::string s = to_string(r);
+            CHECK(s == "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE");
+            const Rule back = parse(s);
+            CHECK(back.freq == Freq::Weekly && back.interval == 2 &&
+                  back.by_day.size() == 2);
+        }
+        // the day-of-week arithmetic itself, since everything above rests on it
+        CHECK(dow(2026, 9, 11) == 5);   // a Friday
+        CHECK(dow(2000, 1, 1) == 6);    // a Saturday
+        CHECK(days_in_month(2024, 2) == 29);
+        CHECK(days_in_month(1900, 2) == 28); // not a leap year
+        CHECK(days_in_month(2000, 2) == 29); // but this one is
     }
 
     if (failures == 0) std::cout << "calendar smoke: ok\n";

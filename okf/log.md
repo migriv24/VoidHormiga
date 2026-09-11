@@ -2880,3 +2880,115 @@ and named zones are read as written, both reported rather than done quietly; the
 `tzid` field exists and is empty), X4 (`hol_ics_feed`, now a small step: the
 transport already accepts a URL), X5, X6, and C3a/C3b — the recurrence and spans
 this importer is currently storing faithfully and not yet drawing.
+
+# 2026-09-11, third entry — "we shouldn't NEED other calendars", and the hole that proved it
+
+The author, reading the X-track:
+
+> *"Wait — we shouldn't NEED other calendars. Just like the database, where we
+> can have a local version of our own data, the calendar data doesn't NEED to
+> live somewhere outside of us. We can also create it."*
+
+Correct, and the correction is about **precedence** rather than about deleting
+anything. The interop work stands; what had started to drift was the framing.
+"A hub of all other possible calendars" can be read two ways, and only one of
+them is this application: **compatible is not dependent.** Founding commitment 2
+is that local-first is the *resting state* — the default install works forever
+with no network, and the network is something an admin adds. The calendar is no
+different from the database. Import and export are doors. They are not the
+floor.
+
+## The measurement that made it concrete
+
+The framing argument would have been worth having on its own. It turned out not
+to be a framing argument at all, because Hormiga had a hole exactly where the
+author was pointing. Give it a community organization's most ordinary recurring
+thing:
+
+```
+rune new event standing
+set standing title_en "Riverton Community Meeting"
+set standing days "Last Friday of the Month"
+```
+
+and export the calendar. **One VEVENT comes out, and it is the other event.**
+The standing meeting appears on no grid, in no export, and to no subscriber.
+`days` is free text the newsletter prints and the calendar cannot read, and
+`cal_entries_on` requires a parseable `date`, which a recurring event does not
+have.
+
+Meanwhile [X3](/concepts/sections/calendar-roadmap.md), shipped that morning,
+will happily read a recurring event out of Google and store its `RRULE`.
+
+**So Hormiga could express somebody else's standing meeting and not its own.**
+That is not an argument for Google; it is a hole in our calendar. The rule this
+establishes is worth more than the feature that closed it: *a capability you can
+only obtain by importing it is a missing feature, not an integration.*
+
+## What was built
+
+`domain/rrule.hpp` — parse, expand, build, and **describe in plain English**,
+because a rule nobody can read is a rule nobody can check.
+
+The model is RFC 5545's, and deliberately so: a recurring event is `DTSTART` +
+`RRULE`, which is what the standard says, what every other calendar stores, and
+— not coincidentally — what our `date` + `rrule` fields already were. **This is
+not a second recurrence model beside the interop one; it is the interop one,
+authored from our side.** Round-tripping is then a property rather than a
+feature.
+
+The authored vocabulary is a deliberate subset — every N days, weekly on chosen
+weekdays, monthly on a date, monthly on the Nth or LAST weekday, yearly —
+because the roadmap's own research already recorded the reason to stop early:
+*"Outlook desktop is the strictest. Recurring events with complex RRULEs often
+fail to import."* A richer rule arriving from a feed is kept verbatim, expanded
+when it is one of these shapes, and otherwise shown on its start date with a
+sentence saying exactly that. **A wrong date is worse than an honest absence,
+and silence is worse than both.**
+
+## Modeled, not simulated — and the export is where that stopped being internal
+
+The first working version expanded a monthly meeting into **twelve VEVENTs** in
+the `.ics`. It looked right and was wrong: `calendar.md`'s standing rule is
+*recurrence is modeled, not simulated*, and the export is where the difference
+bites somebody else. A subscriber receiving twelve copies has twelve things to
+edit and no series, the file is twelve times larger, and re-importing it creates
+twelve events where there was one — which would break the exact round trip the
+pivot format exists to provide.
+
+Fixed: the grid expands (a projection, never stored runes), the file carries one
+`VEVENT` with its `RRULE`. Verified end to end — export a monthly meeting,
+import the result into an empty database, and **one** event comes back carrying
+`FREQ=MONTHLY;BYDAY=-1FR`.
+
+## Two bugs the tests caught before anything was wired to them
+
+- **`add_days` silently ignored negative deltas** (`while (n > 0)` and no
+  second loop). The weekly expander walks back to its own Sunday before stepping
+  week by week, so every weekly rule was anchored to the wrong weekday — "every
+  Tuesday and Thursday" produced Thursdays and Saturdays. Wrong by a *consistent
+  offset*, which is the kind of wrong that looks like a plausible calendar right
+  up until somebody misses a meeting.
+- **The 31st must be SKIPPED, not clamped** (RFC 5545 §3.3.10). "The 31st" in
+  November is not the 30th, it is nothing; clamping silently invents a meeting
+  on a day nobody scheduled one.
+
+Both were written as expectations first and both failed on the first run, which
+is the argument for writing the expectations first.
+
+## What is NOT done, and should be said plainly
+
+`days` is **not** auto-converted. An organization whose recurring events are
+written as free text still sees nothing on the grid until an `rrule` is set —
+including the golden fixture's own standing meeting. Parsing the common
+phrasings and *offering* the rule (proposing, never rewriting) is the next step
+and is small now that `parse`/`describe` exist. Leaving it unstated would be the
+same shape of defect as the one this entry is about.
+
+Also: the GUI binary could not be relinked this session because the application
+was **running** and holding the file. The CLI carries everything above; the
+desktop build needs the app closed. Worth recording because the failure
+presented as `collect2.exe: error: ld returned 5 exit status` with no
+diagnostic, and `app_internal.hpp` already warns that *the gcc driver swallows
+ld's stderr in this environment* — the same trap, a third time, and the tell was
+that two consecutive identical builds returned different exit codes.
