@@ -2710,3 +2710,64 @@ and a change to their installed software — left for them to run rather than
 done on their behalf. So the exit test is proven up to the last command: the
 check, the feed, the cross-version parse and the prompt are all witnessed; the
 replacement is not.
+
+# 2026-09-11 — Mago refused it by name, and took the stricter half of the ask
+
+Void Mago fixed the silent drop reported yesterday, and — checked rather than
+believed, which is this repository's habit with upstream claims since
+2026-09-08 — it is fixed, and the fix is better than what was asked for.
+
+## Reproduced, against the fixed binary
+
+A manifest was written carrying exactly the shape 0.1.1 shipped with: four
+`behavior_changes` as plain strings. Yesterday that produced
+`"behavior_changes": []` and a success message. Now:
+
+```
+mago: …/void.json: release.behavior_changes[0] is a string; each entry is an
+      object with "what" and optional "who_is_affected"
+mago: 1 manifest was not read, and nothing below counts it.
+```
+
+Three things in that output were not in the ask.
+
+1. **The index.** The message names `[0]`. The suggestion was a bare `else`
+   beside the existing `continue`, which would have said *an entry* is wrong; a
+   manifest with six of them would have sent somebody hunting. Naming the slot
+   is the difference between a refusal and a useful refusal.
+2. **The shape.** `json_shape()` says *"is a string"* rather than *"is not an
+   object"* — it reports what was found, not merely what was absent, which is
+   the same distinction the download page's platform sets turned on.
+3. **It refuses at `scan`, not at `feed`.** So `mago doctor` catches it, which
+   means the wrong shape is caught by the command you run *before* building a
+   release rather than by reading the artifact afterwards. Yesterday's finding
+   was made by diffing a generated feed against the manifest by hand; nobody has
+   to do that now.
+
+They also refuse a non-array `behavior_changes`, which was not in the report at
+all and is the same class of mistake one level up.
+
+The comment they left in `src/manifest.cpp` states the reasoning the report
+argued for, in their own words: *"a dropped `adds` entry is a missing bullet, a
+dropped behavior change is the warning that never reached the person being asked
+to update. So every wrong shape here is refused by name."*
+
+## And our own manifest still passes
+
+`mago doctor` reports nothing new for `voidhormiga` — its two errors remain
+VoidCore and VoidPalabra disagreeing about what to call their seam, which is
+neither ours nor new. The 0.1.1 feed regenerates identically under the fixed
+binary: `latest: 0.1.1`, four behavior changes, every one carrying a
+`who_is_affected`. So the strictness costs us nothing, which is what it should
+cost a manifest that was already right.
+
+`MESSAGE_FOR_VOIDMAGO_hormiga-behavior-changes-dropped-silently-2026-09-10.md`
+is consumed and deleted; this entry is the durable record (rule 4).
+
+## What this pays for
+
+The four `affects:` lines a person now sees when 0.1.0 asks whether to become
+0.1.1 exist because the entries are objects. Under yesterday's Mago they would
+have been dropped in silence, on the release whose headline is *events move*.
+The report was worth writing and the fix is worth having, and the interesting
+part is that neither would have happened if the empty array had looked ordinary.
