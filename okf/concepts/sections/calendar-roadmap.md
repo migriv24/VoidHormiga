@@ -104,7 +104,7 @@ has libical installed, assert it parses. Revisit if `RRULE` expansion or
 
 # X-track — the exchange
 
-## 🔨 X0 — the lens: `VEVENT ⟷ dated rune`
+## ✅ X0 — the lens: `VEVENT ⟷ dated rune`
 
 **The keystone; everything else in this track is a transport onto it.**
 
@@ -121,10 +121,11 @@ has libical installed, assert it parses. Revisit if `RRULE` expansion or
   no `notes` member: *"a field that does not exist on the type cannot be leaked
   by a future caller who forgets, and cannot be added by accident."* A caller
   fills each field deliberately.
-- ⬜ **the reader half** — `parse_ical(…)` → `Event`, and
-  `to_commands(…)` → **dispatcher commands**, because founding commitment 1 says
-  every change is a logged, replayable command and an importer that wrote rows
-  directly would be the first thing in the application that isn't. This is X3.
+- ✅ **the reader half** (2026-09-11) — `ical::parse()` → `Incoming`, and
+  [ical_import.hpp](src/domain/ical_import.hpp)'s `plan_import()` →
+  **dispatcher commands**, because founding commitment 1 says every change is a
+  logged, replayable command and an importer that wrote rows directly would be
+  the first thing in the application that isn't. See X3.
 
 ## ✅ X1 — conformance repairs on the writer (2026-09-10)
 
@@ -210,7 +211,35 @@ Opens **[Q68](/developer_questions.md)** — is an outreach org's calendar ever
 genuinely multi-timezone? Lean: no; one org timezone, stated once, with a
 per-event override field reserved and unused.
 
-## ⬜ X3 — the importer: read any calendar
+## ✅ X3 — the importer: read any calendar (2026-09-11)
+
+`effect import-ics <path|url> [apply]`. **Measured against real feeds rather
+than synthetic ones:** Google's public US-holidays calendar (317 entries, all
+all-day) and FOSDEM 2025's schedule (580 KB, 1,105 timed talks across parallel
+tracks) both parse with **zero failures, zero unparseable dates and zero missing
+UIDs**, and both re-import to `0 create / 0 update / N unchanged` — a fixed
+point, which is the property that makes a subscription safe to re-run.
+
+Two bugs found by running it rather than by reading it, both worth keeping:
+
+- **The importer never reached a fixed point**, reporting 174 updates every time
+  for a file that had not changed. The cause was one function doing two things
+  wrong at once: a hand-rolled quoter flattened newlines to spaces on the way
+  in, while the comparison used the *unflattened* parsed value — so the value
+  written could never equal the value compared. Google's `DESCRIPTION` carries a
+  newline ("Observance" then "To hide observances…"), which is why 174 and not
+  all 317. Fixed by using `maiz::arg` — Void Core's own `vc_arg_quote`, SPEC
+  §6.1 — which round-trips a newline intact (checked: a `set` carrying one
+  stores one). One change, two bugs: a silent data loss and a plan that could
+  not converge.
+- **`ext_uid` and `rrule` were caught by `lint_glyph_fields`** the moment they
+  were declared, which is that linter doing exactly its job. Both are
+  deliberately unrendered and are now exempt *with reasons*: publishing a
+  foreign system's opaque identifier tells a reader nothing and tells a scraper
+  which feed the organization subscribes to, and a renderer must not print
+  `FREQ=MONTHLY;BYDAY=3TU` at a person.
+
+*Original plan, for the record:*
 
 `effect import-ics <path>` → a **preview** → one replayable batch.
 

@@ -80,7 +80,20 @@ EXEMPT = {
              'is forwarded far more casually than a page is linked',
     'website': 'same: the email directory stays short by design',
     'search': 'the filter box is injected by app.js; email has no JS',
+    # -- the calendar hub bookkeeping fields (X3, 2026-09-11) --------------
+    'ext_uid': 'the UID the SOURCE calendar gave an imported entry. It is an '
+               'identity key, and the only thing `effect import-ics` matches '
+               'on, so that a re-import updates rather than duplicates. '
+               'Publishing it would print another system opaque identifier at '
+               'a reader, which tells them nothing and tells a scraper which '
+               'feed the organization subscribes to',
+    'rrule': 'the recurrence rule exactly as the source calendar wrote it, '
+             'kept so that an import loses nothing. Not rendered because a '
+             'renderer must not print FREQ=MONTHLY;BYDAY=3TU at a reader. '
+             'Turning it into occurrences on the grid is C3a; when that lands '
+             'what gets rendered is the occurrences, not this string',
 }
+
 
 # glyphs no renderer is expected to draw
 SKIP_GLYPHS = {

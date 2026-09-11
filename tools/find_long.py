@@ -233,7 +233,16 @@ BUDGET = {
     # are two callers of the same verbs. Everything the export actually computes
     # is in `domain/ical.hpp` and `ui/calendar_export.cpp`; what landed here is
     # argument handling and the boot, which is what this file is for.
-    'src/main/headless.cpp': 1260,
+    # 1260 -> 1380 (2026-09-11): `effect import-ics` -- X3, the reader half of
+    # the calendar lens, and the feature that makes "the compatible calendar"
+    # true rather than aspirational. It is argument handling, a transport
+    # branch (a path or a URL through curl), a dry-run report and one batched
+    # dispatch; everything it computes is in `domain/ical.hpp` (the format) and
+    # `domain/ical_import.hpp` (the plan), both pure and both reachable by a
+    # test that links nothing. That split is the ratchet working -- roughly 450
+    # lines landed in `domain/` where they can be checked, and what came here
+    # is the boot and the refusals, which is what this file is for.
+    'src/main/headless.cpp': 1380,
     # NEW ENTRY 2026-09-02 (was on the 1000 default): the Data tab lost 168 lines
     # to `ui/widgets.cpp` the same afternoon -- the rune-rename control (shared
     # with the Notes tab, which is why a note could not be renamed at all), the

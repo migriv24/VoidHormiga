@@ -96,7 +96,7 @@ inline void register_glyphs(maiz::Core& core,
         R"("hints":{"color":"#b3592e","face":{"w":190,"h":58},"category":"People",)"
         R"("editors":{"avatar":"image","role":"enum","bio_en":"multiline:70",)"
         R"("bio_es":"multiline:70","bio":"multiline:70","notes":"multiline:70",)"
-        R"("ref_off":"hidden"},)"
+        R"("ref_off":"hidden","ext_uid":"hidden"},)"
         R"("labels":{"avatar":"Photo","role":"Role","email":"Email","phone":"Phone","website":"Website",)"
         R"__("display_name":"Name as printed (blank = the rune name)",)__"
         R"__("bio_en":"Public bio (English)","bio_es":"Biografia publica (espanol)",)__"
@@ -176,7 +176,8 @@ inline void register_glyphs(maiz::Core& core,
         R"({"glyph":"event","label":"Event",)"
         R"("fields":["title_en","title_es","date","days","start_time","end_time",)"
         R"("venue","virtual","summary_en","summary_es",)"
-        R"("summary","email","color","icon_url","geo","ref","ref_off"],)"
+        R"("summary","email","color","icon_url","geo","ref","ref_off",)"
+        R"("ext_uid","rrule"],)"
         R"("hints":{"color":"#3f6fae","face":{"w":210,"h":64},"category":"Events",)"
         R"("editors":{"date":"date","summary":"multiline:60",)"
         R"("summary_en":"multiline:60","summary_es":"multiline:60",)"
@@ -188,7 +189,9 @@ inline void register_glyphs(maiz::Core& core,
         R"("start_time":"Starts","end_time":"Ends","venue":"Venue",)"
         R"__("virtual":"Virtual link","summary":"Summary","email":"Contact email",)__"
         R"__("geo":"Location (lat,lon)","ref":"Reference point (fan-out parent)",)__"
-        R"__("color":"Card color","icon_url":"Icon URL (legacy)"}}})__"));
+        R"__("color":"Card color","icon_url":"Icon URL (legacy)",)__"
+        R"__("ext_uid":"Imported UID (matches this to its source calendar)",)__"
+        R"__("rrule":"Recurrence rule, as the source calendar wrote it"}}})__"));
     /* job fields sized to the rescue's real jobs-board shape (json_store.jobs).
      *
      * ── `title_en`/`title_es`, ADDED 2026-08-20 ──────────────────────────────
@@ -256,13 +259,16 @@ inline void register_glyphs(maiz::Core& core,
     // with planned events. type:incident keeps the query surfaces apart.
     core.register_glyph(with_channels(
         R"({"glyph":"incident","label":"Incident","kind":"act",)"
-        R"("fields":["date","time","severity","description","geo","ref","ref_off"],)"
+        R"("fields":["date","time","severity","description","geo","ref",)"
+        R"("ref_off","ext_uid"],)"
         R"("hints":{"color":"#a83232","face":{"w":200,"h":60},"category":"Events",)"
         R"("editors":{"date":"date","description":"multiline:70",)"
-        R"("severity":"combo:low,medium,high,critical","ref_off":"hidden"},)"
+        R"("severity":"combo:low,medium,high,critical","ref_off":"hidden",)"
+        R"("ext_uid":"hidden"},)"
         R"("labels":{"date":"Date","time":"Time","severity":"Severity",)"
         R"__("description":"Description","geo":"Location (lat,lon)",)__"
-        R"__("ref":"Reference point (fan-out parent)"}}})__"));
+        R"__("ref":"Reference point (fan-out parent)",)__"
+        R"__("ext_uid":"Imported UID (matches this to its source calendar)"}}})__"));
     // a DAY is a taggable rune keyed by date (author, 2026-08-04): tag a
     // calendar day WITHOUT scheduling anything on it. Named `day-YYYY-MM-DD`
     // so it is findable from a date; carries only `date` + `name` fields and

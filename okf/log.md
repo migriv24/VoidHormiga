@@ -2771,3 +2771,112 @@ The four `affects:` lines a person now sees when 0.1.0 asks whether to become
 have been dropped in silence, on the release whose headline is *events move*.
 The report was worth writing and the fix is worth having, and the interesting
 part is that neither would have happened if the empty array had looked ordinary.
+
+# 2026-09-11, second entry — X3: Hormiga reads other people's calendars now
+
+The reader half of the lens, which is the half that makes *"the compatible
+calendar"* true rather than aspirational. `effect import-ics <path|url>
+[apply]`.
+
+## Measured against real feeds, not synthetic ones
+
+A parser that passes its author's own test file has proved that the author is
+consistent. So before wiring anything, the parser was pointed at two calendars
+from the wild:
+
+| feed | size | what it is | result |
+|---|---|---|---|
+| Google, "Holidays in United States" | 120 KB | 317 entries, all all-day | **0 failures** |
+| FOSDEM 2025 schedule | 580 KB | 1,105 timed talks, parallel tracks | **0 failures** |
+
+Zero unparseable dates, zero entries without a UID, zero components that caused
+a refusal. Google's feed is the canonical interop target, and FOSDEM's is the
+opposite shape — every entry timed, many concurrent — so between them they
+exercise both halves of the model.
+
+## The rule the parser is built around
+
+**Never reject a file for containing something you do not model.** Real feeds
+carry VTODOs, VTIMEZONEs, VALARMs, `X-` properties and parameters nobody has
+seen; the correct response to all of them is to walk past. That is the behaviour
+the author defined this section *against* — a hub that refuses a calendar
+because it holds a task list is behaving like the vendors.
+
+The one thing that fails an entry is having no usable `DTSTART`, because an
+entry with no date is not a calendar entry.
+
+Component nesting is tracked rather than assumed, and it is not pedantry: **a
+VALARM lives inside a VEVENT and carries its own `DESCRIPTION`.** A parser that
+keys on property names without knowing which component it is inside will
+cheerfully overwrite a meeting's description with the text of its reminder.
+There is a test for exactly that.
+
+## Two bugs found by running it, which is why it was run
+
+**The importer never reached a fixed point.** Re-importing an unchanged file
+reported *174 updates*, every time, forever. The cause was one small function
+doing two things wrong at once: a hand-rolled quoter flattened newlines to
+spaces on the way in, while the comparison used the *unflattened* parsed value —
+so the value written could never equal the value compared. 174 and not 317
+because that is how many of Google's entries carry a `DESCRIPTION` with a
+newline in it ("Observance", then "To hide observances, go to…").
+
+The fix was to stop hand-rolling: `maiz::arg` is Void Core's own
+`vc_arg_quote` (SPEC §6.1) and round-trips a newline intact — checked rather
+than assumed, with a `set` carrying one. **One change closed two bugs**, a
+silent data loss and a plan that could not converge, which is the tell that the
+hand-rolled quoter was the actual mistake rather than a detail of it. It is also
+the third time this repository has been bitten by not using Core's quoter; the
+first two were the trailing-backslash case.
+
+**`lint_glyph_fields` caught the two new fields immediately**, which is that
+linter doing precisely its job — it is the encoded form of the 2026-09-02 field
+report's *"a field that does nothing is worse than no field"*. `ext_uid` and
+`rrule` are deliberately unrendered and are now exempt **with reasons**:
+publishing a foreign system's opaque identifier tells a reader nothing and tells
+a scraper which feed the organization subscribes to; and a renderer must not
+print `FREQ=MONTHLY;BYDAY=3TU` at a person. When C3a lands, what gets rendered
+is the occurrences, not the string.
+
+## Identity, which is where a hub is won or lost
+
+The foreign `UID` is stored as `ext_uid` and is **the only thing matched on**.
+The way this goes wrong is fuzzy matching — guessing that an entry with the same
+title and date "is probably" one you already have — and `data-planes.md` already
+states the rule for contacts: *claiming a contact must not search the database*.
+Same rule. Match the key you were given, or create. Never guess.
+
+Verified end to end: 317 created; re-import 0/0/317 unchanged; edit **one**
+`SUMMARY` in the file and the plan is exactly one `set` command. Precision in
+both directions.
+
+## It proposes; `apply` writes
+
+The posture `read-flier` and the sync effects already established, and the
+reason is arithmetic: a feed can hold a thousand entries and there is no second
+step that puts them back. The dry run now also **shows the commands** (first
+twelve), because a report that says "174 updates" without saying which ones is a
+number rather than a report — and that is what made the fixed-point bug visible
+in the first place.
+
+Everything applies as **one batch**, so an import is a single undoable step
+rather than a thousand.
+
+## A note on method
+
+Half an hour of this entry's work was spent recovering from a repair script I
+wrote to fix a recurring editing problem — it treated prose quotes inside block
+comments as unterminated string literals and joined most of `headless.cpp` into
+one line. `git checkout` cost nothing because the work was committed in small
+pieces, and the branch was re-applied from a scratch file in two minutes. The
+lesson is not about the script: **a "general" fix written in a hurry against a
+symptom is how you turn a typo into an outage**, and the only reason it was
+cheap is that the tree was clean when it ran.
+
+## Still open in the X-track
+
+X2 (the org timezone — UTC instants are converted to this machine's local time
+and named zones are read as written, both reported rather than done quietly; the
+`tzid` field exists and is empty), X4 (`hol_ics_feed`, now a small step: the
+transport already accepts a URL), X5, X6, and C3a/C3b — the recurrence and spans
+this importer is currently storing faithfully and not yet drawing.

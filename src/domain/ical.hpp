@@ -41,9 +41,12 @@
 #include "domain/clock.hpp" // parse_clock — the one wall-clock parser
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <ctime>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace hormiga {
@@ -294,6 +297,397 @@ inline std::string to_vcalendar(const std::vector<Event>& events,
     o += body;
     o += "END:VCALENDAR\r\n";
     return o;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THE READER HALF (X3) — parse any calendar, forgivingly
+// ════════════════════════════════════════════════════════════════════════════
+//
+// THE ONE RULE THIS PARSER IS BUILT AROUND: **never reject a file for
+// containing something you do not model.** A hub that refuses a `.ics` because
+// it holds a VTODO, an unknown `X-` property or a parameter it has not seen is
+// behaving exactly like the vendors the author defined this section against.
+// Real feeds are full of things we have no use for; the correct response to all
+// of them is to walk past.
+//
+// So every unknown component is skipped whole, every unknown property is
+// ignored, and a malformed line ends that line and nothing else. The only thing
+// that can make an entry fail is having no usable DTSTART — an entry with no
+// date is not a calendar entry.
+
+/* What the source said, before any of it becomes a command. `Event` is what we
+ * PUBLISH; this is what we READ, and they are deliberately different types:
+ * an imported entry carries things we keep but never emit (the foreign UID's
+ * source, the recurrence rule we cannot yet expand) and lacks things only a
+ * publisher decides. Collapsing them would make the import path able to reach
+ * fields the export seam is supposed to gate. */
+struct Incoming {
+    std::string uid;         // the SOURCE's UID — the identity we match on
+    std::string summary;
+    std::string description;
+    std::string location;
+    std::string url;
+    std::string geo;         // "lat,lon"
+    std::vector<std::string> categories;
+    std::string date;        // "YYYY-MM-DD"
+    std::string start_time;  // "HH:MM", "" = all-day
+    std::string end_time;
+    std::string end_date;    // set when the entry spans days (C3b)
+    std::string rrule;       // verbatim; expansion is C3a
+    std::string tzid;        // the zone the source named, "" = floating/UTC
+    bool utc = false;        // the time arrived as a Z instant
+    bool cancelled = false;
+    bool all_day = false;
+};
+
+struct ParseReport {
+    std::vector<Incoming> events;
+    int skipped_components = 0; // VTODO, VJOURNAL, VFREEBUSY, VALARM, …
+    int skipped_no_date = 0;    // entries with no usable DTSTART
+    int recurring = 0;          // carried an RRULE we stored but did not expand
+    int zoned = 0;              // carried a TZID or a Z instant
+    std::string calendar_name;  // X-WR-CALNAME, if the source named itself
+    std::string prodid;
+};
+
+/* Undo `escape_text`. A parser that does not unescape turns "Springfield\, OR"
+ * into a venue with a backslash in it, which is the kind of defect that
+ * survives for months because it still looks almost right. */
+inline std::string unescape_text(const std::string& v) {
+    std::string o;
+    for (size_t i = 0; i < v.size(); ++i) {
+        if (v[i] != '\\' || i + 1 >= v.size()) { o += v[i]; continue; }
+        const char n = v[++i];
+        if (n == 'n' || n == 'N') o += '\n';
+        else o += n; // \\ \; \, and anything else: the character itself
+    }
+    return o;
+}
+
+/* Unfold: RFC 5545 §3.1 says a line beginning with a space or a tab continues
+ * the previous one. Accepts CRLF, bare LF and bare CR, because a file that
+ * reached us through a mail client or a text editor may carry any of them and
+ * refusing over a line ending would be the opposite of the point. */
+inline std::vector<std::string> unfold(std::string_view text) {
+    std::vector<std::string> raw;
+    std::string cur;
+    for (size_t i = 0; i < text.size(); ++i) {
+        const char c = text[i];
+        if (c == '\r' || c == '\n') {
+            if (c == '\r' && i + 1 < text.size() && text[i + 1] == '\n') ++i;
+            raw.push_back(cur);
+            cur.clear();
+        } else {
+            cur += c;
+        }
+    }
+    if (!cur.empty()) raw.push_back(cur);
+
+    std::vector<std::string> out;
+    for (auto& line : raw) {
+        if (!out.empty() && !line.empty() && (line[0] == ' ' || line[0] == '\t'))
+            out.back() += line.substr(1);
+        else
+            out.push_back(line);
+    }
+    return out;
+}
+
+/* One content line split into name, parameters and value.
+ *
+ * The colon that ends the property is the first one NOT inside a quoted
+ * parameter value — `ATTENDEE;CN="Ruiz, Ana":mailto:…` has three colons and
+ * only the second ends the parameters. Splitting on the first colon is the
+ * classic way to mangle exactly the lines that carry punctuation. */
+struct Line {
+    std::string name;                                         // upper-cased
+    std::vector<std::pair<std::string, std::string>> params;  // names upper-cased
+    std::string value;                                        // still escaped
+
+    std::string param(std::string_view key) const {
+        for (const auto& p : params)
+            if (p.first == key) return p.second;
+        return {};
+    }
+};
+
+inline Line split_line(const std::string& raw) {
+    Line L;
+    bool quoted = false;
+    size_t colon = std::string::npos;
+    for (size_t i = 0; i < raw.size(); ++i) {
+        if (raw[i] == '"') quoted = !quoted;
+        else if (raw[i] == ':' && !quoted) { colon = i; break; }
+    }
+    const std::string head = colon == std::string::npos ? raw : raw.substr(0, colon);
+    L.value = colon == std::string::npos ? std::string() : raw.substr(colon + 1);
+
+    // the head is NAME;p=v;p="v;with;semicolons"
+    std::vector<std::string> parts;
+    {
+        std::string cur;
+        bool q = false;
+        for (char c : head) {
+            if (c == '"') { q = !q; cur += c; }
+            else if (c == ';' && !q) { parts.push_back(cur); cur.clear(); }
+            else cur += c;
+        }
+        parts.push_back(cur);
+    }
+    if (parts.empty()) return L;
+    L.name = parts[0];
+    for (char& c : L.name) c = (char)std::toupper((unsigned char)c);
+    for (size_t i = 1; i < parts.size(); ++i) {
+        const size_t eq = parts[i].find('=');
+        if (eq == std::string::npos) continue;
+        std::string k = parts[i].substr(0, eq), v = parts[i].substr(eq + 1);
+        for (char& c : k) c = (char)std::toupper((unsigned char)c);
+        if (v.size() >= 2 && v.front() == '"' && v.back() == '"')
+            v = v.substr(1, v.size() - 2);
+        L.params.emplace_back(std::move(k), std::move(v));
+    }
+    return L;
+}
+
+/* An ISO 8601 duration, as `DURATION` writes one: `PT1H30M`, `P2D`, `P1W`.
+ * Returns minutes; 0 when it cannot be read.
+ *
+ * This exists because DTEND is OPTIONAL. An entry may carry a DURATION instead,
+ * and Google Calendar in particular emits them — an importer without this reads
+ * every such event as ending when it starts. */
+inline long duration_minutes(const std::string& v) {
+    long total = 0, n = 0;
+    bool time_part = false, any = false;
+    for (char c : v) {
+        if (std::isdigit((unsigned char)c)) { n = n * 10 + (c - '0'); any = true; continue; }
+        switch (std::toupper((unsigned char)c)) {
+            case 'P': break;
+            case 'T': time_part = true; break;
+            case 'W': total += n * 7 * 24 * 60; n = 0; break;
+            case 'D': total += n * 24 * 60; n = 0; break;
+            case 'H': total += n * 60; n = 0; break;
+            case 'M': total += time_part ? n : n * 30 * 24 * 60; n = 0; break;
+            case 'S': n = 0; break; // seconds do not survive an HH:MM model
+            default: break;
+        }
+    }
+    return any ? total : 0;
+}
+
+/* A DATE-TIME value → civil date and wall-clock minutes.
+ *
+ * `20260915`            an all-day DATE
+ * `20260915T150000`     floating — whatever o'clock it is where the reader is
+ * `20260915T220000Z`    a UTC instant
+ *
+ * A trailing Z is converted to THIS MACHINE's local time, which is the honest
+ * v1 of Q68's lean — *read any zone, normalize on import, author in one*. It is
+ * recorded in the report rather than done quietly, because it is the one step
+ * of an import that can move an event by hours. A named TZID is kept as a label
+ * and its offset is NOT applied: pretending to know the rules of an arbitrary
+ * zone without a tzdb would be worse than saying we read it as written. */
+inline bool parse_datetime(const std::string& raw, bool& all_day, std::string& date,
+                           int& minutes, bool& utc) {
+    std::string v;
+    for (char c : raw)
+        if (!std::isspace((unsigned char)c)) v += c;
+    if (v.size() < 8) return false;
+    int y = 0, mo = 0, d = 0;
+    if (std::sscanf(v.c_str(), "%4d%2d%2d", &y, &mo, &d) != 3) return false;
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+    utc = !v.empty() && (v.back() == 'Z' || v.back() == 'z');
+    all_day = v.size() < 9 || (v[8] != 'T' && v[8] != 't');
+    minutes = 0;
+    if (!all_day) {
+        int hh = 0, mi = 0, ss = 0;
+        if (std::sscanf(v.c_str() + 9, "%2d%2d%2d", &hh, &mi, &ss) < 2) return false;
+        if (hh > 23 || mi > 59) return false;
+        minutes = hh * 60 + mi;
+        if (utc) {
+            /* UTC → this machine's local wall clock, through the C library so
+             * the DST rules are the system's rather than ours. */
+            std::tm g{};
+            g.tm_year = y - 1900; g.tm_mon = mo - 1; g.tm_mday = d;
+            g.tm_hour = hh; g.tm_min = mi; g.tm_sec = 0; g.tm_isdst = -1;
+#ifdef _WIN32
+            const std::time_t t = _mkgmtime(&g);
+#else
+            const std::time_t t = timegm(&g);
+#endif
+            if (t != (std::time_t)-1) {
+                std::tm l{};
+#ifdef _WIN32
+                localtime_s(&l, &t);
+#else
+                localtime_r(&t, &l);
+#endif
+                y = l.tm_year + 1900; mo = l.tm_mon + 1; d = l.tm_mday;
+                minutes = l.tm_hour * 60 + l.tm_min;
+            }
+        }
+    }
+    char b[16];
+    std::snprintf(b, sizeof b, "%04d-%02d-%02d", y, mo, d);
+    date = b;
+    return true;
+}
+
+inline std::string hhmm(int minutes) {
+    char b[8];
+    std::snprintf(b, sizeof b, "%02d:%02d", (minutes / 60) % 24, minutes % 60);
+    return b;
+}
+
+/* Add days to a "YYYY-MM-DD", through the C library's civil calendar. */
+inline std::string add_days(const std::string& date, int delta) {
+    int y = 0, m = 0, d = 0;
+    if (std::sscanf(date.c_str(), "%d-%d-%d", &y, &m, &d) != 3) return date;
+    std::tm t{};
+    t.tm_year = y - 1900; t.tm_mon = m - 1; t.tm_mday = d + delta;
+    t.tm_hour = 12; // midday, so a DST transition cannot roll the date
+    if (std::mktime(&t) == (std::time_t)-1) return date;
+    char b[16];
+    std::snprintf(b, sizeof b, "%04d-%02d-%02d", t.tm_year + 1900, t.tm_mon + 1,
+                  t.tm_mday);
+    return b;
+}
+
+/* Parse a whole iCalendar document.
+ *
+ * Component nesting is tracked rather than assumed, which matters for exactly
+ * one reason and it is not pedantry: **a VALARM lives INSIDE a VEVENT** and
+ * carries its own DESCRIPTION and TRIGGER. A parser that keys on property names
+ * without knowing which component it is in will happily overwrite a meeting's
+ * description with the text of its reminder. */
+inline ParseReport parse(std::string_view text) {
+    ParseReport rep;
+    std::vector<std::string> stack;
+    Incoming cur;
+    bool in_event = false;
+    // what DTEND/DURATION resolved to, held until the entry closes
+    std::string end_date;
+    int end_minutes = -1;
+    long dur_minutes = 0;
+    int start_minutes = -1;
+
+    for (const auto& raw : unfold(text)) {
+        if (raw.empty()) continue;
+        const Line L = split_line(raw);
+
+        if (L.name == "BEGIN") {
+            std::string comp = L.value;
+            for (char& c : comp) c = (char)std::toupper((unsigned char)c);
+            stack.push_back(comp);
+            if (comp == "VEVENT" && stack.size() == 2) {
+                in_event = true;
+                cur = Incoming{};
+                end_date.clear();
+                end_minutes = -1;
+                start_minutes = -1;
+                dur_minutes = 0;
+            } else if (comp != "VCALENDAR") {
+                // VTODO, VJOURNAL, VFREEBUSY, VTIMEZONE, VALARM, X-anything:
+                // counted and walked past, never a reason to fail
+                if (!(comp == "VEVENT")) ++rep.skipped_components;
+            }
+            continue;
+        }
+        if (L.name == "END") {
+            std::string comp = L.value;
+            for (char& c : comp) c = (char)std::toupper((unsigned char)c);
+            if (comp == "VEVENT" && in_event) {
+                in_event = false;
+                if (cur.date.empty()) {
+                    ++rep.skipped_no_date;
+                } else {
+                    if (start_minutes >= 0) {
+                        cur.start_time = hhmm(start_minutes);
+                        if (end_minutes >= 0) cur.end_time = hhmm(end_minutes);
+                        else if (dur_minutes > 0)
+                            cur.end_time = hhmm(start_minutes + (int)dur_minutes);
+                    }
+                    /* An all-day DTEND is EXCLUSIVE, so a one-day event ends
+                     * the NEXT morning. Subtracting the day back off is what
+                     * stops every imported all-day entry from looking like it
+                     * spans two. */
+                    if (cur.all_day && !end_date.empty() && end_date != cur.date)
+                        end_date = add_days(end_date, -1);
+                    if (!end_date.empty() && end_date != cur.date)
+                        cur.end_date = end_date;
+                    if (!cur.rrule.empty()) ++rep.recurring;
+                    if (!cur.tzid.empty() || cur.utc) ++rep.zoned;
+                    rep.events.push_back(cur);
+                }
+            }
+            if (!stack.empty()) stack.pop_back();
+            continue;
+        }
+
+        // properties of the calendar itself
+        if (!in_event) {
+            if (stack.size() == 1 && stack[0] == "VCALENDAR") {
+                if (L.name == "X-WR-CALNAME") rep.calendar_name = unescape_text(L.value);
+                else if (L.name == "PRODID") rep.prodid = unescape_text(L.value);
+            }
+            continue;
+        }
+        // inside a VEVENT but nested deeper (a VALARM): not ours
+        if (stack.size() > 2) continue;
+
+        if (L.name == "UID") cur.uid = unescape_text(L.value);
+        else if (L.name == "SUMMARY") cur.summary = unescape_text(L.value);
+        else if (L.name == "DESCRIPTION") cur.description = unescape_text(L.value);
+        else if (L.name == "LOCATION") cur.location = unescape_text(L.value);
+        else if (L.name == "URL") cur.url = L.value;
+        else if (L.name == "RRULE") cur.rrule = L.value;
+        else if (L.name == "STATUS") {
+            std::string s = L.value;
+            for (char& c : s) c = (char)std::toupper((unsigned char)c);
+            cur.cancelled = s == "CANCELLED";
+        } else if (L.name == "GEO") {
+            // §3.8.1.6 separates with a SEMICOLON; we store a comma
+            std::string g = L.value;
+            for (char& c : g)
+                if (c == ';') c = ',';
+            double la = 0, lo = 0;
+            if (std::sscanf(g.c_str(), "%lf , %lf", &la, &lo) == 2) cur.geo = g;
+        } else if (L.name == "CATEGORIES") {
+            std::string item;
+            bool esc = false;
+            for (char c : L.value) {
+                if (esc) { item += c; esc = false; continue; }
+                if (c == '\\') { esc = true; continue; }
+                if (c == ',') {
+                    if (!item.empty()) cur.categories.push_back(item);
+                    item.clear();
+                    continue;
+                }
+                item += c;
+            }
+            if (!item.empty()) cur.categories.push_back(item);
+        } else if (L.name == "DTSTART" || L.name == "DTEND") {
+            bool ad = false, utc = false;
+            std::string dt;
+            int mins = 0;
+            if (!parse_datetime(L.value, ad, dt, mins, utc)) continue;
+            if (L.param("VALUE") == "DATE") ad = true;
+            if (L.name == "DTSTART") {
+                cur.date = dt;
+                cur.all_day = ad;
+                cur.utc = utc;
+                cur.tzid = L.param("TZID");
+                start_minutes = ad ? -1 : mins;
+            } else {
+                end_date = dt;
+                end_minutes = ad ? -1 : mins;
+            }
+        } else if (L.name == "DURATION") {
+            dur_minutes = duration_minutes(L.value);
+        }
+        // everything else — ORGANIZER, ATTENDEE, CLASS, TRANSP, SEQUENCE,
+        // RECURRENCE-ID, EXDATE, every X- property — is walked past on purpose
+    }
+    return rep;
 }
 
 } // namespace ical

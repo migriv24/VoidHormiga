@@ -37,6 +37,7 @@
  * honest alternative was a second renderer, which is worse.
  */
 #include "app/app_internal.hpp"
+#include "domain/ical_import.hpp" // X3: an incoming calendar, as a PLAN
 #include "platform/backup.hpp"
 #include "app/paths.hpp"        // resolve_data_dir: where this database's assets are
 #include "json.hpp" // the effect args arrive as {"args":[…]}
@@ -765,6 +766,117 @@ maiz::HostApp build_app() {
                                             node, what);
             if (n < 0) return {};
             return std::to_string(n);
+        }
+        if (op == "import-ics") {
+            /* X3 — READ ANY CALENDAR. `effect import-ics <path|url> [apply]`.
+             *
+             * Reports by default and writes only on `apply`, the posture every
+             * wide-blast-radius effect in this application takes (`read-flier`
+             * proposes; the sync effects report). A feed can hold a thousand
+             * entries and there is no second step that puts them back, so
+             * seeing what would happen is what you get by typing the obvious
+             * thing. */
+            if (!g_core) return {};
+            const std::vector<std::string> a = effect_args(args);
+            if (a.empty()) {
+                std::cerr << "  [error] import-ics: name a .ics file or a URL.\n"
+                             "    effect import-ics <path|url>        what it "
+                             "would do\n"
+                             "    effect import-ics <path|url> apply  do it\n";
+                return {};
+            }
+            const std::string src = a[0];
+            bool apply = false;
+            std::string label;
+            for (size_t i = 1; i < a.size(); ++i) {
+                if (a[i] == "apply") apply = true;
+                else label = a[i];
+            }
+
+            std::string doc;
+            if (src.rfind("http://", 0) == 0 || src.rfind("https://", 0) == 0) {
+                /* The same transport every other network holiday here uses:
+                 * shell out to `curl`, which ships with Windows 10+ and needs
+                 * nothing vendored. A calendar URL is the entire Google /
+                 * Outlook / Nextcloud read story, so it is worth the branch
+                 * even before `hol_ics_feed` (X4) exists. */
+                doc = shell_capture("curl -sL --max-time 60 " + maiz::arg(src));
+                if (doc.empty()) {
+                    std::cerr << "  [error] import-ics: nothing came back from "
+                              << src << "\n";
+                    return {};
+                }
+            } else {
+                std::ifstream f(src, std::ios::binary);
+                if (!f) {
+                    std::cerr << "  [error] import-ics: cannot open " << src
+                              << "\n";
+                    return {};
+                }
+                std::ostringstream ss;
+                ss << f.rdbuf();
+                doc = ss.str();
+            }
+
+            const hormiga::ical::ParseReport in = hormiga::ical::parse(doc);
+            if (in.events.empty() && in.skipped_no_date == 0) {
+                std::cerr << "  [error] import-ics: no calendar entries in "
+                          << src << ". If that file is a calendar, this is a "
+                                    "bug worth reporting.\n";
+                return {};
+            }
+            if (label.empty()) label = in.calendar_name;
+            if (label.empty()) label = "imported";
+
+            maiz::ProjectOptions dio;
+            dio.mantle = kDataMantle;
+            const maiz::Scene data = maiz::project_scene(*g_core, dio);
+            const hormiga::ical::Plan plan =
+                hormiga::ical::plan_import(in, data, label);
+
+            std::cerr << "read " << in.events.size() << " entr(ies) from "
+                      << src << "\n";
+            for (const auto& n : plan.notes) std::cerr << "  - " << n << "\n";
+            std::cerr << "\n  create " << plan.create << "   update "
+                      << plan.update << "   unchanged " << plan.unchanged
+                      << "\n";
+
+            if (!apply) {
+                /* SHOW THE WORK. A dry run that says "174 updates" and not
+                 * WHICH ones is a number rather than a report, and the whole
+                 * reason this effect reports by default is so a person can
+                 * disagree with it before it happens. */
+                if (!plan.commands.empty()) {
+                    std::cerr << "\nwhat it would dispatch"
+                              << (plan.commands.size() > 12 ? " (first 12)" : "")
+                              << ":\n";
+                    for (size_t i = 0; i < plan.commands.size() && i < 12; ++i)
+                        std::cerr << "    " << plan.commands[i] << "\n";
+                }
+                std::cerr << "\nnothing was written. Re-run with `apply` as the "
+                             "last argument to dispatch "
+                          << plan.commands.size() << " command(s).\n";
+                return "\"" + std::to_string(plan.create) + " to create, " +
+                       std::to_string(plan.update) + " to update\"";
+            }
+            if (plan.commands.empty()) {
+                std::cerr << "\nnothing to do.\n";
+                return {};
+            }
+            /* ONE BATCH. An import that half-applied would leave a database
+             * nobody can reason about, and `compile_commit` is how every other
+             * multi-command change in this application stays a single undoable
+             * step. */
+            const maiz::Result r =
+                g_core->dispatch(maiz::compile_commit(plan.commands));
+            if (!r.ok) {
+                std::cerr << "  [error] import-ics: " << r.data << "\n";
+                return {};
+            }
+            std::cerr << "\napplied. " << plan.create << " created, "
+                      << plan.update << " updated -- one undoable step.\n";
+            return "\"" + std::to_string(plan.create + plan.update) +
+                   " written\"";
         }
         if (op == "export-calendar-ics") {
             /* The calendar as a file anybody can import. Through

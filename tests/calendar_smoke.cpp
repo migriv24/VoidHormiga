@@ -272,6 +272,167 @@ int main() {
     CHECK(quick::slug("  spaced  out  ") == "spaced-out");
     CHECK(quick::slug("!!!").empty()); // nothing nameable survives
 
+
+    // ── 6. the READER half (X3): parse any calendar, forgivingly ────────────
+    {
+        /* A file with everything a real feed throws at an importer: a VTODO we
+         * do not model, a VTIMEZONE, a VALARM NESTED INSIDE the event (whose
+         * DESCRIPTION must not become the event's), a quoted parameter holding
+         * a comma, a folded line, an escaped comma, a DURATION instead of a
+         * DTEND, an all-day entry with an exclusive DTEND, and an X- property
+         * nobody has ever heard of. None of it may cause a failure; that is the
+         * whole design rule. */
+        const std::string doc =
+            "BEGIN:VCALENDAR\r\n"
+            "VERSION:2.0\r\n"
+            "PRODID:-//Example Corp//Cal//EN\r\n"
+            "X-WR-CALNAME:Springfield City Council\r\n"
+            "BEGIN:VTIMEZONE\r\n"
+            "TZID:America/Los_Angeles\r\n"
+            "END:VTIMEZONE\r\n"
+            "BEGIN:VTODO\r\n"
+            "SUMMARY:Not a calendar entry\r\n"
+            "END:VTODO\r\n"
+            "BEGIN:VEVENT\r\n"
+            "UID:abc-123@example.org\r\n"
+            "SUMMARY:Council meeting\\, regular session and a title long enoug\r\n"
+            " h to have been folded by whoever wrote it\r\n"
+            "LOCATION:City Hall\\, 225 N 5th St\r\n"
+            "DESCRIPTION:Public comment at 6.\r\n"
+            "GEO:44.046200;-123.022000\r\n"
+            "CATEGORIES:civic,public meeting\r\n"
+            "ATTENDEE;CN=\"Ruiz, Ana\";ROLE=CHAIR:mailto:ana@example.org\r\n"
+            "DTSTART;TZID=America/Los_Angeles:20260915T180000\r\n"
+            "DURATION:PT2H30M\r\n"
+            "RRULE:FREQ=MONTHLY;BYDAY=3TU\r\n"
+            "X-SOMETHING-NOBODY-MODELS:whatever\r\n"
+            "BEGIN:VALARM\r\n"
+            "TRIGGER:-PT15M\r\n"
+            "DESCRIPTION:Reminder text that must NOT become the event\r\n"
+            "END:VALARM\r\n"
+            "END:VEVENT\r\n"
+            "BEGIN:VEVENT\r\n"
+            "UID:allday-1@example.org\r\n"
+            "SUMMARY:Street fair\r\n"
+            "DTSTART;VALUE=DATE:20260920\r\n"
+            "DTEND;VALUE=DATE:20260921\r\n"
+            "STATUS:CANCELLED\r\n"
+            "END:VEVENT\r\n"
+            "BEGIN:VEVENT\r\n"
+            "UID:nodate@example.org\r\n"
+            "SUMMARY:No DTSTART at all\r\n"
+            "END:VEVENT\r\n"
+            "END:VCALENDAR\r\n";
+
+        const ical::ParseReport r = ical::parse(doc);
+        CHECK(r.calendar_name == "Springfield City Council");
+        CHECK(r.events.size() == 2);          // the third has no date
+        CHECK(r.skipped_no_date == 1);
+        CHECK(r.skipped_components >= 3);     // VTIMEZONE, VTODO, VALARM
+        CHECK(r.recurring == 1);
+        CHECK(r.zoned == 1);
+
+        if (r.events.size() == 2) {
+            const ical::Incoming& e = r.events[0];
+            CHECK(e.uid == "abc-123@example.org");
+            // unfolded, and the escaped comma is a comma again
+            CHECK(e.summary ==
+                  "Council meeting, regular session and a title long enough to "
+                  "have been folded by whoever wrote it");
+            CHECK(e.location == "City Hall, 225 N 5th St");
+            // the VALARM's DESCRIPTION must not have overwritten the event's
+            CHECK(e.description == "Public comment at 6.");
+            CHECK(e.geo == "44.046200,-123.022000"); // semicolon -> comma
+            CHECK(e.categories.size() == 2);
+            CHECK(e.date == "2026-09-15");
+            CHECK(e.start_time == "18:00");
+            CHECK(e.end_time == "20:30");        // from DURATION, not DTEND
+            CHECK(e.tzid == "America/Los_Angeles");
+            CHECK(e.rrule == "FREQ=MONTHLY;BYDAY=3TU");
+            CHECK(!e.all_day);
+
+            const ical::Incoming& a = r.events[1];
+            CHECK(a.date == "2026-09-20");
+            CHECK(a.all_day);
+            CHECK(a.cancelled);
+            // an exclusive DTEND of the 21st means a ONE-day event, not two
+            CHECK(a.end_date.empty());
+        }
+    }
+    {
+        // bare LF, no CRLF anywhere: a file that went through a text editor
+        const std::string doc =
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:u\nSUMMARY:Potluck\n"
+            "DTSTART:20260915T150000\nDTEND:20260915T170000\nEND:VEVENT\n"
+            "END:VCALENDAR\n";
+        const ical::ParseReport r = ical::parse(doc);
+        CHECK(r.events.size() == 1);
+        CHECK(r.events.size() == 1 && r.events[0].start_time == "15:00");
+        CHECK(r.events.size() == 1 && r.events[0].end_time == "17:00");
+    }
+    {
+        // a multi-day all-day span (C3b): DTEND exclusive on the 25th means
+        // the event runs the 22nd through the 24th
+        const std::string doc =
+            "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:u\r\nSUMMARY:Festival\r\n"
+            "DTSTART;VALUE=DATE:20260922\r\nDTEND;VALUE=DATE:20260925\r\n"
+            "END:VEVENT\r\nEND:VCALENDAR\r\n";
+        const ical::ParseReport r = ical::parse(doc);
+        CHECK(r.events.size() == 1);
+        CHECK(r.events.size() == 1 && r.events[0].end_date == "2026-09-24");
+    }
+    {
+        // garbage in, no crash and no events out — a hub must not throw
+        CHECK(ical::parse("").events.empty());
+        CHECK(ical::parse("this is not a calendar at all").events.empty());
+        CHECK(ical::parse("BEGIN:VEVENT\r\nUID:orphan\r\n").events.empty());
+    }
+    {
+        // ISO 8601 durations, since DTEND is optional and Google emits these
+        CHECK(ical::duration_minutes("PT1H") == 60);
+        CHECK(ical::duration_minutes("PT90M") == 90);
+        CHECK(ical::duration_minutes("PT2H30M") == 150);
+        CHECK(ical::duration_minutes("P1D") == 1440);
+        CHECK(ical::duration_minutes("P1W") == 10080);
+        CHECK(ical::duration_minutes("garbage") == 0);
+    }
+    {
+        /* THE ROUND TRIP, which is the strongest check a lens can be given:
+         * write an Event, read it back, and every field a calendar carries must
+         * survive. A pivot format that loses something on the way through is
+         * not a pivot. */
+        ical::Event w;
+        w.uid = "round-trip@voidhormiga";
+        w.summary = "Food drive, second Saturday";   // a comma to escape
+        w.description = "Bring what you can.";
+        w.location = "Springfield, OR";              // another
+        w.geo = "44.0462,-123.0220";
+        w.categories = {"food", "mutual-aid"};
+        w.date = "2026-09-15";
+        w.start_time = "3:00 PM";                    // the flier form
+        w.end_time = "5:00 PM";
+        ical::Options opt;
+        opt.name = "Public Events";
+        const std::string doc = ical::to_vcalendar({w}, opt, "20260911T000000Z");
+
+        const ical::ParseReport r = ical::parse(doc);
+        CHECK(r.calendar_name == "Public Events");
+        CHECK(r.events.size() == 1);
+        if (r.events.size() == 1) {
+            const ical::Incoming& g = r.events[0];
+            CHECK(g.uid == w.uid);
+            CHECK(g.summary == w.summary);
+            CHECK(g.description == w.description);
+            CHECK(g.location == w.location);
+            CHECK(g.geo == "44.046200,-123.022000"); // normalized, same point
+            CHECK(g.categories.size() == 2);
+            CHECK(g.date == "2026-09-15");
+            CHECK(g.start_time == "15:00");          // 3:00 PM, not 03:00
+            CHECK(g.end_time == "17:00");
+            CHECK(!g.all_day);
+        }
+    }
+
     if (failures == 0) std::cout << "calendar smoke: ok\n";
     else std::cerr << "calendar smoke: " << failures << " failure(s)\n";
     return failures == 0 ? 0 : 1;
