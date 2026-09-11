@@ -479,35 +479,12 @@ inline std::string email_button(const std::string& href, const std::string& labe
  * `domain/clock.hpp` includes nothing but `<cctype>` and `<string>`, which is
  * what makes "one time parser" a property of the build rather than a promise. */
 
-/* Escape a TEXT value: RFC 5545 §3.3.11 gives `\` `;` `,` and newline meaning
- * inside one, so a venue like "Springfield, OR" silently ends the property and
- * starts a bogus parameter. */
-inline std::string ics_text(const std::string& v) {
-    std::string o;
-    for (char c : v) {
-        if (c == '\\' || c == ';' || c == ',') { o += '\\'; o += c; }
-        else if (c == '\n') o += "\\n";
-        else if (c == '\r') continue;
-        else o += c;
-    }
-    return o;
-}
-
-/* DTSTAMP is REQUIRED on a VEVENT (RFC 5545 §3.6.1) and was absent, which some
- * importers reject the whole file over. UTC, because a stamp is an instant. */
-inline std::string ics_now_utc() {
-    const std::time_t t = std::time(nullptr);
-    std::tm g{};
-#ifdef _WIN32
-    gmtime_s(&g, &t);
-#else
-    gmtime_r(&t, &g);
-#endif
-    char b[32];
-    std::snprintf(b, sizeof b, "%04d%02d%02dT%02d%02d%02dZ", g.tm_year + 1900,
-                  g.tm_mon + 1, g.tm_mday, g.tm_hour, g.tm_min, g.tm_sec);
-    return b;
-}
+/* `ics_text` and `ics_now_utc` MOVED to `domain/ical.hpp` (2026-09-10) as
+ * `ical::escape_text` and `ical::now_utc`, with the rest of the RFC 5545
+ * writer. They lived here because the `.ics` twin was written inline in the
+ * site renderer's calendar block; it is a lens now, in `domain/`, because every
+ * transport in the calendar's X-track needs it and none of them renders a page.
+ * Nothing outside that header calls them any more. */
 
 /* A DATA RUNE'S NAME AS A PERSON READS IT.
  *

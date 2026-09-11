@@ -104,40 +104,46 @@ has libical installed, assert it parses. Revisit if `RRULE` expansion or
 
 # X-track — the exchange
 
-## ⬜ X0 — the lens: `VEVENT ⟷ dated rune`, one file, both directions
+## 🔨 X0 — the lens: `VEVENT ⟷ dated rune`
 
 **The keystone; everything else in this track is a transport onto it.**
 
-Today the ICS writer is **inline in the render loop** —
-[site.cpp:1846-1900](src/render/site.cpp#L1846-L1900), inside the loop that
-builds the web embed's JSON. That is why it can only ever serve one caller. It
-moves to `src/domain/ical.hpp` / `ical.cpp` as a pure, unit-testable pair on the
-pure side of the holiday boundary (Void Reyna's discipline, and Void Core's own
-invariant that the core does no I/O):
+- ✅ **the writer half** (2026-09-10) — [domain/ical.hpp](src/domain/ical.hpp).
+  It was inline in `site.cpp`, inside the loop that builds the web embed's JSON,
+  which is exactly why it could only ever serve one caller. Now: an `ical::Event`
+  type, `fold`, `escape_text`, `public_categories`, `to_vevent`, `to_vcalendar` —
+  pure, no ImGui, no HTML, no I/O, in `domain/` and therefore reachable from
+  anywhere. `render/site.cpp` calls it instead of containing it.
 
-- `std::string to_vevent(const maiz::SceneNode&, const IcalOpts&)`
-- `std::vector<IcalEvent> parse_ical(std::string_view)` → a neutral struct
-- `std::vector<std::string> to_commands(const IcalEvent&, …)` → **dispatcher
-  commands**, because founding commitment 1 says every change is a logged,
-  replayable command, and an importer that writes rows directly would be the
-  first thing in the application that isn't.
+  **`Event` is the privacy seam, by shape.** It carries exactly the fields that
+  may leave the machine, for the reason
+  [published.hpp](src/render/published.hpp) gives about its own `Person` having
+  no `notes` member: *"a field that does not exist on the type cannot be leaked
+  by a future caller who forgets, and cannot be added by accident."* A caller
+  fills each field deliberately.
+- ⬜ **the reader half** — `parse_ical(…)` → `Event`, and
+  `to_commands(…)` → **dispatcher commands**, because founding commitment 1 says
+  every change is a logged, replayable command and an importer that wrote rows
+  directly would be the first thing in the application that isn't. This is X3.
 
-The renderer then *calls* the lens instead of containing it. No behavior change
-on day one; it is what makes X1–X6 possible at all.
+## ✅ X1 — conformance repairs on the writer (2026-09-10)
 
-## 🔨 X1 — conformance repairs on the writer
+Four defects confirmed by reading the code, then fixed and pinned. They came
+first because a subscriber whose client chokes on our feed never reaches the
+interesting features.
 
-Four defects **confirmed by reading the code on 2026-09-10**, not suspected.
-These come first because a subscriber whose client chokes on our feed never
-reaches the interesting features.
+**Measured rather than asserted.** A conformance checker run over the real
+rendered output says it plainly — the old writer emitted a **142-octet**
+`SUMMARY` line (the limit is 75) and `UID:potluck@voidhormiga` built from the
+editable rune name; the new one passes every check with the same fixture.
 
-- ⬜ **X1a — fold lines at 75 octets** (RFC 5545 §3.1). There is no folding
+- ✅ **X1a — fold lines at 75 octets** (RFC 5545 §3.1). There is no folding
   anywhere in the writer. A long `SUMMARY` emits an over-length line that
   strict parsers reject, and the fold must count **octets, not code points**,
   without splitting a UTF-8 sequence — which this application hits immediately
   rather than theoretically, because it is bilingual by decision (log,
   2026-09-02) and every Spanish title carries multi-byte characters.
-- ⬜ **X1b — `UID` from the frozen `spirit.id`, not the editable `name`.**
+- ✅ **X1b — `UID` from the frozen `spirit.id`, not the editable `name`.**
   [site.cpp:1849](src/render/site.cpp#L1849) builds `UID:` from `dn.name`. Void
   Core's [rune spec](../VoidCore/okf/concepts/rune.md) is explicit that `id` is
   "minted once, never reused" and `name` is "editable". So **renaming an event
@@ -145,14 +151,14 @@ reaches the interesting features.
   one created.** `maiz::SceneNode` already carries `id` — the fix is one field.
   Existing feeds change UID once, unavoidably; do it now, while the number of
   subscribers in the world is approximately zero.
-- ⬜ **X1c — the `VCALENDAR` header.** It currently carries `VERSION` and
+- ✅ **X1c — the `VCALENDAR` header.** It currently carries `VERSION` and
   `PRODID` and nothing else. Add `CALSCALE:GREGORIAN`, `METHOD:PUBLISH`,
   **`X-WR-CALNAME`** (the name a subscriber's client displays — for a hub this
   is not cosmetic, it is how a person tells four subscribed calendars apart),
   `X-WR-TIMEZONE`, and both `REFRESH-INTERVAL;VALUE=DURATION:PT1H` and
   `X-PUBLISHED-TTL` (Outlook reads the `X-`, everyone else reads the standard
   one; emitting both is the compatible answer and costs one line).
-- ⬜ **X1d — the `VEVENT` body.** Present: `UID`, `DTSTAMP`, `SUMMARY`,
+- ✅ **X1d — the `VEVENT` body.** Present: `UID`, `DTSTAMP`, `SUMMARY`,
   `LOCATION`, `DTSTART`, `DTEND`. Missing and each one already backed by a
   field we have: `DESCRIPTION` (from `summary_en`/`summary_es`, language chosen
   at the same seam the site uses), `URL` (deep link to the published page),
@@ -162,13 +168,18 @@ reaches the interesting features.
   duplicate. Plus **`STATUS:CANCELLED`** — a cancelled event that simply
   vanishes from the feed stays on every subscriber's calendar forever; a
   tombstone is how you actually cancel something.
-- ⬜ **X1e — privacy at this seam, tested.** `CATEGORIES` from tags is exactly
-  the shape of thing that leaks an internal axis onto a public feed. Ground
-  rule 6 and founding commitment 3 apply here as hard as anywhere: internal
-  notes-class fields and internal tag namespaces never reach a `VEVENT`, and it
-  is checked at the seam with a test, not by template convention. This is the
-  same argument `calendar.md` makes about incidents being sensitive, one layer
-  down.
+- ✅ **X1e — privacy at this seam, and it is an ALLOWLIST.** `CATEGORIES` from
+  tags is exactly the shape of thing that leaks an internal axis onto a feed
+  strangers poll. The decision that fell out of building it, and the one worth
+  remembering: **a denylist here is unsafe by construction** — it can only
+  exclude the namespaces that existed when it was written, so the first internal
+  axis an organization invents is published to the world by default. So only
+  `kw:` — the keyword axis, the one that exists to describe subject matter and
+  the one `effect read-flier` proposes into — reaches a feed, prefix stripped.
+  `clearance:`, `status:`, `type:` and everything an organization coins stays
+  home. Widening it is an edit to one function under a comment saying so, which
+  is `published.hpp`'s enforcement-by-shape and the reason rule 6 says the check
+  lives at the seam rather than in a convention. Tested.
 
 ## ⬜ X2 — time, honestly (the org timezone)
 

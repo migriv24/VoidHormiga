@@ -2423,3 +2423,127 @@ The X-track is untouched: the `.ics` writer still has the four conformance
 defects recorded this morning (no line folding, `UID` from the editable `name`,
 a bare header, floating times) and there is still no importer. `domain/clock.hpp`
 was extracted with X0 in mind — the lens will want the one parser too.
+
+# 2026-09-10, fourth entry — the lens exists, and the feed is conformant for the first time
+
+X0 and X1 from the roadmap: the iCalendar writer is a lens in `domain/` instead
+of forty lines inside a render loop, and the four conformance defects found this
+morning are fixed, tested, and **measured**.
+
+## What "measured" means here, because it is the whole point
+
+The four defects were found by reading. Fixing them without a number would have
+been the same act of faith the 2026-09-02 field report already criticised in
+another shape. So: a conformance checker was run over the **real rendered
+output** of a real fixture, before and after, and it reports a difference that
+is not a matter of opinion.
+
+**Before** — a 142-octet `SUMMARY` line against RFC 5545 §3.1's limit of 75, and
+`UID:potluck@voidhormiga` built from the rune's editable name:
+
+```
+SUMMARY:Neighborhood Potluck & Know-Your-Rights Night\, with a deliberately long title to force RFC 5545 line folding past seventy-five octets
+```
+
+**After** — folded at 75 octets with a continuation line, UID from the frozen
+`spirit.id`, and a header that has the six properties it was missing:
+
+```
+X-WR-CALNAME:Riverton Community Network
+REFRESH-INTERVAL;VALUE=DURATION:PT60M
+...
+UID:rune_cbd5bc6011@voidhormiga
+SUMMARY:Neighborhood Potluck & Know-Your-Rights Night\, with a deliberately
+  long title to force RFC 5545 line folding past seventy-five octets
+```
+
+The checker also confirms every logical line is valid UTF-8 after unfolding,
+every VEVENT carries `UID`/`DTSTAMP`/`DTSTART`, and no UID repeats.
+
+## The lens
+
+`src/domain/ical.hpp`: an `Event` type, `fold`, `escape_text`,
+`public_categories`, `to_vevent`, `to_vcalendar`, `now_utc`. Pure — no ImGui, no
+HTML, no I/O — and in `domain/`, which is what makes it reachable by the things
+that need it next: the importer, the subscription holiday, CalDAV. None of those
+renders a web page, which is why the writer being *inside* one was the actual
+problem rather than a tidiness complaint.
+
+**`Event` is the privacy seam, by shape rather than by discipline.** It carries
+exactly the fields that may leave the machine, for the reason
+`render/published.hpp` already gives about its own `Person` having no `notes`
+member: *"a field that does not exist on the type cannot be leaked by a future
+caller who forgets, and cannot be added by accident."* `site.cpp` now fills each
+field deliberately at one call site.
+
+## The decision that fell out of building it
+
+`CATEGORIES` from tags is the most useful thing we can add to a VEVENT — tags
+map onto it naturally and round-trip through every client — and the easiest
+thing in this codebase to leak, because an organization invents its own
+namespaces and nothing here can know what they mean.
+
+**A denylist is therefore unsafe by construction.** It can only exclude the
+namespaces that existed when it was written, so the first internal axis an
+organization coins is published to the world *by default*, silently, on a URL
+strangers poll. `okf/concepts/sections/calendar.md` names ICE activity as the
+canonical sensitive case for this section, which is about as clear as the stakes
+get.
+
+So `public_categories` is an **allowlist**: only `kw:` reaches a feed, prefix
+stripped. `clearance:`, `status:`, `type:` and everything an organization coins
+stays home. Widening it is an edit to one function under a comment saying so —
+enforcement by shape, the same as `published.hpp`, and the reason rule 6 says
+the check lives at the seam rather than in a convention.
+
+## What the VEVENT gained
+
+Present before: `UID`, `DTSTAMP`, `SUMMARY`, `LOCATION`, `DTSTART`, `DTEND`.
+Added, each already backed by a field we had: `DESCRIPTION` (the summary prose,
+language-selected at the same seam the page uses), `URL`, `GEO` — with the
+**semicolon** §3.8.1.6 actually specifies, not the comma the stored field uses —
+`CATEGORIES`, `LAST-MODIFIED`, `SEQUENCE`, and `STATUS`.
+
+`STATUS:CANCELLED` is the one worth explaining. A cancelled event that simply
+stops appearing in a feed **stays on every subscriber's calendar forever**,
+because a client cannot distinguish "cancelled" from "filtered out" or "the
+server was down". Cancelling something has to be a tombstone or it is not
+cancelling.
+
+The header gained `CALSCALE`, `METHOD`, `X-WR-CALNAME`, `X-WR-TIMEZONE` (empty
+until X2), and both `REFRESH-INTERVAL` and `X-PUBLISHED-TTL` — both spellings on
+purpose, since Outlook reads the `X-` one and everything else reads the standard
+one, and emitting both costs a line. `X-WR-CALNAME` is not cosmetic for a hub:
+it is the difference between four legible calendars in somebody's sidebar and
+four rows named after their URLs.
+
+## The golden test earned its keep, and then taught something
+
+`hormiga_golden_render` failed immediately, which is exactly right — and it
+failed on **only the three `.ics` files**, with every HTML hash unchanged, which
+is the evidence that rewiring the renderer moved nothing else. That is what that
+test is for.
+
+Then it failed a second time, after re-capturing, and the reason is more
+interesting than a stale hash: **the UID is now minted per run.** It is built
+from `spirit.id`, which is "minted once, never reused" *within a database* — and
+the golden fixture builds its database from nothing on every run. The id is
+exactly stable where stability matters (one organization, across every publish)
+and necessarily different in a fixture, so pinning it would pin the mint rather
+than the renderer. `UID` joined `DTSTAMP` in the normaliser, with that reasoning
+written where the next person will hit it. What the golden still holds is that
+the UID is present, well-formed, and one per event; the folding, the header and
+every other property stay byte-compared.
+
+## Also removed
+
+`ics_text` and `ics_now_utc` are gone from `render/text.hpp` — 30 lines with no
+callers left. They lived there because the `.ics` twin was written inline in the
+site renderer, which is the thing that stopped being true.
+
+## Still open
+
+X2 (the org timezone — the `tzid` field exists and is empty, so times are still
+floating), X3 (the importer, the reader half of the lens), X4 (`hol_ics_feed`,
+the highest-leverage item in the track), X5, X6. `reduce_conformance` still
+fails and still failed identically at HEAD; the other 34 pass.

@@ -114,11 +114,23 @@ EOF
 "$CLI" --allow-effects=render-site effect render-site es golden-site >/dev/null 2>&1
 "$CLI" --allow-effects=render effect render en golden-site >/dev/null 2>&1
 
+# UID joined this list 2026-09-10, for a more interesting reason than the clock.
+# A VEVENT's UID is now built from the rune's FROZEN `spirit.id` rather than its
+# editable `name` -- a UID from the name tells every subscriber that renaming an
+# event DELETED it and created an unrelated new one. An id is minted once and
+# never reused, so it is exactly stable where stability matters (inside one
+# organization's database, across every publish) and necessarily different here,
+# where each run builds the fixture from nothing. Pinning it would pin the mint
+# rather than the renderer. The golden still holds that the UID is present,
+# well-formed and one per event; the rest of the calendar -- the folding, the
+# header, every other property -- is byte-compared as before.
+#
 # DTSTAMP and the cache-busting query string carry the clock, so they differ on
 # every run by design. Neutralise them rather than excluding the files: the rest
 # of a calendar and the rest of a page are exactly what we want pinned.
 norm() {
   sed -E -e 's/DTSTAMP:[0-9TZ]+/DTSTAMP:X/' \
+         -e 's/UID:[A-Za-z0-9_]+@/UID:X@/' \
          -e 's/\?v=[0-9]+/?v=X/g' \
          -e 's/(--bdim:)[0-9.]+/\1X/g' "$1"
 }

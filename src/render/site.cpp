@@ -12,6 +12,7 @@
 #include "render/published.hpp" // the shared clearance gate
 #include "render/text.hpp" // the helpers both output domains share
 #include "domain/date_query.hpp" // date: predicates in the block grammar
+#include "domain/ical.hpp"       // THE PIVOT: VEVENT <-> dated rune
 #include "render/download.hpp" // a file a visitor can keep
 #include "render/audio.hpp" // the audio block's markup, both domains
 #include "render/video.hpp"      // a pasted video URL, understood
@@ -258,7 +259,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
     };
     std::string ics;       // RFC 5545 body, built when a calendar block renders
     bool want_ics = false; // → site/calendar.ics (import into Google/Apple/…)
-    const std::string ics_stamp = ics_now_utc(); // one DTSTAMP for the render
+    const std::string ics_stamp = hormiga::ical::now_utc(); // one DTSTAMP per render
     std::string cb = "?v=" + std::to_string((long long)std::time(nullptr));
     /* THE OPERATOR'S OWN STYLESHEET, staged before any page is written so every
      * page of every language agrees about whether there is one. See
@@ -1819,7 +1820,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
             // query names them (publishing sensitive data is a choice).
             std::string q = field_value(*n, "query");
             nlohmann::json ej = nlohmann::json::array();
-            std::string ics_events;
+            std::vector<hormiga::ical::Event> ics_entries;
             for (const auto& dn : data.nodes) {
                 int yy, mm, dd;
                 std::string ds = field_value(dn, "date");
@@ -1843,61 +1844,44 @@ std::string HormigaApp::render_site(std::string_view lang) {
                               {"g", gcal_url(title_of(dn), ds, st, en, venue)},
                               {"c", style_hex(dn, {})},
                               {"i", dn.glyph == "incident"}});
-                // the RFC 5545 twin (the grounding pays off): one VEVENT each
-                char dts[32];
-                std::snprintf(dts, sizeof dts, "%04d%02d%02d", yy, mm, dd);
-                ics_events += "BEGIN:VEVENT\r\nUID:" + dn.name +
-                              "@voidhormiga\r\nDTSTAMP:" + ics_stamp +
-                              "\r\nSUMMARY:" + ics_text(title_of(dn)) + "\r\n";
-                if (!venue.empty())
-                    ics_events += "LOCATION:" + ics_text(venue) + "\r\n";
-                /* THE TIME, PARSED RATHER THAN SLICED (2026-08-19).
-                 *
-                 * This was `st.substr(0,2) + st.substr(3,2) + "00"`, which
-                 * assumes zero-padded 24-hour `HH:MM`. Every time in a real
-                 * community database is 12-hour with a meridiem, because that
-                 * is what a flier prints. The shipped output was
-                 * `DTSTART:20260819T8:0 00` — a colon and a space inside a
-                 * DTSTART — and the second defect was worse than the first:
-                 * AM/PM was discarded entirely, so with the padding fixed a
-                 * 3:00 PM meeting still becomes three in the morning.
-                 *
-                 * "Add this to your calendar" is the single most useful thing a
-                 * community site offers, which is why this is worth parsing
-                 * rather than dropping. */
-                int sh = 0, sm2 = 0, eh = 0, em2 = 0;
-                const bool have_s = parse_clock(st, sh, sm2);
-                const bool have_e = parse_clock(en, eh, em2);
-                if (have_s) {
-                    char t1[16], t2[16];
-                    std::snprintf(t1, sizeof t1, "%02d%02d00", sh, sm2);
-                    if (have_e) std::snprintf(t2, sizeof t2, "%02d%02d00", eh, em2);
-                    ics_events += "DTSTART:" + std::string(dts) + "T" +
-                                  std::string(t1) + "\r\nDTEND:" +
-                                  std::string(dts) + "T" +
-                                  std::string(have_e ? t2 : t1) + "\r\n";
-                } else {
-                    /* An all-day VEVENT's DTEND is EXCLUSIVE (RFC 5545 §3.8.2.2)
-                     * — without it some clients render a zero-length day. */
-                    char nxt[32];
-                    std::snprintf(nxt, sizeof nxt, "%04d%02d%02d",
-                                  yy, mm, dd); // +1 day below
-                    std::tm tmv{};
-                    tmv.tm_year = yy - 1900; tmv.tm_mon = mm - 1; tmv.tm_mday = dd + 1;
-                    tmv.tm_hour = 12;
-                    if (std::mktime(&tmv) != (std::time_t)-1)
-                        std::snprintf(nxt, sizeof nxt, "%04d%02d%02d",
-                                      tmv.tm_year + 1900, tmv.tm_mon + 1, tmv.tm_mday);
-                    ics_events += "DTSTART;VALUE=DATE:" + std::string(dts) +
-                                  "\r\nDTEND;VALUE=DATE:" + std::string(nxt) + "\r\n";
-                }
-                ics_events += "END:VEVENT\r\n";
+                /* The RFC 5545 twin, through the ONE lens
+                 * (`domain/ical.hpp`). This used to be forty lines of string
+                 * concatenation right here, which is exactly why it could only
+                 * ever serve this loop — and why it had no line folding, built
+                 * its UID from the editable rune NAME, and emitted a
+                 * two-property header. Filling an `ical::Event` field by field
+                 * IS the privacy seam: what is not assigned here cannot leave.
+                 */
+                hormiga::ical::Event ie;
+                /* THE FROZEN ID, NOT THE NAME. Void Core's rune spec: `id` is
+                 * "minted once, never reused", `name` is "editable". A UID
+                 * built from the name tells every subscriber that renaming an
+                 * event DELETED it and created an unrelated new one. */
+                ie.uid = (dn.id.empty() ? dn.name : dn.id) + "@voidhormiga";
+                ie.summary = title_of(dn);
+                ie.description = text_or(dn, "summary", "summary");
+                ie.location = venue;
+                ie.geo = field_value(dn, "geo");
+                ie.categories = hormiga::ical::public_categories(dn.tags);
+                ie.date = ds;
+                ie.start_time = st;
+                ie.end_time = en;
+                ie.cancelled = std::find(dn.tags.begin(), dn.tags.end(),
+                                         "status:cancelled") != dn.tags.end();
+                if (!base_url.empty())
+                    ie.url = base_url + "/" + page_file(slug, lang);
+                ics_entries.push_back(ie);
             }
-            if (!ics_events.empty()) {
+            if (!ics_entries.empty()) {
+                hormiga::ical::Options iopt;
+                /* X-WR-CALNAME: what a subscriber's client will CALL this
+                 * calendar. Not cosmetic for a hub — without it the feed shows
+                 * up named after its URL, which is the difference between four
+                 * legible calendars in somebody's sidebar and four rows of
+                 * nonsense. */
+                iopt.name = site_title;
                 want_ics = true;
-                ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Void "
-                      "Hormiga//Calendar//EN\r\n" +
-                      ics_events + "END:VCALENDAR\r\n";
+                ics = hormiga::ical::to_vcalendar(ics_entries, iopt, ics_stamp);
             }
             h << "<div class=\"calwidget\" data-ics=\"calendar-"
               << lang << ".ics\" data-events=\""
