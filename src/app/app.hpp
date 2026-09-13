@@ -570,6 +570,15 @@ private:
     char doc_edit_buf[2048] = {};
     bool doc_edit_focus = false;     // grab keyboard focus the first frame
     std::map<std::string, std::string> doc_map_thumb; // view → exports PNG
+    // -- Builder additions 2026-09-13 (ui/builder_ext.cpp; builder-roadmap.md) --
+    bool draw_block_preview(const maiz::SceneNode& n, const maiz::Scene& data,
+                            float inner_w, unsigned acc); // flier/feature/image_text
+    void draw_multi_select_panel();                       // N selected: remove/width
+    void ensure_icon_editor();                            // the "icon" inspector editor
+    void open_tag_expr_editor(const maiz::SceneNode& sel);
+    void draw_tag_expr_editor(const maiz::SceneNode& sel); // a filter, as an expression
+    maiz::CodeEditorState tagexpr_editor;
+    std::string tagexpr_target; bool tagexpr_open_req = false;
     void draw_document_canvas(float body_h);
     void doc_palette_place(const std::string& glyph); // append via `doc place`
 

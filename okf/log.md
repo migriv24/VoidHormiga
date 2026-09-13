@@ -2992,3 +2992,125 @@ presented as `collect2.exe: error: ld returned 5 exit status` with no
 diagnostic, and `app_internal.hpp` already warns that *the gcc driver swallows
 ld's stderr in this environment* — the same trap, a third time, and the tell was
 that two consecutive identical builds returned different exit codes.
+
+
+# 2026-09-13 -- the newsletter pass: rows reach the email, and nine asks from someone making one
+
+The author sent nine asks in one message, written mid-task: *"for most of these
+im thinking about the newsletter. because right now im making the newsletter."*
+Shift-select; flier previews that show the tags; buttons that "don't stack
+correctly horizontally"; icons on narratives and an easier way to choose them;
+an explicit image + text block; an image-preview engine; a filter that opens as
+an expression "especially useful with the 'and' and 'or' statements... idk if
+allomone supports parenthesis"; image-grid fit options; and an even more compact
+job listing, "remember icons!" The order taken was: what is broken in output
+being shipped, then what blocks the work, then the systems. The per-item status
+is in the Builder roadmap under "The newsletter pass".
+
+## The newsletter never read `row`
+
+Item 3 was the headline, and it was simpler than broken. The email renderer
+walked the document and emitted every block as its own full-width table, one
+under the next. The Builder let a person place two buttons side by side, the
+website honoured it, and the newsletter stacked them. It is the "declared but
+invisible" shape again -- and it arrived the same week Click LaFont reported
+`col` doing the same thing on the web (it orders blocks, it does not position
+them). The email now mirrors the website's row driver: consecutive blocks
+sharing a `row` become one table row of cells sized from `span`, normalised to
+the row's total so a short row still fills (an email table cannot hold a gap,
+and inventing one is the surprise Click's report warned against). A `cell_px`
+width reaches every `width=` attribute, because Outlook obeys that attribute
+over CSS and a 572px image in a half-width cell breaks the 620px frame. `col`'s
+label now says what it does: "Order within the row (0-11) - blocks fill left to
+right".
+
+## How the rest was proven, and the check that was wrong
+
+A fixture was built through the real dispatcher -- two links in one row, a job
+grid in `line` mode, a narrative with an icon, an image grid with `fit whole`,
+an image + text block with a published picture and one without -- rendered to
+both the newsletter and the website, and asserted on the bytes. Thirteen checks.
+Twelve passed first time.
+
+The thirteenth was item 3, and the render was right. **The assertion was
+wrong**: it required no `</tr>` between the first cell and the second button,
+and every email button is itself a one-cell table containing a `</tr>`. Reading
+the emitted HTML showed exactly the intended shape -- one row, two 50% cells,
+RSVP in the first, Donate in the second. Recorded because a wrong check that
+FAILS is the good case. The bad case is a wrong check that passes, and nobody
+reads a passing check.
+
+## Re-capturing a golden without taking it on faith
+
+`hormiga_golden_render` drifted on two files: `style.css` (new rules appended,
+nothing removed) and the newsletter export. A golden re-capture is precisely
+where a regression gets waved through -- "the output changed, that was
+expected" -- so it was not re-captured on the expectation. The newsletter's only
+intended change on the golden fixture was the new job-line emoji, which sit
+behind `theme.icons`. So the fixture was rendered with `theme.icons 0`, and the
+newsletter hashed to **5745842a..., byte-identical to the old golden**. That
+proves the row driver, `cell_px`, `fit`, the narrative icon and the job-line
+refactor change nothing on an existing document, and only then was the golden
+re-captured. The method generalises: when a change adds output behind a switch,
+turn the switch off and demand the old bytes.
+
+## Parentheses were already there
+
+Item 7's worry was the grammar, and the grammar needed nothing. A block query is
+Void Core's tag grammar, which has supported AND / OR / NOT, `&&` `||` `!` and
+parentheses all along, plus our `date:` predicates -- the Builder's own filter UI
+already detected `(` and dropped to a raw text box. What was missing was a place
+to write an expression with feedback. A `</>` button beside every Builder filter
+now opens Void Maiz's code editor -- the widget the Allomone tab uses, not the
+Allomone language, which is a different grammar -- with highlighting, tag
+completion, a parse check, and a live "matches N of M" computed by
+`query_matches`, the same evaluation the renderers run. Apply is a button and
+nothing else, because the editor also reports a commit when focus leaves it,
+which is what happens on the way to Cancel.
+
+## The rest, briefly
+
+- **9:** `detail: line` -- one line per posting -- and emoji on job lines behind
+  `theme.icons`.
+- **8:** `fit` crop / whole / natural / stretch. It replaced an email branch that
+  read `display == "thumb"`, a value the glyph never offered, so it could not
+  run. In email, blank stays natural size: `object-fit` is the one property here
+  Outlook desktop ignores.
+- **4:** one icon vocabulary of 36 names drawn three ways -- Font Awesome in the
+  app, Lucide SVG on the web, emoji in email because Gmail strips SVG.
+  `icons::svg` renders nothing for an unknown name, deliberately, which is
+  exactly what would let a typo look fine in the app and vanish from a page;
+  `tests/icon_smoke.cpp` holds every name to the Lucide set that ships.
+- **5:** `image_text`. With no published picture the newsletter shows the text
+  alone and the render log says why, rather than printing a broken image.
+- **1, 2, 7 are built and compiled and have not been seen in a window.** They are
+  GUI gestures and previews, and a headless check cannot witness one. Saying so
+  is the difference between "done" and "done as far as anyone has looked".
+- **6** is planned as its own system. `texture_for` was already an image cache;
+  the flier blocks had simply never asked it for anything.
+
+## Two things about the process
+
+The email patch script refused to run. It guarded against a `return` inside the
+loop body being turned into a lambda, where it would silently change meaning,
+and it found four. All four were sort comparators, whose `return` exits the
+comparator and is unaffected. The guard was right to stop and wrong about why,
+so the four inspected lines were allow-listed by exact text and every other
+`return` still aborts. A guard that refuses too much is a nuisance; a guard
+loosened past what was inspected is not a guard.
+
+Three file budgets were raised, each with its reason in `tools/find_long.py`:
+`app.hpp` (declarations for the new file), `site.cpp` (+2, fields the glyph
+linter needs to see read there), `builder.cpp` (multi-select lives inline in the
+canvas loop and cannot move). What could move went to `ui/builder_ext.cpp`,
+`render/image_text.hpp` and `render/icon_set.hpp`.
+
+## Not done
+
+The `</>` button on the Data tab's and the Calendar's tag filters (`data.cpp` is
+two lines from its budget and wants a small split first); the image-preview
+engine (item 6); a sentence beside `deploy-site` for Click's finding that a
+deleted page can outlive its deployment on a Pages custom domain for up to a
+week. Click's other report asks the author to confirm or reverse its choice to
+label the macOS and Linux cards "untested" rather than "no build yet" -- that is
+the author's call and was not made here. Void Maiz's touch message is unanswered.

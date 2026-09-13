@@ -677,3 +677,34 @@ nav a.langswitch{margin-left:8px;border:1px solid var(--line);font-weight:600}
   text-decoration:none;color:var(--ink);padding:2px 0}
 .calwidget .agenda .ag-dot{display:inline-block;width:9px;height:9px;
   border-radius:50%;margin-right:7px;vertical-align:baseline}
+
+/* ── image_grid `fit` (2026-09-13) ─────────────────────────────────────────
+   The author: "at least some options to do the whole flier image, or to fit the
+   actual aspect ratio, or 'uniform aspect ratio' which will crop". Blank is the
+   uniform crop the gallery always drew (.tile's 1:1 + object-fit:cover). */
+.gallery.fit-whole .tile img{object-fit:contain;background:var(--card)}
+.gallery.fit-whole .tile:hover img,.gallery.fit-natural .tile:hover img{transform:none}
+.gallery.fit-natural{align-items:start}
+.gallery.fit-natural .tile,.gallery.carousel.fit-natural .tile{aspect-ratio:auto}
+.gallery.fit-natural .tile img{height:auto}
+.gallery.fit-stretch .tile img{object-fit:fill}
+
+/* ── image_text: a picture and the words that belong with it (2026-09-13) ──
+   Side by side, stacking on a phone, where two columns of a 390px screen would
+   leave the text a word wide. `.right` swaps sides so a page can alternate. */
+.imgtext{display:flex;gap:clamp(16px,3vw,32px);align-items:center;margin:18px 0}
+.imgtext.right{flex-direction:row-reverse}
+.imgtext-img{flex:0 0 42%;max-width:42%}
+.imgtext-img img{display:block;width:100%;height:auto;border-radius:12px;
+  border:1px solid var(--line)}
+.imgtext-body{flex:1;min-width:0}
+.imgtext-body .prose-heading{margin-top:0}
+@media (max-width:640px){
+  .imgtext,.imgtext.right{flex-direction:column;align-items:stretch}
+  .imgtext-img{max-width:100%;flex-basis:auto}
+}
+
+/* a narrative's (or image_text's) chosen icon, beside its heading */
+.prose-ico{width:1.05em;height:1.05em;vertical-align:-.15em;margin-right:.4em;
+  color:var(--accent,currentColor)}
+.prose-icon{margin:1.2em 0 .2em;font-size:1.25rem}

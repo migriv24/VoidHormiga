@@ -246,6 +246,7 @@ inline const char* glyph_icon(std::string_view glyph) {
         // ── document blocks (the Builder palette) ───────────────────────────
         {"hero", ICON_FA_PANORAMA},
         {"narrative", ICON_FA_PARAGRAPH},
+        {"image_text", ICON_FA_IMAGE},
         {"section_header", ICON_FA_HEADING},
         {"event_grid", ICON_FA_CALENDAR_DAYS},
         {"event_feature", ICON_FA_STAR},
@@ -305,6 +306,38 @@ inline const MarkerIcon kMarkerIcons[] = {
     {"scale", "Legal / rights", ICON_FA_SCALE_BALANCED},
     {"pin", "Pin", ICON_FA_LOCATION_DOT},
 };
+/* The GUI half of the ONE icon vocabulary (render/icon_set.hpp): a name an
+ * author picks -> the Font Awesome codepoint the app draws it with. The web
+ * draws the same name as Lucide SVG and the email as an emoji; the name is the
+ * Lucide name, and tests/icon_smoke.cpp holds the list to the icons that ship.
+ * "" for an unknown name, so a stale value draws nothing rather than a box. */
+inline const char* fa_icon_for(std::string_view name) {
+    struct Row { const char* name; const char* fa; };
+    static const Row kRows[] = {
+        {"house", ICON_FA_HOUSE}, {"user", ICON_FA_USER}, {"users", ICON_FA_USERS},
+        {"star", ICON_FA_STAR}, {"heart", ICON_FA_HEART},
+        {"triangle-alert", ICON_FA_TRIANGLE_EXCLAMATION},
+        {"graduation-cap", ICON_FA_GRADUATION_CAP}, {"stethoscope", ICON_FA_STETHOSCOPE},
+        {"utensils", ICON_FA_UTENSILS}, {"bus", ICON_FA_BUS},
+        {"briefcase", ICON_FA_BRIEFCASE}, {"calendar", ICON_FA_CALENDAR},
+        {"clock", ICON_FA_CLOCK}, {"scale", ICON_FA_SCALE_BALANCED},
+        {"map-pin", ICON_FA_LOCATION_DOT}, {"phone", ICON_FA_PHONE},
+        {"mail", ICON_FA_ENVELOPE}, {"globe", ICON_FA_GLOBE},
+        {"languages", ICON_FA_LANGUAGE}, {"link", ICON_FA_LINK},
+        {"image", ICON_FA_IMAGE}, {"video", ICON_FA_VIDEO}, {"music", ICON_FA_MUSIC},
+        {"download", ICON_FA_DOWNLOAD}, {"check", ICON_FA_CHECK},
+        {"info", ICON_FA_CIRCLE_INFO}, {"ticket", ICON_FA_TICKET},
+        {"megaphone", ICON_FA_BULLHORN}, {"hand-heart", ICON_FA_HAND_HOLDING_HEART},
+        {"book-open", ICON_FA_BOOK_OPEN}, {"baby", ICON_FA_BABY},
+        {"circle-dollar-sign", ICON_FA_DOLLAR_SIGN}, {"building-2", ICON_FA_BUILDING},
+        {"file-text", ICON_FA_FILE_LINES}, {"search", ICON_FA_MAGNIFYING_GLASS},
+        {"party-popper", ICON_FA_CHAMPAGNE_GLASSES},
+    };
+    for (const Row& r : kRows)
+        if (name == r.name) return r.fa;
+    return "";
+}
+
 struct MarkerColor { const char* tag; unsigned col; };
 inline const MarkerColor kMarkerColors[] = {
     {"red", IM_COL32(200, 60, 50, 255)},   {"orange", IM_COL32(224, 130, 40, 255)},

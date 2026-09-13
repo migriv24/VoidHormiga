@@ -239,7 +239,7 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
-  src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp
+  src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
@@ -366,7 +366,7 @@ add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
-  src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp
+  src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
@@ -706,6 +706,14 @@ add_test(NAME hormiga_allomone_smoke COMMAND hormiga_allomone_smoke)
 add_executable(hormiga_calendar_smoke tests/calendar_smoke.cpp)
 target_include_directories(hormiga_calendar_smoke PRIVATE src vendor/json)
 add_test(NAME hormiga_calendar_smoke COMMAND hormiga_calendar_smoke)
+
+# The ONE icon vocabulary (render/icon_set.hpp) against the vendored Lucide set.
+# `icons::svg` renders nothing for a name it does not carry -- deliberately, so a
+# missing icon costs a page decoration, not a broken box -- which is exactly what
+# would let a typo look fine in the app and vanish from a page. Links nothing.
+add_executable(hormiga_icon_smoke tests/icon_smoke.cpp)
+target_include_directories(hormiga_icon_smoke PRIVATE src vendor/icons)
+add_test(NAME hormiga_icon_smoke COMMAND hormiga_icon_smoke)
 
 add_executable(hormiga_dates_smoke tests/dates_smoke.cpp)
 target_link_libraries(hormiga_dates_smoke PRIVATE voidmaiz)

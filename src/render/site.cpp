@@ -16,6 +16,7 @@
 #include "render/download.hpp" // a file a visitor can keep
 #include "render/audio.hpp" // the audio block's markup, both domains
 #include "render/video.hpp"      // a pasted video URL, understood
+#include "render/image_text.hpp" // the image + text block's markup
 #include "json.hpp" // theme/menu/embed payloads are JSON on the wire
 #include "stb_image_write.h" // decls only - gallery thumbnails; the ONE
                              // implementation lives in app.cpp
@@ -761,9 +762,14 @@ std::string HormigaApp::render_site(std::string_view lang) {
              * says it instead. `h2.section` stays the page's own structure;
              * this is a level below it, inside a block. */
             const std::string nhead = text(*n, "heading");
+            const std::string nicon =
+                site_th.icons ? hormiga::icons::svg(field_value(*n, "icon"), "ico prose-ico")
+                              : std::string();
             if (!nhead.empty())
-                h << "<h3 class=\"prose-heading reveal\">" << html_escape(nhead)
+                h << "<h3 class=\"prose-heading reveal\">" << nicon << html_escape(nhead)
                   << "</h3>\n";
+            else if (!nicon.empty())
+                h << "<div class=\"prose-icon reveal\">" << nicon << "</div>\n";
             /* ── THE SAME FIELD, RENDERED THE SAME WAY, IN BOTH DOMAINS ──────
              *
              * Field report D4 (2026-09-02). The email emitted
@@ -782,6 +788,15 @@ std::string HormigaApp::render_site(std::string_view lang) {
              * `prose()` is escape-THEN-linkify, so this opens nothing. */
             h << "<p class=\"prose pre-line reveal\">" << web_prose(text(*n, "text"))
               << "</p>\n";
+        } else if (n->glyph == "image_text") {
+            // a picture and the words that belong with it; markup in
+            // render/image_text.hpp, fields read here where the linter looks
+            h << hormiga::image_text_web(
+                html_escape(stage_site_asset(field_value(*n, "image"))),
+                html_escape(text(*n, "alt")), html_escape(text(*n, "heading")),
+                site_th.icons ? hormiga::icons::svg(field_value(*n, "icon"), "ico prose-ico")
+                              : std::string(),
+                web_prose(text(*n, "text")), field_value(*n, "side") == "right");
         } else if (n->glyph == "event_grid") {
             /* THE SAME BLOCK THE EMAIL GOT ON 2026-08-19, which stopped there.
              * `title_of`/`text_or`/`detail`/`limit`/`sort`/`color` were all
@@ -941,14 +956,19 @@ std::string HormigaApp::render_site(std::string_view lang) {
                 else if (!cs.empty())
                     gcols = " cols-" + std::to_string(c);
             }
+            // `fit` (2026-09-13): how each image fills its tile; blank = the crop
+            const std::string gfitv = field_value(*n, "fit");
+            const std::string gfit =
+                (gfitv == "whole" || gfitv == "natural" || gfitv == "stretch")
+                    ? " fit-" + gfitv : std::string();
             if (!gcap.empty())
                 h << "<p class=\"meta caption\">" << html_escape(gcap) << "</p>\n";
             if (carousel)
                 h << "<div class=\"carousel-wrap reveal\">"
                      "<button class=\"cbtn prev\" aria-label=\"previous\">&lsaquo;"
-                     "</button>\n<div class=\"gallery carousel\">\n";
+                     "</button>\n<div class=\"gallery carousel" << gfit << "\">\n";
             else
-                h << "<div class=\"gallery " << mode << gcols << " reveal\">\n";
+                h << "<div class=\"gallery " << mode << gcols << gfit << " reveal\">\n";
             /* ── WHY THIS IS TWO PASSES NOW (2026-08-28) ────────────────
              *
              * The field report: on the Archive page an English reader got five
@@ -1336,7 +1356,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
                       << "</a></span></p>";
                 }
                 job_row("phone", field_value(dn, "contact_phone"));
-                if (jdetail != "title") {
+                if (jdetail != "title" && jdetail != "line") {
                     std::string desc = field_value(dn, "description");
                     // the honest version of a clip is a clip plus somewhere to
                     // read the rest — Phase 3's detail view is that somewhere

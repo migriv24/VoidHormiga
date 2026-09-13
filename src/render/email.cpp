@@ -45,6 +45,8 @@
 #include <cctype>
 #include <cstring>
 #include <fstream>
+#include "render/icon_set.hpp"   // emoji: the email half of the icon vocabulary
+#include "render/image_text.hpp" // the image + text block's markup
 
 std::string HormigaApp::render_preview(std::string_view lang) {
     maiz::ProjectOptions io, dio;
@@ -156,7 +158,12 @@ std::string HormigaApp::render_preview(std::string_view lang) {
         html << "<br><span style=\"color:#555\">" << html_escape(t) << "</span>";
     };
 
-    for (const auto* n : chain) {
+    /* The width, in px, the block being emitted may occupy: 572 on its own,
+     * less inside a row. Anything that writes a `width=` attribute reads this,
+     * because Outlook obeys that attribute over any CSS and a 572 image in a
+     * half-width cell pushes the whole newsletter past its 620px frame. */
+    int cell_px = 572;
+    auto emit_block = [&](const maiz::SceneNode* n) {
         if (n->glyph == "hero") {
             html << "<div style=\"border-top:6px solid " << acc
                  << ";padding-top:14px\">"
@@ -173,12 +180,18 @@ std::string HormigaApp::render_preview(std::string_view lang) {
              * because mail clients reset heading margins in six different ways;
              * the weight and the space are what carry the hierarchy. */
             const std::string nhead = text(*n, "heading");
+            /* The icon is an EMOJI here: Gmail strips inline SVG and no mail
+             * client loads an icon font (render/icon_set.hpp). */
+            const char* nemo =
+                th.icons ? hormiga::iconset::emoji(field_value(*n, "icon")) : "";
+            const std::string nmark = *nemo ? std::string(nemo) + " " : std::string();
             if (!nhead.empty())
                 html << "<p style=\"margin:18px 0 2px;font-weight:bold;"
                         "font-size:17px;color:#2c2c2c\">"
-                     << html_escape(nhead) << "</p>\n";
+                     << nmark << html_escape(nhead) << "</p>\n";
             html << "<p style=\"white-space:pre-line;line-height:1.5;color:#333\">"
-                 << prose(text(*n, "text")) << "</p>\n";
+                 << (nhead.empty() ? nmark : std::string()) << prose(text(*n, "text"))
+                 << "</p>\n";
         } else if (n->glyph == "section_header") {
             html << "<h2 style=\"border-bottom:2px solid " << acc
                  << ";padding-bottom:4px;margin:26px 0 6px;font-size:20px;"
@@ -326,8 +339,8 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                     html << "<a href=\"" << html_escape(watch)
                          << "\" style=\"display:block\"><img src=\""
                          << html_escape(psrc)
-                         << "\" width=\"572\" style=\"display:block;width:100%;"
-                            "max-width:572px;height:auto;border:0\" alt=\""
+                         << "\" width=\"" << cell_px << "\" style=\"display:block;width:100%;"
+                            "max-width:" << cell_px << "px;height:auto;border:0\" alt=\""
                          << html_escape(ui("Play the video", "Reproducir el video"))
                          << "\"></a>\n";
                 html << email_button(watch,
@@ -491,6 +504,13 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 html << "<p style=\"color:#777;margin:4px 0\">" << prose(cap)
                      << "</p>\n";
             const std::string jdetail = field_value(*n, "detail");
+            /* ICONS ON THE JOB LINES (2026-09-13; the author: "remember icons!").
+             * Emoji, for the reason on the narrative above, and only when the
+             * theme's icon switch is on — the website asks the same flag. */
+            auto jicon = [&](const char* icon, const std::string& v) -> std::string {
+                const char* e = th.icons ? hormiga::iconset::emoji(icon) : "";
+                return (v.empty() || !*e) ? v : std::string(e) + " " + v;
+            };
             const int jlimit = hormiga::doc_field_int(*n, "limit", 0);
             std::vector<const maiz::SceneNode*> jobs;
             for (const auto& dn : data.nodes)
@@ -500,29 +520,60 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             if (jlimit > 0 && (int)jobs.size() > jlimit) jobs.resize((size_t)jlimit);
             for (const maiz::SceneNode* jp : jobs) {
                 const maiz::SceneNode& dn = *jp;
+                if (jdetail == "line") {
+                    /* THE TIGHTEST FORM (2026-09-13). The author: *"the compact
+                     * version of job listings in the newsletter is still really
+                     * long, we should have an EVEN MORE compact version."*
+                     * Compact is a card with up to six lines and a clipped
+                     * description; this is ONE line per posting — what it is,
+                     * who, how much, where, until when, and where to write —
+                     * which is the whole of what a reader needs to decide
+                     * whether to click. */
+                    std::string jl = "<b>" + html_escape(title_of(dn)) + "</b>";
+                    auto jadd = [&](const char* icon, const std::string& v) {
+                        if (!v.empty()) jl += " &middot; " + html_escape(jicon(icon, v));
+                    };
+                    jadd("building-2", field_value(dn, "org"));
+                    jadd("circle-dollar-sign", field_value(dn, "pay"));
+                    jadd("map-pin", field_value(dn, "location"));
+                    const std::string jdl = field_value(dn, "deadline");
+                    if (!jdl.empty())
+                        jadd("calendar", ui("Closes ", "Cierra ") + human_date(jdl, lang));
+                    const std::string jce = field_value(dn, "contact_email");
+                    if (!jce.empty()) {
+                        const char* me = th.icons ? hormiga::iconset::emoji("mail") : "";
+                        jl += " &middot; " + (*me ? std::string(me) + " " : std::string()) +
+                              "<a href=\"mailto:" + html_escape(jce) + "\" style=\"color:" +
+                              acc + "\">" + html_escape(jce) + "</a>";
+                    }
+                    html << "<p style=\"margin:4px 0;padding:4px 0 4px 10px;"
+                            "border-left:3px solid #5d7d3b;font-size:14px;"
+                            "line-height:1.45\">" << jl << "</p>\n";
+                    continue;
+                }
                 html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
                         "cellspacing=\"0\" style=\"margin:10px 0;background:#f6f9f4;"
                         "border-left:4px solid #5d7d3b\">"
                         "<tr><td style=\"padding:8px 12px\">"
                      << "<b>" << html_escape(title_of(dn)) << "</b>";
                 const std::string org = field_value(dn, "org");
-                if (!org.empty()) html << " &middot; " << html_escape(org);
-                std::string l1 = field_value(dn, "pay");
+                if (!org.empty()) html << " &middot; " << html_escape(jicon("building-2", org));
+                std::string l1 = jicon("circle-dollar-sign", field_value(dn, "pay"));
                 const std::string loc = field_value(dn, "location");
-                if (!loc.empty()) l1 += (l1.empty() ? "" : " \xc2\xb7 ") + loc;
+                if (!loc.empty()) l1 += (l1.empty() ? "" : " \xc2\xb7 ") + jicon("map-pin", loc);
                 meta_line(l1);
                 /* PARITY WITH THE WEBSITE, found by tools/lint_glyph_fields.py:
                  * these were declared, rendered on the site, and rendered by
                  * nothing here. The contact email matters most — a newsletter
                  * that says "email your resume" and does not say where is worse
                  * than one that omits the posting. */
-                std::string l2 = field_value(dn, "job_type");
+                std::string l2 = jicon("briefcase", field_value(dn, "job_type"));
                 const std::string av = field_value(dn, "availability");
                 if (!av.empty()) l2 += (l2.empty() ? "" : " \xc2\xb7 ") + av;
                 meta_line(l2);
                 const std::string dl = field_value(dn, "deadline");
                 if (!dl.empty())
-                    meta_line(ui("Closes ", "Cierra ") + human_date(dl, lang));
+                    meta_line(jicon("calendar", ui("Closes ", "Cierra ") + human_date(dl, lang)));
                 const std::string cn = field_value(dn, "contact_name");
                 const std::string ce = field_value(dn, "contact_email");
                 const std::string cp = field_value(dn, "contact_phone");
@@ -550,7 +601,19 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 html << "<p style=\"color:#777;margin:4px 0\">" << prose(cap)
                      << "</p>\n";
             const int glimit = hormiga::doc_field_int(*n, "limit", 0);
-            const bool thumb = field_value(*n, "display") == "thumb";
+            /* FIT (2026-09-13). This read `display == "thumb"`, a value the
+             * glyph never offered (it is grid / masonry / carousel), so the
+             * branch could not run. `fit` replaces it. Blank keeps what the
+             * newsletter always did — natural size — because `object-fit` is
+             * the one property here Outlook desktop ignores: there, crop and
+             * whole fall back to a stretched image, and natural is the only form
+             * that looks the same in every inbox. */
+            const std::string efit = field_value(*n, "fit");
+            const char* efit_style =
+                efit == "crop"      ? "height:200px;object-fit:cover;"
+                : efit == "whole"   ? "height:200px;object-fit:contain;background:#f3f3f3;"
+                : efit == "stretch" ? "height:200px;"
+                                    : "height:auto;";
             int shown = 0;
             html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
                     "cellspacing=\"0\"><tr>\n";
@@ -569,8 +632,8 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 if (ok)
                     html << "<img src=\"" << html_escape(src) << "\" alt=\""
                          << html_escape(field_value(dn, "alt"))
-                         << "\" style=\"max-width:280px;width:100%;"
-                         << (thumb ? "height:180px;object-fit:cover;" : "")
+                         << "\" style=\"max-width:" << std::max(80, cell_px / 2 - 8)
+                         << "px;width:100%;" << efit_style
                          << "border:0;display:block\">";
                 else
                     html << "<div style=\"border:1px dashed #bbb;color:#999;"
@@ -647,11 +710,88 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             if (!cap.empty())
                 html << "<p style=\"color:#777;margin:8px 0\">" << prose(cap)
                      << "</p>\n";
+        } else if (n->glyph == "image_text") {
+            /* A picture and the words that belong with it. An email cannot load
+             * a local file, so the image is found by its path and published by
+             * its `url` — the same resolver every image in this renderer uses. */
+            const std::string ipath = field_value(*n, "image");
+            std::string isrc;
+            if (!ipath.empty())
+                for (const auto& dn : data.nodes)
+                    if (dn.glyph == "image" && field_value(dn, "path") == ipath) {
+                        bool ok = false;
+                        isrc = email_src(dn, ok);
+                        if (!ok) isrc.clear();
+                        break;
+                    }
+            if (!ipath.empty() && isrc.empty())
+                log.push_back({"warn", "render",
+                               n->name + ": this image + text block's picture has no "
+                               "public url, so the newsletter shows the text alone. "
+                               "Publish the image (the ImgBB node) or choose one "
+                               "that is published."});
+            html << hormiga::image_text_email(
+                html_escape(isrc), html_escape(text(*n, "alt")),
+                html_escape(text(*n, "heading")),
+                th.icons ? std::string(hormiga::iconset::emoji(field_value(*n, "icon")))
+                         : std::string(),
+                prose(text(*n, "text")), field_value(*n, "side") == "right", cell_px);
         } else if (n->glyph == "footer") {
             html << "<hr style=\"border:none;border-top:1px solid #ddd;margin:22px 0\">"
                  << "<p style=\"color:#888;font-size:13px;line-height:1.5\">"
                  << prose(text(*n, "text")) << "</p>\n";
         }
+    };
+
+    /* ── ROWS REACH THE NEWSLETTER (2026-09-13) ─────────────────────────────
+     *
+     * The author, making a newsletter: *"buttons or other things don't stack
+     * correctly horizontally. Maybe something is broken with the way we are
+     * making tables and grids?"* Something was, and it was simpler than broken:
+     * this loop walked the document and emitted every block as its own
+     * full-width table, one under the next. It never read `row` at all. The
+     * Builder let you place two buttons side by side, the website honoured it,
+     * and the newsletter quietly stacked them — the "declared but invisible"
+     * shape again, the same week Click LaFont reported `col` doing the same
+     * thing on the web.
+     *
+     * So this mirrors the website's driver in render/site.cpp: a run of
+     * consecutive blocks sharing a `row` becomes ONE table row, each block a
+     * cell. Hero and footer always stand alone. Cells are sized from `span`
+     * NORMALISED to the row's total, so a row whose spans sum to less than 12
+     * still fills the width — an email table cannot hold a gap, and inventing
+     * one would be exactly the layout surprise Click's report warned against. */
+    for (size_t i = 0; i < chain.size();) {
+        const maiz::SceneNode* n = chain[i];
+        const int row = hormiga::doc_field_int(*n, "row", -1);
+        size_t j = i + 1;
+        if (row >= 0 && n->glyph != "hero" && n->glyph != "footer")
+            while (j < chain.size() &&
+                   hormiga::doc_field_int(*chain[j], "row", -2) == row &&
+                   chain[j]->glyph != "hero" && chain[j]->glyph != "footer")
+                ++j;
+        if (j - i > 1) {
+            int total = 0;
+            for (size_t k = i; k < j; ++k)
+                total += std::clamp(hormiga::doc_field_int(*chain[k], "span", 12), 1, 12);
+            html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
+                    "cellspacing=\"0\" style=\"margin:6px 0\"><tr>\n";
+            for (size_t k = i; k < j; ++k) {
+                const int span =
+                    std::clamp(hormiga::doc_field_int(*chain[k], "span", 12), 1, 12);
+                const int pct = std::max(1, span * 100 / std::max(1, total));
+                cell_px = std::max(120, 572 * pct / 100 - 12);
+                html << "<td valign=\"top\" width=\"" << pct
+                     << "%\" style=\"vertical-align:top;padding:0 6px\">\n";
+                emit_block(chain[k]);
+                html << "</td>\n";
+            }
+            html << "</tr></table>\n";
+            cell_px = 572;
+        } else {
+            emit_block(n);
+        }
+        i = j;
     }
 
     html << "</td></tr></table>\n</td></tr></table>\n</body></html>\n";

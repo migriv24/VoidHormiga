@@ -82,7 +82,7 @@ inline void register_block_glyphs(maiz::Core& core) {
                         R"(","shape":{"kind":"block"},"face":{"w":260,"h":)" +
                         std::to_string(face_h) + R"(},"category":")" + category +
                         R"(","editors":{)" + ed_full + R"(},"labels":{)" + labels +
-                        R"__(,"row":"Grid row (0 = top)","col":"Grid column (0-11)",)__"
+                        R"__(,"row":"Grid row (0 = top)","col":"Order within the row (0-11) - blocks fill left to right",)__"
                         R"__("span":"Width (1-12 units)","page":"Page (website; empty = home)",)__"
                         R"__("link_to":"Navigates to (page slug or URL; makes it a button)",)__"
                         R"__("band_bg":"Band background (none/tint/accent/card/dark/gradient)",)__"
@@ -158,12 +158,38 @@ inline void register_block_glyphs(maiz::Core& core) {
      * design conversation about where that line sits, and it is not one to
      * settle inside a block that already works. */
     block("narrative", "narrative",
-          R"("heading_en","heading_es","text_en","text_es")", "#4c97ff", 116,
+          R"("icon","heading_en","heading_es","text_en","text_es")", "#4c97ff", 116,
           false, "Content",
-          R"("text_en":"multiline:70","text_es":"multiline:70")",
+          R"("icon":"icon","text_en":"multiline:70","text_es":"multiline:70")",
+          R"__("icon":"Icon beside the heading (optional)",)__"
           R"__("heading_en":"Heading above the text (English; optional)",)__"
           R"__("heading_es":"Encabezado (espanol; opcional)",)__"
           R"__("text_en":"Text (English)","text_es":"Texto (espanol)")__");
+    /* ── image_text: a picture and the words that belong with it (2026-09-13) ─
+     *
+     * The author, while making a newsletter: *"an easier way to make a narrative
+     * section where we have like an image on one side, and the text on the
+     * other, like they go together (remember to make this an explicit block)."*
+     * The workaround was an image and a narrative placed side by side in one
+     * row: two things to keep in step for what the author means as ONE thing,
+     * and a layout the newsletter stacked anyway, because the email renderer
+     * ignored rows until the same day. Markup in render/image_text.hpp. `image`
+     * is a path (the "image" editor, as on `hero`); the email resolves it to
+     * that image's published url. */
+    block("image_text", "image + text",
+          R"("image","side","icon","heading_en","heading_es","text_en","text_es",)"
+          R"("alt_en","alt_es")",
+          "#4c97ff", 120, false, "Content",
+          R"("image":"image","side":"combo:left,right","icon":"icon",)"
+          R"("text_en":"multiline:70","text_es":"multiline:70")",
+          R"__("image":"Image",)__"
+          R"__("side":"Which side the image sits on",)__"
+          R"__("icon":"Icon beside the heading (optional)",)__"
+          R"__("heading_en":"Heading (English; optional)",)__"
+          R"__("heading_es":"Encabezado (espanol; opcional)",)__"
+          R"__("text_en":"Text (English)","text_es":"Texto (espanol)",)__"
+          R"__("alt_en":"What the image shows, for a screen reader (English)",)__"
+          R"__("alt_es":"Que muestra la imagen (espanol)")__");
     block("section_header", "section header", R"("title_en","title_es")", "#8a6d3b",
           44, false, "Content", R"()",
           R"__("title_en":"Heading (English)","title_es":"Encabezado (espanol)")__");
@@ -240,15 +266,18 @@ inline void register_block_glyphs(maiz::Core& core) {
     // the "content-horizontal" the author described). Email always renders a
     // simple table grid (no JS/columns); the mode is a WEB property.
     block("image_grid", "image grid",
-          R"("query","columns","display","limit","caption_en","caption_es")",
+          R"("query","columns","display","fit","limit","caption_en","caption_es")",
           "#7d5bb0", 84, false, "Data",
           R"("query":"hidden","columns":"combo:2,3,4",)"
-          R"("display":"combo:grid,masonry,carousel")",
+          R"("display":"combo:grid,masonry,carousel","fit":"combo:crop,whole,natural,stretch")",
           R"__("query":"Image query: tags with AND/OR/NOT, plus date:future | )__"
           R"__(date:past | date:today | date:undated - a flier takes its date )__"
           R"__(from the event it is linked to, so an unlinked one is undated.",)__"
           R"__("columns":"Columns",)__"
           R"__("display":"Display mode (web)",)__"
+          R"__("fit":"How each image fills its tile: crop = same shape, trimmed; )__"
+          R"__(whole = same shape, nothing cut off; natural = each image keeps its )__"
+          R"__(own shape; stretch = fills the tile, distorted",)__"
           R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
     /* `detail`/`limit`/`sort` arrive 2026-08-20, matching `event_grid`. Until
      * then this was the only grid with NO clipping at all — one real posting
@@ -258,11 +287,12 @@ inline void register_block_glyphs(maiz::Core& core) {
     block("job_grid", "job grid",
           R"("query","detail","limit","sort","caption_en","caption_es")",
           "#5d7d3b", 84, false, "Data",
-          R"("query":"hidden","detail":"combo:compact,title,full")",
+          R"("query":"hidden","detail":"combo:line,compact,title,full")",
           R"__("query":"Job query: tags with AND/OR/NOT, plus date:future | )__"
           R"__(date:past - a posting's date is its `deadline`, so date:future )__"
           R"__(means still open.",)__"
-          R"__("detail":"How much of each posting to show",)__"
+          R"__("detail":"How much of each posting to show (line = one line each, )__"
+          R"__(the tightest newsletter form)",)__"
           R"__("limit":"Most postings to show (blank = all)",)__"
           R"__("sort":"deadline | name (default document order)",)__"
           R"__("caption_en":"Caption (English)",)__"

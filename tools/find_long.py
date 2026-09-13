@@ -52,7 +52,11 @@ BUDGET = {
     # the pasted URL and shows the provider + id. A Builder that cannot tell an
     # author whether their link parsed is a Builder they deploy a broken block
     # from -- see the palette lesson three comments up. Twenty lines.
-    'src/ui/builder.cpp': 1620,     # canvas + palette + inspector
+    # 1620 -> 1635 (2026-09-13): multi-select reaches the click handler, the
+    # context menu, the Delete key and the drag-drop commit, all inline in the
+    # canvas loop, so they cannot move. The previews, the icon picker, the
+    # multi-select panel and the filter editor went to ui/builder_ext.cpp.
+    'src/ui/builder.cpp': 1635,
     'src/domain/seed.hpp': 1600,    # glyph declarations: data, splits by family
     # RAISED 2026-08-20 for `event_feature` + `event_flier` — the ratchet doing
     # its job, not being overridden: the growth is two new blocks, and the
@@ -141,7 +145,10 @@ BUDGET = {
     # complaint about an unknown value all live in render/download.hpp, and the
     # behaviour is app.js's. What is left here is the part only the driver can
     # do, because only the driver knows what shares a row.
-    'src/render/site.cpp': 2295,
+    # 2295 -> 2300 (2026-09-13): image + text, a narrative's icon and image_grid
+    # `fit`. The new block's markup already went to render/image_text.hpp; what
+    # stayed is reading the fields, which the glyph linter needs to see here.
+    'src/render/site.cpp': 2300,
     'src/domain/allomone_legacy.hpp': 900,  # unshipped, frozen
     # RAISED 2026-08-20 for the publish preflight. The panel and the deploy
     # holiday are two jobs in one file; publish/panel.cpp vs publish/deploy.cpp
@@ -189,7 +196,10 @@ BUDGET = {
     # `domain/quick_add.hpp`) rather than given a bigger budget — which is the
     # distinction this table is for. A class declaration grows when the class
     # grows; a 1,300-line function file has a seam in it.
-    'src/app/app.hpp': 1160,
+    # 1160 -> 1170 (2026-09-13): the newsletter-builder pass -- five member
+    # declarations and the filter editor's state for ui/builder_ext.cpp. The
+    # code went to its own file; only the declarations must live in the class.
+    'src/app/app.hpp': 1170,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

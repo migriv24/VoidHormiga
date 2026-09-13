@@ -201,6 +201,8 @@ void HormigaApp::draw_document_canvas(float body_h) {
         last_row = r;
     }
 
+    ensure_icon_editor();                                     // item 4
+    if (ed.selection.size() > 1) draw_multi_select_panel();   // item 1
     ImGui::BeginChild("##doccanvas", ImVec2(0, body_h));
     ImDrawList* dl = ImGui::GetWindowDrawList();
     float avail = ImGui::GetContentRegionAvail().x;
@@ -227,6 +229,8 @@ void HormigaApp::draw_document_canvas(float body_h) {
         if (n.glyph == "download") return 92.0f;
         if (n.glyph == "audio") return 128.0f;
         if (n.glyph == "video") return 120.0f;
+        if (n.glyph == "image_text") return 128.0f;
+        if (n.glyph == "event_flier" || n.glyph == "event_feature") return 132.0f;
         return 108.0f; // event_grid / job_grid / anything new
     };
 
@@ -624,7 +628,7 @@ void HormigaApp::draw_document_canvas(float body_h) {
                     ImGui::TextDisabled("video: paste a YouTube or Vimeo link");
                 else
                     ImGui::TextDisabled("video: link not recognised");
-            } else {
+            } else if (!draw_block_preview(n, data, inner_w, acc_col)) {
                 ImGui::TextDisabled("%s", n.glyph.c_str());
             }
             ImGui::PopClipRect();
@@ -640,8 +644,17 @@ void HormigaApp::draw_document_canvas(float body_h) {
                                    ImGuiButtonFlags_MouseButtonLeft |
                                        ImGuiButtonFlags_MouseButtonRight);
             bool card_hover = ImGui::IsItemHovered();
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                ed.selection = {n.name};
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                // shift / ctrl-click ADDS or REMOVES (2026-09-13); a plain click
+                // on a member of a group keeps the group, so it can be dragged
+                if (ImGui::GetIO().KeyShift || ImGui::GetIO().KeyCtrl) {
+                    auto it = std::find(ed.selection.begin(), ed.selection.end(), n.name);
+                    if (it == ed.selection.end()) ed.selection.push_back(n.name);
+                    else ed.selection.erase(it);
+                } else if (!(ed.selection.size() > 1 && ed.selected(n.name))) {
+                    ed.selection = {n.name};
+                }
+            }
             // double-click a text element → edit it right here
             if (card_hover && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                 if (const char* base = edit_base_of(n.glyph)) {
@@ -652,12 +665,21 @@ void HormigaApp::draw_document_canvas(float body_h) {
                                   text_of(n, base).c_str());
                     ed.selection = {n.name};
                 }
+            // ...and released without a drag, a plain click narrows to this one
+            if (ImGui::IsItemDeactivated() && doc_drag.empty() &&
+                !ImGui::GetIO().KeyShift && !ImGui::GetIO().KeyCtrl &&
+                ed.selection.size() > 1 && ed.selected(n.name))
+                ed.selection = {n.name};
             if (ImGui::IsItemActive() &&
                 ImGui::IsMouseDragging(ImGuiMouseButton_Left, 6.0f) &&
                 doc_grip.empty())
                 doc_drag = n.name;
             if (ImGui::BeginPopupContextItem("##cardmenu")) {
                 ImGui::TextDisabled("%s (%s)", n.name.c_str(), n.glyph.c_str());
+                const bool multi = ed.selection.size() > 1 && ed.selected(n.name);
+                if (multi)
+                    ImGui::TextDisabled("%d selected - width and remove apply to all",
+                                        (int)ed.selection.size());
                 ImGui::Separator();
                 if (ImGui::MenuItem("Edit (inspector)")) ed.selection = {n.name};
                 ImGui::BeginDisabled(ri == 0);
@@ -675,15 +697,25 @@ void HormigaApp::draw_document_canvas(float body_h) {
                         {"Full", 12}, {"Two thirds", 8}, {"Half", 6},
                         {"Third", 4}};
                     for (auto& wch : ws)
-                        if (ImGui::MenuItem(wch.l, nullptr, span == wch.s))
-                            pending_cmds.push_back(
-                                "doc resize " + n.name + " " +
-                                std::to_string(wch.s));
+                        if (ImGui::MenuItem(wch.l, nullptr, span == wch.s)) {
+                            std::vector<std::string> rs;
+                            for (const auto& sn : multi ? ed.selection
+                                                        : std::vector<std::string>{n.name})
+                                rs.push_back("doc resize " + sn + " " + std::to_string(wch.s));
+                            pending_cmds.push_back(maiz::compile_commit(rs));
+                        }
                     ImGui::EndMenu();
                 }
                 ImGui::Separator();
-                if (ImGui::MenuItem("Remove from document")) {
-                    pending_cmds.push_back("doc remove " + n.name);
+                const std::string rm_label =
+                    multi ? "Remove " + std::to_string(ed.selection.size()) + " selected"
+                          : std::string("Remove from document");
+                if (ImGui::MenuItem(rm_label.c_str())) {
+                    std::vector<std::string> rm; // one batch = one Ctrl+Z
+                    for (const auto& sn : multi ? ed.selection
+                                                : std::vector<std::string>{n.name})
+                        rm.push_back("doc remove " + sn);
+                    pending_cmds.push_back(maiz::compile_commit(rm));
                     ed.selection.clear();
                 }
                 ImGui::EndPopup();
@@ -732,9 +764,16 @@ void HormigaApp::draw_document_canvas(float body_h) {
         if (!dragged || !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             // released: commit the drop
             if (dragged) {
+                // dragging one member of a group moves the whole group (2026-09-13)
+                const std::vector<std::string> moving =
+                    (ed.selection.size() > 1 && ed.selected(doc_drag))
+                        ? ed.selection : std::vector<std::string>{doc_drag};
+                auto is_moving = [&](const std::string& nm) {
+                    return std::find(moving.begin(), moving.end(), nm) != moving.end();
+                };
                 int pair_row = -1;
-                for (const auto& c : cards) // on a half of a 1-card row?
-                    if (c.n->name != doc_drag && mouse.y >= c.tl.y &&
+                for (const auto& c : cards) // on a half of a 1-card row? (one mover)
+                    if (moving.size() == 1 && !is_moving(c.n->name) && mouse.y >= c.tl.y &&
                         mouse.y <= c.br.y && (int)rows[c.row_i].size() == 1 &&
                         mouse.x >= c.tl.x && mouse.x <= c.br.x)
                         pair_row = c.row_i;
@@ -743,7 +782,7 @@ void HormigaApp::draw_document_canvas(float body_h) {
                 for (auto& row : rows) {
                     std::vector<const maiz::SceneNode*> keep;
                     for (auto* n : row)
-                        if (n->name != doc_drag) keep.push_back(n);
+                        if (!is_moving(n->name)) keep.push_back(n);
                     if (!keep.empty()) nr.push_back(keep);
                 }
                 if (pair_row >= 0) {
@@ -767,15 +806,19 @@ void HormigaApp::draw_document_canvas(float body_h) {
                             // translate: count surviving rows above line i
                             size_t k = 0;
                             for (size_t j = 0; j < i && j < rows.size(); ++j) {
-                                bool only_dragged =
-                                    rows[j].size() == 1 &&
-                                    rows[j][0]->name == doc_drag;
+                                bool only_dragged = std::all_of(
+                                    rows[j].begin(), rows[j].end(),
+                                    [&](const maiz::SceneNode* m) { return is_moving(m->name); });
                                 if (!only_dragged) ++k;
                             }
                             at = k;
                             break;
                         }
-                    nr.insert(nr.begin() + std::min(at, nr.size()), {dragged});
+                    std::vector<std::vector<const maiz::SceneNode*>> ins; // doc order
+                    for (const auto& row : rows)
+                        for (const auto* m : row)
+                            if (is_moving(m->name)) ins.push_back({m});
+                    nr.insert(nr.begin() + std::min(at, nr.size()), ins.begin(), ins.end());
                 }
                 // ONE batch: every changed row/col/span (normalized 6/6 pairs)
                 std::vector<std::string> cmds;
@@ -882,6 +925,19 @@ void HormigaApp::draw_document_canvas(float body_h) {
 
     // the nothing-selected page manager. A card click already set selection
     // earlier this frame; we only clear when the click missed every card.
+    // Delete / Backspace removes every selected component, as ONE undoable batch;
+    // never while a text field has the keyboard, where Backspace means a letter
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+        doc_edit_node.empty() && !ImGui::GetIO().WantTextInput &&
+        !ed.selection.empty() &&
+        (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace))) {
+        std::vector<std::string> rm;
+        for (const auto& sn : ed.selection)
+            if (const maiz::SceneNode* sp = scene.find(sn); sp && sp->glyph != "page")
+                rm.push_back("doc remove " + sn);
+        if (!rm.empty()) pending_cmds.push_back(maiz::compile_commit(rm));
+        ed.selection.clear();
+    }
     if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Escape))
         ed.selection.clear();
     if (ImGui::IsWindowHovered() &&
@@ -1285,6 +1341,12 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
             if (has_query) {
                 std::string q = field_value(*sel, "query");
                 ImGui::SeparatorText("Filter (what this shows)");
+                if (ImGui::SmallButton(ICON_FA_CODE "  edit as an expression"))
+                    open_tag_expr_editor(*sel);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("write this filter exactly: AND / OR / NOT,\n"
+                                      "parentheses, date:future - with a live count");
+                draw_tag_expr_editor(*sel);
                 bool has_or = q.find(" OR ") != std::string::npos;
                 bool has_and = q.find(" AND ") != std::string::npos;
                 bool complex = q.find('(') != std::string::npos ||

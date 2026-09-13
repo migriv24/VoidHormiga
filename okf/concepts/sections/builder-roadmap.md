@@ -373,6 +373,89 @@ custom data types, [Q59](/developer_questions.md).
   game showcase` obviously are not — so the answer to "we need more glyphs" is a
   registry rather than a longer built-in list.
 
+# The newsletter pass (2026-09-13)
+
+The author sent nine asks in one message while making a newsletter:
+*"for most of these im thinking about the newsletter. because right now im
+making the newsletter."* So the order was what was broken in output being
+shipped, then what blocked the work, then the systems. The statuses below keep
+two things apart that are easy to blur: what was **verified by rendering** and
+what was **built and compiled but not yet seen in a window**. Items 1, 2 and 7
+are gestures in the GUI, and a gesture is the one thing a headless check
+cannot witness.
+
+- ✅ **3. Side-by-side blocks in the newsletter.** The email renderer walked the
+  document and emitted every block as its own full-width table. It never read
+  `row`. The Builder placed two buttons side by side, the website honoured it,
+  and the newsletter stacked them. It now mirrors the website's row driver: a
+  run of blocks sharing a `row` becomes one table row, with cells sized from
+  `span` and normalised so a short row still fills the width (an email table
+  cannot hold a gap). A `cell_px` width reaches every `width=` attribute,
+  because Outlook obeys that over CSS and a 572px image in a half-width cell
+  breaks the 620px frame. Verified in the rendered HTML: RSVP in one 50% cell,
+  Donate in the other, one row. It is the same shape as Click LaFont's report
+  that week that `col` orders blocks rather than positioning them, and that
+  field's label now says so.
+- ✅ **9. An even more compact job listing, with icons.** `detail: line` gives
+  one line per posting: title, organization, pay, place, closing date, email.
+  Emoji icons appear on both `line` and `compact`, behind the existing
+  `theme.icons` switch. The website already had Lucide icons on job cards; there,
+  `line` means no description.
+- ✅ **8. Image grid `fit`.** crop (same shape, trimmed, the default the gallery
+  always drew) / whole (same shape, nothing cut off) / natural (each image keeps
+  its own shape) / stretch. On the web it is a gallery class. In email, blank
+  stays natural size, because `object-fit` is the one property here that
+  Outlook desktop ignores: there, crop and whole fall back to a stretched image.
+  It replaced a dead email branch that read `display == "thumb"`, a value the
+  glyph never offered.
+- ✅ **4. Icons on narratives, and an icon picker.** One vocabulary of 36 names
+  (`render/icon_set.hpp`) drawn three ways: Font Awesome in the app, Lucide SVG
+  on the website, emoji in email (Gmail strips SVG). The name is the Lucide
+  name, and `tests/icon_smoke.cpp` holds every name to the icons that actually
+  ship, so an icon cannot look fine in the app and vanish from a page. The
+  picker is an inspector editor kind (`"icon":"icon"`), a grid of buttons named
+  on hover. Rendering is verified in both domains; the picker itself is 🔨 not
+  yet seen in a window.
+- ✅ **5. `image_text`, an image and the words that go with it.** An explicit
+  block with `image`, `side` (left or right), `icon`, heading, text and alt
+  text; it appears in the palette automatically. On the web it is a two-column
+  row that stacks on a phone. In email it is a two-cell table using the image's
+  published url, or, with none, the text alone plus a render warning that says
+  why. Verified in both domains; the canvas preview is 🔨 not yet seen in a
+  window.
+- 🔨 **1. Shift/ctrl-click multi-select.** It adds or removes. A plain click on a
+  member keeps the group so it can be dragged, then narrows to that one on
+  release. Delete or Backspace removes the group; the context menu's Width and
+  Remove apply to all of it; dragging one member moves the group; a panel above
+  the canvas offers Remove all / Full / Half / Third / Clear. Every group action
+  is one batch, so it takes one Ctrl+Z. Built and compiled, not yet seen in a
+  window.
+- 🔨 **2. Flier and featured-event previews that show the tags.** `event_flier`
+  and `event_feature` had no canvas case and drew their own glyph name. They
+  now draw the flier (the named one, or the image wired to the event in the
+  preview's language, which is the page's own resolution order), the event's
+  title, date and place, and its tags as chips. Built and compiled, not yet seen
+  in a window.
+- 🔨 **7. A filter, as an expression.** The grammar needed nothing: block queries
+  are Void Core's tag grammar, which has supported AND / OR / NOT, `&&` `||` `!`
+  and **parentheses** all along, plus our `date:` predicates. What was missing
+  was somewhere to write one. A `</>` button beside every Builder filter opens
+  Void Maiz's code editor (the widget the Allomone tab uses, not the Allomone
+  language, which is a different grammar) with highlighting, tag completion from
+  the data the block is about, a parse check, and a live "matches N of M"
+  computed by `query_matches`, the same evaluation the renderers run. Apply is a
+  button only: the editor also reports a commit when focus leaves it, which
+  would apply the very edit a person was reaching Cancel to discard. Built and
+  compiled, not yet seen in a window. *Still ⬜:* the same button on the Data
+  tab's and the Calendar's tag filters. `data.cpp` is two lines from its budget,
+  so it wants its own small split first.
+- ⬜ **6. An image-preview engine.** This is partly true already: `texture_for` is
+  a path-keyed texture cache, and before this pass it drew a hero's banner and
+  an image grid's thumbnails. The flier blocks simply never asked it. What
+  remains is the engine the author means: decoding off the frame thread, a
+  bounded cache that evicts, and a live preview of what a query-backed block
+  would show. That is its own system, and it is planned as one.
+
 # Two builders, kept distinct
 
 Newsletter = HTML components, vertical, email-safe, single document, no
