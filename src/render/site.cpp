@@ -855,7 +855,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
             const std::string ev_search = field_value(*n, "search");
             const bool ev_filter = ev_search == "on" ||
                                    (ev_search != "off" && evs.size() >= 5);
-            h << "<div class=\"cards" << (ev_filter ? " filterable" : "")
+            h << "<div class=\"cards" << grid_cols_class(*n) << (ev_filter ? " filterable" : "")
               << " reveal\">\n";
             for (const maiz::SceneNode* ev : evs) {
                 const maiz::SceneNode& dn = *ev;
@@ -1314,7 +1314,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
                                      return da < db;
                                  });
             if (jlimit > 0 && (int)jobs.size() > jlimit) jobs.resize((size_t)jlimit);
-            h << "<div class=\"cards filterable reveal\">\n";
+            h << "<div class=\"cards" << grid_cols_class(*n) << " filterable reveal\">\n";
             const int hits = (int)jobs.size();
             for (const maiz::SceneNode* jp : jobs) {
                 const maiz::SceneNode& dn = *jp;

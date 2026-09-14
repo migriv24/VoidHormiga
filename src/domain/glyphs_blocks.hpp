@@ -194,14 +194,16 @@ inline void register_block_glyphs(maiz::Core& core) {
           44, false, "Content", R"()",
           R"__("title_en":"Heading (English)","title_es":"Encabezado (espanol)")__");
     block("event_grid", "event grid",
-          R"("query","detail","limit","sort","search","caption_en","caption_es")",
+          R"("query","detail","columns","limit","sort","search","caption_en","caption_es")",
           "#9966cc", 84, false, "Data",
           R"("query":"hidden","detail":"combo:compact,title,full",)"
-          R"("search":"combo:auto,on,off")",
+          R"("search":"combo:auto,on,off","columns":"combo:1,2,3")",
           R"__("query":"Event query: tags with AND/OR/NOT, plus date:future | )__"
           R"__(date:past | date:today | date:recurring | date:undated. Check it )__"
           R"__(with `effect query` - `ls --tag` cannot see the date ones.",)__"
           R"__("detail":"How much of each event to show",)__"
+          R"__("columns":"Cards per row, 1-3 (blank = the site's automatic grid, )__"
+          R"__(one card per row in the newsletter; a phone always stacks)",)__"
           R"__("limit":"Most events to show (blank = all)",)__"
           R"__("sort":"date | date-desc | name (default date)",)__"
           R"__("search":"Search box: auto (only when it helps) | on | off",)__"
@@ -285,14 +287,16 @@ inline void register_block_glyphs(maiz::Core& core) {
      * "yikes". A grid that can only render everything is a grid that cannot be
      * used with real data. */
     block("job_grid", "job grid",
-          R"("query","detail","limit","sort","caption_en","caption_es")",
+          R"("query","detail","columns","limit","sort","caption_en","caption_es")",
           "#5d7d3b", 84, false, "Data",
-          R"("query":"hidden","detail":"combo:line,compact,title,full")",
+          R"("query":"hidden","detail":"combo:line,compact,title,full","columns":"combo:1,2,3")",
           R"__("query":"Job query: tags with AND/OR/NOT, plus date:future | )__"
           R"__(date:past - a posting's date is its `deadline`, so date:future )__"
           R"__(means still open.",)__"
           R"__("detail":"How much of each posting to show (line = one line each, )__"
           R"__(the tightest newsletter form)",)__"
+          R"__("columns":"Cards per row, 1-3 (blank = the site's automatic grid, )__"
+          R"__(one card per row in the newsletter; `line` stays one line each)",)__"
           R"__("limit":"Most postings to show (blank = all)",)__"
           R"__("sort":"deadline | name (default document order)",)__"
           R"__("caption_en":"Caption (English)",)__"

@@ -3228,3 +3228,46 @@ renderer changed.
 Exercising the merge tool on a real stray copy (after the LON agent's merge, or
 on a synthetic one); a detailed preview of a `.miga`; and, still open from the
 previous entry, the `</>` filter button on the Data tab and the Calendar.
+
+# Card grids, side by side (2026-09-14)
+
+The author: *"event grids should be able to be side by side as well, like
+actual grids, not just a list"*, and the same for job openings.
+
+## What changed
+
+- **`event_grid` and `job_grid` gained `columns`** (`combo:1,2,3`), declared in
+  `domain/glyphs_blocks.hpp`.
+- **Email** (`render/email.cpp`): two small lambdas, `grid_cell_open` and
+  `grid_cell_close`, wrap each existing card table in a `<td>` of one
+  presentation table.
+  - The table gets N cells to a row; the last row is padded with empty cells so
+    a lone card does not stretch to full width.
+  - The card markup itself is untouched.
+  - `detail: line` on a job grid ignores `columns`: a list of single lines is
+    that form's purpose.
+- **Website**: the `.cards` container gets `cols-N` from `grid_cols_class`
+  (`render/text.hpp`, shared helpers). `style.css` fixes the column count and
+  stacks below 640px.
+- **Blank changes nothing in either domain.** Proof: the golden render moved
+  only `style.css`'s hash; every HTML page and the email preview hashed as
+  before. Re-captured on that basis.
+
+## Verification
+
+A scratch document rendered 5 events in 2 columns, 4 compact jobs in 3 columns,
+and 4 `line` jobs with `columns 3` set:
+
+| What was counted | Result |
+|---|---|
+| Event cells (2 columns) | 5, with 1 padding cell |
+| Job cells (3 columns) | 4, with 2 padding cells |
+| Line jobs | stayed a list |
+| `<table>`, `<tr>`, `<td>` | all balanced |
+| Website containers | carried `cols-2` / `cols-3` |
+
+The full suite passes with `reduce_conformance` excluded, as before. Lint,
+layering and budgets pass (`email.cpp` 877/1000).
+
+The GUI executable did not re-link, because the app was running. The CLI and
+every test did.

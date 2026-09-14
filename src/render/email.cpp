@@ -158,6 +158,38 @@ std::string HormigaApp::render_preview(std::string_view lang) {
         html << "<br><span style=\"color:#555\">" << html_escape(t) << "</span>";
     };
 
+    /* CARD GRIDS, N TO A ROW (2026-09-14). The author: *"event grids should be
+     * able to be side by side as well, like actual grids, not just a list"* --
+     * and the same for job openings. On the website `.cards` has always been a
+     * CSS grid; this renderer drew one full-width card per row. `columns` (1-3)
+     * now lays the cards out as table cells, the one side-by-side layout every
+     * mail client honours. Blank is 1, the list it always was, so no existing
+     * issue changes. Three is the ceiling: a 620px email split four ways leaves
+     * cards about 140px wide, narrower than most event titles. */
+    auto grid_cols = [&](const maiz::SceneNode& b) {
+        return std::clamp(hormiga::doc_field_int(b, "columns", 1), 1, 3);
+    };
+    auto grid_cell_open = [&](size_t i, int cols) {
+        if (cols < 2) return;
+        if (i % (size_t)cols == 0)
+            html << (i == 0 ? "<table role=\"presentation\" width=\"100%\" "
+                              "cellpadding=\"0\" cellspacing=\"0\"><tr>\n"
+                            : "<tr>\n");
+        html << "<td valign=\"top\" width=\"" << 100 / cols
+             << "%\" style=\"vertical-align:top;padding:0 5px\">\n";
+    };
+    auto grid_cell_close = [&](size_t i, size_t count, int cols) {
+        if (cols < 2) return;
+        html << "</td>\n";
+        const bool row_end = (i + 1) % (size_t)cols == 0;
+        const bool last = i + 1 == count;
+        if (last && !row_end) // pad the final row so every cell keeps its width
+            for (size_t k = (i + 1) % (size_t)cols; k < (size_t)cols; ++k)
+                html << "<td width=\"" << 100 / cols << "%\"></td>\n";
+        if (row_end || last) html << "</tr>\n";
+        if (last) html << "</table>\n";
+    };
+
     /* The width, in px, the block being emitted may occupy: 572 on its own,
      * less inside a row. Anything that writes a `width=` attribute reads this,
      * because Outlook obeys that attribute over any CSS and a 572 image in a
@@ -388,8 +420,9 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             }
             if (limit > 0 && (int)hits.size() > limit) hits.resize((size_t)limit);
 
-            for (const maiz::SceneNode* ev : hits) {
-                const maiz::SceneNode& dn = *ev;
+            const int ecols = grid_cols(*n);
+            for (size_t ei = 0; ei < hits.size(); ++ei) {
+                const maiz::SceneNode& dn = *hits[ei];
                 /* Four things here were declared fields the render simply did
                  * not honour until a person read a real issue and said it was
                  * a wall of text: the times on a DATED event, the event's own
@@ -401,6 +434,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 std::string bar = field_value(dn, "color");
                 if (bar.size() < 4 || bar[0] != '#') bar = acc;
 
+                grid_cell_open(ei, ecols);
                 html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
                         "cellspacing=\"0\" style=\"margin:10px 0;background:#f7f9fc;"
                         "border-left:4px solid " << bar
@@ -426,6 +460,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                     if (!sum.empty()) html << "<br>" << prose(sum);
                 }
                 html << "</td></tr></table>\n";
+                grid_cell_close(ei, hits.size(), ecols);
             }
             if (hits.empty())
                 html << "<p style=\"color:#999\">"
@@ -518,8 +553,9 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                     !allo_web_hidden(dn.name))
                     jobs.push_back(&dn);
             if (jlimit > 0 && (int)jobs.size() > jlimit) jobs.resize((size_t)jlimit);
-            for (const maiz::SceneNode* jp : jobs) {
-                const maiz::SceneNode& dn = *jp;
+            const int jcols = jdetail == "line" ? 1 : grid_cols(*n);
+            for (size_t ji = 0; ji < jobs.size(); ++ji) {
+                const maiz::SceneNode& dn = *jobs[ji];
                 if (jdetail == "line") {
                     /* THE TIGHTEST FORM (2026-09-13). The author: *"the compact
                      * version of job listings in the newsletter is still really
@@ -551,6 +587,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                             "line-height:1.45\">" << jl << "</p>\n";
                     continue;
                 }
+                grid_cell_open(ji, jcols);
                 html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
                         "cellspacing=\"0\" style=\"margin:10px 0;background:#f6f9f4;"
                         "border-left:4px solid #5d7d3b\">"
@@ -589,6 +626,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                     if (!desc.empty()) html << "<br>" << prose(desc);
                 }
                 html << "</td></tr></table>\n";
+                grid_cell_close(ji, jobs.size(), jcols);
             }
             if (jobs.empty())
                 html << "<p style=\"color:#999\">"

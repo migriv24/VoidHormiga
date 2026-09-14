@@ -443,6 +443,15 @@ inline std::string clip(const std::string& s, size_t n) {
  * text in the client a community organization's audience is most likely to be
  * using. The table is the standard workaround and it is why this is a helper
  * rather than three lines at the call site. */
+/* `columns` on a card grid (event_grid, job_grid), as the website's class.
+ * Blank keeps the auto-fill grid the site always drew; 1-3 fixes the count, and a
+ * phone still stacks (style.css, `.cards.cols-N`). The newsletter reads the same
+ * field and lays the cards out as table cells (render/email.cpp). */
+inline std::string grid_cols_class(const maiz::SceneNode& n) {
+    const int c = hormiga::doc_field_int(n, "columns", 0);
+    return (c >= 1 && c <= 3) ? " cols-" + std::to_string(c) : std::string();
+}
+
 inline std::string email_button(const std::string& href, const std::string& label,
                                 const std::string& accent) {
     return "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" "

@@ -569,6 +569,18 @@ The wall of text was mostly one block rendering every match in full:
     set ev detail 'full'       # the whole summary — for ONE featured item
     set ev limit '4'           # at most four
     set ev sort 'date'         # default; also 'date-desc' or 'name'
+    set ev columns '2'         # cards side by side, 1-3 (2026-09-14)
+
+**`columns` works on `event_grid` and `job_grid`, in both the newsletter and
+the website.**
+
+- **Blank** means what each always drew: one card per row in email, and an
+  automatic grid on the site.
+- **`2` suits `compact` or `title` cards.** `3` only suits short titles: an
+  email is 620px wide, so each card gets about 190px.
+- **A job grid with `detail line` ignores `columns` in the newsletter**, since
+  one line per posting is the point of that form.
+- **A phone always stacks** the website's cards.
 
 ### Say "everything except"
 

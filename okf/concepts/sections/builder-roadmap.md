@@ -456,6 +456,26 @@ cannot witness.
   bounded cache that evicts, and a live preview of what a query-backed block
   would show. That is its own system, and it is planned as one.
 
+**Follow-up, 2026-09-14: card grids, side by side.** The author: *"event grids
+should be able to be side by side as well, like actual grids, not just a list"*,
+and the same for job openings.
+
+- ✅ `event_grid` and `job_grid` take `columns` (1–3).
+  - **Newsletter:** the cards become cells of one presentation table, N to a
+    row, with the last row padded so each cell keeps its width. A table is the
+    one side-by-side layout every mail client honours.
+  - **Website:** `.cards` is already a CSS grid. `cols-N` fixes the count, and
+    a phone still stacks.
+  - **Blank keeps what each renderer always drew** (one card per row in email,
+    auto-fill on the web), so no existing issue moved. The golden render
+    re-captured only `style.css`.
+  - **`detail: line` stays a list** in email, because one line per posting is
+    the point of it.
+  - **Three is the ceiling:** a 620px email split four ways leaves cards about
+    140px wide.
+  - **Verified by rendering** 5 events in 2 columns and 4 jobs in 3 columns: rows
+    and padding cells counted, every tag balanced.
+
 # Two builders, kept distinct
 
 Newsletter = HTML components, vertical, email-safe, single document, no

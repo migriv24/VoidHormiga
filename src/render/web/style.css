@@ -708,3 +708,11 @@ nav a.langswitch{margin-left:8px;border:1px solid var(--line);font-weight:600}
 .prose-ico{width:1.05em;height:1.05em;vertical-align:-.15em;margin-right:.4em;
   color:var(--accent,currentColor)}
 .prose-icon{margin:1.2em 0 .2em;font-size:1.25rem}
+
+/* ── event_grid / job_grid `columns` (2026-09-14) ───────────────────────────
+   Blank keeps the auto-fill grid; 1-3 fixes the cards per row. A phone stacks
+   regardless, because three columns of a 390px screen are unreadable. */
+.cards.cols-1{grid-template-columns:minmax(0,1fr)}
+.cards.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cards.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:640px){.cards.cols-2,.cards.cols-3{grid-template-columns:minmax(0,1fr)}}
