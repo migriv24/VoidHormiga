@@ -1,4 +1,4 @@
-/* headless_main.cpp — Void Hormiga with no window attached.
+/* main/headless.cpp — Void Hormiga with no window attached.
  *
  * THE USE CASE, in the author's words (2026-08-18): give an agent a folder of
  * emails and fliers and say *"from this, update the database and create a new
@@ -18,7 +18,7 @@
  * ── the one thing that is NOT ~40 lines, and why ─────────────────────────────
  *
  * `render` and `render-site` — the newsletter and the website — are the half of
- * the ask that is not dispatcher commands. They live in `section_web.cpp` as
+ * the ask that is not dispatcher commands. They live in `render/site.cpp` as
  * `HormigaApp::` methods, and `HormigaApp` owns its own `Core`, while a headless
  * `Session` owns the one that matters.
  *
@@ -30,7 +30,7 @@
  * is the same function over the same state.
  *
  * That `HormigaApp` never opens a window and never touches ImGui — measured
- * 2026-08-18: `section_web.cpp` contains **zero** ImGui references, the whole
+ * 2026-08-18: `section_web.cpp` (now `render/site.cpp`) contains **zero** ImGui references, the whole
  * Output domain having been view-free since it was written. The binary does
  * link the view module, because `HormigaApp`'s other methods are in the same
  * struct; it simply never calls them. The honest cost is binary size, and the
@@ -1081,6 +1081,20 @@ maiz::HostApp build_app() {
          "past`, `date:today`, `date:future`, `date:recurring` and "
          "`date:undated`, which `ls --tag` cannot. Args: <expression>.",
          true, "reads the data mantle and prints what matched; changes nothing"},
+        {"import-ics",
+         "Read an iCalendar file or feed into dated runes. Args: <path|url> "
+         "[label] [apply]. Without `apply` it REPORTS what would be created "
+         "and updated, and writes nothing.",
+         true,
+         "without `apply`, nothing is written (a URL is fetched and read). WITH "
+         "`apply` it adds and updates events in the data mantle as one undoable "
+         "batch"},
+        {"export-calendar-ics",
+         "Write the calendar as an .ics file under exports/, for any other "
+         "calendar to import or subscribe to.",
+         true,
+         "writes one file beside the database; Allomone decides which events "
+         "are included, and nothing is sent anywhere"},
         {"save", "Mirror the state document into the SQLite database.",
          true, "overwrites the SQLite mirror beside the document"},
         {"deploy-site",
@@ -1107,7 +1121,7 @@ maiz::HostApp build_app() {
  *
  * Defined in the HEADLESS unit rather than here, because the boot sequence
  * needs `seed.hpp`'s glyph registration and `seed.hpp` is deliberately off
- * `section_web.cpp`'s include path — it drags in the whole of nlohmann/json,
+ * `render/site.cpp`'s include path — it drags in the whole of nlohmann/json,
  * which is what put the link over PE's 16-bit section ceiling in the first
  * place (see app_internal.hpp). Declared in app.hpp; the GUI never calls it.
  *

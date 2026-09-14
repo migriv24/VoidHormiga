@@ -3271,3 +3271,90 @@ layering and budgets pass (`email.cpp` 877/1000).
 
 The GUI executable did not re-link, because the app was running. The CLI and
 every test did.
+
+# An alignment scan of the code and the OKF (2026-09-14)
+
+The author asked for *"a scan of the code and okf, making sure that everything
+is aligned properly with each other. making sure that the code is well written
+and such."* The six linters were already green, which is the point worth
+recording: **every drift below was invisible to them.** They check that links
+resolve and fields are rendered, not that a sentence is still true.
+
+## Where the OKF had drifted from the code
+
+- **A file layout that no longer exists.** `workspace-and-sections.md` still
+  drew the flat `src/section_*.cpp` layout of 2026-08-17. The real one is the
+  folders `app/ ui/ render/ domain/ main/`, and the page now shows that.
+- **Paths from before the folder move**, in five concept pages (`civic.hpp`,
+  `map_actions.hpp`, `rescue_import.hpp`, `miga.*`, `vault.*`). Also stale were
+  the headers of seven source files, which still opened with their old names
+  (`section_data.cpp`, `headless_main.cpp`, ...), and fourteen comments that
+  cited those names as where code lives now.
+- **A block inventory naming four blocks that never shipped** (`flyer_grid`,
+  `presenter_cta`, `attendee_list`, `meeting_schedule`). `section_header` was
+  mentioned nowhere in the OKF. `blocks-and-domains.md` now carries the twenty
+  that exist, and AGENT-GUIDE a table of each with its main fields.
+- **Three question numbers used twice.** Q40, Q41 and Q42 each named two
+  different questions. Every reference in the OKF and the code meant the later
+  set (archive, NFC, Void GIS), so the unreferenced 2026-08-19 set became
+  **Q70 inbox, Q71 identity, Q72 decided submissions**.
+- **The index's Status** still said 0.1.1 was owed; it shipped 2026-09-10. The
+  roadmap's own summary said A–F with a phase G open.
+- **`verbs.md`** described a `deploy <site|export> <holiday>` that was never
+  built. It did not list eight effects that were: `pack-database`,
+  `translation-report`, `check-host`, `check-store`, `push-store`,
+  `publish-index`, `deploy-site`, `rollback-site`. The calendar's
+  `import-ics` / `export-calendar-ics` were missing from both it and the CLI's
+  effect briefing, so an agent was never told they exist.
+- **Q49** (should a bare run refuse without a database?) gained the evidence of
+  2026-09-13: the trap recurred through the GUI, where the CLI's note cannot be
+  seen.
+
+## Where the code disagreed with itself
+
+- **An error message contradicted the line above it.** A missing `token_file`
+  told the operator a relative path resolves against *the folder the app was
+  started in*; the code resolves it against the database's folder.
+- **`quick::slug`'s comment said it matches the CSV import's slug.** It does
+  not (no `_`, a length cap), and the difference is deliberate, because it also
+  names iCalendar imports. The comment now says so rather than the function
+  changing.
+- **Niche Tools' "rewrite Antfarm paths" was clickable before Apply.** Pressed
+  then, it wrote to nodes the merge was about to replace wholesale. It is now
+  disabled until the merge is applied.
+
+## Compiler warnings
+
+A rebuild of every unit under `-Wall -Wextra` reported warnings in our own code
+for the first time anyone had looked. Nearly all were `/*` inside a block
+comment (glob paths like `site/index/*.json`). Two were one-line
+`if (x) continue; y;` in the frozen Allomone dialect: correct, but exactly the
+shape that hides a bug. The rest were an unused parameter and a redefined
+`NOMINMAX`. **Our code now builds with zero warnings;** the 48 left are inside
+vendored `stb_image_write.h`.
+
+## Golden re-captured, and why that is safe
+
+One comment inside `src/render/web/app.js` named `section_web.cpp`, and that
+file ships inside every site. Correcting it moved `site/app.js`'s hash and
+nothing else, so the golden was re-captured on that basis.
+
+## Found and deliberately left
+
+- **Nine effects exist only in the CLI**: `pack-database`, `backup-database`,
+  `restore-database`, `translation-report`, `check-host`, `check-store`,
+  `push-store`, `publish-index`, `read-flier`. Typed into the app's own console,
+  they do nothing. `app.cpp` says of sync that *"a verb that only one front-end
+  can call is a broken surface."* Closing it means moving their bodies from
+  `main/headless.cpp` into the app layer, as was done for publishing on
+  2026-09-02, and is its own piece of work.
+- **Answered questions still under Open** (Q29, Q30a, Q31, Q32, Q38, Q50, Q13,
+  Q16). Q50 says it was kept there on purpose, so this looks like a practice
+  rather than neglect, and was not tidied.
+- **Two `add_days`** (`ical.hpp` on strings through `mktime`, `rrule.hpp` on a
+  `Date` struct). Both are correct and each suits its caller's representation.
+
+## Verification
+
+Build clean; 38/38 tests (`reduce_conformance` excluded, as before); all six
+linters pass; 98 files within budget.

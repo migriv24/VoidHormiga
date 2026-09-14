@@ -180,7 +180,7 @@ inline RescueImport compile_rescue_import(
 }
 
 /* compile_json_store_import — the SECOND rescue pass, over json_store's
- * semi-structured payloads (graph/images/jobs/*_meta). Phase one
+ * semi-structured payloads (graph/images/jobs/<name>_meta). Phase one
  * (compile_rescue_import) landed the clean tables; this landed whatever the
  * old app kept beside them: freeform connections, the real image library,
  * the jobs board, and per-row tags. Same discipline: one JSON read, commands

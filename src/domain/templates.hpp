@@ -7,7 +7,7 @@
  * the current document and replays the transcript — one undoable batch. This
  * is the whole philosophy again: a layout is a replayable command sequence,
  * not a binary blob. Built-ins live here as data; user "Save as template"
- * writes the same shape to templates/*.json.
+ * writes the same shape to templates/<name>.json.
  *
  * The NEWSLETTER template is a single vertical document (email physics). The
  * WEBSITE template is deliberately richer: multiple pages, horizontal bands,

@@ -748,6 +748,17 @@ fold into concepts and clear from here.
   alternatives in the same breath — an error with no way forward is the lazy
   half of Q47 wearing a different hat.
 
+  **New evidence, 2026-09-13: it happened again, through the GUI.**
+  `VoidHormiga.bat` launched the desktop app with no database named, the app
+  opened `demo-org.json` in the source tree, and an organization's live edits
+  and a deploy record went there. The announcement did not help, because the
+  desktop app has no console for a note to appear in. What was built in response
+  stops short of refusing: a red menu-bar warning whenever the open database is
+  inside the source tree, a launcher that passes a path through, and Niche Tools
+  to merge a stray copy back. **The lean may want revisiting for the desktop app
+  specifically** — the "first run has to start somewhere" argument is about the
+  CLI, while the GUI already has File > Open database to offer instead.
+
 - **Q50 — three upstream defects in the relation verbs. ANSWERED AND SHIPPED
   2026-09-02 (Void Core 0.2.13).** Kept here rather than moved to Decided
   because of what the closing taught.
@@ -1119,8 +1130,9 @@ fold into concepts and clear from here.
   outreach network that outlives its volunteers, an account in one person's name
   is a single point of failure that no amount of disposability fixes.
 
-- **Q40 — the inbox surface: its own section, or part of Data?** (opened
-  2026-08-19.) Visitor submissions need somewhere a person reviews them. **Lean:
+- **Q70 — the inbox surface: its own section, or part of Data?** (opened
+  2026-08-19 as a second "Q40"; renumbered 2026-09-14, because every reference
+  to Q40 in the OKF and the code means the `archive` question above.) Visitor submissions need somewhere a person reviews them. **Lean:
   a section of the Data tab, not a new tab** — a submission is a proposed change
   to the org's records and belongs beside them, and a fifth top-level tab for
   something that is empty most weeks is a tab people stop opening. What it needs
@@ -1129,7 +1141,8 @@ fold into concepts and clear from here.
   one batch. Deliberately unbuilt until a real submission exists to look at —
   the headless path works today with no new code.
 
-- **Q41 — how does a block render against an identity?** (opened 2026-08-19.)
+- **Q71 — how does a block render against an identity?** (opened 2026-08-19 as a
+  second "Q41"; renumbered 2026-09-14 — Q41 is the NFC question.)
   A profile page shows *the signed-in visitor's own* contact; a members area
   shows different content to different people. Every block today renders against
   a **query**, which is a fact about the data. This is a fact about the
@@ -1140,8 +1153,9 @@ fold into concepts and clear from here.
   inside the document, which is the one place a reader does not belong. Needs a
   real signed-in visitor to design against.
 
-- **Q42 — what happens to a submission after it is decided?** (opened
-  2026-08-19.) An approved submission's transcript has been dispatched; the rune
+- **Q72 — what happens to a submission after it is decided?** (opened
+  2026-08-19 as a second "Q42"; renumbered 2026-09-14 — Q42 is the Void GIS
+  question.) An approved submission's transcript has been dispatched; the rune
   is now a record of a decision. **Lean: keep it, forever, with `state` and
   `decided`.** It is the only evidence of *who asked for what and who agreed* —
   the command log is session-scoped and cannot answer it later. The cost is a
@@ -1220,7 +1234,7 @@ fold into concepts and clear from here.
 
   The lesson that survives is the tooling one: **the gcc driver swallows `ld`'s
   stderr here**, so every link failure looks identical and says nothing. Run
-  `ld.exe` directly to see the real errors. See `src/app_internal.hpp`.
+  `ld.exe` directly to see the real errors. See `src/app/app_internal.hpp`.
 
 - **Q31 — valid time vs transaction time — ANSWERED 2026-08-17. The author left
   the call to me, and the answer is that there are THREE axes, not two.**

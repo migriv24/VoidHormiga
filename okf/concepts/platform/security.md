@@ -30,7 +30,7 @@ agreement).
 - OS keychain integration for convenience unlock is an open question, not an
   assumption ([developer questions](/developer_questions.md)).
 
-**Built (2026-07-20): the credential vault** — `src/vault.{hpp,cpp}` +
+**Built (2026-07-20): the credential vault** — `src/platform/vault.{hpp,cpp}` +
 `tests/vault_smoke.cpp`, libsodium vendored from source. The `.miga` v2 file
 is a small JSON envelope: `{magic:"MIGA", version:2, kdf:"argon2id", ops,
 mem, salt, nonce, ct}` — everything to re-derive the key EXCEPT the

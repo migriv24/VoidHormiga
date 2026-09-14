@@ -1,7 +1,7 @@
 ---
 type: Roadmap
 title: Roadmap
-description: "Phases A–F (founding → skeleton → data spine → builder → publish → collaborate), each gated by an exit test, not a calendar; the predecessor app keeps shipping until phase D exits."
+description: "Phases A–G (founding → skeleton → data spine → builder → publish → collaborate → ship), each gated by an exit test, not a calendar; the predecessor app keeps shipping until phase D exits."
 tags: [status:current, audience:dev, confidence:asserted, roadmap]
 timestamp: 2026-07-16T00:00:00Z
 ---

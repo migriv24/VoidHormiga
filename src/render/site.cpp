@@ -1,4 +1,4 @@
-/* section_web.cpp — the OUTPUT domain: the newsletter preview and the static
+/* render/site.cpp — the OUTPUT domain: the newsletter preview and the static
  * site. Split out of app.cpp 2026-08-17 (Q30a); see app_internal.hpp.
  *
  * This is the section where CLAUDE.md rule 6 is enforced in code: an

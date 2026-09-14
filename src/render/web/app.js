@@ -265,7 +265,7 @@
       '-'+String(d.getDate()).padStart(2,'0');}
     function on(d){var k=ymd(d);return ev.filter(function(e){return e.d===k;})
       .sort(function(a,b){return (a.s||'').localeCompare(b.s||'');});}
-    /* The renderer computed this (see gcal_url in section_web.cpp). The version
+    /* The renderer computed this (see gcal_url in render/site.cpp). The version
        that lived here parsed the time itself and got it wrong for every
        12-hour value in the database — which is what a flier prints, so that was
        every event. One parser, host-side, where the .ics writer's already is. */

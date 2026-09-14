@@ -1,5 +1,6 @@
-/* section_data.cpp — the Data section: kind sidebar, rune list, detail form,
- * the typed person form, the tag recommender, Data Tools and Notes. Split out
+/* ui/data.cpp — the Data section: kind sidebar, rune list, detail form,
+ * the typed person form, Data Tools and Notes (the tag editor and recommender
+ * moved to ui/tags.cpp on 2026-09-13). Split out
  * of app.cpp 2026-08-17 (Q30a); see app_internal.hpp.
  *
  * The management UI, and the place the widget protocol (voidmaiz/widget.hpp) is

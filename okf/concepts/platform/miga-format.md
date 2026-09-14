@@ -240,8 +240,8 @@ encrypt the container. So Hormiga **keeps its vault** — it is doing the right 
 clean so Palabra can slide under it. The seam is the **`HormigaApp` database
 methods** (`new_database` / `save_database` / `save_database_as` /
 `open_database`) — the app never reaches into bundle internals; today they call
-`hormiga::miga::pack`/`open` (`src/miga.{hpp,cpp}`), tomorrow they call Palabra.
-`src/miga.*` is the swappable implementation, not an interface other code binds
+`hormiga::miga::pack`/`open` (`src/platform/miga.{hpp,cpp}`), tomorrow they call Palabra.
+`src/platform/miga.*` is the swappable implementation, not an interface other code binds
 to. When Palabra lands, reimplement those four method bodies; nothing else moves.
 
 # A possible future SPLIT (author 2026-07-24 — noted, not now)

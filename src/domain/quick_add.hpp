@@ -143,9 +143,12 @@ inline bool parse(const std::string& line, Parsed& out) {
     return true;
 }
 
-/* The rune name a title becomes: lowercase, alphanumerics, single hyphens.
- * Matches how the CSV/rescue imports slugified titles into names (Q2), so the
- * calendar mints names that look like the rest of the database's. */
+/* The rune name a title becomes: lowercase, alphanumerics, single hyphens,
+ * capped. The same shape as the CSV import's `detail::slug` (Q2) so calendar
+ * names look like the rest of the database's, but NOT the same function: that
+ * one keeps `_` and has no cap, and this one is also what the iCalendar importer
+ * mints names with, where a 200-character SUMMARY would otherwise become a
+ * 200-character rune name. */
 inline std::string slug(const std::string& title, size_t cap = 48) {
     std::string s;
     for (unsigned char u : title) {

@@ -1,4 +1,4 @@
-/* main_desktop.cpp — the desktop shell: GLFW window + OpenGL 3 + ImGui
+/* main/desktop.cpp — the desktop shell: GLFW window + OpenGL 3 + ImGui
  * backends around HormigaApp. Platform glue only; the application lives in
  * app.cpp (the app/platform split, DESIGN.md §9). */
 #include "app/app.hpp"
@@ -35,7 +35,9 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX // the toolchain may already define it
 #define NOMINMAX
+#endif
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>

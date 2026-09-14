@@ -225,7 +225,7 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
      * okf/concepts/platform/data-planes.md phases B and E both bottom out here, and so
      * does `hol_uploads` later. Three different jobs, one mechanism:
      *
-     *   - the published INDEX (site/index/*.json) — a few KB, pushed on its own,
+     *   - the published INDEX (site/index/<name>.json) — a few KB, pushed on its own,
      *     so refreshing the directory costs that file rather than a site deploy;
      *   - the encrypted BACKUP — an opaque blob the store cannot read;
      *   - a visitor's UPLOAD, later, in a DIFFERENT bucket, because the org's

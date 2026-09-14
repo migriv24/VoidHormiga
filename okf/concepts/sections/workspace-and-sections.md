@@ -349,18 +349,31 @@ what they are for.
 # The file layout (since 2026-08-17)
 
 The sections are now visible in the file listing, which they were not for the
-first month:
+first month. The flat `src/section_*.cpp` layout of 2026-08-17 became folders
+later that month; `tools/check_layering.py` enforces which folder may include
+which (`domain/` and `render/` never include ImGui):
 
-    src/app.cpp            the SHELL — lifecycle, host seams, projection,
-                           persistence, the console, the frame
-    src/section_data.cpp   sidebar → list → detail, the person form, Notes
-    src/section_web.cpp    the newsletter preview and the static site
-    src/section_allomone.cpp  the rules engine's host side (+ the frozen dialect)
-    src/section_builder.cpp   palette | block canvas | inspector | preview
-    src/section_map.cpp    Territory: mercator, tiles, position channels
-    src/section_calendar.cpp  dated runes on a time grid
-    src/app_shared.cpp     the helpers more than one unit needs
-    src/app_internal.hpp   the shared include set, structs and declarations
+    src/app/app.cpp         the SHELL — lifecycle, host seams, projection,
+                            persistence, the console, the frame
+    src/app/app_shared.cpp  the helpers more than one unit needs
+    src/app/app_internal.hpp  the shared include set, structs and declarations
+    src/app/                also: paths, sync_ops, translate, verbs
+    src/ui/data.cpp         sidebar → list → detail, the person form, Notes
+    src/ui/tags.cpp         the tag editor and recommender (Data, Allomone, Calendar)
+    src/ui/builder.cpp      palette | block canvas | inspector | preview
+                            (+ builder_ext.cpp, documents.cpp, style.cpp)
+    src/ui/allomone.cpp     the rules engine's host side (+ the frozen dialect)
+    src/ui/map.cpp          Territory: mercator, tiles, position channels
+    src/ui/calendar.cpp     dated runes on a time grid
+                            (+ calendar_toolbar.cpp, calendar_export.cpp)
+    src/ui/                 also: settings, updates, widgets, niche_tools
+    src/render/             email.cpp and site.cpp — the two output domains —
+                            and the helpers both share (text.hpp, theme, icons)
+    src/domain/             glyphs, parsers and pure logic, no GUI
+    src/main/               desktop.cpp (the window) and headless.cpp (the CLI)
+
+The old single-file newsletter preview (`section_web.cpp`) is gone: the
+renderers are `src/render/`, and the preview is drawn by the Builder.
 
 **This is a file boundary, not an architectural one, and the distinction is the
 point.** Every section is still a set of `HormigaApp::` methods declared in

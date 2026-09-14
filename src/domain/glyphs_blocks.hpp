@@ -306,7 +306,7 @@ inline void register_block_glyphs(maiz::Core& core) {
      * not sufficient — every rune it publishes must also carry
      * `clearance:public`, and `clearance:contact` is a second, independent
      * annotation that releases an email or a phone. The rule is in the renderer
-     * (section_web.cpp) because that is the seam where data leaves, which is
+     * (render/site.cpp) because that is the seam where data leaves, which is
      * the only place a privacy rule is worth enforcing; see security.md §3 and
      * web-platform.md §4.
      *

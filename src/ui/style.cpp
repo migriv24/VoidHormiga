@@ -1,6 +1,6 @@
 /* ui/style.cpp — the Style tab: the theme, as a view of CONFIG.
  *
- * Lived in `section_map.cpp` until 2026-08-20, which is the clearest single
+ * Lived in `section_map.cpp` (now `ui/map.cpp`) until 2026-08-20, which is the clearest single
  * piece of evidence for this restructure: the theme editor sat inside the map
  * file for months, and when it was rewritten this session it was rewritten
  * THERE, because that is where it already was. Files grouped by which tab they

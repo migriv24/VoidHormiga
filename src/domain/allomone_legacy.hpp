@@ -698,7 +698,8 @@ struct Interp {
             Value v = arg(0); std::vector<Value> out2; std::map<std::string, bool> seen;
             if (v.t == Value::RuneRef && v.rn)
                 for (auto& lk : v.rn->links) {
-                    if (seen[lk.second]) continue; seen[lk.second] = true;
+                    if (seen[lk.second]) continue;
+                    seen[lk.second] = true;
                     auto it = by_name.find(lk.second); if (it != by_name.end()) out2.push_back(Value::R(it->second));
                 }
             out = Value::L(std::move(out2)); return true;
@@ -727,7 +728,8 @@ struct Interp {
                     const Rune* r = stack.back(); stack.pop_back();
                     comp.push_back(Value::R(r));
                     for (auto& lk : r->links) {
-                        if (seen[lk.second]) continue; seen[lk.second] = true;
+                        if (seen[lk.second]) continue;
+                        seen[lk.second] = true;
                         auto it = by_name.find(lk.second); if (it != by_name.end()) stack.push_back(it->second);
                     }
                 }

@@ -504,6 +504,37 @@ Four things that matter:
 - **Rows may be sparse and need not be contiguous**; leave gaps if you want a
   person to slot something in later.
 
+### Every block there is
+
+`rune new <glyph> <name>` in a document mantle. Fields are listed without their
+`_es` twins; `--describe` prints the full declaration of each, and is the
+authority if this table and the binary ever disagree.
+
+| glyph | what it is | its main fields |
+|---|---|---|
+| `hero` | the masthead | `title_en`, `subtitle_en`, `image`, `portrait`, `image_filter`, `image_dim` |
+| `section_header` | a heading between blocks | `title_en` |
+| `narrative` | prose, line breaks kept | `heading_en`, `text_en`, `icon` |
+| `image_text` | an image beside words | `image`, `side`, `heading_en`, `text_en`, `alt_en`, `icon` |
+| `event_grid` | events chosen by a query | `query`, `detail`, `columns`, `limit`, `sort`, `search` |
+| `event_feature` | one event, large, with its image | `event`, `image`, `height`, `cta_en`, `cta_link` |
+| `event_flier` | one event and its flier | `event`, `flier`, `display` |
+| `job_grid` | job postings chosen by a query | `query`, `detail`, `columns`, `limit`, `sort` |
+| `image_grid` | images chosen by a query | `query`, `columns`, `display`, `fit`, `limit` |
+| `directory` | people or organizations, clearance-gated | `query`, `kind`, `display`, `limit`, `live` |
+| `calendar_embed` | a month of events | `query`, `mode` |
+| `map_embed` | a map view | `view` |
+| `video` | a pasted video link | `url`, `poster`, `ratio` |
+| `audio` | a sound file | `src`, `title_en`, `artist`, `duration`, `cover` |
+| `download` | a file a visitor keeps | `file`, `label_en`, `download_style`, `platform` |
+| `link` | a link or button | `label_en`, `target`, `link_style`, `platform` |
+| `quote` | a pull quote | `text_en`, `author` |
+| `stat` | a number with a label | `number`, `label_en` |
+| `divider` | a rule between blocks | `divider_style`, `colors`, `bar_height` |
+| `footer` | the closing line | `text_en` |
+
+Every block also takes `row`, `col` and `span`, and most take `caption_en`.
+
 ### If you meet an older document
 
 Some documents predate the grid and instead chain blocks with

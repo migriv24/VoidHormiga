@@ -81,13 +81,42 @@ the `.miga` registry) — the infrastructure side.
   operator's own, named once in `config set tools.image_text "<cmd with
   {path}>"`, the same decision `deploy_cmd` makes. Absent by default.
 
+## The calendar (built 2026-09-11 — [calendar roadmap](/concepts/sections/calendar-roadmap.md))
+
+- `effect import-ics <path|url> [apply]` — read an iCalendar file or feed.
+  Without `apply` it previews what would be added or updated; with it, one
+  replayable batch.
+- `effect export-calendar-ics` — the calendar as an `.ics` under `exports/`,
+  for any other calendar to subscribe to or import.
+- `effect export-calendar` — the current calendar view as a PNG (GUI only).
+
 ## Publish (phase E)
 
-- `effect deploy <site|export> <holiday>` — folder copy, GitHub Pages,
-  self-hosted static host (Q10).
+What is built (2026-09-14). Every one needs `--allow-effects=<op>` from an
+agent, and the CLI prints each one's consequence before it runs:
+
+- `effect render [lang] <doc>` / `effect render-site [lang] <doc>` — the
+  newsletter under `exports/`, the website under `site/`. A bare
+  `render-site` builds every language.
+- `effect check-host [<host-node>]` — the smallest real reads a deploy performs;
+  publishes nothing.
+- `effect deploy-site` — upload `site/` through a `hol_static_host` or
+  `hol_github` node, recorded as a `deployment` rune. **Publishes.**
+- `effect rollback-site <host-node> <deployment-id>` — ask the host to serve a
+  past deployment again. **Changes the live site.**
+- `effect publish-index` — the clearance-gated directory as
+  `site/index/directory.json`, readable by a live site without a redeploy.
+- `effect check-store` / `effect push-store <index|backup> [<store-node>]` — an
+  S3-compatible bucket: check, then send the index or the encrypted backup.
+- `effect translation-report [<lang>]` — what exists in each language, and a
+  replayable script under `exports/` that closes the gap.
+- `update --check` / `update` — the update client
+  ([distribution](/concepts/platform/distribution.md)); nothing is signed yet.
+
+Still planned, not built:
+
 - `effect send <issue> <holiday>` — email dispatch through Courier-class
   holidays, with the Q9 image resolver chosen at this seam.
-- `update check` / `update apply` — the signed self-updater; visible, logged.
 
 ## The colony & the farm (phases C–F)
 
@@ -116,7 +145,8 @@ thing.
 > wipe|export|logout` family was proposed 2026-08-27 and declined: `colony` is
 > already this OKF's noun for the org/`.miga` lifecycle (above), and the built
 > effects are already `new-database`, `open-database`, `save-database`,
-> `backup-database`, `restore-database`. A second vocabulary for the same nouns
+> `pack-database` (an unencrypted portable `.miga`), `backup-database`,
+> `restore-database`. A second vocabulary for the same nouns
 > is how a CLI becomes two CLIs. `db export` in particular duplicates
 > `save-database as` plus `backup-database` outright.
 >

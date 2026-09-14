@@ -1,7 +1,7 @@
 /* app.hpp — the Hormiga application, platform-free (phase B skeleton).
  *
  * Everything the app IS lives here: the core, the projection, the workspace,
- * the command bar. The platform shells (main_desktop.cpp: GLFW) own only the
+ * the command bar. The platform shells (main/desktop.cpp: GLFW) own only the
  * window, the GL context, and the input source — they call frame() once per
  * ImGui frame and provide the seams below. The split costs nothing now and
  * keeps the door open (DESIGN.md §9; the pattern InteractionCombinators
@@ -203,7 +203,7 @@ struct HormigaApp {
      * written ("" on failure).
      *
      * WHY IT LIVES ON THE APP. The Output domain is `HormigaApp::` methods and
-     * `section_web.cpp` is view-free — measured 2026-08-18, zero ImGui
+     * `section_web.cpp` (now `render/site.cpp`) is view-free — measured 2026-08-18, zero ImGui
      * references — so the headless front-end wants exactly these functions and
      * nothing else in the struct. Handing it the state document rather than a
      * `Core&` keeps `core` a value member (the GUI reassigns it in three

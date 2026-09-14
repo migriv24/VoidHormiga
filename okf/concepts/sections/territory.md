@@ -422,7 +422,7 @@ useful mail. Recorded as the north star, not the first step.
   gain geo columns; the Geo holiday (geocoding, opt-in) lands in the Antfarm.
   **T0 STARTED (2026-07-21, riding the canvas-actions reply):** the `geo`
   facet lives on contact/organization/event ("lat,lon", not assumed Earth);
-  **`place`/`move` are ActionDescriptors** (`src/map_actions.hpp`) on the
+  **`place`/`move` are ActionDescriptors** (`src/domain/map_actions.hpp`) on the
   shipped `maiz::ActionRegistry` — the command bar's `map place|move …` verb
   front-end calls the same compile the canvas gestures will (one definition,
   dispatched as ONE `batch` per Core's ruling), `map actions` prints the

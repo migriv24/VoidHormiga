@@ -17,7 +17,7 @@
  *
  * So there are two artifacts, named, and each maps to a fixed source:
  *
- *   index   -> site/index/*        the published projection. Cleared the
+ *   index   -> site/index/<name>   the published projection. Cleared the
  *                                  clearance seam by construction, because
  *                                  `publish_index` is what wrote it.
  *   backup  -> <document>.bkp      the encrypted blob. Opaque to the store.

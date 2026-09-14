@@ -1,4 +1,4 @@
-/* section_builder.cpp — the Builder section (palette | block canvas |
+/* ui/builder.cpp — the Builder section (palette | block canvas |
  * inspector | preview) and the Antfarm placeholder. Split out of app.cpp
  * 2026-08-17 (Q30a); see app_internal.hpp.
  *

@@ -6,7 +6,7 @@ tags: [status:current, audience:all, confidence:asserted]
 timestamp: 2026-08-12T00:00:00Z
 ---
 
-**Status: the data model is BUILT and tested** (`src/civic.hpp`,
+**Status: the data model is BUILT and tested** (`src/domain/civic.hpp`,
 `tests/civic_smoke.cpp`, 2026-08-16); the website and the harvester are not.
 Proposed by the author 2026-08-12. Questions [Q29–Q38](/developer_questions.md);
 Q29 answered, step 1 (go look at the real record) and step 2 (hand-build one
@@ -89,6 +89,8 @@ has a genuine fix: split it into `data_section.cpp`, `map_section.cpp`,
 Same binary, same model, four files a person can hold in their head. **If the
 motivation for splitting is "each section deserves focus," file boundaries buy
 that at none of the cost.**
+
+*(Done 2026-08-17 as [Q30a](/developer_questions.md); the section units now live in `src/ui/` - see [workspace & sections](/concepts/sections/workspace-and-sections.md).)*
 
 ## Dataset generation: this one is genuinely a separate application
 
@@ -517,7 +519,7 @@ is real data waiting for it."
 # The model, built (2026-08-16)
 
 Step 2 — *hand-build one meeting and see whether the model survives* — is done,
-as `src/civic.hpp` + `tests/civic_smoke.cpp`. **The council is fictional; the
+as `src/domain/civic.hpp` + `tests/civic_smoke.cpp`. **The council is fictional; the
 document structure is not**, being modelled on the real Springfield PDF. The
 people are invented deliberately: committing fabricated votes attributed to real
 named officials would be exactly the harm this page argues against, in a public
@@ -574,7 +576,7 @@ Deliberately front-loaded with the things that can kill the project. Revised
 against the findings above.
 
 1. ~~Go look at what Springfield publishes.~~ **Done 2026-08-12** — see above.
-2. ~~Hand-build one meeting.~~ **Done 2026-08-16** — `src/civic.hpp` +
+2. ~~Hand-build one meeting.~~ **Done 2026-08-16** — `src/domain/civic.hpp` +
    `tests/civic_smoke.cpp`, see "The model, built" above. Seven design claims
    went in and came out as passing assertions, and four things changed on
    contact.

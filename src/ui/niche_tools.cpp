@@ -383,7 +383,19 @@ void HormigaApp::draw_niche_tools_body() {
                     for (const auto& f : g_merge.fixes)
                         ImGui::BulletText("%s.%s: %s  ->  %s", f.node.c_str(), f.field.c_str(),
                                           f.from.c_str(), f.to.c_str());
-                    if (ImGui::SmallButton("After applying: rewrite them relative to this folder")) {
+                    /* Only once the merge is applied: before that these nodes are
+                     * the OTHER copy's, and a `set` now would either miss (a node
+                     * this database lacks) or be overwritten by Apply's
+                     * replacement of the whole document a moment later. */
+                    ImGui::BeginDisabled(g_merge.applied_version.empty());
+                    const bool rewrite =
+                        ImGui::SmallButton("Rewrite them relative to this folder");
+                    ImGui::EndDisabled();
+                    if (g_merge.applied_version.empty()) {
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("(after Apply)");
+                    }
+                    if (rewrite) {
                         std::vector<std::string> cmds;
                         for (const auto& f : g_merge.fixes)
                             cmds.push_back("set " + f.node + " " + f.field + " " + json_str(f.to));

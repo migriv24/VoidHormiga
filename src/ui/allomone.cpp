@@ -1,4 +1,4 @@
-/* section_allomone.cpp — Allomone: the derive-only rules engine's host side.
+/* ui/allomone.cpp — Allomone: the derive-only rules engine's host side.
  * Split out of app.cpp 2026-08-17 (Q30a); see app_internal.hpp.
  *
  * The LANGUAGE lives upstream in Void Maiz and the DOMAIN vocabulary lives in

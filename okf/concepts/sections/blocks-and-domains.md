@@ -38,9 +38,19 @@ The builder is Void Maiz's `"block"` shape kind used as intended:
 Every placement, reorder, and argument edit is a logged, undoable, replayable
 dispatcher command — an issue's construction is a transcript.
 
-The seed block inventory: `hero`, `event_grid`, `image_grid`/`flyer_grid`,
-`narrative`, `presenter_cta`, `job_grid`, `attendee_list`, `meeting_schedule`,
-`footer`, plus query blocks per data glyph.
+The seed inventory planned at founding (`flyer_grid`, `presenter_cta`,
+`attendee_list`, `meeting_schedule`, ...) is not what shipped. **The blocks that
+exist** (2026-09-14; `src/domain/glyphs_blocks.hpp` is the source, and
+`tools/lint_glyph_fields.py` holds both renderers to every field it declares):
+
+| palette group | blocks |
+|---|---|
+| Content | `hero`, `section_header`, `narrative`, `image_text`, `quote`, `stat`, `divider`, `link`, `download`, `video`, `audio`, `footer` |
+| Data (query- or rune-backed) | `event_grid`, `event_feature`, `event_flier`, `job_grid`, `image_grid`, `directory`, `calendar_embed`, `map_embed` |
+
+Every one renders in both domains. Where email cannot do what the web does
+(a video, an interactive map, a live search box) it degrades to a link or a
+static image rather than disappearing.
 
 # Query-backed blocks and `materialize`
 

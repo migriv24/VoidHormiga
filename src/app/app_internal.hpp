@@ -53,7 +53,7 @@
 #include "domain/temper.hpp"
 #include "gis/source.hpp"   // the map engine: worlds, projections, metrics
 
-#include "stb_image.h" // decls only (impl lives in main_desktop.cpp) — the
+#include "stb_image.h" // decls only (impl lives in main/desktop.cpp) — the
                        // map PNG export decodes cached tiles CPU-side
 
 #include "voidmaiz/face.hpp"
@@ -412,8 +412,8 @@ const char* month_name_now();
 // ── the SITE THEME ──────────────────────────────────────────────────────────
 //
 // Shared because it has two readers with equal claim: the Output domain renders
-// with it (section_web.cpp) and the Builder previews with it
-// (section_builder.cpp). CONFIG is the authoritative source for both — the
+// with it (render/site.cpp) and the Builder previews with it
+// (ui/builder.cpp). CONFIG is the authoritative source for both — the
 // Style tab writes it on every change, and `config set theme.*` from the
 // console or an agent reaches the same place — so the two front-ends cannot
 // drift. That is the one-definition rule applied to a value rather than a verb.

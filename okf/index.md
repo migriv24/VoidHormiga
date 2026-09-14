@@ -85,8 +85,8 @@ with it.
 ## sections — the rooms
 
 - [Workspace & sections](/concepts/sections/workspace-and-sections.md) — the
-  application's shape: Data / Builder / Antfarm / Territory as the four main
-  sections over one core; the panels/windows overhaul; the widget-toolkit story.
+  application's shape: Data / Builder / Antfarm / Territory / Calendar as the
+  main sections over one core; the panels/windows overhaul; the widget-toolkit story.
 - [Builder](/concepts/sections/builder.md) — the Q20 pivot (a data-bound
   Figma): components on a grid, Newsletter (HTML) vs Website (JS), live
   preview, bands, multi-page, authored navigation, a real theme; every gesture
@@ -232,6 +232,21 @@ with it.
   reply 2026-07-21), not the message files.
 
 # Status
+
+**As of 2026-09-14.** **Void Hormiga 0.1.1 shipped on 2026-09-10**, and an
+installed 0.1.0 found it and updated itself through the feed, which is the half
+of phase G's exit test one computer can prove. Since then the work has followed
+the author making real newsletters:
+- the calendar became authorable and exchangeable: quick-add, recurrence, and
+  iCalendar in and out (see the [calendar roadmap](/concepts/sections/calendar-roadmap.md));
+- the newsletter learned rows and card grids (see the
+  [builder roadmap](/concepts/sections/builder-roadmap.md));
+- colon tags and clearance became visible in the GUI;
+- a Niche Tools window now repairs a database copy that landed in the wrong
+  folder.
+
+The paragraphs below are the status as each phase opened, kept for the
+reasoning; the [log](/log.md) is the running record.
 
 **Phase C — the data spine — in progress (since 2026-07-19); phase F started
 early (2026-08-27).** Phase A exited

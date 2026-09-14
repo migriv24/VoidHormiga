@@ -3,7 +3,7 @@
  *
  * ── WHY THIS FILE EXISTS, which is the whole point of it ─────────────────────
  *
- * `deploy_site` was defined in `headless_main.cpp` and nowhere else, and that
+ * `deploy_site` was defined in `headless_main.cpp` (now `main/headless.cpp`) and nowhere else, and that
  * unit is compiled into `voidhormiga-cli` only. So the desktop application —
  * the half a volunteer running an outreach organization actually opens — could
  * not publish a website at all. Not "had no button": had no code. Every publish
@@ -224,9 +224,9 @@ static bool host_token(const maiz::SceneNode& host, const fs::path& base_dir,
     if (!kin) {
         log.push_back({"error", op,
                        "cannot read token file: " + kp.string() +
-                           " (a relative token_file resolves against the folder "
-                           "the app was started in - an absolute path, or "
-                           "token_key, avoids that)"});
+                           " (a relative token_file resolves against the "
+                           "database's own folder - check the file is there, "
+                           "or use token_key)"});
         return false;
     }
     std::stringstream kss;

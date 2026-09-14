@@ -1,4 +1,4 @@
-/* section_calendar.cpp — the Calendar (okf/concepts/sections/calendar.md): dated runes
+/* ui/calendar.cpp — the Calendar (okf/concepts/sections/calendar.md): dated runes
  * on a time grid. Split out of app.cpp 2026-08-17 (Q30a); see app_internal.hpp.
  *
  * The date arithmetic it rests on is shared (app_internal.hpp) because the

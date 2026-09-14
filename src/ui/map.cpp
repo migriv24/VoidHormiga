@@ -1,4 +1,4 @@
-/* section_map.cpp — Territory: web-mercator math, the tile fetcher, the
+/* ui/map.cpp — Territory: web-mercator math, the tile fetcher, the
  * per-view position channels, map creation, and the slippy map itself. Split
  * out of app.cpp 2026-08-17 (Q30a); see app_internal.hpp.
  *
@@ -105,7 +105,7 @@ std::string HormigaApp::view_geo(const maiz::SceneNode& n, const std::string& ch
  * ring, spiralling outward for more). The offset is in SCREEN pixels, so it
  * stays spread at any zoom. Returns entity name → {ref geo, dx, dy}. */
 std::map<std::string, HormigaApp::RefFan> HormigaApp::ref_fans(
-    const maiz::Scene& s, const std::string& ch) const {
+    const maiz::Scene& s, [[maybe_unused]] const std::string& ch) const {
     std::map<std::string, std::pair<double, double>> rp; // refpoint → geo
     for (const auto& n : s.nodes)
         if (n.glyph == "refpoint") {

@@ -90,7 +90,7 @@ re-deploy.
   nothing else" is enforced *at the database* rather than in JavaScript that a
   visitor can read.
 - And there is history: this database was rescued *from* Supabase, and
-  `src/rescue_import.hpp` still exists — so the export path has been walked.
+  `src/domain/rescue_import.hpp` still exists — so the export path has been walked.
 
 The Cloudflare-only alternative (**Pages + Workers + D1 + R2**) is one vendor
 instead of two and cheaper at scale, at the cost of writing the auth flow

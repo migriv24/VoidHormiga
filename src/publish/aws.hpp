@@ -5,7 +5,7 @@
  * okf/concepts/platform/data-planes.md phases B/E and web-platform.md §7 both bottom out
  * in the same operation: **put a small file in a bucket.**
  *
- *   - the published index (`site/index/*.json`, a few KB) — pushed on its own so
+ *   - the published index (`site/index/<name>.json`, a few KB) — pushed on its own so
  *     that updating one contact costs that file, not a site deploy;
  *   - the encrypted backup (`platform/backup.cpp`) — an opaque blob;
  *   - later, `hol_uploads` — a visitor's profile picture, in a DIFFERENT bucket,
