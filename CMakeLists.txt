@@ -240,6 +240,7 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
   src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
+  src/ui/tags.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
@@ -298,7 +299,7 @@ endif()
 target_compile_definitions(voidhormiga PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
   HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
 target_include_directories(voidhormiga PRIVATE src vendor/stb vendor/json vendor/fonts
-  vendor/icons vendor/blake3 ${HORMIGA_GEN})
+  vendor/icons vendor/blake3 vendor/qrcodegen ${HORMIGA_GEN})
 add_dependencies(voidhormiga hormiga_web_assets)
 target_link_libraries(voidhormiga PRIVATE
   voidmaiz_view # canvas, inspector, widgets, faces (brings voidmaiz + imgui)
@@ -367,6 +368,7 @@ add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
   src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
+  src/ui/tags.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
@@ -378,7 +380,7 @@ target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/.
 target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
   HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
 target_include_directories(voidhormiga-cli PRIVATE src vendor/stb vendor/json vendor/fonts
-  vendor/icons vendor/blake3 ${HORMIGA_GEN})
+  vendor/icons vendor/blake3 vendor/qrcodegen ${HORMIGA_GEN})
 
 # ── STAGE VOID CORE'S RUNTIME DLL BESIDE OUR BINARIES ──────────────────────
 #
@@ -714,6 +716,13 @@ add_test(NAME hormiga_calendar_smoke COMMAND hormiga_calendar_smoke)
 add_executable(hormiga_icon_smoke tests/icon_smoke.cpp)
 target_include_directories(hormiga_icon_smoke PRIVATE src vendor/icons)
 add_test(NAME hormiga_icon_smoke COMMAND hormiga_icon_smoke)
+
+# The pure halves of the niche-tools pass: the QR raster over the vendored Nayuki
+# encoder (an empty or oversized input must be REFUSED, never turned into a code
+# that scans to nothing) and the tag kinds that colour each chip.
+add_executable(hormiga_niche_smoke tests/niche_smoke.cpp vendor/qrcodegen/qrcodegen.cpp)
+target_include_directories(hormiga_niche_smoke PRIVATE src vendor/qrcodegen)
+add_test(NAME hormiga_niche_smoke COMMAND hormiga_niche_smoke)
 
 add_executable(hormiga_dates_smoke tests/dates_smoke.cpp)
 target_link_libraries(hormiga_dates_smoke PRIVATE voidmaiz)

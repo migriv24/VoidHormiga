@@ -131,6 +131,31 @@ on. Two consequences:
   temper), never hand-typed. Built into the rule editor and the map's
   multi-select "tag all"; more surfaces to come.
 
+## How the kinds are shown (2026-09-13)
+
+Four kinds of tag, one rule each, and each drawn in its own colour wherever a
+tag is edited (`domain/tag_kinds.hpp`, drawn by `ui/tags.cpp`):
+
+- **plain** (`volunteer`) -- grey: a word a person chose.
+- **namespaced** (`kw:food`, `lang:es`) -- teal: a value on an axis.
+- **clearance** (`clearance:public`, `clearance:contact`) -- amber, because it
+  decides what is published. On a contact or organization it is also offered as
+  two switches rather than typed, since a typo there fails silently in one of two
+  bad directions: someone private is published, or someone who agreed to be
+  listed never appears.
+- **housekeeping** (`type:event`) -- shown dimmed and not removable from the tag
+  editor, because every block query asking for `type:event` depends on it.
+
+Suggested tags are outlined in green and labelled "not added yet", so a
+suggestion never reads as a tag already held.
+
+This replaced an editor that skipped every tag containing a colon, and a tag
+picker whose vocabulary skipped them too. The namespace map above is the
+model's; the editor had quietly decided namespaced tags were not for people to
+see -- including the one that decides whether a person's name reaches a public
+website. The author's correction was that these tags "could have some data
+significance", which is the reason to show them distinctly, not to hide them.
+
 # Relations are edges
 
 Contact↔organization, image↔event, resource pairs, multi-presenter events:

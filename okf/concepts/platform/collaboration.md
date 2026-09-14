@@ -275,6 +275,36 @@ replayed onto the *merged* document. (And a `use antfarm` against a database
 that has no Antfarm mantle silently leaves the active mantle alone, which put a
 device fingerprint in the contact list on a bare fixture. Guarded.)
 
+## 7.3 A merge preview with detections, in the GUI (2026-09-13)
+
+`effect sync-merge <path>` has always reported before it writes. Niche Tools >
+Merge puts a structured version of that report in front of a person, for the
+case that prompted it: an organization's edits went into a stray copy of its
+database in the source folder and needed folding back.
+
+It calls `merge_states` with the SAME prefixes `sync_op` uses, so the version it
+predicts is the version Apply produces; Apply goes through `gui_sync_effect`, the
+console's own path, so there is still one merge in the application. Beyond the
+report it detects:
+
+- **the same database, or a different one** -- the share of runes both copies
+  hold. A diverged copy shares most; an unrelated database shares almost none,
+  and merging it would combine two organizations' data, which is almost never
+  meant and never obvious afterwards.
+- **files only in the other folder** -- data-folder paths the other copy
+  references that exist beside it but not here, with a button to copy them.
+- **Antfarm paths into the other folder** -- absolute `file`, `dir`, `dump_dir`,
+  `key_file`, `secret_file` and `token_file` values under the other copy's
+  folder, with a button that rewrites them relative to this one as ONE batch of
+  logged `set` commands.
+- **the result** -- after Apply, "Check the result" compares the open database's
+  version name with the one the preview predicted.
+
+Not yet: a detailed preview of a `.miga` bundle (the console's report covers
+one). And none of it has run on real data: it compiles, the merge underneath is
+the tested one, but the detections have only ever existed in a window nobody has
+opened.
+
 # Boundaries
 
 - **We do not implement merge.** If a merge question arises, it is a message to

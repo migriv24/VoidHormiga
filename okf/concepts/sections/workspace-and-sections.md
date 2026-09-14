@@ -114,6 +114,28 @@ section window just hides it (state is untouched — the model doesn't know
 what's on screen); the Windows menu is the one place a lost panel is always
 recoverable from.
 
+## Off by default: Allomone and Niche Tools (2026-09-13)
+
+Two windows now start closed and live under **Windows**:
+
+- **Allomone** -- the rules still run while the window is closed; the window is
+  the editor, and most people never open it. Launching with the Allomone section
+  still opens it.
+- **Niche Tools** -- once-in-a-while utilities, deliberately plain (the author:
+  "we won't worry about the ui/ux stuff for the niche tools page"): which
+  database is open and whether it is inside the source tree; merging another copy
+  of a database in, with a preview and detections; and a QR code from a link.
+  See `ui/niche_tools.cpp` and collaboration section 7.3.
+
+One piece is not optional and does not live in that window: when the open
+database is inside the Hormiga source folder, **the menu bar says so in red, on
+every frame**. That is how an organization's live edits and a deploy record
+ended up in the repository copy on 2026-09-13, and once before 2026-09-01: the
+dev build was launched with no database named, so it opened `demo-org.json` in
+the folder it started from. A warning inside a window nobody opens would have
+protected nobody. `VoidHormiga.bat` now passes a database path through, and its
+header says why naming one matters.
+
 # Publish — the operator's tab (2026-08-20)
 
 **A dockable window, not a fifth main section**, and the distinction is the

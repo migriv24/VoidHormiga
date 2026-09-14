@@ -107,6 +107,14 @@
       "link": "source"
     },
     {
+      "name": "QR Code generator (Project Nayuki)",
+      "license": "MIT",
+      "upstream": "https://www.nayuki.io/page/qr-code-generator-library",
+      "path": "vendor/qrcodegen",
+      "link": "source",
+      "note": "the Niche Tools QR generator (2026-09-13). Taken from master at commit 3c6d0b3cefb4 (2026-08-31); the newest tagged release is v1.8.0. No version is declared because the drop is a commit rather than a release, and a version invented to fill the field is the wrong answer to the question it asks - see _vendors_unversioned_note. QR encoding is Reed-Solomon plus mask scoring, exactly the code where a hand-written version produces a picture no phone reads."
+    },
+    {
       "name": "Inter, Source Serif 4, Space Grotesk, Lato, JetBrains Mono",
       "license": "SIL Open Font License 1.1",
       "path": "vendor/fonts",

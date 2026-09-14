@@ -49,7 +49,8 @@ std::string HormigaApp::tag_picker(const char* id, char* buf, size_t bufsz,
     std::set<std::string> vocab;
     for (const auto& n : scene.nodes)
         for (const auto& t : n.tags) {
-            if (t.find(':') != std::string::npos) continue; // skip icon:/color:/…
+            // namespaced tags (kw:food, clearance:public) are offered too since
+            // 2026-09-13 - they were skipped, which made them impossible to find
             vocab.insert(t);
         }
     ImGui::SetNextItemWidth(-1);

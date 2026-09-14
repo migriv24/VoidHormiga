@@ -45,7 +45,11 @@ BUDGET = {
     # record is that the obvious guard for "is a person looking at this?" was
     # `on_shell_capture`, which the HEADLESS front-end also sets -- an agent
     # asking for a newsletter would have made a network request.
-    'src/app/app.cpp': 2940,        # the shell: split boot / frame / effects next
+    # -> 2950 (2026-09-13): the Niche Tools window's menu entry and window block,
+    # and one call that draws the source-tree warning in the menu bar -- the one
+    # place it would have been seen the day an organization's edits went into
+    # the repo. Everything the tools DO is in ui/niche_tools.cpp.
+    'src/app/app.cpp': 2950,
     'src/ui/allomone.cpp': 1950,    # rules editor + canvas + inspector
     'src/ui/map.cpp': 1950,         # draw_map_section is still ~1,200 of it
     # 1600 -> 1620 (2026-08-28): the `video` block's card preview, which resolves
@@ -199,7 +203,9 @@ BUDGET = {
     # 1160 -> 1170 (2026-09-13): the newsletter-builder pass -- five member
     # declarations and the filter editor's state for ui/builder_ext.cpp. The
     # code went to its own file; only the declarations must live in the class.
-    'src/app/app.hpp': 1170,
+    # -> 1175 (2026-09-13): win_niche_tools and three declarations for
+    # ui/niche_tools.cpp. The tools' own state lives in that file, not the class.
+    'src/app/app.hpp': 1175,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

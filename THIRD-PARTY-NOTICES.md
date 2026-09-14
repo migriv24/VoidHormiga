@@ -13,6 +13,7 @@ code it covers. This file is an index; those license texts are authoritative.
 | stb single-file libraries | `vendor/stb/` | MIT / public domain — `LICENSE.md` |
 | BLAKE3 | `vendor/blake3/` | CC0 — `LICENSE-CC0.txt` |
 | Lucide icons | `vendor/icons/` | ISC — `LICENSE-lucide.txt` |
+| QR Code generator (Project Nayuki) | `vendor/qrcodegen/` | MIT — `LICENSE.txt` |
 | Inter, Source Serif, Space Grotesk, Lato, JetBrains Mono | `vendor/fonts/` | SIL Open Font License — `OFL-*.txt` |
 | Font Awesome Free | `vendor/fonts/` | `LICENSE.md` |
 

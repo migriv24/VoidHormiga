@@ -3114,3 +3114,117 @@ deleted page can outlive its deployment on a Pages custom domain for up to a
 week. Click's other report asks the author to confirm or reverse its choice to
 label the macOS and Linux cards "untested" rather than "no build yet" -- that is
 the author's call and was not made here. Void Maiz's touch message is unanswered.
+
+
+# 2026-09-13, second entry -- colon tags stop hiding, and a tool for the copy that should not exist
+
+Three asks from the author, the second arriving with a report from the agent
+that works in LON's folder.
+
+## Colon tags were not quiet, they were gone
+
+*"There are colon tags, like 'something:state' -- one is the clearance tag ...
+there should still be easier ways to assign them ... they shouldn't be so hidden
+in the GUI. They should have a different color though. Also suggested tags
+should be a different color as well because it gets confusing."*
+
+The tag editor skipped every tag containing a colon (`if (t.find(':') != npos)
+continue;`), and the tag picker's vocabulary skipped them too. So
+`clearance:public` -- the tag that decides whether a person's name reaches a
+public website -- could be neither seen nor set from the pane showing that
+person. The most consequential tag in the database was hidden from the screen
+where that decision is made.
+
+Now every tag is shown, grouped and coloured by kind (`domain/tag_kinds.hpp`):
+grey plain tags, teal `ns:value` tags, amber clearance, dimmed `type:`
+housekeeping that cannot be removed from the editor because block queries
+depend on it. On contacts and organizations the two clearances the publishing
+seam reads are offered as **switches**, because a typed clearance with a typo
+fails silently in one of two bad directions. Suggestions are outlined in green
+and say "not added yet". The picker offers `kw:food` and friends, and creates
+one typed.
+
+The editor moved to `ui/tags.cpp`: it was never Data's alone (the Data pane,
+both Allomone surfaces and the calendar's day tags all draw it), and `data.cpp`
+was two lines from its budget.
+
+## The launch trap, the second time
+
+The LON agent's report: the dev app had been started through `VoidHormiga.bat`
+with no database named, so it opened `demo-org.json` in the folder it was
+launched from -- the source tree -- and LON's edits, a deploy record, and 157
+assets went there. All of it is gitignored and none of it was committed. This
+session did not touch those files: the LON agent is merging them back, and two
+agents editing one database is the failure being repaired.
+
+The cause was already documented in `desktop.cpp` from the first time, before
+2026-09-01. What had been fixed then was `--state`; what had not been fixed was
+that nothing said so when it was omitted. Three changes:
+
+- **The menu bar says so, in red, on every frame**, when the open database is
+  inside the Hormiga source folder. A warning living in a window nobody opens
+  would have protected nobody.
+- `VoidHormiga.bat` passes a database path through (or accepts a dropped file),
+  and its header says why.
+- Niche Tools > Where shows the open path and the fix.
+
+## Niche Tools, off by default -- and Allomone joins it there
+
+*"It would be useful to have a json merge feature with detections, testing,
+automatic path changes in antfarm and such ... a new tab 'niche tools', a window
+that is off by default (i also think that allomone should be off by default)."*
+
+The merge is Void Palabra's, called with the same prefixes `sync_op` uses so the
+preview predicts exactly what Apply produces; Apply is `gui_sync_effect`, the
+console's own path. The detections: whether the two copies are the same database
+diverged (shared runes) or two different ones; files the other copy references
+that are only in its folder, with a copy button; absolute Antfarm paths into the
+other folder, rewritten as one batch of logged `set` commands; and "Check the
+result", which compares the open database's version name with the prediction.
+Collaboration section 7.3 has the rest.
+
+**Status, plainly: compiled, not exercised.** The merge underneath is the tested
+one; the detections have only ever existed in a window nobody has opened, and
+they were deliberately not tried against LON's real files while another agent is
+merging them.
+
+## A QR code, because the author wanted one
+
+Project Nayuki's QR Code generator, vendored under `vendor/qrcodegen/` (MIT)
+from master at commit 3c6d0b3cefb4; the newest tagged release is v1.8.0. QR
+encoding is Reed-Solomon plus mask scoring, exactly the code where a hand-written
+version produces a picture no phone reads. `void.json` declares it without a
+version -- the drop is a commit, not a release -- and `mago doctor` notes it as
+unversioned, the same as BLAKE3 and Lucide, rather than being handed an invented
+one. `domain/qr.hpp` is ours: the quiet zone, the grid, the pixels, and refusing
+empty or oversized input instead of producing a code that scans to nothing.
+`tests/niche_smoke.cpp` checks it, and the tag kinds, with no window.
+
+## Two self-inflicted breakages, both caught before anything left the machine
+
+**The dev launcher was briefly broken.** A launcher rewrite written as a normal
+Python string turned the `\t` and `\b` in `build\bin` into a tab and a
+backspace, so `VoidHormiga.bat` pointed at a mangled path. It was restored from
+git in the next step and rewritten from a raw-string script. It is the same
+escaping trap this repository's own agents have hit in C++ string literals; a
+launcher is simply the place it hurts soonest.
+
+**The tag-editor move aborted.** Its anchor, "the tag recommender", first
+matched `data.cpp`'s file header rather than the recommender. The script
+refused to write because the anchors were out of order -- which is what the
+ordering check was for -- and ran once the search started after the editor's
+own comment.
+
+## Verification
+
+38/38 tests pass (`reduce_conformance` excluded, failing before this work). All
+98 source files are within budget: `app.cpp` 2940 -> 2950 and `app.hpp`
+1170 -> 1175, with reasons in the table. Layering passes with the two new UI
+files. `mago doctor` accepts the manifest. The golden render did not move: no
+renderer changed.
+
+## Not done
+
+Exercising the merge tool on a real stray copy (after the LON agent's merge, or
+on a synthetic one); a detailed preview of a `.miga`; and, still open from the
+previous entry, the `</>` filter button on the Data tab and the Calendar.

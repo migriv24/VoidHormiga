@@ -1700,7 +1700,7 @@ void HormigaApp::init() {
         else if (s2 == "map") switch_section(Map);
         else if (s2 == "calendar") boot_focus_cal = true; // a window, not a section
         else if (s2 == "notes") boot_focus_notes = true;  // a window, not a section
-        else if (s2 == "allomone") boot_focus_allomone = true; // a window
+        else if (s2 == "allomone") boot_focus_allomone = win_allomone = true; // a window, off by default
 #if HORMIGA_LEGACY_ALLOMONE
         else if (s2 == "allodev") boot_focus_allodev = true;   // a window
 #endif
@@ -2750,6 +2750,7 @@ void HormigaApp::frame() {
             ImGui::MenuItem("Allo Dev (experimental editor)", nullptr, &win_allomone_dev);
 #endif
             ImGui::MenuItem("Data Tools", nullptr, &win_data_tools);
+            ImGui::MenuItem("Niche Tools", nullptr, &win_niche_tools);
             ImGui::MenuItem("Settings", nullptr, &show_settings);
             ImGui::MenuItem("Style", nullptr, &win_style);
             ImGui::MenuItem("Console", nullptr, &win_console);
@@ -2757,6 +2758,7 @@ void HormigaApp::frame() {
         }
         ImGui::SameLine(0, 24);
         ImGui::TextDisabled("mantle: %s | undo: %d", scene.mantle.c_str(), undo_depth);
+        draw_source_tree_banner();
         ImGui::SameLine();
         if (ImGui::SmallButton("undo")) dispatch_and_reproject("undo");
         ImGui::SameLine();
@@ -2896,6 +2898,11 @@ void HormigaApp::frame() {
         ImGui::SetNextWindowSize(ImVec2(620, 460), ImGuiCond_FirstUseEver);
         if (boot_focus_allomone && boot_focus_frames > 0) ImGui::SetNextWindowFocus();
         if (ImGui::Begin("Allomone", &win_allomone)) draw_allomone_body();
+        ImGui::End();
+    }
+    if (win_niche_tools) { // once-in-a-while utilities; off by default
+        ImGui::SetNextWindowSize(ImVec2(660, 580), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Niche Tools", &win_niche_tools)) draw_niche_tools_body();
         ImGui::End();
     }
 #if HORMIGA_LEGACY_ALLOMONE // unshipped 2026-08-11

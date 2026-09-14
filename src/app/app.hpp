@@ -739,7 +739,7 @@ private:
     // each state what should be true, a lattice merge composes them, and a
     // genuine disagreement across sources surfaces as ⊤ for a human to settle
     // rather than being decided by evaluation order. Derive-only. ────────────
-    bool win_allomone = true;
+    bool win_allomone = false; // off by default since 2026-09-13 (author)
     void draw_allomone_body(); // the Allomone tab (scripts + conflicts)
     void draw_allomone_scripts_pane(const maiz::Scene& as); // left: the sources
     void draw_allomone_conflicts_pane();                    // the ⊤ inspector
@@ -1142,6 +1142,10 @@ private:
     // tab's utilities (CSV import, date-tag temper, …) — declutters the tab's
     // toolbar. Sits behind a "Data Tools" button beside the connections view. ─
     bool win_data_tools = false;
+    bool win_niche_tools = false;   // once-in-a-while utilities (ui/niche_tools.cpp)
+    void draw_niche_tools_body();   // database merge with detections, QR codes
+    bool db_in_source_tree() const; // the launch trap that put LON's data in the repo
+    void draw_source_tree_banner(); // ...said in the menu bar, where it gets seen
     void draw_data_tools_window();
     // a soft drop shadow behind a rectangle (UI/UX phase; gated by fx_shadows).
     // Drawn on the CURRENT window's draw list, so call before the child/content.
