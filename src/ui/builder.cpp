@@ -1429,6 +1429,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
                 }
                 ImGui::Spacing();
             }
+            draw_order_section(*sel); // list first / list last (ui/builder_ext.cpp)
 
             // MAP VIEW picker (author #1: "assign which views are present").
             // A dropdown of the saved map views + a shortcut to Manage views on
@@ -1460,6 +1461,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
                                     "this widget draws the chosen view's markers");
                 ImGui::Spacing();
             }
+            ImGui::SeparatorText("This block's own name, tags and settings");
         }
         maiz::CanvasIO iio = maiz::draw_inspector(scene, ed, &widgets);
         for (const auto& cmd : iio.commands) dispatch_and_reproject(cmd);

@@ -575,6 +575,7 @@ private:
                             float inner_w, unsigned acc); // flier/feature/image_text
     void draw_multi_select_panel();                       // N selected: remove/width
     void ensure_icon_editor();                            // the "icon" inspector editor
+    void draw_order_section(const maiz::SceneNode& sel);  // Builder: list first / last
     void open_tag_expr_editor(const maiz::SceneNode& sel);
     void draw_tag_expr_editor(const maiz::SceneNode& sel); // a filter, as an expression
     maiz::CodeEditorState tagexpr_editor;

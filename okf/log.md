@@ -3475,3 +3475,29 @@ beside the icon picker in `ui/builder_ext.cpp`. That kept `builder.cpp` and
 **Verification.** The editor compiled, and 38/38 tests and all linters pass.
 The desktop executable did not re-link, because the app was running. The editor
 has not been seen in a window.
+
+## Second follow-up: the Order section sits under Filter
+
+The author's screenshot showed a build from before the editor, which explains
+the plain text boxes. It also showed a real problem that a rebuild would not
+have fixed: the editor would have been drawn at the bottom of the generic
+field list, far from the filter it is the other half of. And the Void Maiz
+inspector's own header, the block's name with a "+ tag..." box, sat right under
+Filter and read as part of it.
+
+- **The Order section.** The Builder now draws "Order (who comes first)"
+  directly under Filter, with List first and List last as the same ordered,
+  searchable, draggable lists.
+- **One implementation.** The list is one function (`rank_list_ui`), shared by
+  the section and the `taglist` editor kind.
+- **No duplicate.** `rank_up` / `rank_down` are `hidden` in the generic
+  inspector, so they do not appear twice.
+- **A heading over the header.** "This block's own name, tags and settings"
+  now introduces the generic inspector. The header row itself is Void Maiz's,
+  so it is labelled from outside rather than changed.
+
+**Verification.** 38/38 tests and all linters pass, and everything is within
+budget. `bin/voidhormiga.exe` could not be replaced because the app was running;
+the file was locked. The same link, written to a throwaway file name, succeeded
+with no errors, so the desktop build is sound. The section has not been seen in
+a window.

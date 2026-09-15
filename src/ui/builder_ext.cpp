@@ -270,18 +270,19 @@ RankVocab g_rank_vocab;
 std::map<std::string, std::array<char, 64>> g_rank_bufs; // "rune/field" -> the add box
 } // namespace
 
-void HormigaApp::ensure_icon_editor() {
-    if (!widgets.editors.count("taglist")) {
-    widgets.editors["taglist"] = [this](maiz::WidgetContext& ctx, const maiz::SceneNode& n,
-                                        const maiz::SceneField& f, std::string_view) -> bool {
-        const bool down = f.key.find("down") != std::string::npos;
+/* One ordered tag list: the chips, the reordering and the smart search. Shared by
+ * the Builder's Order section and the `taglist` editor kind; its commands go to
+ * `cmds`, and `core` is passed in so this stays a plain function. */
+static bool rank_list_ui(maiz::Core& core, const maiz::SceneNode& n, const std::string& key,
+                         std::vector<std::string>& cmds) {
+        const bool down = key.find("down") != std::string::npos;
         std::vector<std::string> tags =
-            rank_tokens(hormiga::temper::field_value(n, f.key.c_str()));
+            rank_tokens(hormiga::temper::field_value(n, key.c_str()));
         bool committed = false;
         auto commit = [&](const std::vector<std::string>& ts) {
             std::string v;
             for (size_t i = 0; i < ts.size(); ++i) v += (i ? ", " : "") + ts[i];
-            ctx.commands.push_back("set " + n.name + " " + f.key + " " + json_str(v));
+            cmds.push_back("set " + n.name + " " + key + " " + json_str(v));
             committed = true;
         };
 
@@ -309,10 +310,11 @@ void HormigaApp::ensure_icon_editor() {
             return c;
         };
 
-        ImGui::PushID(f.key.c_str());
-        ImGui::SeparatorText(down ? "Order: list last" : "Order: list first");
+        ImGui::PushID(key.c_str());
         const ImVec4 col = down ? ImVec4(0.72f, 0.47f, 0.06f, 1.0f)
                                 : ImVec4(0.18f, 0.50f, 0.26f, 1.0f);
+        ImGui::TextColored(col, "%s", down ? ICON_FA_ARROW_DOWN "  List last"
+                                           : ICON_FA_ARROW_UP "  List first");
         const char* payload = down ? "HORMIGA_RANK_DOWN" : "HORMIGA_RANK_UP";
         int move_from = -1, move_to = -1, remove = -1;
         for (int i = 0; i < (int)tags.size(); ++i) {
@@ -368,7 +370,7 @@ void HormigaApp::ensure_icon_editor() {
         }
 
         // the smart search: tags already in the data, as you type
-        auto& buf = g_rank_bufs[n.name + "/" + f.key];
+        auto& buf = g_rank_bufs[n.name + "/" + key];
         ImGui::SetNextItemWidth(-1);
         const bool enter = ImGui::InputTextWithHint(
             "##rankadd", down ? "+ a tag to list last..." : "+ a tag to list first...",
@@ -410,8 +412,34 @@ void HormigaApp::ensure_icon_editor() {
                                  : "the first tag rises highest; ties keep name order");
         ImGui::PopID();
         return committed;
-    };
-    }
+}
+
+/* The Builder's ORDER section, directly under Filter, because they are one idea
+ * in two halves: the filter decides what a block shows, this decides the order
+ * it shows it in. Drawn here rather than left to the generic field list, where
+ * the author found two plain text boxes at the bottom (2026-09-15). */
+void HormigaApp::draw_order_section(const maiz::SceneNode& sel) {
+    bool ranked = false;
+    for (const auto& f : sel.fields)
+        if (f.key == "rank_up") ranked = true;
+    if (!ranked) return;
+    ImGui::SeparatorText("Order (who comes first)");
+    ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x);
+    ImGui::TextDisabled("The filter decides what shows; this decides the order. "
+                        "Name order stays underneath.");
+    ImGui::PopTextWrapPos();
+    rank_list_ui(core, sel, "rank_up", pending_cmds);
+    ImGui::Spacing();
+    rank_list_ui(core, sel, "rank_down", pending_cmds);
+    ImGui::Spacing();
+}
+
+void HormigaApp::ensure_icon_editor() {
+    if (!widgets.editors.count("taglist"))
+        widgets.editors["taglist"] = [this](maiz::WidgetContext& ctx, const maiz::SceneNode& n,
+                                            const maiz::SceneField& f, std::string_view) {
+            return rank_list_ui(core, n, f.key, ctx.commands);
+        };
     if (widgets.editors.count("icon")) return;
     widgets.editors["icon"] = [](maiz::WidgetContext& ctx, const maiz::SceneNode& n,
                                  const maiz::SceneField& f, std::string_view) -> bool {
