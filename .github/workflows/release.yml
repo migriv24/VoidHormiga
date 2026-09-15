@@ -130,13 +130,21 @@ jobs:
           rm -f  "dist/$STAGE"/maiz_* || true
           rm -rf "dist/$STAGE"/CMakeFiles || true
           cp VoidHormiga/LICENSE VoidHormiga/THIRD-PARTY-NOTICES.md "dist/$STAGE/" || true
+          # linux-x64 has been run by a person (2026-09-15); the macOS legs have not
+          if [ "${{ matrix.platform }}" = "linux-x64" ]; then
+            STATUS="A PERSON HAS RUN THIS BUILD. The author ran Void Hormiga on a Linux
+          machine on 2026-09-15 and it worked as well as the Windows build. It is
+          still unsigned, and it was built on a runner rather than on that machine."
+          else
+            STATUS="THIS IS AN UNTESTED BUILD. It compiled on a GitHub runner, which has no
+          display, so nobody has confirmed that this application opens a window on
+          this platform. It is published so it can be tried, not because it is
+          supported. The supported build is Windows."
+          fi
           cat > "dist/$STAGE/READ-ME-FIRST.txt" <<EOF
           Void Hormiga ${VERSION} — ${{ matrix.platform }}
 
-          THIS IS AN UNTESTED BUILD. It compiled on a GitHub runner, which has no
-          display, so nobody has confirmed that this application opens a window on
-          this platform. It is published so it can be tried, not because it is
-          supported. The supported build is Windows.
+          ${STATUS}
 
           To run it:
               ./voidhormiga          the desktop application

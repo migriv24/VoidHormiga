@@ -15,7 +15,7 @@
 
 std::string HormigaApp::stage_site_asset(const std::string& rel) {
     if (rel.empty()) return {};
-    fs::path src = fs::path(rel).is_absolute() ? fs::path(rel) : base_dir / rel;
+    fs::path src = resolve_file(rel); // the database folder, else beside the program
     if (!fs::exists(src)) return {};
     fs::path dest_dir = data_dir("site") / "assets";
     std::error_code ec;

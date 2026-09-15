@@ -512,8 +512,13 @@ add_custom_target(hormiga_agent_files ALL
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           ${CMAKE_CURRENT_SOURCE_DIR}/vendor/fonts
           ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/vendor/fonts
+  # the Cat Colony's photos (2026-09-15): the seed names them demo-assets/, and
+  # an installation had none, so the default database opened with no pictures
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          ${CMAKE_CURRENT_SOURCE_DIR}/demo-assets
+          ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/demo-assets
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/AGENT-GUIDE.md
-  COMMENT "Staging AGENT-GUIDE.md, the OKF bundle and vendor/fonts beside the binaries")
+  COMMENT "Staging AGENT-GUIDE.md, the OKF bundle, vendor/fonts and demo-assets beside the binaries")
 add_dependencies(voidhormiga-cli hormiga_agent_files)
 add_dependencies(voidhormiga hormiga_agent_files) # same renderer, same fonts
 

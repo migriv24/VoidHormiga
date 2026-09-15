@@ -189,3 +189,25 @@ std::map<std::string, fs::path> HormigaApp::referenced_files(
     }
     return out;
 }
+
+/* ── A FILE A RUNE NAMES, FOUND WHERE IT ACTUALLY IS (2026-09-15) ────────────
+ *
+ * The author, on a fresh install: *"none of the cat images are included in the
+ * cat database for the install."* The Cat Colony seed names its photos
+ * `demo-assets/cat-NN.jpg`, and every reader resolved that against the DATABASE's
+ * folder. That is right in a checkout, where the database sits beside
+ * `demo-assets/`, and wrong in an installation, where the photos travel beside
+ * the PROGRAM (`ship_dir`) and the database lives wherever its owner put it.
+ *
+ * The database folder still wins, so an organization's own `assets/` is never
+ * shadowed by something shipped. The program's folder is only the fallback, and
+ * only for a relative path that does not exist under the database. */
+std::filesystem::path HormigaApp::resolve_file(const std::string& rel) const {
+    const std::filesystem::path p(rel);
+    if (rel.empty() || p.is_absolute()) return p;
+    std::error_code ec;
+    const std::filesystem::path here = base_dir / p;
+    if (std::filesystem::exists(here, ec) || ship_dir.empty()) return here;
+    const std::filesystem::path shipped = ship_dir / p;
+    return std::filesystem::exists(shipped, ec) ? shipped : here;
+}

@@ -59,24 +59,34 @@ std::string HormigaApp::tag_picker(const char* id, char* buf, size_t bufsz,
     std::string typed = buf;
     std::string chosen;
     if (!typed.empty()) {
+        /* ONE ID PER ROW (2026-09-15). The label was `"@" + tag + "##" + id`,
+         * and every caller's id begins with `##`, so a row read
+         * `@color:blue####noteaddtag`. ImGui treats `###` as "the id is what
+         * follows", which made every row in the list the SAME id: the
+         * "2 visible items with conflicting ID" popup the author hit on Windows,
+         * and a click that could land on a different row than the one pressed.
+         * The id is pushed as scope instead, and each row is its own tag. */
+        ImGui::PushID(id);
         int shown = 0;
         bool exact = false;
         for (const auto& t : vocab) {
             if (!contains_ci(t, typed.c_str())) continue;
             if (t == typed) exact = true;
             if (++shown > 8) { ImGui::TextDisabled("(keep typing...)"); break; }
-            if (ImGui::Selectable(("@" + t + "##" + std::string(id)).c_str()))
-                chosen = t;
+            ImGui::PushID(t.c_str());
+            if (ImGui::Selectable(("@" + t).c_str())) chosen = t;
+            ImGui::PopID();
         }
         if (shown == 0) ImGui::TextDisabled("no existing tag matches");
         // offer to create the typed tag when it isn't already an exact match
         if (!exact) {
             std::string mk = "+ create tag \"" + typed + "\"";
-            if (ImGui::Selectable((mk + "##new" + std::string(id)).c_str()) || enter)
+            if (ImGui::Selectable((mk + "##create").c_str()) || enter)
                 chosen = typed;
         } else if (enter) {
             chosen = typed;
         }
+        ImGui::PopID();
     }
     if (!chosen.empty()) buf[0] = 0;
     return chosen;
@@ -488,4 +498,11 @@ void HormigaApp::register_image_editors() {
         ImGui::PopID();
         return committed;
     };
+}
+
+/* A message from the platform shell (main/desktop.cpp) - today, that no file
+ * dialog could open on this computer - shown the way the app shows its own. */
+void HormigaApp::host_notice(const std::string& msg) {
+    toast(msg, true);
+    log.push_back({"warn", "shell", msg});
 }

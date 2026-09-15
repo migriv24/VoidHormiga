@@ -2036,7 +2036,7 @@ HormigaApp::HostTexture HormigaApp::texture_for(const std::string& path) {
     HostTexture t{};
     if (on_load_texture) {
         fs::path p(path);
-        t = on_load_texture((p.is_absolute() ? p : base_dir / p).string());
+        t = on_load_texture(resolve_file(path).string()); // demo-assets travel with the program
     }
     tex_cache[path] = t; // an actual attempt (incl. failure) is cached
     return t;
@@ -2618,9 +2618,8 @@ void HormigaApp::frame() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Save", "Ctrl+S")) do_save();
-            if (ImGui::MenuItem("Preview newsletter"))
-                dispatch_and_reproject(preview_lang ? "effect render es"
-                                                    : "effect render en");
+            // "Preview newsletter" left this menu (2026-09-15, the author: it "doesn't
+            // belong there"). File is the database; the preview is the Builder's.
             ImGui::Separator();
             // ── the DATABASE bundle (.miga v3): the whole org, portable ──────
             ImGui::TextDisabled("%s", cur_miga.empty()

@@ -854,23 +854,18 @@ void HormigaApp::draw_notes_body() {
         }
         ImGui::SameLine();
         ImGui::TextDisabled("(note)");
-        // tags: chips (click x to remove) + a type-ahead to add (skip namespaced)
-        for (const auto& t : sel->tags) {
-            if (t.find(':') != std::string::npos) continue; // hide type:/icon:/…
-            ImGui::SameLine();
-            ImGui::PushID(t.c_str());
-            std::string chip = t + " x";
-            if (ImGui::SmallButton(chip.c_str()))
-                dispatch_and_reproject("tag " + sel->name + " -" + t);
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("remove tag");
-            ImGui::PopID();
-        }
-        ImGui::SetNextItemWidth(180);
-        std::string picked =
-            tag_picker("##noteaddtag", notes_tag_input, sizeof notes_tag_input,
-                       "+ tag...");
-        if (!picked.empty())
-            dispatch_and_reproject("tag " + sel->name + " +" + picked);
+        /* THE SAME TAG EDITOR AS DATA, AND NOTHING DISPATCHED WHILE `sel` IS HELD
+         * (2026-09-15). The author: adding `color:blue` from the suggestions
+         * crashed Hormiga on Linux. This tab dispatched in two places while still
+         * holding `sel`, a pointer into the projection a dispatch replaces:
+         * removing a tag did it INSIDE the loop over that note's tags, and adding
+         * one read `sel->name` again two lines later. Windows survived the freed
+         * memory by luck; Linux did not. The editor collects commands and they
+         * land next frame, the way the Data tab's always have, which also brings
+         * the colon tags and the suggestions a note never showed. */
+        std::vector<std::string> tag_cmds;
+        draw_tag_editor(*sel, tag_cmds);
+        for (auto& c : tag_cmds) pending_cmds.push_back(std::move(c));
         ImGui::Separator();
         // stage the text; commit ONE setjson on blur (handles quotes/newlines)
         if (notes_edit_for != sel->name) {

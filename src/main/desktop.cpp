@@ -54,6 +54,54 @@ static void os_open(const std::string& path) {
 #endif
 }
 
+/* ── FILE DIALOGS OFF WINDOWS (2026-09-15) ──────────────────────────────────
+ *
+ * The author, on a Linux machine: *"its not able to open up dialogue folder
+ * things ... for things like 'save data base as' or adding a photo."* It was
+ * not the machine. Both functions below had a Windows branch and nothing else,
+ * so on Linux and macOS every Browse, Open database and Save database as...
+ * returned "" -- which callers read as "cancelled", so nothing was said either.
+ *
+ * Linux has no one dialog API a program can link without a toolkit, so this asks
+ * the helpers desktops already ship: zenity (GNOME and most others), kdialog
+ * (KDE), yad or qarma. macOS has `osascript`. The dialog is a separate process
+ * and this call waits for it, exactly as the Windows dialog blocks the frame. When
+ * none is installed, `g_dialog_problem` says which one to install, and the caller
+ * in main() hands it to the app to show, rather than failing in silence again. */
+static std::string g_dialog_problem;
+
+#ifndef _WIN32
+static std::string shell_quoted(const std::string& s) {
+    std::string q = "'";
+    for (char c : s) {
+        if (c == '\'') q += "'\\''";
+        else q += c;
+    }
+    return q + "'";
+}
+
+static bool have_tool(const char* tool) {
+    const std::string c = std::string("command -v ") + tool + " >/dev/null 2>&1";
+    return std::system(c.c_str()) == 0;
+}
+
+static std::string run_dialog(const std::string& cmd) {
+    std::string out;
+    FILE* p = popen((cmd + " 2>/dev/null").c_str(), "r");
+    if (!p) return out;
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof buf, p)) > 0) out.append(buf, n);
+    pclose(p);
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r')) out.pop_back();
+    return out;
+}
+
+static const char* kNoDialog =
+    "No file dialog is available on this computer. Install zenity (for example "
+    "`sudo apt install zenity`) or kdialog, then try again.";
+#endif
+
 /* The OS open-file dialog for the "path" editor kind ("" = cancelled).
  * OFN_NOCHANGEDIR matters: the app's cwd is where the org file lives. */
 static std::string os_pick_file(std::string_view /*current*/) {
@@ -67,6 +115,14 @@ static std::string os_pick_file(std::string_view /*current*/) {
                       "Database (.miga)\0*.miga\0CSV\0*.csv\0All files\0*.*\0";
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
     if (GetOpenFileNameA(&ofn)) return buf;
+#elif defined(__APPLE__)
+    return run_dialog("osascript -e 'POSIX path of (choose file)'");
+#else
+    if (have_tool("zenity")) return run_dialog("zenity --file-selection --title='Choose a file'");
+    if (have_tool("kdialog")) return run_dialog("kdialog --getopenfilename \"$HOME\"");
+    if (have_tool("yad")) return run_dialog("yad --file --title='Choose a file'");
+    if (have_tool("qarma")) return run_dialog("qarma --file-selection --title='Choose a file'");
+    g_dialog_problem = kNoDialog;
 #endif
     return {};
 }
@@ -85,6 +141,32 @@ static std::string os_save_file(std::string_view suggested) {
     ofn.lpstrDefExt = "miga";
     ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
     if (GetSaveFileNameA(&ofn)) return buf;
+#else
+    const std::string name(suggested);
+    std::string picked;
+# if defined(__APPLE__)
+    picked = run_dialog("osascript -e " +
+                        shell_quoted("POSIX path of (choose file name default name \"" +
+                                     name + "\")"));
+# else
+    if (have_tool("zenity"))
+        picked = run_dialog("zenity --file-selection --save --confirm-overwrite --filename=" +
+                            shell_quoted(name));
+    else if (have_tool("kdialog"))
+        picked = run_dialog("kdialog --getsavefilename " + shell_quoted(name));
+    else if (have_tool("yad"))
+        picked = run_dialog("yad --file --save --confirm-overwrite --filename=" +
+                            shell_quoted(name));
+    else if (have_tool("qarma"))
+        picked = run_dialog("qarma --file-selection --save --confirm-overwrite --filename=" +
+                            shell_quoted(name));
+    else
+        g_dialog_problem = kNoDialog;
+# endif
+    // the Windows dialog appends .miga when no extension was typed; so does this
+    if (!picked.empty() && std::filesystem::path(picked).extension().empty())
+        picked += ".miga";
+    return picked;
 #endif
     return {};
 }
@@ -350,8 +432,23 @@ int main(int argc, char** argv) {
     app.on_title = [&](const std::string& t) { glfwSetWindowTitle(window, t.c_str()); };
     app.on_quit = [&] { glfwSetWindowShouldClose(window, 1); };
     app.on_open = os_open;
-    app.on_pick_file = os_pick_file;
-    app.on_save_file = os_save_file;
+    // a dialog that could not open says why, instead of looking like "cancelled"
+    app.on_pick_file = [&app](std::string_view cur) {
+        std::string r = os_pick_file(cur);
+        if (r.empty() && !g_dialog_problem.empty()) {
+            app.host_notice(g_dialog_problem);
+            g_dialog_problem.clear();
+        }
+        return r;
+    };
+    app.on_save_file = [&app](std::string_view suggested) {
+        std::string r = os_save_file(suggested);
+        if (r.empty() && !g_dialog_problem.empty()) {
+            app.host_notice(g_dialog_problem);
+            g_dialog_problem.clear();
+        }
+        return r;
+    };
     app.on_load_texture = gl_load_texture;
     app.on_shell_capture = shell_capture;
     app.init();

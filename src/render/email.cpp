@@ -145,7 +145,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
     auto local_src = [&](const std::string& rel) -> std::string {
         if (rel.empty()) return {};
         if (rel.rfind("http://", 0) == 0 || rel.rfind("https://", 0) == 0) return rel;
-        const fs::path abs = fs::path(rel).is_absolute() ? fs::path(rel) : base_dir / rel;
+        const fs::path abs = resolve_file(rel);
         std::error_code ec;
         if (!fs::exists(abs, ec)) return {};
         local_only.insert(abs.generic_string());

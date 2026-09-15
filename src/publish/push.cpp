@@ -414,7 +414,7 @@ HormigaApp::HostedLink HormigaApp::host_online(const maiz::Scene& farm, const st
         return out;
     }
     out.node = host->name;
-    const fs::path abs = fs::path(path).is_absolute() ? fs::path(path) : base_dir / path;
+    const fs::path abs = resolve_file(path);
     std::error_code ec;
     if (path.empty() || !fs::exists(abs, ec)) {
         out.error = "no file on this computer at " + abs.string();
