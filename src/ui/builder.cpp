@@ -702,7 +702,7 @@ void HormigaApp::draw_document_canvas(float body_h) {
                             for (const auto& sn : multi ? ed.selection
                                                         : std::vector<std::string>{n.name})
                                 rs.push_back("doc resize " + sn + " " + std::to_string(wch.s));
-                            pending_cmds.push_back(maiz::compile_commit(rs));
+                            if (const std::string b = doc_batch(rs); !b.empty()) pending_cmds.push_back(b);
                         }
                     ImGui::EndMenu();
                 }
@@ -715,7 +715,7 @@ void HormigaApp::draw_document_canvas(float body_h) {
                     for (const auto& sn : multi ? ed.selection
                                                 : std::vector<std::string>{n.name})
                         rm.push_back("doc remove " + sn);
-                    pending_cmds.push_back(maiz::compile_commit(rm));
+                    if (const std::string b = doc_batch(rm); !b.empty()) pending_cmds.push_back(b);
                     ed.selection.clear();
                 }
                 ImGui::EndPopup();
@@ -935,7 +935,7 @@ void HormigaApp::draw_document_canvas(float body_h) {
         for (const auto& sn : ed.selection)
             if (const maiz::SceneNode* sp = scene.find(sn); sp && sp->glyph != "page")
                 rm.push_back("doc remove " + sn);
-        if (!rm.empty()) pending_cmds.push_back(maiz::compile_commit(rm));
+        if (const std::string b = doc_batch(rm); !b.empty()) pending_cmds.push_back(b);
         ed.selection.clear();
     }
     if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Escape))
@@ -1429,7 +1429,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
                 }
                 ImGui::Spacing();
             }
-            draw_order_section(*sel); // list first / list last (ui/builder_ext.cpp)
+            draw_block_extras(*sel); // featured event; list first / last (ui/builder_ext.cpp)
 
             // MAP VIEW picker (author #1: "assign which views are present").
             // A dropdown of the saved map views + a shortcut to Manage views on
@@ -1625,6 +1625,7 @@ void HormigaApp::draw_antfarm_section() {
                              0.4f, 0.92f, th, body_h);
     ImGui::SameLine(0, 0);
     ImGui::BeginChild("antfarm-inspector", ImVec2(0, body_h));
+    draw_hosting_panel(); // "host it online": which node, and what is waiting
     maiz::CanvasIO iio = maiz::draw_inspector(scene, ed, &widgets);
     for (const auto& cmd : iio.commands) dispatch_and_reproject(cmd);
     ImGui::EndChild();

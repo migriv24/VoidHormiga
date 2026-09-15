@@ -618,10 +618,12 @@ the website.**
 New 2026-09-15. The newsletter has a theme of its own, separate from the
 website's. It has three parts and a preset:
 
-    config set newsletter.theme 'modern'     # classic | modern | bold | editorial | night
-    config set newsletter.palette 'sand'     # classic | website | clean | ink | sand | night
+    config set newsletter.theme 'modern'     # classic modern bold editorial night
+                                             # ocean sunset forest newsprint minimal
+    config set newsletter.palette 'sand'     # classic website clean ink sand night
+                                             # ocean sunset forest paper
     config set newsletter.type 'editorial'   # classic | modern | editorial | geometric | impact
-    config set newsletter.shape 'soft'       # classic | sleek | soft | sharp
+    config set newsletter.shape 'soft'       # classic sleek soft sharp bubbly ruled
     config set newsletter.accent '#0071e3'   # blank = the website's accent
 
 - **A preset sets all three parts.** Setting one part yourself overrides only
@@ -665,22 +667,49 @@ The Style window has a **Newsletter** tab with the same choices.
   - a line starting `1. ` or `1) ` is a numbered item;
   - text without such lines renders exactly as before.
 
-### Images in a newsletter: public, or clearly marked
+### Images in a newsletter: online, or clearly marked
 
-An inbox can only load an image from a public address, which is an image rune's
-`url`. Two things changed on 2026-09-15:
+An inbox can only show an image that has a link on the internet, which is an
+image rune's `url`. How that link is made is the Antfarm's decision (2026-09-15):
 
-- **The preview draws images that are only on this computer.** They are
-  outlined in dashed red, and a PREVIEW notice at the top counts them. **Do not
-  send an issue showing that notice**: readers will not see those pictures.
-- **Images upload themselves when the Antfarm has an ImgBB node and a key.**
-  - Adding an image in the app now always creates an `image` rune. That
-    includes browsing into a block's image field, or into branding.
-  - When the Antfarm can, the app also uploads it and sets its `url`.
-  - From the CLI, `effect publish <image-rune>` still uploads one image.
+- **An image host is an Antfarm node.** Three kinds can answer "put this file
+  online and give me the link":
+  - `hol_imgbb`: needs an ImgBB key.
+  - `hol_object_store`: an S3 or Cloudflare R2 bucket. It needs `bucket`,
+    `access_key_id`, the secret, and `public_url`, the address the bucket is
+    served at. On Cloudflare that can be an `r2.dev` address or your own domain.
+  - `hol_static_host` or `hol_github`: **your own website.** It needs no extra
+    account, only `site.base_url`. The file is copied into `site/assets/`, and
+    the link works **after the next publish** of the website.
+- **Choose one**, or leave it automatic, which uses the first host that can
+  answer right now:
 
-If `effect render` warns that images "are only on this computer", those are the
-images to publish before sending.
+      config set hosting.images 'site-host'   # a node name; blank = automatic
+
+- **Put images online:**
+
+      effect host-online <image-rune>          # one image
+      effect host-online missing               # every image with a file and no link
+      effect host-online missing <host-node>   # through a particular node
+
+  - Each one needs `--allow-effects=host-online`.
+  - It writes the link into `url` and the node's name into `hosted_by`.
+  - `effect publish <image>` is the old name and still works.
+- **Adding an image in the app puts it online automatically** when a host can
+  answer. The Antfarm tab's inspector has a "Hosting images online" panel, and
+  every image field says "online" or "not online yet", with a Host it online
+  button.
+- **The preview still draws an image that is not online yet**, outlined in
+  dashed red under a PREVIEW notice. **Do not send an issue showing that
+  notice.** Run `effect host-online missing` first.
+
+### Pick the featured event
+
+`event_feature` and `event_flier` name one event in `event`:
+
+    set feat event 'fall-dinner'
+
+In the app the Builder shows a searchable list, with upcoming events first.
 
 ### Order a list by tags
 

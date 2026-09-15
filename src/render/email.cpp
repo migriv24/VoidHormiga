@@ -988,10 +988,10 @@ std::string HormigaApp::render_preview(std::string_view lang) {
     if (!local_only.empty())
         log.push_back({"warn", "render",
                        std::to_string(local_only.size()) +
-                           " image(s) are only on this computer - the preview draws them "
+                           " image(s) are not online yet - the preview draws them "
                            "outlined in red, but they will not load in anyone's inbox. "
-                           "With an ImgBB node in the Antfarm, images upload themselves "
-                           "when they are added; `effect publish <image>` does one."});
+                           "Host them online through the Antfarm (Antfarm > Hosting images "
+                           "online), or with `effect host-online missing`."});
     if (missing_images)
         log.push_back({"warn", "render",
                        std::to_string(missing_images) +
@@ -1011,10 +1011,10 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             "<div style=\"background:#fff1f0;border-bottom:2px solid #e5484d;color:#7a1f1f;"
             "padding:10px 16px;font:14px/1.45 Arial,Helvetica,sans-serif\">" +
             html_escape(ui("PREVIEW: ", "VISTA PREVIA: ") + std::to_string(local_only.size()) +
-                        ui(" image(s) outlined in red are only on this computer and will "
-                           "not appear in anyone's inbox until they are uploaded.",
-                           " imagen(es) con borde rojo solo estan en esta computadora y no "
-                           "apareceran en el correo de nadie hasta que se suban.")) +
+                        ui(" image(s) outlined in red are not online yet and will "
+                           "not appear in anyone's inbox until they are hosted online.",
+                           " imagen(es) con borde rojo aun no estan en linea y no "
+                           "apareceran en el correo de nadie hasta que esten en linea.")) +
             "</div>\n";
         const size_t body = page.find("<body");
         const size_t at = body == std::string::npos ? body : page.find(">\n", body);

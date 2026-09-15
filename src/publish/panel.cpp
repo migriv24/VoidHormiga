@@ -665,3 +665,186 @@ void HormigaApp::draw_publish_body() {
         ImGui::EndPopup();
     }
 }
+
+/* ── IMAGE HOSTING IN THE ANTFARM'S GUI (2026-09-15) ──────────────────────────
+ *
+ * The author: *"NOT JUST IN THE CLI, but in the GUI as well! you kinda neglect
+ * the GUI of the antfarm, or you tend to. I do eventually want to work on a
+ * larger overhaul of the antfarm, but the gui should still function until then."*
+ *
+ * Two surfaces over domain/hosting.hpp, the table the CLI reads too:
+ *
+ *   A FACE on every node that can host images: can it answer right now, and if
+ *   not why not; is it the node images go through; and a "Use for images" button
+ *   that makes it so (`config set hosting.images <node>`).
+ *
+ *   A PANEL at the top of the Antfarm inspector: which host (or automatic), what
+ *   it does and what it needs, how many images are online and how many are not,
+ *   and one button that puts the rest online.
+ *
+ * The state both read is refreshed at most once a frame (the Antfarm scene is a
+ * handful of nodes) and the image counts every few seconds (the data is not). */
+#include "domain/hosting.hpp"
+
+namespace {
+struct HostingView {
+    int frame = -1;
+    std::string chosen;   // config hosting.images ("" = automatic)
+    std::string base_url; // site.base_url, for the website hosts
+    std::string active;   // the node images would go through right now
+    std::string why;      // why that node cannot answer ("" = it can)
+    double counted_at = -100.0;
+    int online = 0, offline = 0, no_file = 0;
+};
+HostingView g_hosting;
+std::function<void()> g_hosting_refresh;
+
+std::string unquote_config(std::string v) {
+    if (v.size() >= 2 && v.front() == '"' && v.back() == '"') v = v.substr(1, v.size() - 2);
+    return v == "null" ? std::string() : v;
+}
+const ImVec4 kHostGreen(0.35f, 0.70f, 0.40f, 1.0f), kHostAmber(0.85f, 0.60f, 0.15f, 1.0f);
+} // namespace
+
+void HormigaApp::register_hosting_faces() {
+    g_hosting_refresh = [this] {
+        const int fc = ImGui::GetFrameCount();
+        if (g_hosting.frame == fc) return;
+        g_hosting.frame = fc;
+        g_hosting.chosen = unquote_config(core.dispatch("config get hosting.images").data);
+        std::string bu = unquote_config(core.dispatch("config get site.base_url").data);
+        while (!bu.empty() && bu.back() == '/') bu.pop_back();
+        g_hosting.base_url = bu;
+        maiz::ProjectOptions ao;
+        ao.mantle = kAntfarmMantle;
+        const maiz::Scene farm = maiz::project_scene(core, ao);
+        std::string why;
+        const maiz::SceneNode* h = pick_image_host(farm, g_hosting.chosen, bu, &why);
+        g_hosting.active = h ? h->name : std::string();
+        g_hosting.why = why;
+        if (ImGui::GetTime() - g_hosting.counted_at > 3.0) {
+            g_hosting.counted_at = ImGui::GetTime();
+            g_hosting.online = g_hosting.offline = g_hosting.no_file = 0;
+            maiz::ProjectOptions dpo;
+            dpo.mantle = kDataMantle;
+            const maiz::Scene data = maiz::project_scene(core, dpo);
+            for (const auto& n : data.nodes) {
+                if (n.glyph != "image") continue;
+                const std::string p = field_value(n, "path");
+                std::error_code ec;
+                if (!field_value(n, "url").empty()) ++g_hosting.online;
+                else if (!p.empty() &&
+                         fs::exists(fs::path(p).is_absolute() ? fs::path(p) : base_dir / p, ec))
+                    ++g_hosting.offline;
+                else ++g_hosting.no_file;
+            }
+        }
+    };
+
+    for (const auto& host : hormiga::hosting::kAssetHosts) {
+        const std::string glyph = host.glyph;
+        faces.by_glyph[glyph] = [this, glyph](maiz::FaceContext& ctx) {
+            g_hosting_refresh();
+            const std::string problem = host_problem(ctx.node, g_hosting.base_url);
+            const bool chosen = g_hosting.chosen == ctx.node.name;
+            const bool in_use = g_hosting.active == ctx.node.name && g_hosting.why.empty();
+            ImGui::SetCursorScreenPos(ctx.pos);
+            ImGui::BeginGroup();
+            ImGui::PushTextWrapPos(ctx.pos.x + ctx.size.x);
+            if (!problem.empty())
+                ImGui::TextColored(kHostAmber, "cannot host images yet: %s", problem.c_str());
+            else if (in_use)
+                ImGui::TextColored(kHostGreen, ICON_FA_CIRCLE_CHECK "  images go online here");
+            else
+                ImGui::TextDisabled("can host images");
+            if (glyph == "hol_imgbb" && mirror_count > 0)
+                ImGui::TextDisabled("mirror: %d links saved locally", mirror_count);
+            ImGui::PopTextWrapPos();
+            ImGui::EndGroup();
+            ImGui::SetCursorScreenPos(ImVec2(ctx.pos.x, ctx.pos.y + ctx.size.y - 26.0f));
+            const bool imgbb = glyph == "hol_imgbb";
+            const float w = imgbb ? ctx.size.x * 0.5f - 2.0f : ctx.size.x;
+            ImGui::BeginDisabled(chosen);
+            if (ImGui::Button(chosen ? "Used for images##host" : "Use for images##host",
+                              ImVec2(w, 0)))
+                ctx.commands.push_back("config set hosting.images " + json_str(ctx.node.name));
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("images you choose to host online go through this node");
+            if (imgbb) {
+                ImGui::SameLine(0, 4);
+                if (ImGui::Button("Mirror to local##host", ImVec2(w, 0)))
+                    ctx.commands.push_back("effect mirror-images");
+            }
+        };
+    }
+}
+
+void HormigaApp::draw_hosting_panel() {
+    if (!g_hosting_refresh) return;
+    if (!ImGui::CollapsingHeader(ICON_FA_CLOUD_ARROW_UP "  Hosting images online",
+                                 ImGuiTreeNodeFlags_DefaultOpen))
+        return;
+    g_hosting_refresh();
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextDisabled("An email can only show an image that has a link on the internet. "
+                        "Which node makes that link is the Antfarm's decision: ImgBB, an "
+                        "object store (S3, or Cloudflare R2 on your own domain), or your "
+                        "website itself.");
+    maiz::ProjectOptions ao;
+    ao.mantle = kAntfarmMantle;
+    const maiz::Scene farm = maiz::project_scene(core, ao);
+    std::vector<const maiz::SceneNode*> hosts;
+    for (const auto& n : farm.nodes)
+        if (hormiga::hosting::asset_host(n.glyph)) hosts.push_back(&n);
+    if (hosts.empty()) {
+        ImGui::TextColored(kHostAmber, "No node here can host images yet.");
+        ImGui::TextWrapped("Drag one in from the palette: ImgBB; Object store (fill in its "
+                           "public_url); or Static host / GitHub Pages to use your own "
+                           "website, which needs the site's address in Style > Site.");
+        ImGui::PopTextWrapPos();
+        ImGui::Separator();
+        return;
+    }
+    const char* kAuto = "automatic (the first that can answer)";
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::BeginCombo("##imagehost",
+                          g_hosting.chosen.empty() ? kAuto : g_hosting.chosen.c_str())) {
+        if (ImGui::Selectable(kAuto, g_hosting.chosen.empty()))
+            pending_cmds.push_back("config set hosting.images \"\"");
+        for (const auto* h : hosts) {
+            const auto* p = hormiga::hosting::asset_host(h->glyph);
+            const std::string label = h->name + "  -  " + p->label;
+            if (ImGui::Selectable(label.c_str(), g_hosting.chosen == h->name))
+                pending_cmds.push_back("config set hosting.images " + json_str(h->name));
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s\nneeds: %s", p->how, p->needs);
+        }
+        ImGui::EndCombo();
+    }
+    const maiz::SceneNode* active = nullptr;
+    for (const auto* h : hosts)
+        if (h->name == g_hosting.active) active = h;
+    if (!active || !g_hosting.why.empty()) {
+        ImGui::TextColored(kHostAmber, "%s",
+                           g_hosting.why.empty() ? "no image host can answer yet"
+                                                 : g_hosting.why.c_str());
+    } else {
+        const auto* p = hormiga::hosting::asset_host(active->glyph);
+        ImGui::TextColored(kHostGreen, ICON_FA_CIRCLE_CHECK "  %s %s", active->name.c_str(),
+                           p->how);
+    }
+    ImGui::Text("%d online    %d not online yet    %d with no file here", g_hosting.online,
+                g_hosting.offline, g_hosting.no_file);
+    ImGui::PopTextWrapPos();
+    ImGui::BeginDisabled(g_hosting.offline == 0 || !active || !g_hosting.why.empty());
+    if (ImGui::Button("Host the images that are not online yet")) {
+        run_busy("Putting images online", [this] {
+            const int n = host_missing_images();
+            toast(std::to_string(n) + " image(s) put online");
+            g_hosting.counted_at = -100.0;
+        });
+    }
+    ImGui::EndDisabled();
+    ImGui::Separator();
+}

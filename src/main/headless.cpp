@@ -767,6 +767,69 @@ maiz::HostApp build_app() {
             if (n < 0) return {};
             return std::to_string(n);
         }
+        if (op == "host-online" || op == "publish") {
+            /* HOST IT ONLINE (2026-09-15): `effect host-online <image|missing>
+             * [host-node]` asks the Antfarm's image host (domain/hosting.hpp) for
+             * a public link and writes it, and the node that made it, into the
+             * image rune. `publish` is the old ImgBB-only name, kept working. */
+            if (!g_core) return {};
+            const std::vector<std::string> a = effect_args(args);
+            if (a.empty()) {
+                std::cerr << "  [error] host-online: name an image rune, or `missing`\n";
+                return {};
+            }
+            HormigaApp app;
+            wire(app);
+            app.state_name = g_state_name;
+            maiz::ProjectOptions ao, dpo;
+            ao.mantle = kAntfarmMantle;
+            dpo.mantle = kDataMantle;
+            const maiz::Scene farm = maiz::project_scene(*g_core, ao);
+            const maiz::Scene data = maiz::project_scene(*g_core, dpo);
+            std::string base = g_core->dispatch("config get site.base_url").data;
+            if (base.size() >= 2 && base.front() == '"' && base.back() == '"')
+                base = base.substr(1, base.size() - 2);
+            if (base == "null") base.clear();
+            while (!base.empty() && base.back() == '/') base.pop_back();
+            const std::string prefer = a.size() > 1 ? a[1] : std::string();
+            std::vector<std::string> cmds;
+            int done = 0, asked = 0;
+            for (const auto& n : data.nodes) {
+                if (n.glyph != "image") continue;
+                const std::string url = hormiga::temper::field_value(n, "url");
+                const std::string path = hormiga::temper::field_value(n, "path");
+                if (a[0] == "missing" ? (!url.empty() || path.empty()) : n.name != a[0])
+                    continue;
+                ++asked;
+                const HormigaApp::HostedLink link =
+                    app.host_online(farm, path, n.name, base, prefer);
+                if (!link.ok) {
+                    std::cerr << "  [error] " << n.name << ": " << link.error << "\n";
+                    continue;
+                }
+                std::cerr << "online: " << n.name << " -> " << link.url << "  (through "
+                          << link.node
+                          << (link.after_publish ? "; the link works after the next publish"
+                                                 : "")
+                          << ")\n";
+                cmds.push_back("set " + n.name + " url " + json_str(link.url));
+                cmds.push_back("set " + n.name + " hosted_by " + json_str(link.node));
+                ++done;
+            }
+            if (asked == 0) {
+                if (a[0] == "missing") {
+                    std::cerr << "every image with a file already has a link\n";
+                    return "\"0\"";
+                }
+                std::cerr << "  [error] no image called " << a[0] << "\n";
+                return {};
+            }
+            if (!cmds.empty()) {
+                g_core->dispatch(std::string("use ") + kDataMantle);
+                g_core->dispatch(maiz::compile_commit(cmds));
+            }
+            return done ? std::to_string(done) : std::string();
+        }
         if (op == "import-ics") {
             /* X3 — READ ANY CALENDAR. `effect import-ics <path|url> [apply]`.
              *
@@ -1081,6 +1144,15 @@ maiz::HostApp build_app() {
          "past`, `date:today`, `date:future`, `date:recurring` and "
          "`date:undated`, which `ls --tag` cannot. Args: <expression>.",
          true, "reads the data mantle and prints what matched; changes nothing"},
+        {"host-online",
+         "Put an image online through the Antfarm's image host - ImgBB, an S3 or R2 "
+         "object store with a public_url, or the website's own host - and write the "
+         "link into its `url`. Args: <image-rune|missing> [<host-node>]. `missing` = "
+         "every image with a file and no link.",
+         false,
+         "UPLOADS the image to the host the Antfarm names, where anyone with the link "
+         "can see it; through a website host the file is copied into site/ and goes "
+         "live with the next publish"},
         {"import-ics",
          "Read an iCalendar file or feed into dated runes. Args: <path|url> "
          "[label] [apply]. Without `apply` it REPORTS what would be created "

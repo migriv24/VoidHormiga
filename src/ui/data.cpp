@@ -462,22 +462,22 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         }
         ImGui::SameLine();
         ImGui::TextDisabled("(%s)", sel->label.c_str());
-        if (sel->glyph == "image" && !imgbb_key.empty()) {
+        if (sel->glyph == "image" && field_value(*sel, "url").empty() &&
+            !field_value(*sel, "path").empty()) {
             ImGui::SameLine();
-            /* NOT "Publish" (renamed 2026-08-20). This uploads one image to an
-             * image host so an EMAIL can load it — a mail client cannot fetch a
-             * local file. Once a website existed, a person looking for how to
-             * publish it found a button called Publish, pressed it, and uploaded
-             * a JPEG. Two buttons with one name doing different things is the
-             * kind of thing nobody notices until somebody publishes the wrong
-             * one. Publishing the WEBSITE is the Publish tab. */
-            if (ImGui::SmallButton("Get public URL"))
-                dispatch_and_reproject("effect publish " + sel->name);
+            /* "HOST IT ONLINE" (2026-09-15), which was "Get public URL" and ImgBB
+             * only. Still NOT "Publish" (renamed 2026-08-20): publishing the WEBSITE
+             * is the Publish tab. This puts ONE image online through whichever image
+             * host the Antfarm has (domain/hosting.hpp), so an email can load it. */
+            if (ImGui::SmallButton(ICON_FA_CLOUD_ARROW_UP "  Host it online")) {
+                const std::string rn = sel->name;
+                run_busy("Putting the image online", [this, rn] { host_image(rn); });
+            }
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("upload this image to ImgBB (opt-in holiday) and\n"
-                                  "write the public URL into its url field, so it\n"
-                                  "loads in EMAIL. This does not publish the website -\n"
-                                  "that is the Publish tab.");
+                ImGui::SetTooltip("put this image online through the Antfarm's image host\n"
+                                  "(ImgBB, an object store, or your website) and write its\n"
+                                  "link into `url`, so it loads in email. This does not\n"
+                                  "publish the website - that is the Publish tab.");
         }
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - 44);
         if (ImGui::SmallButton("Delete")) ImGui::OpenPopup("confirm-delete");

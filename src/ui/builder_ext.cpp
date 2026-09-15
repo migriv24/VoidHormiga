@@ -21,6 +21,7 @@
 #include "voidmaiz/code.hpp"
 
 #include <algorithm>
+#include <ctime>
 #include <array>
 #include <map>
 #include <cctype>
@@ -216,7 +217,7 @@ void HormigaApp::draw_multi_select_panel() {
         for (const auto& s : ed.selection)
             if (const maiz::SceneNode* sn = scene.find(s); sn && sn->glyph != "page")
                 rm.push_back("doc remove " + s);
-        if (!rm.empty()) pending_cmds.push_back(maiz::compile_commit(rm));
+        if (const std::string b = doc_batch(rm); !b.empty()) pending_cmds.push_back(b);
         ed.selection.clear();
         return;
     }
@@ -228,7 +229,7 @@ void HormigaApp::draw_multi_select_panel() {
             std::vector<std::string> rs;
             for (const auto& s : ed.selection)
                 rs.push_back("doc resize " + s + " " + std::to_string(w.span));
-            pending_cmds.push_back(maiz::compile_commit(rs));
+            if (const std::string b = doc_batch(rs); !b.empty()) pending_cmds.push_back(b);
         }
     }
     ImGui::SameLine();
@@ -418,7 +419,110 @@ static bool rank_list_ui(maiz::Core& core, const maiz::SceneNode& n, const std::
  * in two halves: the filter decides what a block shows, this decides the order
  * it shows it in. Drawn here rather than left to the generic field list, where
  * the author found two plain text boxes at the bottom (2026-09-15). */
-void HormigaApp::draw_order_section(const maiz::SceneNode& sel) {
+/* ── A GROUP OF `doc` COMMANDS AS ONE UNDO (2026-09-15) ───────────────────────
+ *
+ * The author: *"multi select doesn't multi delete things. i cant select multiple
+ * then delete multiple."* Every group action — Delete, "Remove N selected",
+ * "Remove all", the widths — built `doc remove a`, `doc remove b` and handed the
+ * lines to `maiz::compile_commit`, which makes one Void Core batch of them. But
+ * `doc` is not a Void Core verb: it is this application's, expanded by
+ * `try_doc_verb` one command at a time. A batch of them went straight to the core,
+ * which knows no `doc`, and the whole group failed. A single remove worked because
+ * a lone command passes through `try_doc_verb` first.
+ *
+ * So the expansion happens here, action by action, against the same scene, and the
+ * core commands they produce are committed together: still one Ctrl+Z for the
+ * group, which is what the batch was for. Lines that are not `doc` pass through. */
+std::string HormigaApp::doc_batch(const std::vector<std::string>& cmds) {
+    std::vector<std::string> core_cmds;
+    for (const auto& c : cmds) {
+        const std::vector<std::string> tok = tokenize(c);
+        if (tok.size() < 2 || tok[0] != "doc") {
+            core_cmds.push_back(c);
+            continue;
+        }
+        const maiz::ActionDescriptor* a = doc_actions.find(tok[1]);
+        if (!a) continue;
+        maiz::ActionArgs args;
+        size_t ti = 2;
+        for (const auto& p : a->params)
+            if (ti < tok.size()) args[p.name] = tok[ti++];
+        for (auto& x : doc_actions.run(tok[1], scene, args)) core_cmds.push_back(std::move(x));
+    }
+    return core_cmds.empty() ? std::string() : maiz::compile_commit(core_cmds);
+}
+
+void HormigaApp::draw_block_extras(const maiz::SceneNode& sel) {
+    /* THE FEATURED EVENT, CHOSEN (2026-09-15). The author: *"for the 'featured
+     * event' there should be an easier way to just pick a singular featured event.
+     * not necesarily pick on by tags."* `event` was a hidden field with no control
+     * in its place. This is that control: every event, upcoming first and soonest
+     * at the top, then the undated, then the past, each with its date, searchable.
+     * One click sets `event`. */
+    if (sel.glyph == "event_feature" || sel.glyph == "event_flier") {
+        ImGui::SeparatorText(sel.glyph == "event_flier" ? "Event (and its flier)"
+                                                        : "Featured event");
+        maiz::ProjectOptions dpo;
+        dpo.mantle = kDataMantle;
+        const maiz::Scene dsc = maiz::project_scene(core, dpo);
+        const std::string cur = field_value(sel, "event");
+        char today[16];
+        const std::time_t now = std::time(nullptr);
+        std::strftime(today, sizeof today, "%Y-%m-%d", std::localtime(&now));
+        struct Ev {
+            const maiz::SceneNode* n;
+            std::string date, label;
+            int bucket; // 0 upcoming, 1 no date, 2 past
+        };
+        std::vector<Ev> evs;
+        for (const auto& dn : dsc.nodes) {
+            if (dn.glyph != "event") continue;
+            Ev e{&dn, field_value(dn, "date"), {}, 0};
+            e.bucket = e.date.empty() ? 1 : (e.date >= today ? 0 : 2);
+            std::string t = field_value(dn, "title_en");
+            if (t.empty()) t = field_value(dn, "title");
+            if (t.empty()) t = dn.name;
+            e.label = (e.date.empty() ? std::string("no date   ") : e.date + "   ") + t;
+            evs.push_back(std::move(e));
+        }
+        std::sort(evs.begin(), evs.end(), [](const Ev& a, const Ev& b) {
+            if (a.bucket != b.bucket) return a.bucket < b.bucket;
+            if (a.bucket == 0) return a.date < b.date;
+            if (a.bucket == 2) return a.date > b.date;
+            return a.label < b.label;
+        });
+        std::string shown_as = cur.empty() ? std::string("(choose an event)") : cur;
+        for (const auto& e : evs)
+            if (e.n->name == cur) shown_as = e.label;
+        static char ev_search[64] = {};
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::BeginCombo("##featuredevent", shown_as.c_str(), ImGuiComboFlags_HeightLarge)) {
+            if (ImGui::IsWindowAppearing()) {
+                ev_search[0] = 0;
+                ImGui::SetKeyboardFocusHere();
+            }
+            ImGui::SetNextItemWidth(-1);
+            ImGui::InputTextWithHint("##featuredeventq", "search events...", ev_search,
+                                     sizeof ev_search);
+            int shown = 0, last = -1;
+            for (const auto& e : evs) {
+                if (ev_search[0] && !contains_ci(e.label, ev_search)) continue;
+                if (e.bucket != last) {
+                    ImGui::TextDisabled("%s", e.bucket == 0 ? "upcoming"
+                                              : e.bucket == 1 ? "no date" : "past");
+                    last = e.bucket;
+                }
+                if (++shown > 300) break;
+                if (ImGui::Selectable((e.label + "##" + e.n->name).c_str(), e.n->name == cur))
+                    pending_cmds.push_back("set " + sel.name + " event " + json_str(e.n->name));
+            }
+            if (shown == 0) ImGui::TextDisabled("no event matches");
+            ImGui::EndCombo();
+        }
+        if (evs.empty()) ImGui::TextDisabled("there are no events in the data yet");
+        ImGui::Spacing();
+    }
+
     bool ranked = false;
     for (const auto& f : sel.fields)
         if (f.key == "rank_up") ranked = true;

@@ -1685,6 +1685,33 @@ check $? "...while the website's own theme is untouched by the newsletter's"
 "$CLI" config set newsletter.theme classic >/dev/null 2>&1
 cd ..
 
+# ── 2026-09-15: "host it online" asks the Antfarm, and needs no network here:
+# the website's own host answers with base_url/assets/<file> ───────────────────
+mkdir -p hosting && cd hosting
+mkdir -p assets && printf 'not really a png' > assets/web-pic.png
+cat > host.txt <<'EOF'
+mantle new demo-org
+use demo-org
+rune new image web-pic
+set web-pic path 'assets/web-pic.png'
+tag web-pic +type:image
+mantle new antfarm
+use antfarm
+rune new hol_static_host site-host
+set site-host provider 'cloudflare-pages'
+EOF
+"$CLI" --script host.txt --atomic >/dev/null 2>&1
+check $? "a database with a website host in its Antfarm applies"
+"$CLI" config set site.base_url 'https://example.org/' >/dev/null 2>&1
+hosted=$("$CLI" --allow-effects=host-online effect host-online missing 2>&1)
+echo "$hosted" | grep -q 'https://example.org/assets/web-pic.png'
+check $? "host-online asks the Antfarm, and the website's host answers with a link"
+[ -f site/assets/web-pic.png ]
+check $? "...the file is in site/, to go live with the next publish"
+grep -q '"hosted_by"' demo-org.json && grep -q 'https://example.org/assets/web-pic.png' demo-org.json
+check $? "...and the image keeps the link and the node that made it"
+cd ..
+
 # A failed command must exit non-zero: a shell and an agent both branch on it.
 "$CLI" rune new no-such-glyph x >/dev/null 2>&1
 [ $? -ne 0 ]

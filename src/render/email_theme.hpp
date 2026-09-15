@@ -65,6 +65,12 @@ inline constexpr Named kPresets[] = {
     {"editorial", "Editorial",
      "Warm paper, serif headings over sans-serif text, gently rounded cards"},
     {"night", "Night", "A dark ground with light text and modern type"},
+    {"ocean", "Ocean", "Deep navy and sky blue, geometric type, gently rounded cards"},
+    {"sunset", "Sunset", "Warm coral and peach, modern type, big friendly rounded shapes"},
+    {"forest", "Forest", "Deep greens on warm paper, serif headings, soft cards"},
+    {"newsprint", "Newsprint",
+     "Off-white paper and serif type, hairline rules instead of boxes - a printed bulletin"},
+    {"minimal", "Minimal", "Black type on white, nothing but hairlines and a lot of air"},
 };
 inline constexpr Named kPalettes[] = {
     {"classic", "Classic", "warm grey page, white frame, dark grey text"},
@@ -73,6 +79,10 @@ inline constexpr Named kPalettes[] = {
     {"ink", "Ink", "pure white and black"},
     {"sand", "Sand", "warm paper tones"},
     {"night", "Night", "a dark ground and light text"},
+    {"ocean", "Ocean", "deep navy text, pale blue page, sky-blue cards"},
+    {"sunset", "Sunset", "warm cream page, coral-tinted cards"},
+    {"forest", "Forest", "deep green text on warm paper"},
+    {"paper", "Paper", "off-white newsprint and near-black ink"},
 };
 inline constexpr Named kTypes[] = {
     {"classic", "Classic serif", "Georgia throughout"},
@@ -87,8 +97,10 @@ inline constexpr Named kShapes[] = {
      "rounded cards, pill buttons, small spaced-out headings, a full-width banner"},
     {"soft", "Soft", "gently rounded cards and buttons, plain headings"},
     {"sharp", "Sharp", "outlined square cards, block headings, a full-width banner"},
+    {"bubbly", "Bubbly", "big round cards and pill buttons, plain headings"},
+    {"ruled", "Ruled", "no boxes - hairline rules between items, like a printed page"},
 };
-inline constexpr int kNumPresets = 5, kNumPalettes = 6, kNumTypes = 5, kNumShapes = 4;
+inline constexpr int kNumPresets = 10, kNumPalettes = 10, kNumTypes = 5, kNumShapes = 6;
 
 /* What the organization chose. Blank axes come from the preset; a blank preset
  * is `classic`; a blank accent is the website's. */
@@ -197,6 +209,9 @@ struct Theme {
                 ";font-size:" + px(h2px) +
                 ";font-weight:900;text-transform:uppercase;letter-spacing:-.01em;color:" +
                 head;
+        else if (h2_mode == "hairline")
+            s = "margin:36px 0 10px;padding:0 0 8px;border-bottom:1px solid " + rule +
+                ";font-size:" + px(h2px) + ";color:" + h2;
         else if (h2_mode == "plain")
             s = "margin:30px 0 8px;font-size:" + px(h2px) + ";color:" + h2;
         else
@@ -218,6 +233,11 @@ struct Theme {
                    more({corners(radius), own_colour ? "border-left:4px solid " + bar
                                                      : std::string()}) +
                    "\"><tr><td style=\"padding:16px 20px" + more({text_css()}) + "\">";
+        if (cards == "line") // the ruled shape: no box, a hairline above each item
+            return open + "style=\"margin:" + margin + ";border-top:1px solid " + rule +
+                   (own_colour ? ";border-left:3px solid " + bar : std::string()) +
+                   "\"><tr><td style=\"padding:12px " + (own_colour ? "12px" : "0") +
+                   more({text_css()}) + "\">";
         if (cards == "outline")
             return open + "style=\"margin:" + margin + ";background:" + frame +
                    ";border:2px solid " + head +
@@ -289,6 +309,26 @@ inline void apply_palette(Theme& t, const std::string& name, const SiteTheme& si
         t.h2 = "#2b2620"; t.quote = "#4a4238"; t.meta = "#6b6153"; t.sub = "#6b6153";
         t.cap = "#857a6b"; t.faint = "#857a6b"; t.empty = "#a39785"; t.rule = "#e0d8ca";
         t.card = "#f2ebdf"; t.card_job = "#f2ebdf";
+    } else if (name == "ocean") {
+        t.page = "#e8f1f8"; t.frame = "#ffffff"; t.head = "#0b2545"; t.ink = "#243b53";
+        t.h2 = "#0b2545"; t.quote = "#13315c"; t.meta = "#486581"; t.sub = "#486581";
+        t.cap = "#627d98"; t.faint = "#627d98"; t.empty = "#9fb3c8"; t.rule = "#d9e6f2";
+        t.card = "#eef5fb"; t.card_job = "#eef5fb";
+    } else if (name == "sunset") {
+        t.page = "#fdf1e8"; t.frame = "#fffaf6"; t.head = "#3d1f1a"; t.ink = "#4f2f28";
+        t.h2 = "#3d1f1a"; t.quote = "#5c3228"; t.meta = "#8a5a4e"; t.sub = "#8a5a4e";
+        t.cap = "#a0705f"; t.faint = "#a0705f"; t.empty = "#c9a394"; t.rule = "#f3dccf";
+        t.card = "#fde6d8"; t.card_job = "#fde6d8";
+    } else if (name == "forest") {
+        t.page = "#eef1e8"; t.frame = "#fbfaf5"; t.head = "#1f3a2b"; t.ink = "#34473a";
+        t.h2 = "#1f3a2b"; t.quote = "#2b4a37"; t.meta = "#5b6f5f"; t.sub = "#5b6f5f";
+        t.cap = "#728676"; t.faint = "#728676"; t.empty = "#a3b3a5"; t.rule = "#dde4d6";
+        t.card = "#f0f3ea"; t.card_job = "#f0f3ea";
+    } else if (name == "paper") {
+        t.page = "#e9e5dc"; t.frame = "#faf8f2"; t.head = "#111111"; t.ink = "#2a2a2a";
+        t.h2 = "#111111"; t.quote = "#222222"; t.meta = "#5a5a5a"; t.sub = "#5a5a5a";
+        t.cap = "#6f6f6f"; t.faint = "#6f6f6f"; t.empty = "#9a9a9a"; t.rule = "#cfc9bc";
+        t.card = "#f3f0e8"; t.card_job = "#f3f0e8";
     } else if (name == "night") {
         dark_neutrals(t, "#161618");
     } else if (name == "website") {
@@ -342,6 +382,12 @@ inline void apply_shape(Theme& t, const std::string& name) {
         t.cards = "outline"; t.h2_mode = "block"; t.pad = 32; t.outer = 0;
         t.hero_bar = 0; t.bleed = true; t.btn_pad = "15px 32px";
         t.btn_css = "text-transform:uppercase;letter-spacing:.08em";
+    } else if (name == "bubbly") {
+        t.cards = "soft"; t.h2_mode = "plain"; t.radius = 24; t.btn_radius = 980;
+        t.pad = 34; t.outer = 20; t.hero_bar = 0; t.btn_pad = "14px 30px";
+    } else if (name == "ruled") {
+        t.cards = "line"; t.h2_mode = "hairline"; t.pad = 44; t.outer = 24;
+        t.hero_bar = 0; t.btn_pad = "12px 26px";
     }
 }
 
@@ -362,7 +408,12 @@ inline Theme make(const Choice& c, const SiteTheme& site) {
                              {"modern", "clean", "modern", "sleek"},
                              {"bold", "ink", "impact", "sharp"},
                              {"editorial", "sand", "editorial", "soft"},
-                             {"night", "night", "modern", "sleek"}};
+                             {"night", "night", "modern", "sleek"},
+                             {"ocean", "ocean", "geometric", "soft"},
+                             {"sunset", "sunset", "modern", "bubbly"},
+                             {"forest", "forest", "editorial", "soft"},
+                             {"newsprint", "paper", "classic", "ruled"},
+                             {"minimal", "ink", "modern", "ruled"}};
     const P* p = &kMap[0];
     for (const auto& m : kMap)
         if (c.preset == m.preset) p = &m;

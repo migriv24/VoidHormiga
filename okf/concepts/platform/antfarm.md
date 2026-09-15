@@ -271,6 +271,50 @@ baked into the binary; no passphrase, no unlock.
 "Offline-first" is not a milestone; it is the resting state of the
 architecture. The network is something you add — as a node in this mantle.
 
+# A holiday as a function call: "host it online" (2026-09-15)
+
+The author: *"a button to automatically do something like 'host it online'
+should have its protocols be called upon via the antfarm. Because then, it
+should return with a link. essentially its kinda like a function call, where we
+expect a link to be given in return."*
+
+This is the Antfarm's first **capability**: a question with a typed answer that
+more than one kind of node can give. The rest of the application asks the
+question and never names a vendor.
+
+| | |
+|---|---|
+| the call | a local file in, a public link out (`HostedLink`: `url`, `node`, `after_publish`, or `error`) |
+| who can answer | `domain/hosting.hpp`, one row per protocol: `hol_imgbb`, `hol_object_store`, `hol_static_host`, `hol_github` |
+| who answers | `config hosting.images` names a node; blank means the first that can answer now, with hosts whose link works at once ahead of hosts whose link waits for a publish |
+| can it answer | `host_problem(node)`: an empty string, or the one thing it is missing |
+| the implementations | `HormigaApp::host_online` in `publish/push.cpp`, one branch per row |
+
+**`after_publish` is part of the answer.** A website host copies the file into
+`site/assets/` and answers at once with `site.base_url/assets/<file>`. That
+link is real but works only after the next publish. Saying so is the difference
+between hosting on your own domain and a newsletter full of broken images.
+
+**Every surface reads the same table:**
+- the CLI (`effect host-online`);
+- the console;
+- the image editor's "online / not online yet" line and its Host it online
+  button;
+- the Data tab;
+- the Antfarm faces, which show whether a node can host images now, with a "Use
+  for images" button;
+- the inspector's "Hosting images online" panel: the choice, what the chosen node
+  does and needs, the count of images online versus not, and one button for the
+  rest.
+
+**A new host is one table row plus one branch.** Nothing else changes. So are the
+next capabilities of this shape. "Send this email" and "shorten this link" should
+each be a table and a call like this one, not a new vendor button.
+**The larger Antfarm overhaul** should treat capabilities as declared node ports
+rather than a table in a header. The table is the honest first version: it is
+data, the GUI and CLI already consume it through one function, and moving it
+into glyph declarations later changes where the rows live, not who asks.
+
 # Growth shape
 
 The Antfarm view starts as a card list (roadmap phase C) and grows into the

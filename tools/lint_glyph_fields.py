@@ -61,6 +61,7 @@ EXEMPT = {
     'ref': 'editor-only fan-out parent', 'ref_off': 'editor-only',
     'geo': 'map/territory facet', 'geo1': 'map', 'geo2': 'map',
     'image_url': 'legacy', 'icon_url': 'legacy',
+    'hosted_by': 'bookkeeping: which Antfarm node put an image online',
     'display': 'web-only presentation mode',
     'transcript': 'submission payload, reviewed not rendered',
     'evidence': 'submission payload', 'actor': 'submission provenance',

@@ -3501,3 +3501,104 @@ budget. `bin/voidhormiga.exe` could not be replaced because the app was running;
 the file was locked. The same link, written to a throwaway file name, succeeded
 with no errors, so the desktop build is sound. The section has not been seen in
 a window.
+
+# Host it online, multi-delete, a featured event picker, five more themes (2026-09-15)
+
+Four asks.
+
+## "Host it online" is an Antfarm call now
+
+The author: images should not be "on imgbb or not" but "online or not"; a
+"host it online" button should call a protocol through the Antfarm and get a
+link back, *"kinda like a function call"*; and the Antfarm's GUI must work too,
+not only its CLI.
+
+**The Antfarm now has a capability (`domain/hosting.hpp`).** Three kinds of node
+answer the call "a local file in, a public link out":
+- **ImgBB.**
+- **An object store.** This needed a new `public_url` field, the address the
+  bucket is served at; on Cloudflare R2 that is an `r2.dev` address or the
+  organization's own domain.
+- **The organization's own website.** A static host or GitHub Pages copies the
+  file into `site/assets/`, and the link works after the next publish. That is
+  "host images on our domain" with no extra account.
+
+**Architecture.** The implementations are `host_online` in `publish/push.cpp`,
+beside the object store whose credentials they reuse. `host_online` takes the
+Antfarm scene and the site's address as arguments, so the CLI (whose app owns no
+database) and the GUI call the same function. On a failure it carries the reason
+itself, because the CLI has no log strip to point at.
+
+**Surfaces:**
+- **CLI:** `effect host-online <image|missing> [node]`. `publish` stays as an
+  alias.
+- **Console:** the same effect. Its old `publish` handler had been passing the
+  raw `{"args":[...]}` as a rune name and finding nothing.
+- **The Antfarm tab:**
+  - host nodes have faces saying whether they can host images now, with a "Use
+    for images" button;
+  - the inspector opens with a "Hosting images online" panel: which node, what it
+    does and needs, how many images are online and not, and one button for the
+    rest;
+  - the palette gained the seven nodes that were registered but could not be
+    placed from the GUI.
+- **Images:** image fields and the Data tab say "online" or "not online yet",
+  with a Host it online button. Adding an image puts it online automatically when
+  a host can answer. Images record `hosted_by`.
+- **The newsletter preview** says "not online yet" rather than naming a vendor.
+
+## Multi-select could not delete
+
+Every group action built `doc remove a`, `doc remove b` and handed them to
+`maiz::compile_commit`. That covered Delete, "Remove N selected", "Remove all" and
+the group widths.
+
+`doc` is this application's verb, expanded by `try_doc_verb` one command at a
+time. A batch of them went straight to Void Core, which has no `doc`, and the
+whole group failed. A single remove worked only because a lone command passes
+through `try_doc_verb` first.
+
+`doc_batch` expands each action against the scene and commits the core commands
+together, so a group is still one Ctrl+Z. All five call sites use it.
+
+## A featured event, picked
+
+`event` on `event_feature` / `event_flier` was a hidden field with no control.
+The Builder now draws a searchable list:
+- upcoming events first, soonest at the top;
+- then undated events;
+- then past events;
+- each with its date.
+
+## Five more newsletter presets
+
+- **ocean:** navy and sky blue, geometric type, soft cards;
+- **sunset:** coral and peach, bubbly shapes, pill buttons;
+- **forest:** greens on paper, serif headings;
+- **newsprint:** paper and serif, hairline rules instead of boxes;
+- **minimal:** black type, hairlines, a lot of air.
+
+They add four palettes (ocean, sunset, forest, paper) and two shapes, which can
+be mixed like the rest:
+- **bubbly:** big round cards;
+- **ruled:** a new `line` card kind with hairline headings.
+
+## Verification
+
+- **Tests and linters:** 38/38 pass, and all linters pass.
+- **Smoke test:** four new checks. The fixture applies; `effect host-online
+  missing` answers through a website host with
+  `https://example.org/assets/web-pic.png`; the file lands in `site/`; and the
+  rune keeps `url` and `hosted_by`.
+- **The five new presets** were rendered and screenshotted.
+- **Budgets:** `headless.cpp` → 1460 and `app.hpp` → 1195, with reasons.
+
+## Not done
+
+- **Real uploads:** neither the ImgBB nor the object-store branch has run against
+  the real service from this change.
+- **Unseen in a window:** the gallery, the hosting panel, the faces and the
+  featured-event list.
+- **Stale website links:** a website-hosted image's link stays unreachable if the
+  site is never published again. The panel says when a link waits for a publish,
+  but nothing reminds anyone at send time.

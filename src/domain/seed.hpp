@@ -231,7 +231,7 @@ inline void register_glyphs(maiz::Core& core,
         /* `alt` and `description` are prose an organization wrote, and a
          * caption under a flier on the Spanish page is exactly the text a
          * Spanish reader needs (portfolio report A5). Legacy fields last. */
-        R"("fields":["path","alt_en","alt_es","alt","url",)"
+        R"("fields":["path","alt_en","alt_es","alt","url","hosted_by",)"
         R"("description_en","description_es","description"],)"
         R"("hints":{"color":"#7d5bb0","face":{"w":180,"h":118},"category":"Assets",)"
         R"("editors":{"path":"image","description_en":"multiline:60",)"
@@ -240,7 +240,8 @@ inline void register_glyphs(maiz::Core& core,
         R"__("alt_en":"Alt text, English (for accessibility)",)__"
         R"__("alt_es":"Texto alternativo, espanol",)__"
         R"__("alt":"Alt text (legacy, used when neither language is set)",)__"
-        R"__("url":"Public URL (published or legacy)",)__"
+        R"__("url":"Link on the internet (set by Host it online, or by hand)",)__"
+        R"__("hosted_by":"The Antfarm node that put it online",)__"
         R"__("description_en":"Description (English)",)__"
         R"__("description_es":"Descripcion (espanol)",)__"
         R"__("description":"Description (legacy)"}}})__");

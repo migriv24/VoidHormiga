@@ -305,9 +305,27 @@ void HormigaApp::install_host() {
             toast("restored " + done);
             return json_str(done);
         }
-        if (op == "publish") { // opt-in ImgBB holiday; no-op without a key
-            publish_image(std::string(args));
-            return {};
+        /* HOST IT ONLINE (2026-09-15): `effect host-online <image|missing>
+         * [host-node]`, through the Antfarm's image host (domain/hosting.hpp).
+         * `publish` is the old ImgBB-only name, kept so a script using it works;
+         * it also received the raw `{"args":[...]}` as a rune name, and found
+         * nothing. */
+        if (op == "host-online" || op == "publish") {
+            std::vector<std::string> a;
+            try {
+                auto aj = nlohmann::json::parse(args);
+                if (aj.contains("args"))
+                    for (const auto& x : aj["args"]) a.push_back(x.get<std::string>());
+            } catch (...) {
+                if (!args.empty()) a.push_back(std::string(args)); // a bare rune name
+            }
+            if (a.empty()) {
+                toast("host-online: name an image, or `missing`", true);
+                return {};
+            }
+            const std::string prefer = a.size() > 1 ? a[1] : std::string();
+            if (a[0] == "missing") return std::to_string(host_missing_images(prefer));
+            return host_image(a[0], prefer) ? json_str(a[0]) : std::string();
         }
         if (op == "import-rescue") { // the Supabase Import node's button
             import_rescue_effect();
@@ -1457,7 +1475,16 @@ void HormigaApp::init() {
                                {"hol_imgbb", "ImgBB - cloud image host", "Assets"},
                                {"hol_html", "HTML site - publisher", "Publish"},
                                {"hol_localhost", "Localhost - local server", "Publish"},
-                               {"hol_github", "GitHub Pages - cloud deploy", "Publish"}};
+                               {"hol_github", "GitHub Pages - cloud deploy", "Publish"},
+                               /* registered for weeks and missing here, so they
+                                * could not be placed from the GUI (2026-09-15) */
+                               {"hol_static_host", "Static host - cloud deploy", "Publish"},
+                               {"hol_dns", "Domain / DNS - registrar", "Publish"},
+                               {"hol_object_store", "Object store - S3 or R2", "Assets"},
+                               {"hol_uploads", "Uploads - visitor object store", "Assets"},
+                               {"hol_lan_peer", "LAN peer - another device", "Records"},
+                               {"hol_auth", "Sign-in - identity provider", "Visitors"},
+                               {"hol_accounts", "Accounts + submissions", "Visitors"}};
     palette_allomone.entries = {{"allo_when", "When (a rule)", "Allomone"},
                                 {"allo_hastag", "has tag", "Allomone"},
                                 {"allo_setcolor", "set card color", "Allomone"}};
@@ -1622,6 +1649,7 @@ void HormigaApp::init() {
     faces.by_glyph["hol_csv"] = [face_status](maiz::FaceContext& ctx) {
         face_status(ctx, "live: Data > Import CSV...");
     };
+    register_hosting_faces(); // image hosts: can it answer, and "Use for images"
 
     // the seed references assets/flyer-taller.png — make it REAL so image
     // display works out of the box (procedural demo flyer, gitignored like
@@ -2074,20 +2102,7 @@ void HormigaApp::draw_avatar(const maiz::SceneNode& n, ImVec2 c, float r) {
  * and queue ONE `set <rune> url ...` so the result is logged and undoable.
  * The key rides only in the process invocation, never in the command log. */
 void HormigaApp::publish_image(const std::string& rune) {
-    const maiz::SceneNode* n = scene.find(rune);
-    if (!n || imgbb_key.empty() || !on_shell_capture) {
-        toast("publish: no rune/key/transport", true);
-        return;
-    }
-    // the transport is shared with the automatic upload (ui/widgets.cpp)
-    const std::string url =
-        upload_to_imgbb(field_value(*n, n->glyph == "hero" ? "image" : "path"), rune);
-    if (url.empty()) {
-        toast("publish failed - see log", true);
-        return;
-    }
-    pending_cmds.push_back("set " + rune + " url " + json_str(url));
-    toast("published: " + url);
+    host_image(rune); // since 2026-09-15: whichever image host the Antfarm has
 }
 
 /* The rescue import, now TWO independently-guarded passes sharing one

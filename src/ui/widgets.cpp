@@ -280,8 +280,9 @@ std::string HormigaApp::ingest_image_rune(const std::string& src) {
  * half of the same report.
  *
  * Now every image a person brings in becomes an image rune (`adopt_image`), and
- * when the Antfarm holds an ImgBB node and a key, it is uploaded and its `url`
- * set in the same step. From inside the inspector that work is handed to
+ * when the Antfarm has an image host that can answer (domain/hosting.hpp: ImgBB,
+ * an object store, or the website itself), it is put online and its `url` set in
+ * the same step. From inside the inspector that work is handed to
  * `run_busy`, which runs it at the start of the next frame: it is a network
  * call, and dispatching mid-draw would invalidate the very node being drawn.
  */
@@ -296,16 +297,6 @@ struct ImgState {
 std::map<std::string, ImgState> g_img_state; // path -> the gallery's answer, re-read every 2 s
 
 } // namespace
-
-bool HormigaApp::imgbb_ready() {
-    if (imgbb_key.empty() || !on_shell_capture) return false;
-    maiz::ProjectOptions po;
-    po.mantle = kAntfarmMantle;
-    const maiz::Scene farm = maiz::project_scene(core, po);
-    for (const auto& n : farm.nodes)
-        if (n.glyph == "hol_imgbb") return true;
-    return false;
-}
 
 /* The ImgBB transport, shared by `effect publish` and the automatic upload.
  * Permanent (no expiration parameter: a newsletter image must outlive the
@@ -372,16 +363,9 @@ void HormigaApp::adopt_image(const std::string& path, const std::string& stem) {
             name.clear();
         }
     }
-    if (!name.empty() && url.empty() && imgbb_ready()) {
-        url = upload_to_imgbb(path, name);
-        if (!url.empty()) {
-            dispatch_and_reproject("set " + name + " url " + json_arg(json_str(url)));
-            toast("uploaded '" + name + "' to ImgBB - it will show in email");
-        } else {
-            toast("the ImgBB upload of '" + name + "' failed - see the log", true);
-        }
-    }
     if (away) dispatch_and_reproject("use " + was);
+    // online through whichever image host the Antfarm has, if one can answer now
+    if (!name.empty() && url.empty() && image_host_ready()) host_image(name);
     g_img_state.erase(path);
 }
 
@@ -412,14 +396,8 @@ void HormigaApp::register_image_editors() {
         }
         if (image_rune) {
             const std::string rune = n.name;
-            if (imgbb_ready())
-                run_busy("Uploading to ImgBB", [this, managed, rune] {
-                    const std::string url = upload_to_imgbb(managed, rune);
-                    if (!url.empty())
-                        pending_cmds.push_back("set " + rune + " url " + json_str(url));
-                    else
-                        toast("the ImgBB upload failed - see the log", true);
-                });
+            if (image_host_ready())
+                run_busy("Putting the image online", [this, rune] { host_image(rune); });
         } else if (n.glyph != "resource") {
             const std::string stem = fs::path(picked).stem().string();
             run_busy("Adding the image to the gallery",
@@ -447,7 +425,7 @@ void HormigaApp::register_image_editors() {
                     s.url = hormiga::temper::field_value(n, "url");
                     break;
                 }
-            s.ready = imgbb_ready();
+            s.ready = image_host_ready();
         }
         const ImVec4 green(0.35f, 0.70f, 0.40f, 1.0f), amber(0.85f, 0.60f, 0.15f, 1.0f);
         auto adopt_later = [this, path](const char* label) {
@@ -459,17 +437,20 @@ void HormigaApp::register_image_editors() {
         } else if (s.rune.empty()) {
             ImGui::TextColored(amber, "not in the image gallery yet");
             ImGui::SameLine();
-            if (ImGui::SmallButton(s.ready ? "Add + upload" : "Add to gallery"))
+            if (ImGui::SmallButton(s.ready ? "Add + host online" : "Add to gallery"))
                 adopt_later("Adding the image to the gallery");
         } else if (s.ready) {
-            ImGui::TextColored(amber, "only on this computer");
+            ImGui::TextColored(amber, "not online yet");
             ImGui::SameLine();
-            if (ImGui::SmallButton(ICON_FA_CLOUD_ARROW_UP "  Upload to ImgBB"))
-                adopt_later("Uploading to ImgBB");
+            if (ImGui::SmallButton(ICON_FA_CLOUD_ARROW_UP "  Host it online"))
+                adopt_later("Putting the image online");
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("through the Antfarm's image host - see Antfarm >\n"
+                                  "Hosting images online for which one, and why");
         } else {
-            ImGui::TextDisabled("only on this computer - an inbox cannot load it.\n"
-                                "Add an ImgBB node (and its key) in the Antfarm\n"
-                                "and images upload themselves when added.");
+            ImGui::TextDisabled("not online yet - an inbox cannot load it. No image\n"
+                                "host in the Antfarm can answer: add ImgBB, an object\n"
+                                "store with a public address, or your website's host.");
         }
     };
 

@@ -292,3 +292,241 @@ int HormigaApp::check_store(const maiz::Scene& farm, std::string_view node) {
                        " - the same operation a push performs"});
     return 0;
 }
+
+/* ── HOST IT ONLINE: A HOLIDAY AS A FUNCTION CALL (2026-09-15) ───────────────
+ *
+ * domain/hosting.hpp has the author's words and the shape: a local file in, a
+ * public link out, answered by whichever Antfarm node implements the protocol.
+ * These are the implementations, one branch per row of that table.
+ *
+ * Here beside the object store because one of the three answers IS the object
+ * store, and `store_config` above is how its credentials resolve: vault first,
+ * then file, with the error naming both. A second resolver for the same secret
+ * is how a green light stops predicting the upload it lights for.
+ *
+ * `host_online` takes the Antfarm scene and the site's address as arguments, and
+ * does no dispatching, so the CLI (whose HormigaApp owns no database) and the GUI
+ * call the same function. Writing the link into the image rune is the caller's:
+ * `host_image` below for the GUI, the `host-online` effect in main/headless.cpp.
+ */
+#include "domain/hosting.hpp"
+
+namespace {
+std::string image_content_type(const std::string& path) {
+    std::string ext = fs::path(path).extension().string();
+    for (char& c : ext) c = (char)std::tolower((unsigned char)c);
+    if (ext == ".png") return "image/png";
+    if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
+    if (ext == ".gif") return "image/gif";
+    if (ext == ".webp") return "image/webp";
+    if (ext == ".svg") return "image/svg+xml";
+    return "application/octet-stream";
+}
+
+std::string read_trimmed(const fs::path& p) {
+    std::ifstream in(p, std::ios::binary);
+    if (!in) return {};
+    std::stringstream ss;
+    ss << in.rdbuf();
+    return hormiga::cloudflare::trim_secret(ss.str());
+}
+
+std::string config_url(maiz::Core& core) {
+    std::string v = core.dispatch("config get site.base_url").data;
+    if (v.size() >= 2 && v.front() == '"' && v.back() == '"') v = v.substr(1, v.size() - 2);
+    if (v == "null") v.clear();
+    while (!v.empty() && v.back() == '/') v.pop_back();
+    return v;
+}
+} // namespace
+
+std::string HormigaApp::host_problem(const maiz::SceneNode& node, const std::string& base_url) {
+    if (!hormiga::hosting::asset_host(node.glyph)) return "this node cannot host images";
+    if (!on_shell_capture) return "no network transport on this front-end";
+    if (node.glyph == "hol_imgbb") {
+        if (!imgbb_key.empty()) return {};
+        const std::string kf = field_value(node, "key_file");
+        if (!kf.empty() &&
+            !read_trimmed(fs::path(kf).is_absolute() ? fs::path(kf) : base_dir / kf).empty())
+            return {};
+        return "no ImgBB key - unlock the vault, add imgbb.key, or set key_file";
+    }
+    if (node.glyph == "hol_object_store") {
+        if (field_value(node, "bucket").empty()) return "set its bucket";
+        if (field_value(node, "access_key_id").empty()) return "set its access_key_id";
+        if (field_value(node, "public_url").empty())
+            return "set its public_url - the address the bucket is served at (an "
+                   "r2.dev address, or your own domain)";
+        return {};
+    }
+    if (base_url.empty())
+        return "set the website's address (site.base_url, in Style > Site) - the link "
+               "is built from it";
+    return {};
+}
+
+const maiz::SceneNode* HormigaApp::pick_image_host(const maiz::Scene& farm,
+                                                   const std::string& prefer,
+                                                   const std::string& base_url,
+                                                   std::string* why) {
+    auto say = [&](const std::string& s) {
+        if (why) *why = s;
+    };
+    if (!prefer.empty()) {
+        const maiz::SceneNode* n = nullptr;
+        for (const auto& f : farm.nodes)
+            if (f.name == prefer) n = &f;
+        if (!n || !hormiga::hosting::asset_host(n->glyph)) {
+            say("no image host called '" + prefer + "' in the Antfarm");
+            return nullptr;
+        }
+        say(host_problem(*n, base_url));
+        return n;
+    }
+    const maiz::SceneNode* first = nullptr;
+    for (const auto& h : hormiga::hosting::kAssetHosts)
+        for (const auto& f : farm.nodes) {
+            if (f.glyph != h.glyph) continue;
+            if (!first) first = &f;
+            if (host_problem(f, base_url).empty()) {
+                say("");
+                return &f;
+            }
+        }
+    if (first) {
+        say(first->name + ": " + host_problem(*first, base_url));
+        return first;
+    }
+    say("no image host in the Antfarm - add ImgBB, an object store with a public "
+        "address, or your website's host");
+    return nullptr;
+}
+
+HormigaApp::HostedLink HormigaApp::host_online(const maiz::Scene& farm, const std::string& path,
+                                              const std::string& name,
+                                              const std::string& base_url,
+                                              const std::string& prefer) {
+    HostedLink out;
+    std::string why;
+    const maiz::SceneNode* host = pick_image_host(farm, prefer, base_url, &why);
+    if (!host || !why.empty()) {
+        out.error = why.empty() ? "no image host can answer" : why;
+        return out;
+    }
+    out.node = host->name;
+    const fs::path abs = fs::path(path).is_absolute() ? fs::path(path) : base_dir / path;
+    std::error_code ec;
+    if (path.empty() || !fs::exists(abs, ec)) {
+        out.error = "no file on this computer at " + abs.string();
+        return out;
+    }
+    if (host->glyph == "hol_imgbb") {
+        if (imgbb_key.empty()) {
+            const std::string kf = field_value(*host, "key_file");
+            if (!kf.empty())
+                imgbb_key =
+                    read_trimmed(fs::path(kf).is_absolute() ? fs::path(kf) : base_dir / kf);
+        }
+        out.url = upload_to_imgbb(path, name);
+        if (out.url.empty())
+            out.error = log.empty() ? std::string("ImgBB did not answer with a link")
+                                    : "ImgBB did not answer with a link: " + log.back().msg;
+    } else if (host->glyph == "hol_object_store") {
+        hormiga::aws::Config cc;
+        if (!store_config(*host, base_dir, vault, on_shell_capture, log, cc)) {
+            // the reason, not a pointer to it: the CLI has no log strip to point at
+            out.error = log.empty() ? std::string("the object store is not ready")
+                                    : log.back().msg;
+            return out;
+        }
+        std::string prefix = field_value(*host, "prefix");
+        if (!prefix.empty() && prefix.back() != '/') prefix += '/';
+        const std::string key = prefix + "images/" + abs.filename().string();
+        const hormiga::aws::Result r =
+            hormiga::aws::put_file(cc, key, abs.string(), image_content_type(path));
+        if (!r.ok) {
+            out.error = "the upload failed: " + r.error;
+            return out;
+        }
+        std::string pub = field_value(*host, "public_url");
+        while (!pub.empty() && pub.back() == '/') pub.pop_back();
+        out.url = pub + "/" + hormiga::aws::uri_encode(key, false);
+    } else { // a website host: the file rides the next publish
+        const std::string rel = stage_site_asset(abs.string());
+        if (rel.empty()) {
+            out.error = "could not copy the file into the website's folder";
+            return out;
+        }
+        out.url = base_url + "/" + rel;
+        out.after_publish = true;
+    }
+    out.ok = !out.url.empty();
+    if (out.ok)
+        log.push_back({"info", "host",
+                       name + " -> " + out.url + " (through " + out.node +
+                           (out.after_publish ? "; works after the next publish)" : ")")});
+    return out;
+}
+
+bool HormigaApp::image_host_ready() {
+    maiz::ProjectOptions ao;
+    ao.mantle = kAntfarmMantle;
+    std::string why;
+    return pick_image_host(maiz::project_scene(core, ao), "", config_url(core), &why) &&
+           why.empty();
+}
+
+/* The GUI's call: find the image rune, ask the Antfarm, write the link and the node
+ * that made it into the rune. Dispatches, so it runs between frames (`run_busy`)
+ * or from a control that returns straight afterwards. */
+bool HormigaApp::host_image(const std::string& rune, const std::string& prefer) {
+    maiz::ProjectOptions ao, dpo;
+    ao.mantle = kAntfarmMantle;
+    dpo.mantle = kDataMantle;
+    const maiz::Scene farm = maiz::project_scene(core, ao);
+    const maiz::Scene data = maiz::project_scene(core, dpo);
+    std::string path;
+    bool found = false;
+    for (const auto& n : data.nodes)
+        if (n.name == rune && n.glyph == "image") {
+            path = field_value(n, "path");
+            found = true;
+        }
+    if (!found) {
+        toast("no image called " + rune, true);
+        return false;
+    }
+    const HostedLink link = host_online(farm, path, rune, config_url(core), prefer);
+    if (!link.ok) {
+        toast("could not put " + rune + " online: " + link.error, true);
+        return false;
+    }
+    const std::string was = scene.mantle;
+    const bool away = !was.empty() && was != kDataMantle;
+    if (away) dispatch_and_reproject(std::string("use ") + kDataMantle);
+    dispatch_and_reproject("set " + rune + " url " + json_arg(json_str(link.url)));
+    dispatch_and_reproject("set " + rune + " hosted_by " + json_arg(json_str(link.node)));
+    if (away) dispatch_and_reproject("use " + was);
+    toast(link.after_publish ? rune + " has its link - it works after the next publish"
+                             : rune + " is online");
+    return true;
+}
+
+int HormigaApp::host_missing_images(const std::string& prefer) {
+    maiz::ProjectOptions dpo;
+    dpo.mantle = kDataMantle;
+    const maiz::Scene data = maiz::project_scene(core, dpo);
+    std::vector<std::string> todo;
+    for (const auto& n : data.nodes) {
+        if (n.glyph != "image" || !field_value(n, "url").empty()) continue;
+        const std::string p = field_value(n, "path");
+        std::error_code ec;
+        if (!p.empty() &&
+            fs::exists(fs::path(p).is_absolute() ? fs::path(p) : base_dir / p, ec))
+            todo.push_back(n.name);
+    }
+    int done = 0;
+    for (const auto& r : todo)
+        if (host_image(r, prefer)) ++done;
+    return done;
+}

@@ -245,6 +245,18 @@ struct HormigaApp {
      * "backup" is the encrypted blob. A push effect that took an arbitrary path
      * would be a way to upload anything on the operator's disk from a command,
      * which is a hole nobody asked for. See okf/concepts/platform/data-planes.md. */
+    /* "Host it online" (domain/hosting.hpp, publish/push.cpp): an Antfarm node turns a
+     * local file into a public link. `after_publish` = it works after the next publish. */
+    struct HostedLink { bool ok = false, after_publish = false; std::string url, node, error; };
+    HostedLink host_online(const maiz::Scene& farm, const std::string& path,
+                           const std::string& name, const std::string& base_url,
+                           const std::string& prefer = "");
+    const maiz::SceneNode* pick_image_host(const maiz::Scene& farm, const std::string& prefer,
+                                           const std::string& base_url, std::string* why);
+    std::string host_problem(const maiz::SceneNode& node, const std::string& base_url);
+    bool image_host_ready();                                // a host that can answer now
+    bool host_image(const std::string& rune, const std::string& prefer = ""); // sets url
+    int host_missing_images(const std::string& prefer = "");
     int push_to_store(const maiz::Scene& farm, std::string_view node,
                       std::string_view what);
     /* Can these credentials reach this bucket? Performs the smallest REAL
@@ -575,7 +587,7 @@ private:
                             float inner_w, unsigned acc); // flier/feature/image_text
     void draw_multi_select_panel();                       // N selected: remove/width
     void ensure_icon_editor();                            // the "icon" inspector editor
-    void draw_order_section(const maiz::SceneNode& sel);  // Builder: list first / last
+    void draw_block_extras(const maiz::SceneNode& sel);   // Builder: featured event, order
     void open_tag_expr_editor(const maiz::SceneNode& sel);
     void draw_tag_expr_editor(const maiz::SceneNode& sel); // a filter, as an expression
     maiz::CodeEditorState tagexpr_editor;
@@ -1005,8 +1017,10 @@ private:
     std::string imgbb_key;              // secret; from vault or plaintext; "" = off
     void publish_image(const std::string& rune); // effect publish → url field
     void register_image_editors();      // ui/widgets.cpp: browse, image editor, gallery
-    bool imgbb_ready();                 // a key AND an hol_imgbb node in the Antfarm
     std::string upload_to_imgbb(const std::string& path, const std::string& name); // url
+    void register_hosting_faces();                          // publish/panel.cpp
+    void draw_hosting_panel();                              // top of the Antfarm inspector
+    std::string doc_batch(const std::vector<std::string>& cmds); // `doc ...` lines, one undo
     void adopt_image(const std::string& path, const std::string& stem); // rune + upload
 
     // ── the credential vault (.miga v2; okf/concepts/platform/security.md) ───────────

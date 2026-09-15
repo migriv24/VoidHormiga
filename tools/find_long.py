@@ -215,7 +215,10 @@ BUDGET = {
     # ui/niche_tools.cpp. The tools' own state lives in that file, not the class.
     # -> 1180 (2026-09-15): four declarations for the image flow in ui/widgets.cpp
     # (gallery, ImgBB upload, adopt). The code left app.cpp, which shrank by 59.
-    'src/app/app.hpp': 1180,
+    # -> 1195 (2026-09-15): "host it online" -- a HostedLink and six declarations
+    # the CLI must reach (so public), plus doc_batch and the hosting panel. The
+    # code is publish/push.cpp and publish/panel.cpp; only the signatures live here.
+    'src/app/app.hpp': 1195,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because
@@ -268,7 +271,11 @@ BUDGET = {
     # test that links nothing. That split is the ratchet working -- roughly 450
     # lines landed in `domain/` where they can be checked, and what came here
     # is the boot and the refusals, which is what this file is for.
-    'src/main/headless.cpp': 1380,
+    # 1380 -> 1460 (2026-09-15): `effect host-online`, the CLI's half of "host it
+    # online". The protocols are publish/push.cpp; what stays here is reading the
+    # arguments, walking the images and writing the links back, which only the
+    # front-end that owns the core can do.
+    'src/main/headless.cpp': 1460,
     # NEW ENTRY 2026-09-02 (was on the 1000 default): the Data tab lost 168 lines
     # to `ui/widgets.cpp` the same afternoon -- the rune-rename control (shared
     # with the Notes tab, which is why a note could not be renamed at all), the

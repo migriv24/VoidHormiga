@@ -243,14 +243,16 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
      * document is a credential in the state document. */
     reg("hol_object_store", "Object store - S3 or compatible", WEB,
         R"("bucket","region","endpoint","access_key_id","secret_key",)"
-        R"("secret_file","prefix")",
+        R"("secret_file","prefix","public_url")",
         R"__("bucket":"Bucket name",)__"
         R"__("region":"Region (us-west-2, auto for R2, ...)",)__"
         R"__("endpoint":"Blank for AWS S3; set it for an S3-compatible store",)__"
         R"__("access_key_id":"Access key id (not a secret)",)__"
         R"__("secret_key":"Secret access key, kept in the encrypted vault",)__"
         R"__("secret_file":"...or a file beside the database (gitignored)",)__"
-        R"__("prefix":"Key prefix, so one bucket can hold several things")__", 132,
+        R"__("prefix":"Key prefix, so one bucket can hold several things",)__"
+        R"__("public_url":"Public address the bucket is served at - an r2.dev address )__"
+        R"__(or your own domain; needed to host images")__", 150,
         std::string(R"({"name":"assets","dir":"in","type":"assets"})"));
 
     /* ── A DEPLOYMENT: one rune per publish (2026-08-20) ──────────────────────
