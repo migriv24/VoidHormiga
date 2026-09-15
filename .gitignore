@@ -114,3 +114,16 @@ vendor/libsodium/lib/pkgconfig/
 .gh-curl.cfg
 .gh-body.json
 custom.css
+
+# ── MESSAGES AND REPORTS BETWEEN PROJECTS (2026-09-15) ───────────────────────
+#
+# CLAUDE.md rule 4: needs and gaps are drafted at the repo root as
+# MESSAGE_FOR_<RECIPIENT>_... for the author to relay; replies arrive as
+# MESSAGE_FOR_VOIDHORMIGA_..., and field reports from other deployments as
+# REPORT_FROM_<SENDER>_.... They are correspondence rather than project: a
+# consumed one is folded into okf/log.md and deleted, and one still in flight can
+# quote a client's site, their data, or a sibling project's unreleased work. The
+# author asked for them to be ignored; the two that had been committed were
+# removed from the index the same day (they stay on disk).
+MESSAGE_FOR_*.md
+REPORT_FROM_*.md

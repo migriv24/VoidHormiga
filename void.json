@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -179,7 +179,11 @@
       "publish-index",
       "sync-version",
       "sync-merge",
-      "lan-peers"
+      "lan-peers",
+      "host-online",
+      "import-ics",
+      "export-calendar-ics",
+      "translation-report"
     ],
     "ships_beside_binary": [
       "AGENT-GUIDE.md",
@@ -211,39 +215,58 @@
 
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.1.1",
-    "previous": "0.1.0",
+    "version": "0.1.2",
+    "previous": "0.1.1",
     "change": "compatible",
-    "date": "2026-09-10",
-    "summary": "the Calendar becomes usable: one time parser instead of two, overlapping events visible, quick-add, keyboard navigation, and a conformant .ics anything can import",
+    "date": "2026-09-15",
+    "summary": "the newsletter gets a look of its own and images get online through the Antfarm: newsletter themes, bands and banners in email, lists, ordering by tags, recurring events and .ics import, and Host it online",
     "adds": [
-      "Calendar quick-add: type 'Food drive 3pm-5pm' and press Enter",
-      "Calendar keyboard navigation, jump-to-date, and double-click to create",
-      "Overlapping events draw side by side instead of on top of each other",
-      "Export .ics from the Calendar, and `effect export-calendar-ics` from the CLI"
+      "Newsletter themes of its own, separate from the website: ten presets (classic, modern, bold, editorial, night, ocean, sunset, forest, newsprint, minimal) that mix colours, type and shape - Style > Newsletter",
+      "The newsletter honours rows, bands (tint, card, accent, dark, gradient, photo) and hero banners, and event and job cards can sit two or three to a row",
+      "Lists in narratives: lines starting with - or 1. become real lists, on the website and in the newsletter",
+      "Host it online: an image gets a public link through the Antfarm - ImgBB, an S3 or Cloudflare R2 bucket, or your own website - from the image editor, the Data tab, the Antfarm's Hosting panel, or `effect host-online`",
+      "Order a directory, image grid or job grid by tags - list first / list last, edited like a filter",
+      "Pick a featured event from a searchable list, and choose block images from the gallery",
+      "Repeating events authored in Hormiga, and `effect import-ics` reads any .ics file or feed",
+      "Tags with a colon (kw:, clearance:) are visible and colour-coded, with clearance switches on contacts and organizations",
+      "Niche Tools (Windows menu): merge a stray copy of a database back with a preview and checks, and make QR codes",
+      "Selecting several blocks and deleting or resizing them works"
     ],
     "behavior_changes": [
       {
-        "what": "TIMES ON THE CALENDAR GRID MOVE, and it is a fix rather than a change of mind. The grid parsed times with sscanf while the renderers used a real parser, so an event stored as '3:00 PM' -- what a flier prints -- was DRAWN AT 3 AM, and one stored as '9 AM' was treated as all-day and never appeared on the time grid. Both now read the way the .ics export has always read them. Nothing in your database changed; what changed is where those entries are drawn.",
-        "who_is_affected": "Anyone whose events store a 12-hour time with AM/PM, which is most organizations. Their calendar looked wrong and should now look right; what they exported was always correct."
+        "what": "BLOCKS THAT SHARE A ROW NOW SIT SIDE BY SIDE IN THE NEWSLETTER. The email renderer ignored rows and stacked every block; it now lays a row out as table cells, as the website always did. A newsletter built with blocks side by side will look the way it was laid out rather than stacked.",
+        "who_is_affected": "Anyone who placed two or more blocks on the same row of a newsletter. Look at the preview before the next send."
       },
       {
-        "what": "A published calendar feed now carries CATEGORIES, built from `kw:` tags ONLY. Every other namespace -- including any an organization invented -- is deliberately withheld, because a list of what to EXCLUDE cannot know about a namespace coined tomorrow.",
-        "who_is_affected": "Anyone publishing a calendar. It is additive and errs toward withholding, so nothing that was private becomes public."
+        "what": "ADDING AN IMAGE CAN PUT IT ONLINE BY ITSELF. When the Antfarm has an image host that can answer - an ImgBB key, an object store with a public_url, or a website host with the site's address set - an image added in the app is uploaded, or copied into the website, and given a public link without a separate click. Anyone with that link can see the image.",
+        "who_is_affected": "Anyone with an ImgBB, object store, static host or GitHub Pages node in their Antfarm. To keep new images on this computer only, remove the host node or leave the site's address unset."
       },
       {
-        "what": "A cancelled event (tagged `status:cancelled`) is published as STATUS:CANCELLED instead of being dropped from the feed. An entry that merely disappears stays on a subscriber's calendar forever, because the client cannot tell 'cancelled' from 'filtered out'.",
-        "who_is_affected": "Anyone whose published calendar has subscribers."
+        "what": "A BLOCK'S IMAGE BECOMES A GALLERY IMAGE. Browsing a file into a hero, image + text or portrait field now also creates an `image` entry in Data, so the picture can be tagged, found and put online. Before, it was a bare file in assets/ that nothing else knew about.",
+        "who_is_affected": "Anyone adding pictures to newsletter or website blocks: expect new entries among the Data tab's images."
       },
       {
-        "what": "VEVENT UIDs are built from the rune's permanent id rather than its editable name, so renaming an event no longer tells subscribers the old one was deleted. Anyone already subscribed to a published feed sees its entries re-added ONCE -- the one-time cost of the fix.",
-        "who_is_affected": "Anyone with an existing published .ics feed that people have already subscribed to."
+        "what": "THE NEWSLETTER PREVIEW SHOWS IMAGES THAT ARE NOT ONLINE YET, drawn from their files with a red dashed outline under a notice at the top, instead of grey 'unpublished' boxes or nothing. The notice is part of the preview file, so an issue copied while it shows would carry it.",
+        "who_is_affected": "Anyone who copies the newsletter preview into an email tool. Put the images online first (Antfarm > Hosting images online, or `effect host-online missing`) and the notice is gone."
+      },
+      {
+        "what": "`effect publish` IS NOW `effect host-online`, and goes through whichever image host the Antfarm has rather than ImgBB only. The old name still works. It also writes `hosted_by`, the node that made the link.",
+        "who_is_affected": "Scripts and agents that call `effect publish` or read image runes."
+      },
+      {
+        "what": "THE ALLOMONE WINDOW STARTS CLOSED, and a red warning appears in the menu bar whenever the open database sits inside a Hormiga source folder.",
+        "who_is_affected": "Anyone who used the Allomone window (reopen it from the Windows menu), and anyone who runs Hormiga from a source checkout."
+      },
+      {
+        "what": "THE LOCAL PREVIEW SERVER ALSO SERVES IMAGE FILES FROM assets/ (PNG, JPEG, GIF and WebP only), so the newsletter preview can draw images that are not online yet. It still answers only on this computer.",
+        "who_is_affected": "Nobody needs to act; stated because it widens what the local preview answers."
       }
     ],
     "read_more": [
       "README.md",
-      "okf/concepts/sections/calendar-roadmap.md",
-      "okf/index.md"
+      "AGENT-GUIDE.md",
+      "okf/concepts/sections/builder-roadmap.md",
+      "okf/concepts/platform/antfarm.md"
     ]
   },
 

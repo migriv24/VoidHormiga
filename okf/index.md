@@ -233,7 +233,7 @@ with it.
 
 # Status
 
-**As of 2026-09-14.** **Void Hormiga 0.1.1 shipped on 2026-09-10**, and an
+**As of 2026-09-15.** **Void Hormiga 0.1.2 shipped on 2026-09-15**: the newsletter look of its own, Host it online through the Antfarm, ordering by tags, recurrence and `.ics` import. **0.1.1 shipped on 2026-09-10**, and an
 installed 0.1.0 found it and updated itself through the feed, which is the half
 of phase G's exit test one computer can prove. Since then the work has followed
 the author making real newsletters:

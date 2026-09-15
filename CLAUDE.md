@@ -28,7 +28,8 @@ engine — C ABI) and **Void Maiz** (`../VoidMaiz`, the node-graph view library
    (e.g. `MESSAGE_FOR_VOIDMAIZ_hormiga-map-tools-2026-07-22.md`); replies
    arrive as `MESSAGE_FOR_VOIDHORMIGA_<sender>-<topic>-<date>.md`. A consumed
    message is folded into the OKF log and then deleted — the log is the
-   durable record, not the message file.
+   durable record, not the message file. The files are gitignored
+   (2026-09-15): they are correspondence, not project.
 5. **Vendor, don't depend.** Third-party pieces (SQLite amalgamation,
    libsodium, inja, stb-class single-file libs) are vendored with licenses.
    No package managers, no CDNs, no frameworks.

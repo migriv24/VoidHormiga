@@ -3602,3 +3602,94 @@ be mixed like the rest:
 - **Stale website links:** a website-hosted image's link stays unreachable if the
   site is never published again. The panel says when a link waits for a publish,
   but nothing reminds anyone at send time.
+
+# 0.1.2 (2026-09-15) -- an official update, and Mago's stage had grown a check that counted the wrong platform
+
+The author: *"lets make this another update! an official update. of course,
+please be sure to git ignore these messages and reports from places."*
+
+## What ships
+
+The eleven commits since 0.1.1:
+- the calendar's recurrence and `.ics` import;
+- the newsletter passes: rows, grids, the look of its own, bands, banners and
+  lists;
+- colon tags and Niche Tools;
+- the alignment scan;
+- ordering by tags;
+- Host it online through the Antfarm;
+- group delete;
+- the featured-event picker.
+
+**`void.json` carries the release.** It has ten `adds` and **seven
+`behavior_changes`, every one an object with `who_is_affected`**. The shape
+matters since Mago's 2026-09-10 finding, when string entries were dropped
+silently. Two of the seven change what reaches the internet without a separate
+click, which is why they come first in the notes:
+- **Adding an image can put it online by itself,** when the Antfarm has a host
+  that can answer.
+- **A block's image becomes a gallery image.**
+
+`provides.effects` gained `host-online`, `import-ics`, `export-calendar-ics` and
+`translation-report`.
+
+## Messages and reports are gitignored
+
+`MESSAGE_FOR_*.md` and `REPORT_FROM_*.md` are in `.gitignore`, with the reason
+beside the patterns: they are correspondence rather than project, and one still
+in flight can quote a client's site or a sibling's unreleased work. Two old
+`MESSAGE_FOR_CLICKLAFONT_...` files that had been committed were removed from the
+index and stay on disk. CLAUDE.md rule 4 says so.
+
+## Staging: three findings on Mago's side, nothing patched there (rule 4)
+
+1. **`mago stage` refused, over files for other platforms.** It resolved
+   `windows-x64` and staged every Windows file, then stopped on
+   `libvoidcore-macos-universal.dylib` and `libvoidcore-linux-x64.so`.
+   - **The cause:** Void Core's manifest lists all three platforms' artifacts in
+     one flat array, and the check counts all of them whatever is being staged.
+   - **Not Void Core's change:** its manifest has not changed since 2026-09-03,
+     and it staged 0.1.1 cleanly on 2026-09-10. The check is new on Mago's side.
+   - **Why it matters:** a macOS dylib missing from a Windows installer is not a
+     hole, and the check cannot tell it from a real one.
+2. **`mago wizard` generated the script instead,** which is the regenerator the
+   0.1.1 script's own header names. It needs three things `stage` always
+   supplied:
+   - `--source-root .`, run from the stage folder, or every `File` path points
+     somewhere `makensis` does not look;
+   - `--outfile`, or the installer is `VoidSuiteSetup.exe`;
+   - `--suite-name`.
+3. **`DisplayVersion` came out as the suite default, `"0.1.0"`, with no flag to
+   set it.** Windows' Apps & features would have listed 0.1.2 as 0.1.0. That one
+   line was changed by hand in the generated script. Then **the whole script was
+   diffed against 0.1.1's with version numbers and the date masked, and it was
+   identical.** That diff is what makes a hand-touched generated file
+   trustworthy, rather than the edit being small.
+
+All three are in
+`MESSAGE_FOR_VOIDMAGO_hormiga-stage-checks-other-platforms-artifacts-2026-09-15.md`,
+for the author to relay. Leans:
+- scope the missing-file check to `plan.platform`;
+- let a manifest key artifacts by platform;
+- give `wizard` the application's version for a single-application suite.
+
+## What was built and checked
+
+- **Installer:** `makensis` built `VoidHormiga-0.1.2-windows-x64-setup.exe`,
+  **8.54 MB**, up from 8.18.
+- **Feed:** `mago feed --artifacts` hashed it and the version-free copy. Checked
+  by hand, not taken from the feed's word:
+  - both files hash to `f61ce4390e772c5fc728d703f8cc4a922211d016dadd198a298ffacc78c97be4`;
+  - the size on disk matches the feed's `bytes`;
+  - the feed says `latest 0.1.2`, with ten adds and seven object-shaped behavior
+    changes.
+- **Tests:** the build reports `Void Hormiga 0.1.2 (windows-x64)`, and 38/38 tests
+  pass.
+
+## Still not true
+
+- **Nothing is signed.**
+- **`platforms` stays `["windows-x64"]`.** The macOS and Linux archives
+  `release.yml` attaches compile on runners with no display.
+- **The replacement itself is still unwitnessed.** No person has run the
+  interactive installer from an installed 0.1.1.
