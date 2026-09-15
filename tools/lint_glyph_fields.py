@@ -55,13 +55,13 @@ EXEMPT = {
     'notes': 'internal-notes class: never reaches an output (CLAUDE.md rule 6)',
     'row': 'layout, consumed by the grid driver', 'col': 'layout',
     'span': 'layout', 'page': 'layout', 'link_to': 'layout',
-    'band_bg': 'band styling', 'band_full': 'band styling',
-    'band_image': 'band styling', 'band_filter': 'band styling',
+    # band_bg / band_full / band_image left this list 2026-09-15: both domains
+    # render bands now (render/email_theme.hpp, "A band, in an inbox")
+    'band_filter': 'CSS filter over a band photo; email has no filter property',
     'ref': 'editor-only fan-out parent', 'ref_off': 'editor-only',
     'geo': 'map/territory facet', 'geo1': 'map', 'geo2': 'map',
     'image_url': 'legacy', 'icon_url': 'legacy',
     'display': 'web-only presentation mode',
-    'columns': 'web-only presentation',
     'transcript': 'submission payload, reviewed not rendered',
     'evidence': 'submission payload', 'actor': 'submission provenance',
     'actor_email': 'submission provenance', 'received': 'submission',

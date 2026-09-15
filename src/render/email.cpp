@@ -47,6 +47,8 @@
 #include <fstream>
 #include "render/icon_set.hpp"   // emoji: the email half of the icon vocabulary
 #include "render/image_text.hpp" // the image + text block's markup
+#include "render/email_theme.hpp" // the newsletter's own theme: palette, type, shape
+#include <set>
 
 std::string HormigaApp::render_preview(std::string_view lang) {
     maiz::ProjectOptions io, dio;
@@ -85,7 +87,12 @@ std::string HormigaApp::render_preview(std::string_view lang) {
      * touched it, so an agent's newsletter arrived in the struct's default gold
      * whatever the organization had configured. */
     const SiteTheme th = read_site_theme(core);
-    const std::string acc = th.accent.empty() ? std::string("#3f6fae") : th.accent;
+    /* THE NEWSLETTER'S OWN THEME (2026-09-15; render/email_theme.hpp). `et` is
+     * not const on purpose: a band renders its blocks with a variant of it, and
+     * `acc` is a REFERENCE so every accent written inside a band follows it.
+     * The classic preset reproduces the literals this file used to carry. */
+    hormiga::mail::Theme et = hormiga::mail::make(hormiga::mail::read_choice(core), th);
+    const std::string& acc = et.accent;
 
     // document order = the grid rows once migrated; the legacy chain until then
     /* One day for the whole issue — the same rule the website keeps; see
@@ -123,12 +130,50 @@ std::string HormigaApp::render_preview(std::string_view lang) {
      * note instead of a broken image, and are counted so the render can warn —
      * a real issue once shipped full of dashed grey boxes because that warning
      * was a GUI toast nobody saw headless. */
-    int unpublished = 0;
+    /* PREVIEW WHAT WILL BE SENT, AND SHOW WHAT WILL NOT ARRIVE (2026-09-15).
+     * The author: *"the side by side images dont work in an email preview ...
+     * likely due to them not being correctly put into imgbb and so they dont
+     * show up in the browser preview."* That was it: an image with no `url` was
+     * a grey "unpublished" box or nothing, so the preview could not show the
+     * layout being built. An image that is only on this computer is now drawn
+     * from its local file, relative to the preview, with a dashed red outline,
+     * and the issue opens with a notice counting them. An inbox still cannot
+     * load a local file — nothing can change that — but the problem is now ON
+     * the page, not only in a log. */
+    std::set<std::string> local_only;
+    int missing_images = 0;
+    auto local_src = [&](const std::string& rel) -> std::string {
+        if (rel.empty()) return {};
+        if (rel.rfind("http://", 0) == 0 || rel.rfind("https://", 0) == 0) return rel;
+        const fs::path abs = fs::path(rel).is_absolute() ? fs::path(rel) : base_dir / rel;
+        std::error_code ec;
+        if (!fs::exists(abs, ec)) return {};
+        local_only.insert(abs.generic_string());
+        const fs::path r = fs::relative(abs, data_dir("exports"), ec);
+        return (ec || r.empty()) ? "file:///" + abs.generic_string() : r.generic_string();
+    };
     auto email_src = [&](const maiz::SceneNode& img, bool& ok) {
-        const std::string u = field_value(img, "url");
+        std::string u = field_value(img, "url");
+        if (u.empty()) u = local_src(field_value(img, "path"));
         ok = !u.empty();
-        if (!ok) ++unpublished;
+        if (!ok) ++missing_images;
         return u;
+    };
+    // the outline a local-only image carries, so a preview never looks sendable
+    auto local_mark = [](const std::string& src) -> std::string {
+        return src.empty() || src.rfind("http", 0) == 0
+                   ? std::string()
+                   : ";outline:3px dashed #e5484d;outline-offset:-3px";
+    };
+    // an image FIELD (a path): its image rune's public url, else the local file
+    auto image_at = [&](const std::string& path) -> std::string {
+        if (path.empty()) return {};
+        for (const auto& dn : data.nodes)
+            if (dn.glyph == "image" && field_value(dn, "path") == path) {
+                bool ok = false;
+                return email_src(dn, ok);
+            }
+        return local_src(path);
     };
 
     std::ostringstream html;
@@ -139,23 +184,46 @@ std::string HormigaApp::render_preview(std::string_view lang) {
 
     html << "<!doctype html><html lang=\"" << lang << "\"><head><meta charset=\"utf-8\">"
          << "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-         << "<title>" << html_escape(title) << "</title></head>\n"
-         << "<body style=\"margin:0;padding:0;background:#f2f0ea;"
-            "font-family:Georgia,'Times New Roman',serif\">\n"
+         << "<title>" << html_escape(title) << "</title>"
+         // Outlook desktop falls to Times on a font stack it cannot resolve; a
+         // conditional comment is the one place it can be told otherwise
+         << (et.classic_type ? "" : "<!--[if mso]><style>body,table,td,a,p,h1,h2{font-family:Arial,Helvetica,sans-serif !important}</style><![endif]-->")
+         << "</head>\n"
+         << "<body style=\"margin:0;padding:0;background:" << et.page
+         << ";font-family:" << et.font << "\">\n"
          << "<!-- generated by Hormiga: effect render " << lang
          << " (email domain: table layout, public image URLs) -->\n"
          // the outer table centres the 620px content across mail clients
          << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
-            "cellspacing=\"0\" style=\"background:#f2f0ea\"><tr>"
-            "<td align=\"center\" style=\"padding:16px\">\n"
+            "cellspacing=\"0\" style=\"background:" << et.page << "\"><tr>"
+            "<td align=\"center\" style=\"padding:" << et.outer << "px\">\n"
          << "<table role=\"presentation\" width=\"620\" cellpadding=\"0\" "
-            "cellspacing=\"0\" style=\"width:620px;max-width:620px;background:#ffffff\">"
-            "<tr><td style=\"padding:24px\">\n";
+            "cellspacing=\"0\" style=\"width:620px;max-width:620px;background:"
+         << et.frame << "\">";
+
+    /* THE FRAME'S PADDED CELL, OPENED LAZILY. A full-width banner or band closes
+     * it and takes a row of its own, edge to edge; the next block reopens it.
+     * For the classic theme the bytes are the ones this header always wrote. */
+    bool pad_open = false;
+    auto open_pad = [&] {
+        if (pad_open) return;
+        html << "<tr><td style=\"padding:" << et.pad << "px"
+             << hormiga::mail::Theme::more(
+                    {et.classic_type ? std::string() : "font-family:" + et.font,
+                     et.text_css()})
+             << "\">\n";
+        pad_open = true;
+    };
+    auto close_pad = [&] {
+        if (!pad_open) return;
+        html << "</td></tr>\n";
+        pad_open = false;
+    };
 
     // one icon-less meta line; email gets no inline SVG (Gmail strips it)
     auto meta_line = [&](const std::string& t) {
         if (t.empty()) return;
-        html << "<br><span style=\"color:#555\">" << html_escape(t) << "</span>";
+        html << "<br><span style=\"color:" << et.meta << "\">" << html_escape(t) << "</span>";
     };
 
     /* CARD GRIDS, N TO A ROW (2026-09-14). The author: *"event grids should be
@@ -194,17 +262,41 @@ std::string HormigaApp::render_preview(std::string_view lang) {
      * less inside a row. Anything that writes a `width=` attribute reads this,
      * because Outlook obeys that attribute over any CSS and a 572 image in a
      * half-width cell pushes the whole newsletter past its 620px frame. */
-    int cell_px = 572;
+    int cell_px = et.content_px();
+    bool hero_banner_done = false; // the driver already drew it edge to edge
     auto emit_block = [&](const maiz::SceneNode* n) {
         if (n->glyph == "hero") {
-            html << "<div style=\"border-top:6px solid " << acc
-                 << ";padding-top:14px\">"
-                 << "<h1 style=\"margin:0;font-size:26px;color:#2c2c2c\">"
+            /* THE BANNER REACHES THE NEWSLETTER (2026-09-15). The author:
+             * *"banner image doesnt work on newsletter thing."* It had never
+             * existed here: this branch read no `image` and no `portrait`, so a
+             * hero was a title and a coloured rule whatever it held. A photo
+             * BEHIND text is a web idea Outlook cannot place, so the email draws
+             * the banner ABOVE the title — inset in the frame, or edge to edge
+             * when the theme's shape says so (the driver draws that one).
+             * `image_filter`/`image_dim` stay web-only: no mail client filters. */
+            const std::string banner = image_at(field_value(*n, "image"));
+            if (!banner.empty() && !hero_banner_done)
+                html << "<img src=\"" << html_escape(banner) << "\" alt=\"\" width=\""
+                     << cell_px << "\" style=\"display:block;width:100%;max-width:" << cell_px
+                     << "px;height:auto;border:0;margin:0 0 16px"
+                     << hormiga::mail::Theme::more({et.img_css()}) << local_mark(banner)
+                     << "\">\n";
+            if (et.hero_bar > 0)
+                html << "<div style=\"border-top:" << et.hero_bar << "px solid " << acc
+                     << ";padding-top:14px\">";
+            else
+                html << "<div style=\"padding-top:4px\">";
+            const std::string portrait = image_at(field_value(*n, "portrait"));
+            if (!portrait.empty())
+                html << "<img src=\"" << html_escape(portrait) << "\" alt=\"\" width=\"88\" "
+                        "height=\"88\" style=\"display:block;width:88px;height:88px;"
+                        "border-radius:50%;border:0;margin:0 0 12px;object-fit:cover"
+                     << local_mark(portrait) << "\">";
+            html << "<h1 style=\"" << et.h1_style() << "\">"
                  << html_escape(text(*n, "title")) << "</h1>";
             const std::string hsub = text(*n, "subtitle");
             if (!hsub.empty())
-                html << "<p style=\"margin:4px 0 0;color:#666;font-size:16px\">"
-                     << prose(hsub) << "</p>";
+                html << "<p style=\"" << et.sub_style() << "\">" << prose(hsub) << "</p>";
             html << "</div>\n";
         } else if (n->glyph == "narrative") {
             /* The heading the web domain renders as an `<h3>` (2026-09-03,
@@ -218,38 +310,35 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 th.icons ? hormiga::iconset::emoji(field_value(*n, "icon")) : "";
             const std::string nmark = *nemo ? std::string(nemo) + " " : std::string();
             if (!nhead.empty())
-                html << "<p style=\"margin:18px 0 2px;font-weight:bold;"
-                        "font-size:17px;color:#2c2c2c\">"
-                     << nmark << html_escape(nhead) << "</p>\n";
-            html << "<p style=\"white-space:pre-line;line-height:1.5;color:#333\">"
-                 << (nhead.empty() ? nmark : std::string()) << prose(text(*n, "text"))
-                 << "</p>\n";
+                html << "<p style=\"" << et.h3_style("18px 0 2px") << "\">" << nmark
+                     << html_escape(nhead) << "</p>\n";
+            // `- ` and `1. ` lines become real lists; text without one is unchanged
+            html << email_prose_block(text(*n, "text"),
+                                      "white-space:pre-line;line-height:1.5;color:" + et.ink,
+                                      et.ink, nhead.empty() ? nmark : std::string(), true);
         } else if (n->glyph == "section_header") {
-            html << "<h2 style=\"border-bottom:2px solid " << acc
-                 << ";padding-bottom:4px;margin:26px 0 6px;font-size:20px;"
-                    "color:#3a3a3a\">"
-                 << html_escape(text(*n, "title")) << "</h2>\n";
+            html << et.h2_html(html_escape(text(*n, "title")));
         } else if (n->glyph == "quote") { // email-safe pull-quote
             html << "<blockquote style=\"margin:18px 0;padding:6px 0 6px 18px;"
                     "border-left:4px solid " << acc
-                 << ";font-style:italic;color:#444;font-size:17px\">"
+                 << ";font-style:italic;color:" << et.quote << ";font-size:17px\">"
                  << html_escape(text(*n, "text"));
             const std::string au = field_value(*n, "author");
             if (!au.empty())
-                html << "<br><span style=\"font-size:13px;color:#888;"
-                        "font-style:normal\">- " << html_escape(au) << "</span>";
+                html << "<br><span style=\"font-size:13px;color:" << et.faint
+                     << ";font-style:normal\">- " << html_escape(au) << "</span>";
             html << "</blockquote>\n";
         } else if (n->glyph == "stat") { // email-safe metric
             html << "<div style=\"text-align:center;margin:16px 0\">"
                     "<div style=\"font-size:34px;font-weight:bold;color:" << acc
                  << "\">" << html_escape(field_value(*n, "number"))
-                 << "</div><div style=\"color:#888;font-size:14px\">"
+                 << "</div><div style=\"color:" << et.faint << ";font-size:14px\">"
                  << html_escape(text(*n, "label")) << "</div></div>\n";
         } else if (n->glyph == "divider") {
             const std::string ds = field_value(*n, "divider_style");
             if (ds == "space") html << "<div style=\"height:24px\"></div>\n";
-            else html << "<hr style=\"border:none;border-top:1px solid #ddd;"
-                         "margin:18px 0\">\n";
+            else html << "<hr style=\"border:none;border-top:1px solid " << et.rule
+                      << ";margin:18px 0\">\n";
         } else if (n->glyph == "link") {
             /* THE NEWSLETTER HAD NO `link` CASE AT ALL until 2026-08-19 — 17
              * anchors on the website, zero in the email, silently, for a
@@ -259,7 +348,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             const std::string tgt = href_of(field_value(*n, "target"));
             const std::string label = text(*n, "label");
             if (!tgt.empty())
-                html << email_button(tgt, label.empty() ? tgt : label, acc);
+                html << et.button(tgt, label.empty() ? tgt : label);
         } else if (n->glyph == "download") {
             /* A newsletter cannot carry the file, so this is a link — and a
              * RELATIVE href opens nothing in anybody's inbox. `site.base_url`
@@ -354,7 +443,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 hormiga::parse_video_url(field_value(*n, "url"));
             const std::string vcap = text(*n, "caption");
             if (!vcap.empty())
-                html << "<p style=\"color:#777;margin:4px 0\">" << prose(vcap)
+                html << "<p style=\"color:" << et.cap << ";margin:4px 0\">" << prose(vcap)
                      << "</p>\n";
             if (vid.ok()) {
                 const std::string watch = vid.watch_url();
@@ -372,12 +461,12 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                          << "\" style=\"display:block\"><img src=\""
                          << html_escape(psrc)
                          << "\" width=\"" << cell_px << "\" style=\"display:block;width:100%;"
-                            "max-width:" << cell_px << "px;height:auto;border:0\" alt=\""
+                            "max-width:" << cell_px << "px;height:auto;border:0"
+                         << hormiga::mail::Theme::more({et.img_css()}) << local_mark(psrc)
+                         << "\" alt=\""
                          << html_escape(ui("Play the video", "Reproducir el video"))
                          << "\"></a>\n";
-                html << email_button(watch,
-                                     ui("Watch on ", "Ver en ") + vid.provider_label(),
-                                     acc);
+                html << et.button(watch, ui("Watch on ", "Ver en ") + vid.provider_label());
             } else {
                 /* An unset or unrecognised link prints NOTHING rather than an
                  * empty-state: a website section can honestly say "no video
@@ -389,7 +478,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             const std::string query = field_value(*n, "query");
             const std::string cap = text(*n, "caption");
             if (!cap.empty())
-                html << "<p style=\"color:#777;margin:4px 0\">" << prose(cap)
+                html << "<p style=\"color:" << et.cap << ";margin:4px 0\">" << prose(cap)
                      << "</p>\n";
             const std::string detail = field_value(*n, "detail");
             const int limit = hormiga::doc_field_int(*n, "limit", 0);
@@ -430,20 +519,17 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 std::string when = human_date(field_value(dn, "date"), lang);
                 if (when.empty()) when = field_value(dn, "days");
                 const std::string st = field_value(dn, "start_time");
-                const std::string et = field_value(dn, "end_time");
+                const std::string etime = field_value(dn, "end_time");
                 std::string bar = field_value(dn, "color");
                 if (bar.size() < 4 || bar[0] != '#') bar = acc;
 
                 grid_cell_open(ei, ecols);
-                html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
-                        "cellspacing=\"0\" style=\"margin:10px 0;background:#f7f9fc;"
-                        "border-left:4px solid " << bar
-                     << "\"><tr><td style=\"padding:8px 12px\">"
-                     << "<b>" << html_escape(title_of(dn)) << "</b>";
+                html << et.card_open(et.card, bar, "10px 0", "8px 12px", bar != acc)
+                     << et.b_open() << html_escape(title_of(dn)) << "</b>";
                 std::string line = when;
                 if (!st.empty()) {
                     line += (line.empty() ? "" : " \xc2\xb7 ") + st;
-                    if (!et.empty()) line += "\xe2\x80\x93" + et;
+                    if (!etime.empty()) line += "\xe2\x80\x93" + etime;
                 }
                 const std::string venue = field_value(dn, "venue");
                 if (!venue.empty())
@@ -452,8 +538,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 const std::string vlink = field_value(dn, "virtual");
                 if (!vlink.empty())
                     html << "<br>"
-                         << email_button(href_of(vlink),
-                                         ui("Join online", "Unirse en linea"), acc);
+                         << et.button(href_of(vlink), ui("Join online", "Unirse en linea"));
                 if (detail != "title") {
                     std::string sum = text_or(dn, "summary", "summary");
                     if (detail != "full") sum = clip(sum, 140);
@@ -463,7 +548,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 grid_cell_close(ei, hits.size(), ecols);
             }
             if (hits.empty())
-                html << "<p style=\"color:#999\">"
+                html << "<p style=\"color:" << et.empty << "\">"
                      << html_escape(ui("(nothing scheduled)", "(nada programado)"))
                      << "</p>\n";
         } else if (n->glyph == "directory") {
@@ -479,7 +564,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             const int dlim = hormiga::doc_field_int(*n, "limit", 0);
             const std::string dcap = text(*n, "caption");
             if (!dcap.empty())
-                html << "<p style=\"color:#777;margin:4px 0\">" << prose(dcap)
+                html << "<p style=\"color:" << et.cap << ";margin:4px 0\">" << prose(dcap)
                      << "</p>\n";
             std::vector<const maiz::SceneNode*> dpeople;
             int dwithheld = 0;
@@ -498,6 +583,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                              [&](const maiz::SceneNode* a, const maiz::SceneNode* b) {
                                  return display_name(*a) < display_name(*b);
                              });
+            rank_by_tags(dpeople, field_value(*n, "rank_up"), field_value(*n, "rank_down"));
             if (dlim > 0 && (int)dpeople.size() > dlim) dpeople.resize((size_t)dlim);
             if (dwithheld)
                 log.push_back({"info", "render",
@@ -510,10 +596,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 const std::string role = dn.glyph == "contact"
                                              ? field_value(dn, "role")
                                              : field_value(dn, "abbreviation");
-                html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
-                        "cellspacing=\"0\" style=\"margin:8px 0;background:#f7f9fc;"
-                        "border-left:4px solid " << acc
-                     << "\"><tr><td style=\"padding:8px 12px\"><b>"
+                html << et.card_open(et.card, acc, "8px 0", "8px 12px") << et.b_open()
                      << html_escape(display_name(dn)) << "</b>";
                 meta_line(role);
                 const std::string dbio = field_value(dn, "bio");
@@ -528,7 +611,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 html << "</td></tr></table>\n";
             }
             if (dpeople.empty())
-                html << "<p style=\"color:#999\">"
+                html << "<p style=\"color:" << et.empty << "\">"
                      << html_escape(ui("(nobody is listed yet)",
                                        "(nadie esta en la lista)"))
                      << "</p>\n";
@@ -536,7 +619,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             const std::string query = field_value(*n, "query");
             const std::string cap = text(*n, "caption");
             if (!cap.empty())
-                html << "<p style=\"color:#777;margin:4px 0\">" << prose(cap)
+                html << "<p style=\"color:" << et.cap << ";margin:4px 0\">" << prose(cap)
                      << "</p>\n";
             const std::string jdetail = field_value(*n, "detail");
             /* ICONS ON THE JOB LINES (2026-09-13; the author: "remember icons!").
@@ -552,6 +635,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 if (dn.glyph == "job" && hormiga::query_matches(query, data, dn, today) &&
                     !allo_web_hidden(dn.name))
                     jobs.push_back(&dn);
+            rank_by_tags(jobs, field_value(*n, "rank_up"), field_value(*n, "rank_down"));
             if (jlimit > 0 && (int)jobs.size() > jlimit) jobs.resize((size_t)jlimit);
             const int jcols = jdetail == "line" ? 1 : grid_cols(*n);
             for (size_t ji = 0; ji < jobs.size(); ++ji) {
@@ -583,16 +667,14 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                               acc + "\">" + html_escape(jce) + "</a>";
                     }
                     html << "<p style=\"margin:4px 0;padding:4px 0 4px 10px;"
-                            "border-left:3px solid #5d7d3b;font-size:14px;"
-                            "line-height:1.45\">" << jl << "</p>\n";
+                            "border-left:3px solid " << et.job_bar << ";font-size:14px;"
+                            "line-height:1.45" << hormiga::mail::Theme::more({et.text_css()})
+                         << "\">" << jl << "</p>\n";
                     continue;
                 }
                 grid_cell_open(ji, jcols);
-                html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
-                        "cellspacing=\"0\" style=\"margin:10px 0;background:#f6f9f4;"
-                        "border-left:4px solid #5d7d3b\">"
-                        "<tr><td style=\"padding:8px 12px\">"
-                     << "<b>" << html_escape(title_of(dn)) << "</b>";
+                html << et.card_open(et.card_job, et.job_bar, "10px 0", "8px 12px")
+                     << et.b_open() << html_escape(title_of(dn)) << "</b>";
                 const std::string org = field_value(dn, "org");
                 if (!org.empty()) html << " &middot; " << html_escape(jicon("building-2", org));
                 std::string l1 = jicon("circle-dollar-sign", field_value(dn, "pay"));
@@ -629,14 +711,14 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 grid_cell_close(ji, jobs.size(), jcols);
             }
             if (jobs.empty())
-                html << "<p style=\"color:#999\">"
+                html << "<p style=\"color:" << et.empty << "\">"
                      << html_escape(ui("(no open positions)", "(no hay vacantes)"))
                      << "</p>\n";
         } else if (n->glyph == "image_grid") {
             const std::string q = field_value(*n, "query");
             const std::string cap = text(*n, "caption");
             if (!cap.empty())
-                html << "<p style=\"color:#777;margin:4px 0\">" << prose(cap)
+                html << "<p style=\"color:" << et.cap << ";margin:4px 0\">" << prose(cap)
                      << "</p>\n";
             const int glimit = hormiga::doc_field_int(*n, "limit", 0);
             /* FIT (2026-09-13). This read `display == "thumb"`, a value the
@@ -655,10 +737,14 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             int shown = 0;
             html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
                     "cellspacing=\"0\"><tr>\n";
-            for (const auto& dn : data.nodes) {
-                if (dn.glyph != "image" || !hormiga::query_matches(q, data, dn, today) ||
-                    allo_web_hidden(dn.name))
-                    continue;
+            std::vector<const maiz::SceneNode*> gimgs;
+            for (const auto& dn : data.nodes)
+                if (dn.glyph == "image" && hormiga::query_matches(q, data, dn, today) &&
+                    !allo_web_hidden(dn.name))
+                    gimgs.push_back(&dn);
+            rank_by_tags(gimgs, field_value(*n, "rank_up"), field_value(*n, "rank_down"));
+            for (const maiz::SceneNode* gp : gimgs) {
+                const maiz::SceneNode& dn = *gp;
                 // per-language THINGS are sibling runes with a `lang:` tag; a
                 // rune carrying several belongs on every page it names
                 if (!lang_matches(dn, lang)) continue;
@@ -671,12 +757,13 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                     html << "<img src=\"" << html_escape(src) << "\" alt=\""
                          << html_escape(field_value(dn, "alt"))
                          << "\" style=\"max-width:" << std::max(80, cell_px / 2 - 8)
-                         << "px;width:100%;" << efit_style
-                         << "border:0;display:block\">";
+                         << "px;width:100%;" << efit_style << "border:0;display:block"
+                         << hormiga::mail::Theme::more({et.img_css()}) << local_mark(src)
+                         << "\">";
                 else
-                    html << "<div style=\"border:1px dashed #bbb;color:#999;"
-                            "padding:22px 8px;font-size:13px\">"
-                         << html_escape(ui("unpublished", "sin publicar"))
+                    html << "<div style=\"border:1px dashed #bbb;color:" << et.empty
+                         << ";padding:22px 8px;font-size:13px\">"
+                         << html_escape(ui("image not found", "imagen no encontrada"))
                          << "</div>";
                 html << "</td>\n";
                 ++shown;
@@ -684,7 +771,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             if (shown % 2) html << "<td width=\"50%\"></td>\n";
             html << "</tr></table>\n";
             if (!shown)
-                html << "<p style=\"color:#999\">"
+                html << "<p style=\"color:" << et.empty << "\">"
                      << html_escape(ui("(nothing to show)", "(nada que mostrar)"))
                      << "</p>\n";
         } else if (n->glyph == "event_feature" || n->glyph == "event_flier") {
@@ -697,19 +784,15 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             for (const auto& dn : data.nodes)
                 if (dn.glyph == "event" && dn.name == evname) ev = &dn;
             if (ev && !allo_web_hidden(ev->name)) {
-                html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
-                        "cellspacing=\"0\" style=\"margin:14px 0;background:#f7f9fc;"
-                        "border-left:4px solid " << acc
-                     << "\"><tr><td style=\"padding:12px 14px\">"
-                     << "<b style=\"font-size:19px\">" << html_escape(title_of(*ev))
-                     << "</b>";
+                html << et.card_open(et.card, acc, "14px 0", "12px 14px")
+                     << et.feature_b_open() << html_escape(title_of(*ev)) << "</b>";
                 std::string line = human_date(field_value(*ev, "date"), lang);
                 if (line.empty()) line = field_value(*ev, "days");
                 const std::string st = field_value(*ev, "start_time");
                 if (!st.empty()) {
                     line += (line.empty() ? "" : " \xc2\xb7 ") + st;
-                    const std::string et = field_value(*ev, "end_time");
-                    if (!et.empty()) line += "\xe2\x80\x93" + et;
+                    const std::string etime = field_value(*ev, "end_time");
+                    if (!etime.empty()) line += "\xe2\x80\x93" + etime;
                 }
                 const std::string venue = field_value(*ev, "venue");
                 if (!venue.empty()) line += (line.empty() ? "" : " \xc2\xb7 ") + venue;
@@ -728,7 +811,8 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                         html << "<br><img src=\"" << html_escape(src) << "\" alt=\""
                              << html_escape(field_value(*f, "alt"))
                              << "\" style=\"max-width:100%;border:0;margin-top:8px;"
-                                "display:block\">";
+                                "display:block" << hormiga::mail::Theme::more({et.img_css()})
+                             << local_mark(src) << "\">";
                 }
                 const std::string ctal = field_value(*n, "cta_link").empty()
                                              ? field_value(*ev, "virtual")
@@ -736,7 +820,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 if (!ctal.empty()) {
                     std::string cta = text(*n, "cta");
                     if (cta.empty()) cta = ui("More about this", "Mas informacion");
-                    html << email_button(href_of(ctal), cta, acc);
+                    html << et.button(href_of(ctal), cta);
                 }
                 html << "</td></tr></table>\n";
             }
@@ -746,37 +830,41 @@ std::string HormigaApp::render_preview(std::string_view lang) {
              * wanted to say, so the block is not silently nothing. */
             const std::string cap = text(*n, "caption");
             if (!cap.empty())
-                html << "<p style=\"color:#777;margin:8px 0\">" << prose(cap)
+                html << "<p style=\"color:" << et.cap << ";margin:8px 0\">" << prose(cap)
                      << "</p>\n";
         } else if (n->glyph == "image_text") {
             /* A picture and the words that belong with it. An email cannot load
              * a local file, so the image is found by its path and published by
              * its `url` — the same resolver every image in this renderer uses. */
             const std::string ipath = field_value(*n, "image");
-            std::string isrc;
-            if (!ipath.empty())
-                for (const auto& dn : data.nodes)
-                    if (dn.glyph == "image" && field_value(dn, "path") == ipath) {
-                        bool ok = false;
-                        isrc = email_src(dn, ok);
-                        if (!ok) isrc.clear();
-                        break;
-                    }
+            const std::string isrc = image_at(ipath);
             if (!ipath.empty() && isrc.empty())
                 log.push_back({"warn", "render",
-                               n->name + ": this image + text block's picture has no "
-                               "public url, so the newsletter shows the text alone. "
-                               "Publish the image (the ImgBB node) or choose one "
-                               "that is published."});
+                               n->name + ": this image + text block's picture was not "
+                               "found (no public url, and no file at " + ipath +
+                               "), so the newsletter shows the text alone."});
+            const std::string iemo =
+                th.icons ? std::string(hormiga::iconset::emoji(field_value(*n, "icon")))
+                         : std::string();
+            const std::string imark = iemo.empty() ? std::string() : iemo + " ";
+            const std::string ihead = html_escape(text(*n, "heading"));
+            const std::string itext = text(*n, "text");
             html << hormiga::image_text_email(
                 html_escape(isrc), html_escape(text(*n, "alt")),
-                html_escape(text(*n, "heading")),
-                th.icons ? std::string(hormiga::iconset::emoji(field_value(*n, "icon")))
-                         : std::string(),
-                prose(text(*n, "text")), field_value(*n, "side") == "right", cell_px);
+                ihead.empty() ? std::string()
+                              : "<p style=\"" + et.h3_style("0 0 4px") + "\">" + imark +
+                                    ihead + "</p>",
+                (itext.empty() && !(ihead.empty() && !imark.empty()))
+                    ? std::string()
+                    : email_prose_block(
+                          itext, "margin:0;white-space:pre-line;line-height:1.5;color:" + et.ink,
+                          et.ink, ihead.empty() ? imark : std::string(), false),
+                field_value(*n, "side") == "right", cell_px,
+                hormiga::mail::Theme::more({et.img_css()}) + local_mark(isrc));
         } else if (n->glyph == "footer") {
-            html << "<hr style=\"border:none;border-top:1px solid #ddd;margin:22px 0\">"
-                 << "<p style=\"color:#888;font-size:13px;line-height:1.5\">"
+            html << "<hr style=\"border:none;border-top:1px solid " << et.rule
+                 << ";margin:22px 0\">"
+                 << "<p style=\"color:" << et.faint << ";font-size:13px;line-height:1.5\">"
                  << prose(text(*n, "text")) << "</p>\n";
         }
     };
@@ -808,6 +896,42 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                    hormiga::doc_field_int(*chain[j], "row", -2) == row &&
                    chain[j]->glyph != "hero" && chain[j]->glyph != "footer")
                 ++j;
+        /* A BAND carried by the row's leader, as on the website; what each kind
+         * MEANS in an inbox is in render/email_theme.hpp, "A band, in an inbox". */
+        const bool is_hero = n->glyph == "hero";
+        const hormiga::mail::Band bnd = hormiga::mail::band(
+            et, is_hero ? std::string() : field_value(*n, "band_bg"),
+            is_hero ? std::string() : image_at(field_value(*n, "band_image")));
+        const bool bfull = bnd.on && field_value(*n, "band_full") == "1";
+        // a hero's banner edge to edge, when the theme's shape asks for it
+        const std::string bleed_img =
+            is_hero && et.bleed ? image_at(field_value(*n, "image")) : std::string();
+        if (!bleed_img.empty()) {
+            close_pad();
+            html << "<tr><td style=\"padding:0\"><img src=\"" << html_escape(bleed_img)
+                 << "\" alt=\"\" width=\"620\" style=\"display:block;width:100%;"
+                    "max-width:620px;height:auto;border:0" << local_mark(bleed_img)
+                 << "\"></td></tr>\n";
+            hero_banner_done = true;
+        }
+        const hormiga::mail::Theme outer = et;
+        const int base_px = bnd.on && !bfull ? et.content_px() - 48 : et.content_px();
+        if (bfull) {
+            close_pad();
+            html << "<tr><td" << bnd.attrs << " style=\"" << bnd.css << ";padding:32px "
+                 << et.pad << "px;color:" << bnd.t.ink
+                 << (et.classic_type ? std::string() : ";font-family:" + et.font) << "\">\n";
+        } else {
+            open_pad();
+            if (bnd.on)
+                html << "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" "
+                        "cellspacing=\"0\" style=\"margin:16px 0\"><tr><td" << bnd.attrs
+                     << " style=\"" << bnd.css << ";padding:22px 24px;color:" << bnd.t.ink
+                     << hormiga::mail::Theme::more({hormiga::mail::Theme::corners(et.radius)})
+                     << "\">\n";
+        }
+        if (bnd.on) et = bnd.t;
+        cell_px = base_px;
         if (j - i > 1) {
             int total = 0;
             for (size_t k = i; k < j; ++k)
@@ -818,20 +942,26 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 const int span =
                     std::clamp(hormiga::doc_field_int(*chain[k], "span", 12), 1, 12);
                 const int pct = std::max(1, span * 100 / std::max(1, total));
-                cell_px = std::max(120, 572 * pct / 100 - 12);
+                cell_px = std::max(120, base_px * pct / 100 - 12);
                 html << "<td valign=\"top\" width=\"" << pct
                      << "%\" style=\"vertical-align:top;padding:0 6px\">\n";
                 emit_block(chain[k]);
                 html << "</td>\n";
             }
             html << "</tr></table>\n";
-            cell_px = 572;
         } else {
             emit_block(n);
         }
+        if (bnd.on) {
+            et = outer;
+            html << (bfull ? "</td></tr>\n" : "</td></tr></table>\n");
+        }
+        cell_px = et.content_px();
+        hero_banner_done = false;
         i = j;
     }
 
+    open_pad(); // an issue with nothing in it still has its frame, as it always did
     html << "</td></tr></table>\n</td></tr></table>\n</body></html>\n";
 
     /* THE RENDER'S OWN REPORT. Both of these were things the render knew and
@@ -855,11 +985,18 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                        std::to_string(words) + " words, about " +
                            std::to_string(mins < 1 ? 1 : mins) + " min read"});
     }
-    if (unpublished)
+    if (!local_only.empty())
         log.push_back({"warn", "render",
-                       std::to_string(unpublished) +
-                           " image(s) have no public URL - they will not load in "
-                           "email. Use 'Get public URL' on each, or effect publish."});
+                       std::to_string(local_only.size()) +
+                           " image(s) are only on this computer - the preview draws them "
+                           "outlined in red, but they will not load in anyone's inbox. "
+                           "With an ImgBB node in the Antfarm, images upload themselves "
+                           "when they are added; `effect publish <image>` does one."});
+    if (missing_images)
+        log.push_back({"warn", "render",
+                       std::to_string(missing_images) +
+                           " image(s) have neither a public url nor a file on this "
+                           "computer, so the newsletter cannot show them at all."});
 
     /* `render` writes into `exports/`, which is where `--describe` had always
      * claimed it went while it was writing beside the database. */
@@ -867,8 +1004,24 @@ std::string HormigaApp::render_preview(std::string_view lang) {
     fs::create_directories(data_dir("exports"), ec);
     const fs::path out = data_dir("exports") /
                          ("preview-" + std::string(lang) + ".html");
+    std::string page = html.str();
+    if (!local_only.empty()) {
+        // the notice sits at the very top, where a person about to send looks
+        const std::string notice =
+            "<div style=\"background:#fff1f0;border-bottom:2px solid #e5484d;color:#7a1f1f;"
+            "padding:10px 16px;font:14px/1.45 Arial,Helvetica,sans-serif\">" +
+            html_escape(ui("PREVIEW: ", "VISTA PREVIA: ") + std::to_string(local_only.size()) +
+                        ui(" image(s) outlined in red are only on this computer and will "
+                           "not appear in anyone's inbox until they are uploaded.",
+                           " imagen(es) con borde rojo solo estan en esta computadora y no "
+                           "apareceran en el correo de nadie hasta que se suban.")) +
+            "</div>\n";
+        const size_t body = page.find("<body");
+        const size_t at = body == std::string::npos ? body : page.find(">\n", body);
+        if (at != std::string::npos) page.insert(at + 2, notice);
+    }
     std::ofstream o(out, std::ios::binary | std::ios::trunc);
-    o << html.str();
+    o << page;
     if (!o) {
         log.push_back({"error", "render", "could not write " + out.string()});
         return {};

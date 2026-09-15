@@ -194,7 +194,15 @@ void PreviewServer::serve() {
                 size_t n = std::strlen(s);
                 return p.size() >= n && p.compare(p.size() - n, n, s) == 0;
             };
+            /* `/assets/` IMAGES ONLY (2026-09-15): a newsletter preview draws an
+             * image that is not uploaded yet from its local file, so the author
+             * sees the layout they are building. Image extensions and nothing
+             * else — assets/ can also hold documents that were never published. */
+            const bool image = ends(".png") || ends(".jpg") || ends(".jpeg") ||
+                               ends(".gif") || ends(".webp") || ends(".PNG") ||
+                               ends(".JPG") || ends(".JPEG");
             return starts("/site/") || starts("/exports/") ||
+                   (starts("/assets/") && image) ||
                    (starts("/preview-") && ends(".html"));
         };
         // HOST mode roots at the built site/ folder (a real-domain stand-in),
@@ -208,7 +216,7 @@ void PreviewServer::serve() {
         } else if (!host_mode_ && path != "/" && !allowed(path)) {
             respond(c, "404 Not Found", "text/plain",
                     "the preview serves render artifacts only "
-                    "(/site/, /preview-*.html, /exports/)");
+                    "(/site/, /preview-*.html, /exports/, /assets/ images)");
         } else {
             if (path == "/") path = index;
             std::filesystem::path full = root_ / path.substr(1);

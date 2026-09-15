@@ -164,7 +164,8 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__("icon":"Icon beside the heading (optional)",)__"
           R"__("heading_en":"Heading above the text (English; optional)",)__"
           R"__("heading_es":"Encabezado (espanol; opcional)",)__"
-          R"__("text_en":"Text (English)","text_es":"Texto (espanol)")__");
+          R"__("text_en":"Text (English) - start lines with - or 1. for a list",)__"
+          R"__("text_es":"Texto (espanol) - empiece lineas con - o 1. para una lista")__");
     /* ── image_text: a picture and the words that belong with it (2026-09-13) ─
      *
      * The author, while making a newsletter: *"an easier way to make a narrative
@@ -187,7 +188,8 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__("icon":"Icon beside the heading (optional)",)__"
           R"__("heading_en":"Heading (English; optional)",)__"
           R"__("heading_es":"Encabezado (espanol; opcional)",)__"
-          R"__("text_en":"Text (English)","text_es":"Texto (espanol)",)__"
+          R"__("text_en":"Text (English) - start lines with - or 1. for a list",)__"
+          R"__("text_es":"Texto (espanol) - empiece lineas con - o 1. para una lista",)__"
           R"__("alt_en":"What the image shows, for a screen reader (English)",)__"
           R"__("alt_es":"Que muestra la imagen (espanol)")__");
     block("section_header", "section header", R"("title_en","title_es")", "#8a6d3b",
@@ -268,7 +270,8 @@ inline void register_block_glyphs(maiz::Core& core) {
     // the "content-horizontal" the author described). Email always renders a
     // simple table grid (no JS/columns); the mode is a WEB property.
     block("image_grid", "image grid",
-          R"("query","columns","display","fit","limit","caption_en","caption_es")",
+          R"("query","columns","display","fit","limit","rank_up","rank_down",)"
+          R"("caption_en","caption_es")",
           "#7d5bb0", 84, false, "Data",
           R"("query":"hidden","columns":"combo:2,3,4",)"
           R"("display":"combo:grid,masonry,carousel","fit":"combo:crop,whole,natural,stretch")",
@@ -280,6 +283,10 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__("fit":"How each image fills its tile: crop = same shape, trimmed; )__"
           R"__(whole = same shape, nothing cut off; natural = each image keeps its )__"
           R"__(own shape; stretch = fills the tile, distorted",)__"
+          R"__("rank_up":"List first: tags that move an entry UP, strongest first )__"
+          R"__((e.g. leader, board). Name order stays underneath.",)__"
+          R"__("rank_down":"List last: tags that move an entry DOWN, strongest first )__"
+          R"__((e.g. volunteer)",)__"
           R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
     /* `detail`/`limit`/`sort` arrive 2026-08-20, matching `event_grid`. Until
      * then this was the only grid with NO clipping at all — one real posting
@@ -287,7 +294,8 @@ inline void register_block_glyphs(maiz::Core& core) {
      * "yikes". A grid that can only render everything is a grid that cannot be
      * used with real data. */
     block("job_grid", "job grid",
-          R"("query","detail","columns","limit","sort","caption_en","caption_es")",
+          R"("query","detail","columns","limit","sort","rank_up","rank_down",)"
+          R"("caption_en","caption_es")",
           "#5d7d3b", 84, false, "Data",
           R"("query":"hidden","detail":"combo:line,compact,title,full","columns":"combo:1,2,3")",
           R"__("query":"Job query: tags with AND/OR/NOT, plus date:future | )__"
@@ -299,6 +307,10 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__(one card per row in the newsletter; `line` stays one line each)",)__"
           R"__("limit":"Most postings to show (blank = all)",)__"
           R"__("sort":"deadline | name (default document order)",)__"
+          R"__("rank_up":"List first: tags that move an entry UP, strongest first )__"
+          R"__((e.g. leader, board). Name order stays underneath.",)__"
+          R"__("rank_down":"List last: tags that move an entry DOWN, strongest first )__"
+          R"__((e.g. volunteer)",)__"
           R"__("caption_en":"Caption (English)",)__"
           R"__("caption_es":"Titulo (espanol)")__");
     /* THE DIRECTORY (2026-08-19): the block that puts a PERSON or an
@@ -320,7 +332,8 @@ inline void register_block_glyphs(maiz::Core& core) {
      * not pay for a fetch, and the built-in cards are what a visitor with no
      * JavaScript sees either way. */
     block("directory", "directory",
-          R"("query","kind","display","limit","live","caption_en","caption_es")",
+          R"("query","kind","display","limit","live","rank_up","rank_down",)"
+          R"("caption_en","caption_es")",
           "#b3592e", 84, false, "Data",
           R"("query":"hidden","kind":"combo:contact,organization,both",)"
           R"("live":"combo:off,on",)"
@@ -332,6 +345,10 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__("limit":"Most entries to show (blank = all)",)__"
           R"__("live":"Refresh from site/index/ on load, so updating a contact )__"
           R"__(needs only that small file republished - not the whole site",)__"
+          R"__("rank_up":"List first: tags that move an entry UP, strongest first )__"
+          R"__((e.g. leader, board). Name order stays underneath.",)__"
+          R"__("rank_down":"List last: tags that move an entry DOWN, strongest first )__"
+          R"__((e.g. volunteer)",)__"
           R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
     /* ── video: THE ONE BLOCK THAT REACHES OFF THE SITE (2026-08-28) ──────
      *

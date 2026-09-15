@@ -786,8 +786,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
              * each, and every ordinary paragraph its own block rune.
              *
              * `prose()` is escape-THEN-linkify, so this opens nothing. */
-            h << "<p class=\"prose pre-line reveal\">" << web_prose(text(*n, "text"))
-              << "</p>\n";
+            h << web_prose_block(text(*n, "text"), "prose pre-line reveal") // + lists
+              << "\n";
         } else if (n->glyph == "image_text") {
             // a picture and the words that belong with it; markup in
             // render/image_text.hpp, fields read here where the linter looks
@@ -796,7 +796,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
                 html_escape(text(*n, "alt")), html_escape(text(*n, "heading")),
                 site_th.icons ? hormiga::icons::svg(field_value(*n, "icon"), "ico prose-ico")
                               : std::string(),
-                web_prose(text(*n, "text")), field_value(*n, "side") == "right");
+                web_prose_block(text(*n, "text"), "prose pre-line", false),
+                field_value(*n, "side") == "right");
         } else if (n->glyph == "event_grid") {
             /* THE SAME BLOCK THE EMAIL GOT ON 2026-08-19, which stopped there.
              * `title_of`/`text_or`/`detail`/`limit`/`sort`/`color` were all
@@ -992,6 +993,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
                     hormiga::query_matches(q, data, dn, today) &&
                     !allo_web_hidden(dn.name))
                     cands.push_back(&dn);
+            rank_by_tags(cands, field_value(*n, "rank_up"), field_value(*n, "rank_down"));
             /* Hidden by LANGUAGE, and in which one — so the line can say
              * "only in English" rather than the useless "not available". */
             std::vector<std::string> otherlangs;
@@ -1313,6 +1315,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
                                      if (da.empty() != db.empty()) return db.empty();
                                      return da < db;
                                  });
+            rank_by_tags(jobs, field_value(*n, "rank_up"), field_value(*n, "rank_down"));
             if (jlimit > 0 && (int)jobs.size() > jlimit) jobs.resize((size_t)jlimit);
             h << "<div class=\"cards" << grid_cols_class(*n) << " filterable reveal\">\n";
             const int hits = (int)jobs.size();
@@ -1604,6 +1607,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
                 [this](const std::string& rune) { return allo_web_hidden(rune); },
                 lang);
             std::vector<hormiga::published::Person>& people = pub.people;
+            rank_by_tags(people, field_value(*n, "rank_up"), field_value(*n, "rank_down"),
+                         [](const auto& p) -> const std::vector<std::string>& { return p.tags; });
             const int withheld = pub.withheld;
             if (dlimit > 0 && (int)people.size() > dlimit)
                 people.resize((size_t)dlimit);

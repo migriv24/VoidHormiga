@@ -1606,6 +1606,85 @@ grep -q 'hero-portrait' site/style.css
 check $? "A6: the hero has a round portrait slot in front of its banner"
 cd ..
 
+# ── 2026-09-15: the newsletter's own theme, lists, bands, the hero banner, an
+# image that is not uploaded yet, and ordering a list by tags ────────────────
+mkdir -p nl-theme && cd nl-theme
+mkdir -p assets && printf 'not really a png' > assets/local-only.png
+cat > nl.txt <<'EOF'
+mantle new demo-org
+use demo-org
+rune new image nl-banner
+set nl-banner path 'assets/banner.png'
+set nl-banner url 'https://i.ibb.co/test/banner.png'
+tag nl-banner +type:image
+rune new contact ana
+set ana display_name 'Ana'
+tag ana +type:contact +clearance:public +volunteer
+rune new contact zoe
+set zoe display_name 'Zoe'
+tag zoe +type:contact +clearance:public +role:leader
+rune new contact bea
+set bea display_name 'Bea'
+tag bea +type:contact +clearance:public
+mantle new nl-issue
+use nl-issue
+rune new hero nl-hero
+set nl-hero title_en 'Spring'
+set nl-hero image 'assets/banner.png'
+set nl-hero row 0
+rune new narrative nl-list
+set nl-list text_en 'Bring:
+- water
+- a hat
+1. first
+2. second'
+set nl-list row 1
+set nl-list band_bg accent
+rune new image_text nl-local
+set nl-local image 'assets/local-only.png'
+set nl-local text_en 'A local picture'
+set nl-local row 2
+rune new link nl-btn
+set nl-btn label_en 'Go'
+set nl-btn target 'https://example.org'
+set nl-btn row 3
+rune new directory nl-dir
+set nl-dir query 'type:contact'
+set nl-dir rank_up 'leader'
+set nl-dir rank_down 'volunteer'
+set nl-dir row 4
+EOF
+"$CLI" --script nl.txt --atomic >/dev/null 2>&1
+check $? "a themed newsletter fixture applies"
+"$CLI" --allow-effects=render effect render en nl-issue >/dev/null 2>&1
+E=exports/preview-en.html
+grep -q 'i.ibb.co/test/banner.png' "$E"
+check $? "the hero's banner reaches the newsletter, through its image's public url"
+grep -q '<ul style=' "$E" && grep -q '<ol style=' "$E" && grep -q '<li style=' "$E"
+check $? "- and 1. lines in a narrative become real lists in the email"
+grep -q '<td bgcolor="#' "$E"
+check $? "an accent band becomes a coloured cell in the email"
+grep -q 'outline:3px dashed #e5484d' "$E" && grep -q 'PREVIEW:' "$E"
+check $? "an image only on this computer is drawn in the preview, outlined, with a notice"
+in_order() { python -c "import sys; s=open(sys.argv[1],encoding='utf-8').read(); i=[s.find('>'+n+'<') for n in sys.argv[2:]]; sys.exit(0 if -1 not in i and i==sorted(i) else 1)" "$@"; }
+in_order "$E" Zoe Bea Ana
+check $? "rank_up/rank_down in the email: the leader first, the volunteer last"
+"$CLI" --allow-effects=render-site effect render-site en nl-issue >/dev/null 2>&1
+in_order site/index-en.html Zoe Bea Ana
+check $? "...and the website's directory lists them in the same order"
+grep -q '<ul class="prose-list">' site/index-en.html
+check $? "...and the website renders the narrative's list as a list"
+"$CLI" config set newsletter.theme modern >/dev/null 2>&1
+"$CLI" --allow-effects=render effect render en nl-issue >/dev/null 2>&1
+grep -q -- '-apple-system' "$E" && grep -q 'border-radius:980px' "$E"
+check $? "newsletter.theme modern: the system sans-serif and pill buttons"
+grep -q 'width="620" style="display:block;width:100%;max-width:620px' "$E"
+check $? "...and the modern shape runs the hero banner edge to edge"
+grep -q 'Georgia' site/style.css || grep -q 'font' site/style.css
+check $? "...while the website's own theme is untouched by the newsletter's"
+"$CLI" config set newsletter.theme classic >/dev/null 2>&1
+cd ..
+
 # A failed command must exit non-zero: a shell and an agent both branch on it.
 "$CLI" rune new no-such-glyph x >/dev/null 2>&1
 [ $? -ne 0 ]

@@ -476,6 +476,44 @@ and the same for job openings.
   - **Verified by rendering** 5 events in 2 columns and 4 jobs in 3 columns: rows
     and padding cells counted, every tag balanced.
 
+# The newsletter's look (2026-09-15)
+
+Six asks arrived in one message, all from making a real issue, plus a
+follow-up. The rendered parts were verified by rendering a fixture in three
+presets and screenshotting each. GUI-only parts are marked 🔨.
+
+- ✅ **1. The hero banner in email.** The email's hero branch had never read
+  `image`.
+  - It now draws the banner above the title, edge to edge on the sleek and sharp
+    shapes.
+  - It draws `portrait` as a round inset.
+- ✅ **2. Lists in a narrative.** Lines starting `- `, `* `, `•`, `1. ` or `1)`
+  become `<ul>`/`<ol>` in both domains (`render/text.hpp`). Text with no list
+  line is byte-identical, and the golden render proved it for both renderers.
+- ✅ **3. Bands in the newsletter.** This is a lens, not a port. A band is a
+  `bgcolor` cell, and its meaning comes from rendering the blocks inside it with
+  a re-derived theme (`render/email_theme.hpp`, "A band, in an inbox").
+- ✅ **4. A newsletter theme of its own.** `newsletter.*` has three axes
+  (palette, type and shape) and five presets.
+  - `classic` reproduces the old output byte for byte, which the golden render
+    confirmed.
+  - 🔨 A Style → Newsletter tab: built and compiled, not yet seen in a window.
+- 🔨 **5. Images from the gallery, through the Antfarm.**
+  - The image editor gained "Choose from the gallery".
+  - It also shows a status line: online / only on this computer / not in the
+    gallery, with Upload and Add buttons.
+  - Every image brought in becomes an `image` rune, and uploads itself when an
+    `hol_imgbb` node and a key exist.
+  - Built and compiled. The upload has not been run against ImgBB.
+- ✅ **6. Side-by-side images in the preview.** The cause was #5: a block's image
+  had no rune, so it had no url, and the email could draw nothing.
+  - The preview now draws local-only images from their files, outlined in red,
+    under a notice.
+  - The preview server serves `/assets/` image files for it.
+- ✅ **Follow-up: order a list by tags.** `rank_up` / `rank_down` on
+  `directory`, `image_grid` and `job_grid`, in both domains. The ranked cards
+  also feed the live-directory fragment.
+
 # Two builders, kept distinct
 
 Newsletter = HTML components, vertical, email-safe, single document, no

@@ -613,6 +613,89 @@ the website.**
   one line per posting is the point of that form.
 - **A phone always stacks** the website's cards.
 
+### Give the newsletter its own look
+
+New 2026-09-15. The newsletter has a theme of its own, separate from the
+website's. It has three parts and a preset:
+
+    config set newsletter.theme 'modern'     # classic | modern | bold | editorial | night
+    config set newsletter.palette 'sand'     # classic | website | clean | ink | sand | night
+    config set newsletter.type 'editorial'   # classic | modern | editorial | geometric | impact
+    config set newsletter.shape 'soft'       # classic | sleek | soft | sharp
+    config set newsletter.accent '#0071e3'   # blank = the website's accent
+
+- **A preset sets all three parts.** Setting one part yourself overrides only
+  that part, so `modern` with `palette sand` is a real combination.
+  - A blank part means "from the preset".
+  - A blank preset is `classic`, the look every issue had before themes.
+- **The presets:**
+  - `modern` is clean white, the system sans-serif, large tight headings, soft
+    rounded cards, pill buttons and an edge-to-edge banner.
+  - `bold` is black and white, heavy uppercase headings, outlined square cards
+    and square buttons.
+  - `editorial` is warm paper, serif headings over sans-serif text and gently
+    rounded cards.
+  - `night` is a dark ground with light text and modern type.
+- **None of this touches the website.** `theme.*` styles the site and
+  `newsletter.*` styles the email. They share the accent colour only until you
+  set `newsletter.accent`.
+- **It is inline styles and system fonts.** Outlook desktop squares the corners
+  and ignores background photos. Everything else falls back to a solid colour
+  rather than breaking.
+
+The Style window has a **Newsletter** tab with the same choices.
+
+### Bands, banners and lists reach the newsletter
+
+- **A hero's `image` is drawn in the email.** It was ignored before.
+  - It sits above the title.
+  - The `sleek` and `sharp` shapes run it edge to edge.
+  - `portrait` is a round inset.
+  - `image_filter` and `image_dim` still apply only on the website.
+- **`band_bg` works in the email.** A band becomes a coloured table cell, and
+  the blocks inside it are re-coloured to read on it:
+  - `tint` and `card` are soft washes.
+  - `accent` and `gradient` switch the text to read on the accent.
+  - `dark` uses light text.
+  - `band_image` puts a photo behind white text, with a dark fallback where the
+    photo cannot load.
+  - `band_full 1` runs the band edge to edge.
+- **Lists in a `narrative` or `image_text`**, in both the website and the email:
+  - a line starting `- `, `* ` or `• ` is a bullet;
+  - a line starting `1. ` or `1) ` is a numbered item;
+  - text without such lines renders exactly as before.
+
+### Images in a newsletter: public, or clearly marked
+
+An inbox can only load an image from a public address, which is an image rune's
+`url`. Two things changed on 2026-09-15:
+
+- **The preview draws images that are only on this computer.** They are
+  outlined in dashed red, and a PREVIEW notice at the top counts them. **Do not
+  send an issue showing that notice**: readers will not see those pictures.
+- **Images upload themselves when the Antfarm has an ImgBB node and a key.**
+  - Adding an image in the app now always creates an `image` rune. That
+    includes browsing into a block's image field, or into branding.
+  - When the Antfarm can, the app also uploads it and sets its `url`.
+  - From the CLI, `effect publish <image-rune>` still uploads one image.
+
+If `effect render` warns that images "are only on this computer", those are the
+images to publish before sending.
+
+### Order a list by tags
+
+    set team rank_up 'leader, board'   # listed first, strongest first
+    set team rank_down 'volunteer'     # listed last
+
+- **It works on `directory`, `image_grid` and `job_grid`,** in both the website
+  and the newsletter.
+- **The block's normal order stays underneath** (names, for a directory) and
+  breaks ties.
+- **Earlier tags outweigh all later ones combined.** A leader on the board comes
+  before a leader who is not, and both come before board members.
+- **A tag without a namespace matches under any namespace:** `leader` finds
+  `role:leader`.
+
 ### Say "everything except"
 
 `NOT` works in a block `query` — it is Void Core's grammar all the way down, the

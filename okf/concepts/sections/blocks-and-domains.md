@@ -413,6 +413,35 @@ this week" actually wants. The CSS hides the table at the same breakpoint so a
 browser without JS still gets something legible, and the widget re-renders on
 resize so rotating a phone does not leave the wrong shape.
 
+## The newsletter's own theme, and bands in an inbox (2026-09-15)
+
+The email domain has a theme separate from the website's (`newsletter.*`, in
+`render/email_theme.hpp`).
+- **Three axes.** A palette, a type and a shape. A preset sets all three, and
+  each can then be changed alone.
+- **Tokens are literal inline-style text,** because inline styles are the only
+  styling every mail client honours.
+- **The `classic` values are the renderer's historical literals,** so the
+  classic preset's output did not move a byte.
+
+A `band_bg` carries its meaning into email the way a holiday carries a protocol
+into another domain: it keeps the meaning rather than imitating the CSS. A band
+is a `bgcolor` table cell, and the blocks inside it render with a re-derived
+theme:
+
+| band | on the website | in the newsletter |
+|---|---|---|
+| `tint` | 8% accent over the page | a 10% accent wash; cards take the frame colour |
+| `card` | the card surface | the palette's card colour; cards take the frame colour |
+| `accent` | the accent, light text | the accent; every text colour re-derived to read on it |
+| `dark` | near-black | near-black with the night neutrals |
+| `gradient` | accent to accent2 | the same gradient; Outlook shows the accent alone |
+| `band_image` | a photo with a filter and scrim | a photo behind white text over near-black; no filter |
+
+`band_full` runs a band to the edges of the 620px frame, as it runs to the edges
+of the window on the web. `band_filter` stays web-only, because no mail client
+applies a CSS filter.
+
 # The website story (no separate site builder)
 
 A site is a mantle of pages, a page is a stack of blocks, a theme is a

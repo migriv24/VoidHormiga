@@ -1323,28 +1323,9 @@ void HormigaApp::init() {
     read_view_config();
     apply_theme();
 
-    // the "path" editor kind: the library owns the box + commit, we own the
-    // OS dialog — and for asset-bearing runes the picked file is INGESTED
-    // (copied into assets/, content-hash-deduplicated) with a month-tag
-    // suggestion queued as a normal, undoable command
-    browse_ingest = [this](const maiz::SceneNode& n, const char* field,
-                           std::string_view cur) -> std::string {
-        if (!on_pick_file) return {};
-        std::string picked = on_pick_file(cur);
-        if (picked.empty()) return picked;
-        bool asset_field = n.glyph == "image" || n.glyph == "resource" ||
-                           std::string_view(field) == "image";
-        if (!asset_field) return picked;
-        std::string managed = ingest_asset(picked);
-        if (managed.empty()) return picked; // ingest failed; keep the original
-        bool has_month = false;
-        for (const auto& t : n.tags)
-            if (t.rfind("month:", 0) == 0) has_month = true;
-        if (!has_month)
-            pending_cmds.push_back("tag " + n.name + " +month:" + month_name_now());
-        return managed;
-    };
-    if (on_pick_file) widgets.add_path(browse_ingest);
+    // the "path" and "image" editor kinds, the gallery and the ImgBB upload
+    // live in ui/widgets.cpp (register_image_editors)
+    register_image_editors();
 
     // a "hidden" editor kind: renders nothing, so a field marked editor:hidden
     // drops out of the generic inspector. Used for builder-internal fields
@@ -1353,31 +1334,6 @@ void HormigaApp::init() {
     widgets.editors["hidden"] = [](maiz::WidgetContext&, const maiz::SceneNode&,
                                    const maiz::SceneField&, std::string_view) {
         return false;
-    };
-
-    // a HOST-REGISTERED editor kind: "image" = the path editor + a live
-    // thumbnail under it. One registration → thumbnails wherever the field
-    // renders (inspector, forms, future table cells). This is the widget
-    // protocol used as designed — no upstream change was needed.
-    widgets.editors["image"] = [this](maiz::WidgetContext& ctx,
-                                      const maiz::SceneNode& n,
-                                      const maiz::SceneField& f, std::string_view) {
-        bool committed = maiz::widget_field_path(
-            ctx, n, f.key.c_str(), browse_ingest,
-            f.label.empty() ? nullptr : f.label.c_str());
-        std::string p = f.value_json;
-        if (f.is_string && p.size() >= 2) p = p.substr(1, p.size() - 2);
-        if (!p.empty() && p != "null") {
-            HostTexture t = texture_for(p);
-            if (t.id) {
-                float w = std::min(220.0f, (float)t.w);
-                ImGui::Image((ImTextureID)(intptr_t)t.id,
-                             ImVec2(w, w * (float)t.h / (float)t.w));
-            } else {
-                ImGui::TextDisabled("(image not found: %s)", p.c_str());
-            }
-        }
-        return committed;
     };
 
     // "enum" = a dropdown of the DISTINCT existing values of this field (across
@@ -2123,27 +2079,12 @@ void HormigaApp::publish_image(const std::string& rune) {
         toast("publish: no rune/key/transport", true);
         return;
     }
-    std::string rel = field_value(*n, n->glyph == "hero" ? "image" : "path");
-    fs::path abs = fs::path(rel).is_absolute() ? fs::path(rel) : base_dir / rel;
-    if (rel.empty() || !fs::exists(abs)) {
-        toast("publish: no local image file on " + rune, true);
-        return;
-    }
-    std::string cmd = "curl -s -F \"image=@" + abs.string() +
-                      "\" \"https://api.imgbb.com/1/upload?key=" + imgbb_key +
-                      "&name=" + rune + "\"";
-    std::string resp = on_shell_capture(cmd);
-    auto pos = resp.find("\"url\":\"");
-    if (pos == std::string::npos) {
-        log.push_back({"error", "publish", resp.substr(0, 300)});
+    // the transport is shared with the automatic upload (ui/widgets.cpp)
+    const std::string url =
+        upload_to_imgbb(field_value(*n, n->glyph == "hero" ? "image" : "path"), rune);
+    if (url.empty()) {
         toast("publish failed - see log", true);
         return;
-    }
-    pos += 7;
-    std::string url;
-    for (size_t i = pos; i < resp.size() && resp[i] != '"'; ++i) {
-        if (resp[i] == '\\' && i + 1 < resp.size() && resp[i + 1] == '/') continue;
-        url += resp[i];
     }
     pending_cmds.push_back("set " + rune + " url " + json_str(url));
     toast("published: " + url);

@@ -152,8 +152,16 @@ BUDGET = {
     # 2295 -> 2300 (2026-09-13): image + text, a narrative's icon and image_grid
     # `fit`. The new block's markup already went to render/image_text.hpp; what
     # stayed is reading the fields, which the glyph linter needs to see here.
-    'src/render/site.cpp': 2300,
+    # 2300 -> 2305 (2026-09-15): lists in a narrative and ordering by tags. The
+    # list markup and the ranking are render/text.hpp's; what stayed is one call
+    # per block, which the glyph linter needs to see reading `rank_up`/`rank_down`.
+    'src/render/site.cpp': 2305,
     'src/domain/allomone_legacy.hpp': 900,  # unshipped, frozen
+    # NEW ENTRY 2026-09-15 (was on the 1000 default): the newsletter's own theme,
+    # bands, the hero banner and the preview of images not uploaded yet. The
+    # theme itself is render/email_theme.hpp; what stayed is the frame driver,
+    # which is the one place that knows a band or a banner closes the frame's cell.
+    'src/render/email.cpp': 1080,
     # RAISED 2026-08-20 for the publish preflight. The panel and the deploy
     # holiday are two jobs in one file; publish/panel.cpp vs publish/deploy.cpp
     # is the next move here.
@@ -205,7 +213,9 @@ BUDGET = {
     # code went to its own file; only the declarations must live in the class.
     # -> 1175 (2026-09-13): win_niche_tools and three declarations for
     # ui/niche_tools.cpp. The tools' own state lives in that file, not the class.
-    'src/app/app.hpp': 1175,
+    # -> 1180 (2026-09-15): four declarations for the image flow in ui/widgets.cpp
+    # (gallery, ImgBB upload, adopt). The code left app.cpp, which shrank by 59.
+    'src/app/app.hpp': 1180,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

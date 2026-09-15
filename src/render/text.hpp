@@ -384,6 +384,235 @@ inline std::string web_prose(const std::string& raw) {
     return linkify(html_escape(raw), "");
 }
 
+/* ── LISTS IN PROSE (2026-09-15) ─────────────────────────────────────────────
+ *
+ * The author: *"lists need to be a supported feature for narrative sections."*
+ * The shape people already type: a line starting `- `, `* ` or `• ` is a
+ * bullet, and `1. ` or `1) ` is a numbered item. Nothing else is markup - no
+ * asterisks for bold, no pound signs for headings - because a volunteer pasting
+ * from a word processor must not trip a syntax they never meant, and those two
+ * line shapes are ones nobody types at the start of a line by accident.
+ *
+ * TEXT WITH NO LIST RENDERS EXACTLY AS IT DID, byte for byte, in both domains
+ * (the golden render holds both callers to it), so every existing narrative is
+ * untouched and a list is purely additive. A blank line ends a list; ordinary
+ * text after one starts a new paragraph. Pure, like the rest of this header.
+ */
+struct ProseChunk {
+    int kind = 0; // 0 paragraph text, 1 bullets, 2 numbered
+    std::vector<std::string> lines;
+};
+
+// 0 = not a list line; 1 = a bullet; 2 = a numbered item. `item` = its text.
+inline int prose_list_item(const std::string& line, std::string& item) {
+    size_t i = 0;
+    while (i < line.size() && (line[i] == ' ' || line[i] == '\t')) ++i;
+    auto gap = [&](size_t k) {
+        return k < line.size() && (line[k] == ' ' || line[k] == '\t');
+    };
+    auto rest = [&](size_t k) {
+        while (gap(k)) ++k;
+        item = k < line.size() ? line.substr(k) : std::string();
+        while (!item.empty() && (item.back() == ' ' || item.back() == '\t')) item.pop_back();
+        return !item.empty();
+    };
+    if (i < line.size() && (line[i] == '-' || line[i] == '*') && gap(i + 1))
+        return rest(i + 2) ? 1 : 0;
+    if (line.compare(i, 3, "\xe2\x80\xa2") == 0 && gap(i + 3)) return rest(i + 4) ? 1 : 0;
+    size_t d = i;
+    while (d < line.size() && d - i < 3 && std::isdigit((unsigned char)line[d])) ++d;
+    if (d > i && d < line.size() && (line[d] == '.' || line[d] == ')') && gap(d + 1))
+        return rest(d + 2) ? 2 : 0;
+    return 0;
+}
+
+inline std::vector<ProseChunk> prose_chunks(const std::string& raw) {
+    std::vector<ProseChunk> out;
+    size_t start = 0;
+    for (;;) {
+        const size_t nl = raw.find('\n', start);
+        std::string line =
+            raw.substr(start, nl == std::string::npos ? std::string::npos : nl - start);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        std::string item;
+        if (const int k = prose_list_item(line, item)) {
+            if (out.empty() || out.back().kind != k) out.push_back({k, {}});
+            out.back().lines.push_back(item);
+        } else if (!out.empty() && out.back().kind == 0) {
+            out.back().lines.push_back(line);
+        } else if (line.find_first_not_of(" \t") != std::string::npos) {
+            out.push_back({0, {line}}); // a blank line after a list just ends it
+        }
+        if (nl == std::string::npos) break;
+        start = nl + 1;
+    }
+    return out;
+}
+
+inline bool prose_has_list(const std::string& raw) {
+    if (raw.find('-') == std::string::npos && raw.find('*') == std::string::npos &&
+        raw.find('.') == std::string::npos && raw.find(')') == std::string::npos &&
+        raw.find("\xe2\x80\xa2") == std::string::npos)
+        return false; // the common case, without splitting a single line
+    for (const auto& c : prose_chunks(raw))
+        if (c.kind) return true;
+    return false;
+}
+
+// a paragraph chunk's text, without the blank lines at either end
+inline std::string prose_chunk_text(const ProseChunk& c) {
+    auto blank = [](const std::string& s) {
+        return s.find_first_not_of(" \t") == std::string::npos;
+    };
+    size_t a = 0, b = c.lines.size();
+    while (a < b && blank(c.lines[a])) ++a;
+    while (b > a && blank(c.lines[b - 1])) --b;
+    std::string s;
+    for (size_t i = a; i < b; ++i) s += (i > a ? "\n" : "") + c.lines[i];
+    return s;
+}
+
+/* The newsletter's form. `p_style` is the paragraph's inline style, `lead` is
+ * markup placed before the first words (a narrative's emoji), and lists are
+ * inline-styled `<ul>`/`<ol>`, which every mail client renders. */
+inline std::string email_prose_block(const std::string& raw, const std::string& p_style,
+                                     const std::string& ink, const std::string& lead,
+                                     bool newline) {
+    const std::string nl = newline ? "\n" : "";
+    if (!prose_has_list(raw))
+        return "<p style=\"" + p_style + "\">" + lead + prose(raw) + "</p>" + nl;
+    std::string o, first = lead;
+    for (const auto& c : prose_chunks(raw)) {
+        if (c.kind == 0) {
+            const std::string t = prose_chunk_text(c);
+            if (t.empty()) continue;
+            o += "<p style=\"" + p_style + ";margin:0 0 10px\">" + first + prose(t) + "</p>" + nl;
+        } else {
+            const std::string tag = c.kind == 2 ? "ol" : "ul";
+            o += "<" + tag + " style=\"margin:0 0 12px;padding-left:24px;line-height:1.5;color:" +
+                 ink + "\">";
+            for (const auto& it : c.lines) {
+                o += "<li style=\"margin:0 0 4px\">" + first + prose(it) + "</li>";
+                first.clear();
+            }
+            o += "</" + tag + ">" + nl;
+        }
+        first.clear();
+    }
+    return o;
+}
+
+/* The website's form. With no list it is the `<p class>` both web callers
+ * always wrote; with one it is a `.prose.prose-rich` block of paragraphs and
+ * `.prose-list` lists (style.css). `emit_empty` = false returns "" for empty
+ * text, which is what `image_text` wants. */
+inline std::string web_prose_block(const std::string& raw, const std::string& p_class,
+                                   bool emit_empty = true) {
+    if (!prose_has_list(raw)) {
+        if (raw.empty() && !emit_empty) return {};
+        return "<p class=\"" + p_class + "\">" + web_prose(raw) + "</p>";
+    }
+    const bool reveal = p_class.find("reveal") != std::string::npos;
+    std::string o = std::string("<div class=\"prose prose-rich") + (reveal ? " reveal" : "") + "\">";
+    for (const auto& c : prose_chunks(raw)) {
+        if (c.kind == 0) {
+            const std::string t = prose_chunk_text(c);
+            if (!t.empty()) o += "<p class=\"pre-line\">" + web_prose(t) + "</p>";
+        } else {
+            const std::string tag = c.kind == 2 ? "ol" : "ul";
+            o += "<" + tag + " class=\"prose-list\">";
+            for (const auto& it : c.lines) o += "<li>" + web_prose(it) + "</li>";
+            o += "</" + tag + ">";
+        }
+    }
+    return o + "</div>";
+}
+
+/* ── ORDER BY WHAT SOMETHING IS, NOT ONLY BY ITS NAME (2026-09-15) ───────────
+ *
+ * The author, on the website's directory: *"right now its just listing people
+ * alphabetically ... the order in which people are placed does kinda matter ...
+ * we have alphebetical as a baseline, however, your order in the queue can
+ * increase based on 'positive' tags or 'negative' tags can decrease your order
+ * ... 'leader' so all leaders show up higher ... or 'volunteer' as a negative
+ * tag, so the volunteers are listed last. This sort of thing could probably be
+ * applied to other things as well such as image fliers or anything with a
+ * list."*
+ *
+ * `rank_up` and `rank_down` on a block are lists of tags (commas or spaces).
+ * The block's own order stays the baseline, and ties keep it: a stable sort.
+ * EARLIER TAGS WEIGH MORE, each outweighing every tag after it combined, so
+ * `rank_up leader, board` lists leaders, then board members, then everyone —
+ * and a leader on the board above a leader who is not. `rank_down` mirrors it:
+ * its first tag sinks furthest.
+ *
+ * A tag with no namespace also matches under any namespace, so `leader` finds
+ * `role:leader`, while `role:leader` matches only itself. Pure and shared, so
+ * the website and the newsletter list the same people in the same order.
+ */
+inline std::vector<std::string> rank_tokens(const std::string& raw) {
+    std::vector<std::string> toks;
+    std::string cur;
+    for (size_t i = 0; i <= raw.size(); ++i) {
+        const char c = i < raw.size() ? raw[i] : ',';
+        if (c == ',' || c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            if (!cur.empty()) toks.push_back(cur);
+            cur.clear();
+        } else {
+            cur += c;
+        }
+    }
+    if (toks.size() > 30) toks.resize(30); // the weights are powers of two
+    return toks;
+}
+
+inline long long tag_rank_score(const std::vector<std::string>& tags,
+                                const std::vector<std::string>& up,
+                                const std::vector<std::string>& down) {
+    auto has = [&](const std::string& want) {
+        const bool bare = want.find(':') == std::string::npos;
+        for (const auto& t : tags) {
+            if (t == want) return true;
+            const size_t colon = t.rfind(':');
+            if (bare && colon != std::string::npos &&
+                t.compare(colon + 1, std::string::npos, want) == 0)
+                return true;
+        }
+        return false;
+    };
+    long long score = 0;
+    for (size_t i = 0; i < up.size(); ++i)
+        if (has(up[i])) score += 1LL << (up.size() - 1 - i);
+    for (size_t i = 0; i < down.size(); ++i)
+        if (has(down[i])) score -= 1LL << (down.size() - 1 - i);
+    return score;
+}
+
+template <class T, class TagsOf>
+inline void rank_by_tags(std::vector<T>& items, const std::string& up_raw,
+                         const std::string& down_raw, TagsOf tags_of) {
+    const std::vector<std::string> up = rank_tokens(up_raw), down = rank_tokens(down_raw);
+    if (up.empty() && down.empty()) return;
+    std::vector<std::pair<long long, size_t>> order;
+    order.reserve(items.size());
+    for (size_t i = 0; i < items.size(); ++i)
+        order.push_back({tag_rank_score(tags_of(items[i]), up, down), i});
+    std::stable_sort(order.begin(), order.end(),
+                     [](const auto& x, const auto& y) { return x.first > y.first; });
+    std::vector<T> sorted;
+    sorted.reserve(items.size());
+    for (const auto& o : order) sorted.push_back(std::move(items[o.second]));
+    items.swap(sorted);
+}
+
+inline void rank_by_tags(std::vector<const maiz::SceneNode*>& items, const std::string& up,
+                         const std::string& down) {
+    rank_by_tags(items, up, down,
+                 [](const maiz::SceneNode* n) -> const std::vector<std::string>& {
+                     return n->tags;
+                 });
+}
+
 /* ── A LIST OF CSS COLOURS, VALIDATED (2026-09-02) ──────────────────────────
  *
  * For `divider_style bar` — the coloured swatch strip the field report asked

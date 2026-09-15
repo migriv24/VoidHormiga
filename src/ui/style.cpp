@@ -15,6 +15,7 @@
 #include "app/app_internal.hpp"
 #include "stb_image_write.h" // decls only - the map exports as a PNG; the ONE implementation lives in app.cpp
 #include "json.hpp" // the position channel is a JSON payload
+#include "render/email_theme.hpp" // the newsletter theme's presets and axes
 
 void HormigaApp::draw_style_tab() {
     if (!win_style) return;
@@ -277,6 +278,83 @@ void HormigaApp::draw_style_tab() {
                                        (ic ? "1" : "0") + "\"");
             }
             ImGui::TextDisabled("inline SVG, shipped with the site (Lucide, ISC)");
+            ImGui::EndTabItem();
+        }
+
+        // ── NEWSLETTER ──────────────────────────────────────────────────────
+        /* The newsletter's own theme (render/email_theme.hpp): a preset, and
+         * three parts that can each be changed on their own. Read from CONFIG
+         * every frame this tab is open, so a `config set newsletter.*` typed in
+         * the console or run by an agent shows here at once. */
+        if (ImGui::BeginTabItem("Newsletter")) {
+            namespace mail = hormiga::mail;
+            const mail::Choice ch = mail::read_choice(core);
+            ImGui::TextWrapped(
+                "The newsletter has a theme of its own, separate from the website's. "
+                "A preset sets the colours, the type and the shape together; change "
+                "any one of them to mix.");
+            auto combo = [&](const char* id, const char* key, const mail::Named* list,
+                             int count, const std::string& cur, const char* blank) {
+                std::string shown = blank ? blank : list[0].label;
+                for (int i = 0; i < count; ++i)
+                    if (cur == list[i].name) shown = list[i].label;
+                ImGui::SetNextItemWidth(220);
+                if (ImGui::BeginCombo(id, shown.c_str())) {
+                    if (blank && ImGui::Selectable(blank, cur.empty()))
+                        pending_cmds.push_back(std::string("config set ") + key + " \"\"");
+                    for (int i = 0; i < count; ++i) {
+                        if (ImGui::Selectable(list[i].label, cur == list[i].name))
+                            pending_cmds.push_back(std::string("config set ") + key +
+                                                   " \"" + list[i].name + "\"");
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", list[i].about);
+                    }
+                    ImGui::EndCombo();
+                }
+            };
+            ImGui::SeparatorText("Preset");
+            combo("##nlpreset", "newsletter.theme", mail::kPresets, mail::kNumPresets,
+                  ch.preset, nullptr);
+            for (const auto& p : mail::kPresets)
+                if (p.name == (ch.preset.empty() ? std::string("classic") : ch.preset)) {
+                    ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+                    ImGui::TextDisabled("%s", p.about);
+                    ImGui::PopTextWrapPos();
+                }
+
+            ImGui::SeparatorText("Mix and match");
+            labeled("Colours");
+            combo("##nlpal", "newsletter.palette", mail::kPalettes, mail::kNumPalettes,
+                  ch.palette, "from the preset");
+            labeled("Type");
+            combo("##nltype", "newsletter.type", mail::kTypes, mail::kNumTypes, ch.type,
+                  "from the preset");
+            labeled("Shape");
+            combo("##nlshape", "newsletter.shape", mail::kShapes, mail::kNumShapes, ch.shape,
+                  "from the preset");
+
+            ImGui::SeparatorText("Accent");
+            bool same = !mail::is_hex(ch.accent);
+            if (ImGui::Checkbox("Same accent colour as the website", &same))
+                pending_cmds.push_back(same ? std::string("config set newsletter.accent \"\"")
+                                            : "config set newsletter.accent \"" +
+                                                  hex_of(theme_accent) + "\"");
+            if (!same) {
+                static float nl_acc[3] = {0.25f, 0.44f, 0.68f};
+                static std::string nl_loaded;
+                if (nl_loaded != ch.accent) {
+                    unsigned r = 0, g = 0, b = 0;
+                    if (std::sscanf(ch.accent.c_str() + 1, "%02x%02x%02x", &r, &g, &b) == 3) {
+                        nl_acc[0] = r / 255.0f;
+                        nl_acc[1] = g / 255.0f;
+                        nl_acc[2] = b / 255.0f;
+                    }
+                    nl_loaded = ch.accent;
+                }
+                color_row("Newsletter accent", nl_acc, "newsletter.accent");
+            }
+            ImGui::Spacing();
+            ImGui::TextDisabled("Render the newsletter, or turn on Live preview in the\n"
+                                "Builder, to see a change.");
             ImGui::EndTabItem();
         }
 

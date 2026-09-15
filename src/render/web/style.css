@@ -716,3 +716,12 @@ nav a.langswitch{margin-left:8px;border:1px solid var(--line);font-weight:600}
 .cards.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .cards.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:640px){.cards.cols-2,.cards.cols-3{grid-template-columns:minmax(0,1fr)}}
+
+/* ── lists in prose (2026-09-15): `- ` and `1. ` lines in a narrative ────────
+   Plain paragraphs keep their one `<p class="prose pre-line">`; a block with a
+   list becomes paragraphs and real lists inside one .prose. */
+.prose-rich p{margin:0 0 .75em}
+.prose-rich .pre-line{white-space:pre-line}
+.prose-list{margin:0 0 .9em;padding-left:1.4em}
+.prose-list li{margin:.28em 0}
+.prose-list li::marker{color:var(--accent)}

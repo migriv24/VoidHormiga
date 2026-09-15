@@ -3358,3 +3358,95 @@ nothing else, so the golden was re-captured on that basis.
 
 Build clean; 38/38 tests (`reduce_conformance` excluded, as before); all six
 linters pass; 98 files within budget.
+
+# The newsletter's look: themes, bands, banners, lists, images (2026-09-15)
+
+The author sent six asks in one message while making a newsletter, and then a
+seventh. Each is below with its cause, where there was one.
+
+## What was asked, and what was wrong underneath
+
+1. **"Banner image doesnt work on newsletter thing."**
+   - **Cause:** the email's hero branch had never read `image` or `portrait`.
+   - **Fix:** it draws the banner above the title (a photo behind text is a web
+     idea Outlook cannot place). The sleek and sharp shapes run it edge to edge
+     of the frame, and `portrait` is a round inset.
+2. **Lists in narratives.** A line starting `- `, `* `, `•`, `1. ` or `1)` becomes
+   a real list in both domains (`render/text.hpp`). Text with no such line
+   renders byte-identically, so no existing narrative moved.
+3. **Bands in the newsletter:** *"kinda like holidays themselves, we match some
+   protocol into a different domain."*
+   - **Built as that lens:** a band is a `bgcolor` cell, and the blocks inside
+     render with a re-derived theme.
+   - **Where the meaning lives:** the table is in `render/email_theme.hpp` and
+     the blocks-and-domains concept.
+   - **Full-bleed bands:** they close the frame's padded cell, which is now
+     opened lazily, and take a row of their own.
+4. **A newsletter theme separate from the website's**, *"like an apple or nike
+   website made into a newsletter."*
+   - **Axes:** `newsletter.*` has a palette, a type and a shape.
+   - **Presets:** classic, modern, bold, editorial and night.
+   - **Accent:** shared with the website until `newsletter.accent` is set.
+   - **Tokens:** they are the literal inline-style text. Classic's tokens are
+     the old literals, so classic output did not move a byte.
+   - **Style tab:** a Newsletter tab offers the same choices.
+5. **Images from the gallery, uploaded through the Antfarm.**
+   - **Cause:** browsing a file into a block's image field ingested it into
+     `assets/` and minted no `image` rune. The picture was in no gallery, had no
+     url, and could not be published.
+   - **Fix:** the image editor has "Choose from the gallery" and a status line.
+     Every image brought in is adopted as a rune (`adopt_image`), and uploads
+     itself when an `hol_imgbb` node and a key exist.
+   - **Where the code went:** the editors left `app.cpp` for `ui/widgets.cpp`,
+     and the ImgBB transport is shared with `effect publish`.
+6. **"Side by side images dont work in an email preview."** The cause was #5.
+   An image with no url was a grey box or nothing, so the preview could not show
+   the layout being built. Now:
+   - the preview draws a local-only image from its file, outlined in dashed red;
+   - a PREVIEW notice at the top counts those images;
+   - the render log names them;
+   - the preview server serves `/assets/` image files for it, image extensions
+     only.
+7. **The follow-up: the directory's order.** *"alphebetical as a baseline ...
+   'positive' tags ... 'negative' tags."*
+   - **Fields:** `rank_up` and `rank_down` on `directory`, `image_grid` and
+     `job_grid`, in both domains.
+   - **How it sorts:** a stable sort over the block's own order. Earlier tags
+     outweigh all later ones combined, and a bare tag matches under any
+     namespace.
+
+## Two breakages caught before anything ran
+
+- **A shadowed variable.** Two event branches in `email.cpp` had a local `et`
+  (an end time) that hid the theme variable `et`. The compiler caught it; the
+  locals are `etime` now.
+- **Private members.** The image status line began as a file-local function and
+  could not reach `HormigaApp`'s private members. It is a member lambda inside
+  `register_image_editors`.
+
+## Verification
+
+- **Golden render:** it moved `site/style.css` only, for the new list rules.
+  Every page and the email preview hashed as before, which is the proof that the
+  classic theme and list-free prose are unchanged. Re-captured on that basis.
+- **Smoke test:** `tests/headless_smoke.sh` gained twelve checks. They cover the
+  banner through its public url, lists in email and web, an accent band, the
+  local-image outline and notice, the ranked order in both domains, and the
+  modern preset's font, pill buttons and edge-to-edge banner.
+- **Suite and linters:** 38/38 tests pass (`reduce_conformance` excluded, as
+  before). Layering, the glyph-field linter, i18n and OKF links all pass.
+- **Budgets:** `site.cpp` → 2305, `app.hpp` → 1180, and `email.cpp` gets a new
+  entry of 1080, each with a reason. `app.cpp` shrank by 59 lines.
+- **A visual check this time, not only markup:** a sample issue was rendered in
+  classic, modern and bold and screenshotted with headless Edge. It read as
+  intended.
+
+## Not done
+
+- **The ImgBB upload** has not been run against the real service from this
+  change.
+- **The gallery picker and the Newsletter tab** have not been seen in a window.
+- **`site/index/directory.json`** (the organization-wide index) stays
+  alphabetical. The live fragment each directory block refreshes from is ranked.
+- **`download` and `audio` cards** in email still draw in their own fixed style
+  rather than the theme's.

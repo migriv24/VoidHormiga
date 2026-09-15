@@ -1003,6 +1003,10 @@ private:
     maiz::PathBrowseFn browse_ingest;   // dialog + ingest; shared by kinds
     std::string imgbb_key;              // secret; from vault or plaintext; "" = off
     void publish_image(const std::string& rune); // effect publish → url field
+    void register_image_editors();      // ui/widgets.cpp: browse, image editor, gallery
+    bool imgbb_ready();                 // a key AND an hol_imgbb node in the Antfarm
+    std::string upload_to_imgbb(const std::string& path, const std::string& name); // url
+    void adopt_image(const std::string& path, const std::string& stem); // rune + upload
 
     // ── the credential vault (.miga v2; okf/concepts/platform/security.md) ───────────
     hormiga::Vault vault;

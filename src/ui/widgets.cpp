@@ -256,26 +256,255 @@ std::string HormigaApp::org_image_picker(const char* popup_id,
 std::string HormigaApp::ingest_image_rune(const std::string& src) {
     const std::string rel = ingest_asset(src);
     if (rel.empty()) return {};
-
-    /* A name derived from the file, made unique against what is already there.
-     * The content hash in the FILENAME already makes re-ingesting the same
-     * picture a no-op; this is about two different pictures called `logo.png`
-     * from two different folders. */
-    std::string base = hormiga::detail::slug(fs::path(src).stem().string());
-    if (base.empty()) base = "image";
-    std::string name = base;
-    for (int i = 2; scene.find(name); ++i) name = base + "-" + std::to_string(i);
-
-    const std::string was = scene.mantle;
-    dispatch_and_reproject(std::string("use ") + kDataMantle);
-    if (!dispatch_and_reproject("rune new image " + name).ok) {
-        if (!was.empty()) dispatch_and_reproject("use " + was);
-        return rel; // the bytes are in assets/; say nothing more than that
-    }
-    dispatch_and_reproject("set " + name + " path " + json_arg(json_str(rel)));
-    dispatch_and_reproject("tag " + name + " +type:image");
-    if (!was.empty() && was != kDataMantle) dispatch_and_reproject("use " + was);
-    toast("added image '" + name + "' - it is in Data now, taggable and "
-          "queryable like every other image");
+    /* The naming, the `+type:image` tag and (since 2026-09-15) the upload are
+     * `adopt_image`'s, so a file browsed into a block's image field and a logo
+     * browsed into branding become the same kind of thing in the same way. */
+    adopt_image(rel, fs::path(src).stem().string());
     return rel;
+}
+
+/* ── IMAGES COME FROM THE GALLERY AND GO THROUGH THE ANTFARM (2026-09-15) ────
+ *
+ * The author: *"for selecting images, we should be choosing from our image
+ * gallery within the database. I guess there should be 2 ways we choose an
+ * image. 1 is by browsing for files to upload a new image (we already do),
+ * however, that process should include the process of using the antfarm to
+ * actually get the image in our database. if something like an imgbb node is
+ * set up, then it should automatically be uploaded."*
+ *
+ * What was broken underneath was worse than a missing button. Browsing a file
+ * into a BLOCK's image field — a hero's banner, an image + text block — copied
+ * it into assets/ and minted no `image` rune. So the picture was in no gallery,
+ * had no `url`, could not be published, and the newsletter, which can only use
+ * a public address, had nothing to draw: the "images not really appearing"
+ * half of the same report.
+ *
+ * Now every image a person brings in becomes an image rune (`adopt_image`), and
+ * when the Antfarm holds an ImgBB node and a key, it is uploaded and its `url`
+ * set in the same step. From inside the inspector that work is handed to
+ * `run_busy`, which runs it at the start of the next frame: it is a network
+ * call, and dispatching mid-draw would invalidate the very node being drawn.
+ */
+#include <map>
+
+namespace {
+struct ImgState {
+    std::string rune, url;
+    bool ready = false;
+    double at = -100.0;
+};
+std::map<std::string, ImgState> g_img_state; // path -> the gallery's answer, re-read every 2 s
+
+} // namespace
+
+bool HormigaApp::imgbb_ready() {
+    if (imgbb_key.empty() || !on_shell_capture) return false;
+    maiz::ProjectOptions po;
+    po.mantle = kAntfarmMantle;
+    const maiz::Scene farm = maiz::project_scene(core, po);
+    for (const auto& n : farm.nodes)
+        if (n.glyph == "hol_imgbb") return true;
+    return false;
+}
+
+/* The ImgBB transport, shared by `effect publish` and the automatic upload.
+ * Permanent (no expiration parameter: a newsletter image must outlive the
+ * send). The key rides only in the process invocation, never in the command
+ * log. Returns the public url, or "" with the reason in the log. */
+std::string HormigaApp::upload_to_imgbb(const std::string& path, const std::string& name) {
+    if (imgbb_key.empty() || !on_shell_capture) return {};
+    const fs::path abs = fs::path(path).is_absolute() ? fs::path(path) : base_dir / path;
+    std::error_code ec;
+    if (path.empty() || !fs::exists(abs, ec)) {
+        log.push_back({"error", "publish", "no local image file at " + abs.string()});
+        return {};
+    }
+    const std::string resp = on_shell_capture(
+        "curl -s -F \"image=@" + abs.string() + "\" \"https://api.imgbb.com/1/upload?key=" +
+        imgbb_key + "&name=" + name + "\"");
+    const size_t pos = resp.find("\"url\":\"");
+    if (pos == std::string::npos) {
+        log.push_back({"error", "publish", resp.substr(0, 300)});
+        return {};
+    }
+    std::string url;
+    for (size_t i = pos + 7; i < resp.size() && resp[i] != '"'; ++i) {
+        if (resp[i] == '\\' && i + 1 < resp.size() && resp[i + 1] == '/') continue;
+        url += resp[i];
+    }
+    return url;
+}
+
+/* The file at `path` becomes an image rune in the data mantle if it is not one
+ * already, and is uploaded if the Antfarm can and it has no `url`. Synchronous
+ * dispatches: call it between frames (`run_busy`) or from a control that returns
+ * straight afterwards, never from inside a widget still drawing a node. */
+void HormigaApp::adopt_image(const std::string& path, const std::string& stem) {
+    if (path.empty()) return;
+    maiz::ProjectOptions po;
+    po.mantle = kDataMantle;
+    maiz::Scene data = maiz::project_scene(core, po);
+    std::string name, url;
+    for (const auto& n : data.nodes)
+        if (n.glyph == "image" && hormiga::temper::field_value(n, "path") == path) {
+            name = n.name;
+            url = hormiga::temper::field_value(n, "url");
+            break;
+        }
+    const std::string was = scene.mantle;
+    const bool away = !was.empty() && was != kDataMantle;
+    if (away) dispatch_and_reproject(std::string("use ") + kDataMantle);
+    if (name.empty()) {
+        /* A name from the file, unique against what is there. The content hash
+         * in the asset's FILENAME makes re-adding the same picture find this
+         * rune above rather than mint a second one. */
+        std::string base =
+            hormiga::detail::slug(stem.empty() ? fs::path(path).stem().string() : stem);
+        if (base.empty()) base = "image";
+        name = base;
+        for (int i = 2; data.find(name); ++i) name = base + "-" + std::to_string(i);
+        if (dispatch_and_reproject("rune new image " + name).ok) {
+            dispatch_and_reproject("set " + name + " path " + json_arg(json_str(path)));
+            dispatch_and_reproject("tag " + name + " +type:image");
+            toast("added image '" + name + "' to the gallery - taggable and queryable "
+                  "like every other image");
+        } else {
+            name.clear();
+        }
+    }
+    if (!name.empty() && url.empty() && imgbb_ready()) {
+        url = upload_to_imgbb(path, name);
+        if (!url.empty()) {
+            dispatch_and_reproject("set " + name + " url " + json_arg(json_str(url)));
+            toast("uploaded '" + name + "' to ImgBB - it will show in email");
+        } else {
+            toast("the ImgBB upload of '" + name + "' failed - see the log", true);
+        }
+    }
+    if (away) dispatch_and_reproject("use " + was);
+    g_img_state.erase(path);
+}
+
+void HormigaApp::register_image_editors() {
+    /* The "path" editor kind: the library owns the box and the commit, this
+     * owns the OS dialog. An asset-bearing field's pick is INGESTED (copied into
+     * assets/, content-hash deduplicated). An image rune's own file is uploaded
+     * once the path lands; a BLOCK's image is adopted into the gallery, and
+     * uploaded, after this frame. */
+    browse_ingest = [this](const maiz::SceneNode& n, const char* field,
+                           std::string_view cur) -> std::string {
+        if (!on_pick_file) return {};
+        std::string picked = on_pick_file(cur);
+        if (picked.empty()) return picked;
+        const std::string_view fk(field);
+        const bool image_rune = n.glyph == "image";
+        const bool asset_field = image_rune || n.glyph == "resource" || fk == "image" ||
+                                 fk == "portrait" || fk == "cover";
+        if (!asset_field) return picked;
+        std::string managed = ingest_asset(picked);
+        if (managed.empty()) return picked; // ingest failed; keep the original
+        if (image_rune || n.glyph == "resource") {
+            bool has_month = false;
+            for (const auto& t : n.tags)
+                if (t.rfind("month:", 0) == 0) has_month = true;
+            if (!has_month)
+                pending_cmds.push_back("tag " + n.name + " +month:" + month_name_now());
+        }
+        if (image_rune) {
+            const std::string rune = n.name;
+            if (imgbb_ready())
+                run_busy("Uploading to ImgBB", [this, managed, rune] {
+                    const std::string url = upload_to_imgbb(managed, rune);
+                    if (!url.empty())
+                        pending_cmds.push_back("set " + rune + " url " + json_str(url));
+                    else
+                        toast("the ImgBB upload failed - see the log", true);
+                });
+        } else if (n.glyph != "resource") {
+            const std::string stem = fs::path(picked).stem().string();
+            run_busy("Adding the image to the gallery",
+                     [this, managed, stem] { adopt_image(managed, stem); });
+        }
+        return managed;
+    };
+    if (on_pick_file) widgets.add_path(browse_ingest);
+
+    /* One line under an image field: is this picture in the gallery, and can
+     * an inbox load it? The two questions a person needs answered before
+     * sending. A member lambda, because the answers are HormigaApp's. */
+    auto state_line = [this](const std::string& path) {
+        ImgState& s = g_img_state[path];
+        const double now = ImGui::GetTime();
+        if (now - s.at > 2.0) {
+            s = ImgState{};
+            s.at = now;
+            maiz::ProjectOptions po;
+            po.mantle = kDataMantle;
+            const maiz::Scene data = maiz::project_scene(core, po);
+            for (const auto& n : data.nodes)
+                if (n.glyph == "image" && hormiga::temper::field_value(n, "path") == path) {
+                    s.rune = n.name;
+                    s.url = hormiga::temper::field_value(n, "url");
+                    break;
+                }
+            s.ready = imgbb_ready();
+        }
+        const ImVec4 green(0.35f, 0.70f, 0.40f, 1.0f), amber(0.85f, 0.60f, 0.15f, 1.0f);
+        auto adopt_later = [this, path](const char* label) {
+            run_busy(label, [this, path] { adopt_image(path, ""); });
+        };
+        if (!s.url.empty()) {
+            ImGui::TextColored(green, ICON_FA_CIRCLE_CHECK "  online - shows in email");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", s.url.c_str());
+        } else if (s.rune.empty()) {
+            ImGui::TextColored(amber, "not in the image gallery yet");
+            ImGui::SameLine();
+            if (ImGui::SmallButton(s.ready ? "Add + upload" : "Add to gallery"))
+                adopt_later("Adding the image to the gallery");
+        } else if (s.ready) {
+            ImGui::TextColored(amber, "only on this computer");
+            ImGui::SameLine();
+            if (ImGui::SmallButton(ICON_FA_CLOUD_ARROW_UP "  Upload to ImgBB"))
+                adopt_later("Uploading to ImgBB");
+        } else {
+            ImGui::TextDisabled("only on this computer - an inbox cannot load it.\n"
+                                "Add an ImgBB node (and its key) in the Antfarm\n"
+                                "and images upload themselves when added.");
+        }
+    };
+
+    /* The "image" editor kind: the path box, a thumbnail, the GALLERY — the
+     * second way in, an image the organization already has — and a line saying
+     * whether an inbox can load it. */
+    widgets.editors["image"] = [this, state_line](maiz::WidgetContext& ctx,
+                                                  const maiz::SceneNode& n,
+                                      const maiz::SceneField& f, std::string_view) {
+        bool committed = maiz::widget_field_path(
+            ctx, n, f.key.c_str(), browse_ingest,
+            f.label.empty() ? nullptr : f.label.c_str());
+        std::string p = f.value_json;
+        if (f.is_string && p.size() >= 2) p = p.substr(1, p.size() - 2);
+        if (p == "null") p.clear();
+        ImGui::PushID(f.key.c_str());
+        if (ImGui::SmallButton(ICON_FA_IMAGES "  Choose from the gallery"))
+            ImGui::OpenPopup("##gallery");
+        const std::string chosen = org_image_picker("##gallery", "this organization's images");
+        if (!chosen.empty()) {
+            ctx.commands.push_back("set " + n.name + " " + f.key + " " + json_str(chosen));
+            committed = true;
+        }
+        if (!p.empty()) {
+            HostTexture t = texture_for(p);
+            if (t.id) {
+                float w = std::min(220.0f, (float)t.w);
+                ImGui::Image((ImTextureID)(intptr_t)t.id,
+                             ImVec2(w, w * (float)t.h / (float)t.w));
+            } else {
+                ImGui::TextDisabled("(image not found: %s)", p.c_str());
+            }
+            if (n.glyph != "image") state_line(p);
+        }
+        ImGui::PopID();
+        return committed;
+    };
 }
