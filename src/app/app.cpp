@@ -2588,6 +2588,8 @@ void HormigaApp::frame() {
         toast(summary);
     }
 
+    apply_redirect(); // a redirect asked for during the last frame (ui/widgets.cpp)
+
     // deferred commands (tag suggestions, the import's pre-batched landing)
     // — each entry is dispatched as-is; batching happened where it was built.
     // `map …` verbs route through the action registry here too, so agents

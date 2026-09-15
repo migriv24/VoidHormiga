@@ -5,6 +5,7 @@
  * first caller was. A widget every section uses belongs to none of them. */
 
 #include "app/app_internal.hpp"
+#include "domain/bestow.hpp" // givers: the tag vocabulary and the redirect
 #include "stb_image_write.h" // decls only - the map exports as a PNG; the ONE implementation lives in app.cpp
 #include "json.hpp" // the position channel is a JSON payload
 
@@ -53,6 +54,11 @@ std::string HormigaApp::tag_picker(const char* id, char* buf, size_t bufsz,
             // 2026-09-13 - they were skipped, which made them impossible to find
             vocab.insert(t);
         }
+    /* A TAG CAN EXIST BEFORE ANYTHING CARRIES IT (2026-09-15): a map shape that
+     * bestows `apple` makes `apple` a tag of this database even while nothing is
+     * inside the shape, so it is searchable here (domain/bestow.hpp). */
+    if (scene.mantle == kDataMantle)
+        for (const auto& b : hormiga::bestow::bestowers(scene)) vocab.insert(b.tag);
     ImGui::SetNextItemWidth(-1);
     bool enter = ImGui::InputTextWithHint(
         id, hint, buf, (int)bufsz, ImGuiInputTextFlags_EnterReturnsTrue);
@@ -505,4 +511,79 @@ void HormigaApp::register_image_editors() {
 void HormigaApp::host_notice(const std::string& msg) {
     toast(msg, true);
     log.push_back({"warn", "shell", msg});
+}
+
+/* ── REDIRECTION: SHOW A THING WHERE IT LIVES (2026-09-15) ───────────────────
+ *
+ * The author: *"this also brings up the concept of 'redirection'. this is almost
+ * purely a GUI thing, so theoretically there should be no need for a CLI thing.
+ * However, i do think it is worth logging that the view has changed. The
+ * redirecting to view certain aspects of the application is an important feature
+ * to get down right."*
+ *
+ * A redirect names a rune and its mantle. It happens at the start of the next
+ * frame, never mid-draw: it changes the mantle, the selection and the focused
+ * window, and doing any of that inside the widget that asked would invalidate
+ * the very scene that widget is drawing. Which window a rune belongs to is read
+ * from what it is: a map shape opens the Map centred on it, a note the Notes tab,
+ * a rule Allomone, an Antfarm node the Antfarm, a block the Builder on its
+ * document, and anything else the Data tab.
+ *
+ * Nothing about the model changes, so it is not a dispatcher command and has no
+ * undo. It is still RECORDED: a `view` entry in the log strip saying why the view
+ * moved and to what, because an application whose view jumps without a trace is
+ * one where "how did I get here" has no answer. */
+void HormigaApp::redirect_to(const std::string& rune, const std::string& mantle,
+                             const std::string& why) {
+    redirect_next = {rune, mantle, why};
+}
+
+void HormigaApp::apply_redirect() {
+    if (redirect_next.rune.empty()) return;
+    const Redirect r = redirect_next;
+    redirect_next = {};
+    maiz::ProjectOptions po;
+    po.mantle = r.mantle.empty() ? std::string(kDataMantle) : r.mantle;
+    maiz::Scene target = maiz::project_scene(core, po);
+    const maiz::SceneNode* n = target.find(r.rune);
+    if (!n) {
+        toast("cannot find " + r.rune + " any more", true);
+        return;
+    }
+    const std::string glyph = n->glyph;
+    std::string where = "Data";
+    if (glyph == "mapshape" || glyph == "map" || glyph == "refpoint") {
+        where = "Map";
+        sec_open[Map] = true;
+        double la1, lo1, la2, lo2;
+        if (glyph == "mapshape" &&
+            hormiga::parse_geo(hormiga::temper::field_value(*n, "geo1"), la1, lo1) &&
+            hormiga::parse_geo(hormiga::temper::field_value(*n, "geo2"), la2, lo2)) {
+            map_cam.x = (float)((lo1 + lo2) / 2.0);
+            map_cam.y = (float)((la1 + la2) / 2.0);
+        } else if (hormiga::parse_geo(hormiga::temper::field_value(*n, "geo"), la1, lo1)) {
+            map_cam.x = (float)lo1;
+            map_cam.y = (float)la1;
+        }
+    } else if (glyph == "note") {
+        where = "Notes";
+        win_notes = true;
+    } else if (glyph.rfind("allo_", 0) == 0 || glyph == "rule") {
+        where = "Allomone";
+        win_allomone = true;
+    } else if (glyph.rfind("hol_", 0) == 0 || po.mantle == kAntfarmMantle) {
+        where = "Antfarm";
+        sec_open[Antfarm] = true;
+    } else if (po.mantle != kDataMantle) {
+        where = "Builder";
+        sec_open[Builder] = true;
+        cur_doc = po.mantle;
+        cur_page.clear();
+    } else {
+        sec_open[Data] = true;
+    }
+    if (scene.mantle != po.mantle) dispatch_and_reproject("use " + po.mantle);
+    ed.selection = {r.rune};
+    ImGui::SetWindowFocus(where.c_str());
+    log.push_back({"view", "redirect", r.why + " -> " + where + ": " + r.rune});
 }

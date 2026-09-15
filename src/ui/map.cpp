@@ -12,6 +12,7 @@
  * also why Reyna's `Site` locus is named to stay clear of it.
  */
 #include "app/app_internal.hpp"
+#include "domain/bestow.hpp" // one inside-the-shape test
 #include "render/mercator.hpp"
 #include "stb_image_write.h" // decls only - the map exports as a PNG; the ONE implementation lives in app.cpp
 #include "json.hpp" // the position channel is a JSON payload
@@ -1414,15 +1415,15 @@ void HormigaApp::draw_map_section() {
                                        la1, lo1) &&
                     hormiga::parse_geo(hormiga::temper::field_value(*sp, "geo2"),
                                        la2, lo2)) {
-                    double laL = std::min(la1, la2), laH = std::max(la1, la2);
-                    double loL = std::min(lo1, lo2), loH = std::max(lo1, lo2);
+                    // one containment test with the tag editor (domain/bestow.hpp),
+                    // which also stops an ellipse reaching its bounding box's corners
                     std::vector<std::string> cmds;
                     for (const auto& en : scene.nodes) {
                         if (en.glyph == "mapshape" || en.glyph == "map") continue;
                         double ela, elo;
                         std::string eg = view_geo(en, active_channel);
                         if (eg.empty() || !hormiga::parse_geo(eg, ela, elo)) continue;
-                        if (ela >= laL && ela <= laH && elo >= loL && elo <= loH)
+                        if (hormiga::bestow::shape_contains(*sp, ela, elo))
                             cmds.push_back("tag " + en.name + " +" + cur_bestow);
                     }
                     if (!cmds.empty()) {

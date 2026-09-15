@@ -589,6 +589,11 @@ private:
                             float inner_w, unsigned acc); // flier/feature/image_text
     void draw_multi_select_panel();                       // N selected: remove/width
     void ensure_icon_editor();                            // the "icon" inspector editor
+    /* Redirection (ui/widgets.cpp): show a rune where it lives - its window, its
+     * mantle, selected - at the start of the next frame, and log that the view moved. */
+    struct Redirect { std::string rune, mantle, why; } redirect_next;
+    void redirect_to(const std::string& rune, const std::string& mantle, const std::string& why);
+    void apply_redirect();
     void draw_block_extras(const maiz::SceneNode& sel);   // Builder: featured event, order
     void open_tag_expr_editor(const maiz::SceneNode& sel);
     void draw_tag_expr_editor(const maiz::SceneNode& sel); // a filter, as an expression

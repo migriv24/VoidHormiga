@@ -218,7 +218,10 @@ BUDGET = {
     # -> 1195 (2026-09-15): "host it online" -- a HostedLink and six declarations
     # the CLI must reach (so public), plus doc_batch and the hosting panel. The
     # code is publish/push.cpp and publish/panel.cpp; only the signatures live here.
-    'src/app/app.hpp': 1195,
+    # -> 1215 (2026-09-15): redirection (a Redirect and two calls), host_notice and
+    # resolve_file (public, for the shell), and the Builder/Antfarm windows. The
+    # code is ui/widgets.cpp, app/paths.cpp and ui/builder_ext.cpp.
+    'src/app/app.hpp': 1215,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because
