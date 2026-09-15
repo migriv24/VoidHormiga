@@ -3450,3 +3450,28 @@ seventh. Each is below with its cause, where there was one.
   alphabetical. The live fragment each directory block refreshes from is ranked.
 - **`download` and `audio` cards** in email still draw in their own fixed style
   rather than the theme's.
+
+## Follow-up the same day: ordering edited like a filter
+
+The author: *"the GUI part of it should be pretty similar to the filter tags
+... i still want that smart search for tags. i want the GUI stuf to easily
+delete tags or move them arround ... where the filter determines what even
+shows up, these list order determine the order of things."*
+
+`rank_up` and `rank_down` got an inspector editor kind, `taglist`, registered
+beside the icon picker in `ui/builder_ext.cpp`. That kept `builder.cpp` and
+`app.hpp`, both at their budgets, unchanged.
+
+- **Search:** it offers tags from the DATA vocabulary as you type, like the
+  filter does, and shows beside each how many entries carry it. The counts use
+  the renderer's own rule, so `leader` also counts `role:leader`.
+- **Order:** the tags are an ordered, numbered column, because order is the
+  meaning. Drag a row onto another, or use the arrows, to move it; ✕ removes it.
+- **Storage:** every change is one `set` of the same comma-separated text an
+  agent writes, so the CLI and the GUI edit one value.
+- **Labels:** the three blocks' labels got shorter, since the editor now
+  explains the ordering itself.
+
+**Verification.** The editor compiled, and 38/38 tests and all linters pass.
+The desktop executable did not re-link, because the app was running. The editor
+has not been seen in a window.

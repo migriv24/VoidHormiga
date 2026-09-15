@@ -15,11 +15,14 @@
  * layout and calls in.
  */
 #include "app/app_internal.hpp"
+#include "render/text.hpp" // rank_tokens: the ordering fields' grammar
 #include "domain/date_query.hpp" // query_matches, today_days — the ONE evaluation
 #include "render/icon_set.hpp"   // the one icon vocabulary
 #include "voidmaiz/code.hpp"
 
 #include <algorithm>
+#include <array>
+#include <map>
 #include <cctype>
 #include <set>
 #include <stdexcept>
@@ -240,7 +243,175 @@ void HormigaApp::draw_multi_select_panel() {
  * "image" editor is (app.cpp): one registration, and every field declared
  * `"icon":"icon"` gets a picker wherever the inspector renders it. Lazily, from
  * the canvas, so this needed no line in `app.cpp`, which is at its budget. */
+/* ── ORDER, AS A FILTER'S SIBLING (2026-09-15) ───────────────────────────────
+ *
+ * The author, on `rank_up` / `rank_down`: *"the GUI part of it should be pretty
+ * similar to the filter tags ... i still want that smart search for tags. i want
+ * the GUI stuf to easily delete tags or move them arround. in fact, its very
+ * similar to a filter. but where the filter determines what even shows up, these
+ * list order determine the order of things."*
+ *
+ * So it is built as one: tags searched from the DATA vocabulary as you type (the
+ * vocabulary the filter offers, not the document's), each shown with how many
+ * entries carry it. Unlike a filter the list is ORDERED, because order is the
+ * meaning here (render/text.hpp: an earlier tag outweighs every later one), so
+ * the tags are a numbered column: drag a row onto another to move it, or use the
+ * arrows; x removes it. Every change is one `set`, and the value stays the plain
+ * `leader, board` an agent writes from the CLI.
+ *
+ * An editor KIND, registered beside the icon picker, so every field declared
+ * `"taglist"` gets it wherever the inspector draws that field. */
+namespace {
+struct RankVocab {
+    double at = -100.0;
+    std::map<std::string, int> counts; // tag -> how many data runes carry it
+};
+RankVocab g_rank_vocab;
+std::map<std::string, std::array<char, 64>> g_rank_bufs; // "rune/field" -> the add box
+} // namespace
+
 void HormigaApp::ensure_icon_editor() {
+    if (!widgets.editors.count("taglist")) {
+    widgets.editors["taglist"] = [this](maiz::WidgetContext& ctx, const maiz::SceneNode& n,
+                                        const maiz::SceneField& f, std::string_view) -> bool {
+        const bool down = f.key.find("down") != std::string::npos;
+        std::vector<std::string> tags =
+            rank_tokens(hormiga::temper::field_value(n, f.key.c_str()));
+        bool committed = false;
+        auto commit = [&](const std::vector<std::string>& ts) {
+            std::string v;
+            for (size_t i = 0; i < ts.size(); ++i) v += (i ? ", " : "") + ts[i];
+            ctx.commands.push_back("set " + n.name + " " + f.key + " " + json_str(v));
+            committed = true;
+        };
+
+        // the data vocabulary and its counts, re-read every two seconds at most
+        const double now = ImGui::GetTime();
+        if (now - g_rank_vocab.at > 2.0) {
+            g_rank_vocab = RankVocab{};
+            g_rank_vocab.at = now;
+            maiz::ProjectOptions dpo;
+            dpo.mantle = kDataMantle;
+            const maiz::Scene dsc = maiz::project_scene(core, dpo);
+            for (const auto& dn : dsc.nodes)
+                for (const auto& tg : dn.tags) ++g_rank_vocab.counts[tg];
+        }
+        // the renderer's rule: a bare tag also matches under any namespace
+        auto carriers = [](const std::string& t) {
+            int c = 0;
+            const bool bare = t.find(':') == std::string::npos;
+            for (const auto& [tag, k] : g_rank_vocab.counts) {
+                const size_t colon = tag.rfind(':');
+                if (tag == t || (bare && colon != std::string::npos &&
+                                 tag.compare(colon + 1, std::string::npos, t) == 0))
+                    c += k;
+            }
+            return c;
+        };
+
+        ImGui::PushID(f.key.c_str());
+        ImGui::SeparatorText(down ? "Order: list last" : "Order: list first");
+        const ImVec4 col = down ? ImVec4(0.72f, 0.47f, 0.06f, 1.0f)
+                                : ImVec4(0.18f, 0.50f, 0.26f, 1.0f);
+        const char* payload = down ? "HORMIGA_RANK_DOWN" : "HORMIGA_RANK_UP";
+        int move_from = -1, move_to = -1, remove = -1;
+        for (int i = 0; i < (int)tags.size(); ++i) {
+            ImGui::PushID(i);
+            ImGui::PushStyleColor(ImGuiCol_Button, col);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                                  ImVec4(col.x + 0.08f, col.y + 0.08f, col.z + 0.08f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+            const std::string chip = std::string(ICON_FA_GRIP_VERTICAL "  ") +
+                                     std::to_string(i + 1) + ".  " + tags[(size_t)i];
+            ImGui::Button(chip.c_str());
+            ImGui::PopStyleColor(3);
+            if (ImGui::IsItemHovered() && !ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+                ImGui::SetTooltip("drag onto another tag to move it");
+            if (ImGui::BeginDragDropSource()) {
+                ImGui::SetDragDropPayload(payload, &i, sizeof i);
+                ImGui::Text("%s", tags[(size_t)i].c_str());
+                ImGui::EndDragDropSource();
+            }
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload(payload)) {
+                    move_from = *(const int*)p->Data;
+                    move_to = i;
+                }
+                ImGui::EndDragDropTarget();
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("%d", carriers(tags[(size_t)i]));
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("entries in the data that carry this tag");
+            ImGui::SameLine();
+            ImGui::BeginDisabled(i == 0);
+            if (ImGui::SmallButton(ICON_FA_ARROW_UP)) { move_from = i; move_to = i - 1; }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(i + 1 == (int)tags.size());
+            if (ImGui::SmallButton(ICON_FA_ARROW_DOWN)) { move_from = i; move_to = i + 1; }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::SmallButton(ICON_FA_XMARK)) remove = i;
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("remove");
+            ImGui::PopID();
+        }
+        if (move_from >= 0 && move_to >= 0 && move_from != move_to &&
+            move_from < (int)tags.size() && move_to < (int)tags.size()) {
+            const std::string t = tags[(size_t)move_from];
+            tags.erase(tags.begin() + move_from);
+            tags.insert(tags.begin() + move_to, t);
+            commit(tags);
+        } else if (remove >= 0) {
+            tags.erase(tags.begin() + remove);
+            commit(tags);
+        }
+
+        // the smart search: tags already in the data, as you type
+        auto& buf = g_rank_bufs[n.name + "/" + f.key];
+        ImGui::SetNextItemWidth(-1);
+        const bool enter = ImGui::InputTextWithHint(
+            "##rankadd", down ? "+ a tag to list last..." : "+ a tag to list first...",
+            buf.data(), buf.size(), ImGuiInputTextFlags_EnterReturnsTrue);
+        std::string typed = buf.data();
+        typed.erase(std::remove_if(typed.begin(), typed.end(),
+                                   [](char c) { return c == ' ' || c == ','; }),
+                    typed.end()); // a tag has neither, and both separate the list
+        if (!typed.empty()) {
+            std::string chosen;
+            bool exact = false;
+            int shown = 0;
+            for (const auto& [tg, k] : g_rank_vocab.counts) {
+                if (!contains_ci(tg, typed)) continue;
+                if (tg == typed) exact = true;
+                if (std::find(tags.begin(), tags.end(), tg) != tags.end()) continue;
+                if (++shown > 8) {
+                    ImGui::TextDisabled("(keep typing...)");
+                    break;
+                }
+                if (ImGui::Selectable(
+                        ("@" + tg + "  (" + std::to_string(k) + ")##rk" + tg).c_str()))
+                    chosen = tg;
+            }
+            if (shown == 0) ImGui::TextDisabled("no tag in the data matches");
+            if (!exact &&
+                ImGui::Selectable(("+ use \"" + typed + "\" anyway##rknew").c_str()))
+                chosen = typed;
+            if (enter && chosen.empty()) chosen = typed;
+            if (!chosen.empty()) {
+                if (std::find(tags.begin(), tags.end(), chosen) == tags.end()) {
+                    tags.push_back(chosen);
+                    commit(tags);
+                }
+                buf[0] = 0;
+            }
+        }
+        ImGui::TextDisabled(down ? "the first tag sinks furthest; ties keep name order"
+                                 : "the first tag rises highest; ties keep name order");
+        ImGui::PopID();
+        return committed;
+    };
+    }
     if (widgets.editors.count("icon")) return;
     widgets.editors["icon"] = [](maiz::WidgetContext& ctx, const maiz::SceneNode& n,
                                  const maiz::SceneField& f, std::string_view) -> bool {

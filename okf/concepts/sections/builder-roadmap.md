@@ -513,6 +513,14 @@ presets and screenshotting each. GUI-only parts are marked 🔨.
 - ✅ **Follow-up: order a list by tags.** `rank_up` / `rank_down` on
   `directory`, `image_grid` and `job_grid`, in both domains. The ranked cards
   also feed the live-directory fragment.
+  - 🔨 **The ordering editor** is a filter's sibling: an inspector editor kind
+    (`taglist`, in `ui/builder_ext.cpp`).
+    - As you type, it searches tags already in the data, each shown with how
+      many entries carry it.
+    - It is an ordered, numbered column: drag a row onto another, or use the
+      arrows, to reorder; ✕ removes a tag.
+    - Every change is one `set` of the same `leader, board` text the CLI writes.
+    - Built and compiled, not yet seen in a window.
 
 # Two builders, kept distinct
 

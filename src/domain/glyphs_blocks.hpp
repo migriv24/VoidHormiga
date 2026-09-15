@@ -274,7 +274,8 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"("caption_en","caption_es")",
           "#7d5bb0", 84, false, "Data",
           R"("query":"hidden","columns":"combo:2,3,4",)"
-          R"("display":"combo:grid,masonry,carousel","fit":"combo:crop,whole,natural,stretch")",
+          R"("display":"combo:grid,masonry,carousel","fit":"combo:crop,whole,natural,stretch",)"
+          R"("rank_up":"taglist","rank_down":"taglist")",
           R"__("query":"Image query: tags with AND/OR/NOT, plus date:future | )__"
           R"__(date:past | date:today | date:undated - a flier takes its date )__"
           R"__(from the event it is linked to, so an unlinked one is undated.",)__"
@@ -283,10 +284,8 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__("fit":"How each image fills its tile: crop = same shape, trimmed; )__"
           R"__(whole = same shape, nothing cut off; natural = each image keeps its )__"
           R"__(own shape; stretch = fills the tile, distorted",)__"
-          R"__("rank_up":"List first: tags that move an entry UP, strongest first )__"
-          R"__((e.g. leader, board). Name order stays underneath.",)__"
-          R"__("rank_down":"List last: tags that move an entry DOWN, strongest first )__"
-          R"__((e.g. volunteer)",)__"
+          R"__("rank_up":"Order: list first (tags that move an entry up)",)__"
+          R"__("rank_down":"Order: list last (tags that move an entry down)",)__"
           R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
     /* `detail`/`limit`/`sort` arrive 2026-08-20, matching `event_grid`. Until
      * then this was the only grid with NO clipping at all — one real posting
@@ -297,7 +296,8 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"("query","detail","columns","limit","sort","rank_up","rank_down",)"
           R"("caption_en","caption_es")",
           "#5d7d3b", 84, false, "Data",
-          R"("query":"hidden","detail":"combo:line,compact,title,full","columns":"combo:1,2,3")",
+          R"("query":"hidden","detail":"combo:line,compact,title,full","columns":"combo:1,2,3",)"
+          R"("rank_up":"taglist","rank_down":"taglist")",
           R"__("query":"Job query: tags with AND/OR/NOT, plus date:future | )__"
           R"__(date:past - a posting's date is its `deadline`, so date:future )__"
           R"__(means still open.",)__"
@@ -307,10 +307,8 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__(one card per row in the newsletter; `line` stays one line each)",)__"
           R"__("limit":"Most postings to show (blank = all)",)__"
           R"__("sort":"deadline | name (default document order)",)__"
-          R"__("rank_up":"List first: tags that move an entry UP, strongest first )__"
-          R"__((e.g. leader, board). Name order stays underneath.",)__"
-          R"__("rank_down":"List last: tags that move an entry DOWN, strongest first )__"
-          R"__((e.g. volunteer)",)__"
+          R"__("rank_up":"Order: list first (tags that move an entry up)",)__"
+          R"__("rank_down":"Order: list last (tags that move an entry down)",)__"
           R"__("caption_en":"Caption (English)",)__"
           R"__("caption_es":"Titulo (espanol)")__");
     /* THE DIRECTORY (2026-08-19): the block that puts a PERSON or an
@@ -337,7 +335,7 @@ inline void register_block_glyphs(maiz::Core& core) {
           "#b3592e", 84, false, "Data",
           R"("query":"hidden","kind":"combo:contact,organization,both",)"
           R"("live":"combo:off,on",)"
-          R"("display":"combo:card,list,carousel")",
+          R"("display":"combo:card,list,carousel","rank_up":"taglist","rank_down":"taglist")",
           R"__("query":"Who to list (tags; AND/OR/NOT). Only runes tagged )__"
           R"__(clearance:public are ever published.",)__"
           R"__("kind":"People, organizations, or both",)__"
@@ -345,10 +343,8 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__("limit":"Most entries to show (blank = all)",)__"
           R"__("live":"Refresh from site/index/ on load, so updating a contact )__"
           R"__(needs only that small file republished - not the whole site",)__"
-          R"__("rank_up":"List first: tags that move an entry UP, strongest first )__"
-          R"__((e.g. leader, board). Name order stays underneath.",)__"
-          R"__("rank_down":"List last: tags that move an entry DOWN, strongest first )__"
-          R"__((e.g. volunteer)",)__"
+          R"__("rank_up":"Order: list first (tags that move an entry up)",)__"
+          R"__("rank_down":"Order: list last (tags that move an entry down)",)__"
           R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
     /* ── video: THE ONE BLOCK THAT REACHES OFF THE SITE (2026-08-28) ──────
      *
