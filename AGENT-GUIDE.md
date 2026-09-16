@@ -967,9 +967,11 @@ write` on that one repository — add `Pages: read and write` and the first
 publish turns Pages on for you — or a classic token with `repo`. It goes in
 `token_file` beside the database, or in the vault as `token_key`, and it never
 reaches a command line. A relative `token_file` (and `key_file`, `secret_file`,
-`imgbb.key`) is looked for beside the `.miga` the working copy was opened from,
-then in the `--state` folder; when it is missing, the error lists every path it
-tried. `repo` accepts `owner/repo` or a pasted GitHub URL; a
+`imgbb.key`) is looked for in the priority folder, then beside the `.miga` the
+working copy was opened from, then in the `--state` folder -- the first two are
+read from `<state>.local.json` beside the state document, a machine-local note
+the GUI writes (Niche Tools > Where is this database?). When the file is
+missing, the error lists every path it tried. `repo` accepts `owner/repo` or a pasted GitHub URL; a
 bare name is **refused**, because guessing an owner publishes to somebody else's
 repository.
 

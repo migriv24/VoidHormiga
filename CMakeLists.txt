@@ -318,6 +318,7 @@ if(WIN32)
   # it makes the failure name the right file.
   target_link_libraries(voidhormiga PRIVATE ws2_32)
   target_link_libraries(voidhormiga PRIVATE comdlg32) # the OS open-file dialog
+  target_link_libraries(voidhormiga PRIVATE shell32 ole32) # ...and the folder one
 endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)

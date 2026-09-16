@@ -3941,3 +3941,63 @@ The CLI's `wire()` now passes `state_name`, so a `--state` other than
 - An existing working copy has no note until its `.miga` is opened or saved-as
   once. The author's was seeded by hand this session.
 - `hol_dns` names `cloudflare_token.txt` too, but nothing reads that node yet.
+
+# A priority folder, and the note becomes JSON (2026-09-16, third entry)
+
+The author, straight after: *"the niche tools like 'where is this database' we
+should also have an option of selecting like, the folder where things live. and
+it looks for a json that has the information. there should be a 'priority
+folder' where the files there will be searched first."*
+
+**Read as:** a person can name the folder where an organization's files live;
+Hormiga keeps that answer in a JSON file and searches that folder first. The
+`<state>.bundle` text note from the entry above lasted an hour and is replaced
+by **`<state>.local.json`** (`{"about", "bundle", "priority_dir"}`), still beside
+the working copy, still gitignored, still never `config`. The author's own note
+was migrated by hand; nothing else had ever written one, so there is no reader
+for the old format.
+
+**The order a relative key file is looked for in:** the priority folder, then
+beside the `.miga` it was opened from or saved to, then the working folder.
+Duplicates collapse, so a priority folder that IS the `.miga`'s folder is listed
+once.
+
+**Niche Tools > Where is this database?** now has a *Where its files live*
+section: the numbered search order with each folder's role and a red *missing*
+for a folder that no longer exists, *Choose a priority folder...* / *Clear*, the
+note's file name, and *Check the Antfarm's key files* -- every `token_file`,
+`key_file` and `secret_file` on every Antfarm node, **found** with the path that
+answered, or **MISSING** with every path tried. That last list is the answer to
+"it exists in the antfarm but still asks for keys" without opening a console.
+
+**A folder dialog**, which the app had never had: `on_pick_folder`, the
+`on_pick_file` pattern -- `SHBrowseForFolder` on Windows (links `shell32`,
+`ole32`), `choose folder` on macOS, and zenity/kdialog/yad/qarma directory modes
+on Linux, with the same "install one of these" notice when none exists.
+
+Paths go into the JSON as UTF-8 and come back through `std::u8string`, because
+nlohmann refuses non-UTF-8 and a user folder with an accent is ordinary.
+
+## Verification
+
+- Through the CLI, with no token anywhere so the check stops locally and
+  nothing is sent: no note -> `work\cloudflare_token.txt`; a note with a bundle ->
+  the `.miga`'s folder, then work; a note with a bundle and a priority folder
+  named `Llaves de José` -> that folder, then the `.miga`'s, then work.
+- **A trap worth recording:** the first run of that proof showed the note being
+  ignored. Ninja stops scheduling after the first failure, and the first failure
+  was the GUI link, held open by the running app -- so the CLI had not been
+  relinked and the proof ran the previous binary. A target build of the CLI
+  fixed it; the tests were re-run after it for the same reason.
+- 26/26 gating tests, every linter, 101 files within budget; the GUI links (to a
+  throwaway name, the real one being open).
+
+## Not done
+
+- **The dialog and the Niche Tools section are unseen in a window**: they
+  compile and link, and nobody has clicked *Choose a priority folder...* yet --
+  on Linux, the folder dialog is as unverified as the file dialogs were.
+- The priority folder applies to **key files only**. Images and other relative
+  paths still resolve database folder, then program folder (`resolve_file`),
+  because putting a folder of keys and backups ahead of an organization's own
+  `assets/` would let it shadow them. Widening it is the author's call.

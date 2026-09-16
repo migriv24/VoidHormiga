@@ -41,6 +41,7 @@
 #include <windows.h>
 #include <commdlg.h>
 #include <shellapi.h>
+#include <shlobj.h> // SHBrowseForFolder: the priority folder
 #endif
 
 /* Hand a file/URL to the OS default handler (the system browser is a VIEWER,
@@ -125,6 +126,35 @@ static std::string os_pick_file(std::string_view /*current*/) {
     g_dialog_problem = kNoDialog;
 #endif
     return {};
+}
+
+// a FOLDER: where an organization's files live (Niche Tools, 2026-09-16)
+static std::string os_pick_folder() {
+#ifdef _WIN32
+    char buf[MAX_PATH] = {};
+    const HRESULT co = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    BROWSEINFOA bi = {};
+    bi.lpszTitle = "Choose the folder where this database's files live";
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    std::string picked;
+    if (LPITEMIDLIST pidl = SHBrowseForFolderA(&bi)) {
+        if (SHGetPathFromIDListA(pidl, buf)) picked = buf;
+        CoTaskMemFree(pidl);
+    }
+    if (SUCCEEDED(co)) CoUninitialize();
+    return picked;
+#elif defined(__APPLE__)
+    return run_dialog("osascript -e 'POSIX path of (choose folder)'");
+#else
+    if (have_tool("zenity"))
+        return run_dialog("zenity --file-selection --directory --title='Choose a folder'");
+    if (have_tool("kdialog")) return run_dialog("kdialog --getexistingdirectory \"$HOME\"");
+    if (have_tool("yad")) return run_dialog("yad --file --directory --title='Choose a folder'");
+    if (have_tool("qarma"))
+        return run_dialog("qarma --file-selection --directory --title='Choose a folder'");
+    g_dialog_problem = kNoDialog;
+    return {};
+#endif
 }
 
 // the SAVE dialog: pick where to write a .miga (author 2026-07-24). Suggests a
@@ -435,6 +465,14 @@ int main(int argc, char** argv) {
     // a dialog that could not open says why, instead of looking like "cancelled"
     app.on_pick_file = [&app](std::string_view cur) {
         std::string r = os_pick_file(cur);
+        if (r.empty() && !g_dialog_problem.empty()) {
+            app.host_notice(g_dialog_problem);
+            g_dialog_problem.clear();
+        }
+        return r;
+    };
+    app.on_pick_folder = [&app]() {
+        std::string r = os_pick_folder();
         if (r.empty() && !g_dialog_problem.empty()) {
             app.host_notice(g_dialog_problem);
             g_dialog_problem.clear();

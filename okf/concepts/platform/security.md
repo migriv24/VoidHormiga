@@ -56,16 +56,17 @@ the "org bundle") is [Q17](/developer_questions.md).
 `token_file`, `key_file` or `secret_file` on an Antfarm node, or a plain
 `imgbb.key` — keeps the secret out of the database on purpose, which means the
 database names the file and the file stays on this machine. A relative name is
-looked for **beside the `.miga` that was opened, then in the working folder**,
-and a failure names every path tried. "Beside the database" means the file a
-person opened, not the folder the program happened to be launched from: until
-this date it meant the latter, and one database published or "asked for keys"
-depending on how Hormiga was started. Which `.miga` a working copy came from is
-remembered in a note beside the working copy (`<state>.bundle`), never in
-`config` — config travels inside the database, and a path into somebody's
-Documents folder must not travel with it. One resolver, `find_key_file`
-(`app/paths.hpp`), serves deploy, rollback, the host check, the Publish panel,
-the object store and ImgBB.
+looked for in order: **the priority folder** (chosen in Niche Tools > Where is
+this database?), **beside the `.miga` that was opened or saved**, then **the
+working folder**; a failure names every path tried, and Niche Tools lists each
+Antfarm key file with where it was found. Until this date "beside the database"
+meant the folder the program was launched from, and one database published or
+"asked for keys" depending on how Hormiga was started. The priority folder and
+the `.miga` are remembered in `<state>.local.json` beside the working copy,
+never in `config` — config travels inside the database, and a path into
+somebody's Documents folder must not travel with it. One resolver,
+`find_key_file` (`app/paths.hpp`), serves deploy, rollback, the host check, the
+Publish panel, the object store and ImgBB.
 
 # 3. Privacy is a property of the seam, not the app
 

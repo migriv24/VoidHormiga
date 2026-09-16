@@ -36,6 +36,7 @@
  *   QR           a link in, a QR code out, saved as a PNG.
  */
 #include "app/app_internal.hpp"
+#include "app/paths.hpp" // find_key_file: the order key files are looked for in
 #include "domain/glyphs_antfarm.hpp" // to read the OTHER copy's Antfarm paths
 #include "domain/qr.hpp"
 #include "sync/merge.hpp"
@@ -185,6 +186,67 @@ void HormigaApp::draw_niche_tools_body() {
             ImGui::TextDisabled("This database lives in its own folder.");
         }
         if (ImGui::SmallButton("Show this folder") && on_open) on_open(base_dir.string());
+
+        /* WHERE ITS FILES LIVE (2026-09-16). Key files an Antfarm node names by
+         * a plain file name are looked for in an order a person can now see and
+         * set, with the priority folder first. See `key_dirs` in app/paths.cpp. */
+        ImGui::Spacing();
+        ImGui::SeparatorText("Where its files live");
+        const std::vector<fs::path> dirs = key_dirs();
+        std::error_code ec;
+        ImGui::TextWrapped("Key files named by a plain file name (token_file, key_file, "
+                           "secret_file, imgbb.key) are looked for in this order:");
+        int step = 1;
+        for (const auto& d : dirs) {
+            const char* role = (!priority_dir.empty() && d == priority_dir) ? "priority folder"
+                               : (!bundle_file.empty() && d == bundle_file.parent_path())
+                                   ? "beside the .miga it was opened from"
+                                   : "the working folder";
+            const bool there = fs::is_directory(d, ec);
+            ImGui::TextColored(there ? ImVec4(0.75f, 0.75f, 0.78f, 1) : kRed, "%d. %s   (%s)%s",
+                               step++, d.string().c_str(), role, there ? "" : " - missing");
+        }
+        if (bundle_file.empty())
+            ImGui::TextDisabled("No .miga recorded yet - File > Open or Save as records it.");
+        if (ImGui::SmallButton(priority_dir.empty() ? "Choose a priority folder..."
+                                                    : "Change the priority folder...") &&
+            on_pick_folder) {
+            const std::string picked = on_pick_folder();
+            if (!picked.empty()) {
+                set_priority_dir(picked);
+                toast("priority folder: " + picked);
+            }
+        }
+        if (!priority_dir.empty()) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Clear##priority")) set_priority_dir("");
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("saved in %s", local_note().filename().string().c_str());
+
+        if (ImGui::TreeNode("Check the Antfarm's key files")) {
+            maiz::ProjectOptions ao;
+            ao.mantle = kAntfarmMantle;
+            const maiz::Scene farm = maiz::project_scene(core, ao);
+            int shown = 0;
+            for (const auto& n : farm.nodes)
+                for (const char* key : {"token_file", "key_file", "secret_file"}) {
+                    const std::string v = field_value(n, key);
+                    if (v.empty()) continue;
+                    ++shown;
+                    std::string tried;
+                    const fs::path p = hormiga::find_key_file(v, dirs, &tried);
+                    const bool found = fs::is_regular_file(p, ec);
+                    ImGui::TextColored(found ? ImVec4(0.45f, 0.8f, 0.5f, 1) : kRed, "%s %s.%s",
+                                       found ? "found" : "MISSING", n.name.c_str(), key);
+                    ImGui::Indent(18.0f);
+                    ImGui::TextWrapped("%s", found ? p.string().c_str()
+                                                   : ("looked for " + tried).c_str());
+                    ImGui::Unindent(18.0f);
+                }
+            if (!shown) ImGui::TextDisabled("No Antfarm node names a key file.");
+            ImGui::TreePop();
+        }
     }
 
     // ── MERGE ───────────────────────────────────────────────────────────────

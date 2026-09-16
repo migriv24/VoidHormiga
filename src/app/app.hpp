@@ -134,6 +134,8 @@ struct HormigaApp {
     std::filesystem::path resolve_file(const std::string& raw) const;  // database folder, else ship_dir
     std::vector<std::filesystem::path> key_dirs() const; // where a relative key file is looked for (paths.cpp)
     void remember_bundle(const std::string& miga);      // which .miga this working copy is, on this machine
+    void set_priority_dir(const std::string& dir);      // searched before anything else ("" = none)
+    std::filesystem::path local_note() const;           // <state>.local.json: the two above, as JSON
     ImFont* mono_font = nullptr;    // JetBrains Mono for the script IDE (set by the shell)
     /* MAY THIS FRONT-END OFFER AN UPDATE? Set by the DESKTOP shell and by
      * nothing else -- it is in the public section beside `ship_dir` because a
@@ -147,6 +149,7 @@ struct HormigaApp {
     std::function<void(const std::string&)> on_open;  // open path/URL in the OS
     // OS file dialog ("" = cancelled) — powers the "path" editor kind
     std::function<std::string(std::string_view current)> on_pick_file;
+    std::function<std::string()> on_pick_folder; // OS folder dialog ("" = cancelled)
     // OS SAVE dialog for a .miga (pick where to write) — (suggested name) →
     // chosen path, "" = cancelled. "Choose where to save" (author 2026-07-24).
     std::function<std::string(std::string_view suggested)> on_save_file;
@@ -1168,8 +1171,8 @@ private:
     void do_save();
     // ── the .miga v3 DATABASE bundle (okf/concepts/platform/miga-format.md) ──────────
     std::string cur_miga;        // the active database bundle path ("" = none yet)
-    mutable std::filesystem::path bundle_dir; // its folder, remembered across restarts
-    mutable bool bundle_read = false;
+    mutable std::filesystem::path bundle_file, priority_dir; // from local_note(), across restarts
+    mutable bool local_read = false;
     bool win_share = false;      // the "Share database" (in-development) window
     // ── Data Tools (author 2026-08-03): a detached window holding the Data
     // tab's utilities (CSV import, date-tag temper, …) — declutters the tab's

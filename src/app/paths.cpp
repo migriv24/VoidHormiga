@@ -30,6 +30,8 @@
 #include "app/app_internal.hpp"
 #include "app/paths.hpp"
 
+#include "json.hpp" // the machine-local note beside the working copy
+
 #include <fstream>
 
 namespace hormiga {
@@ -228,24 +230,34 @@ std::filesystem::path HormigaApp::resolve_file(const std::string& raw) const {
     return std::filesystem::exists(shipped, ec) ? shipped : here;
 }
 
-/* ── A KEY FILE BESIDE THE DATABASE MEANS BESIDE THE .miga (2026-09-16) ──────
+/* ── WHERE THIS WORKING COPY'S FILES LIVE, ON THIS MACHINE (2026-09-16) ──────
  *
- * The author: *"we have the IDs and stuff correct in the antfarm, but still
- * can't publish? or it still ask for keys."* The IDs travel inside the database.
- * The keys do not, by design: `cloudflare_token.txt` and `imgbb.key` sat beside
- * `LON_15.miga` in the organization's folder, and the hosting nodes named them
- * relatively. Every reader resolved that against `base_dir` -- the folder the
- * program was LAUNCHED from, where the working copy lives -- so the same
- * database published when started from one place and asked for keys when
- * started from another. The glyphs' own hint says "a token file beside the
- * database", and a person reads "the database" as the file they opened.
+ * The author, first: *"we have the IDs and stuff correct in the antfarm, but
+ * still can't publish? or it still ask for keys."* The IDs travel inside the
+ * database. The keys do not, by design: `cloudflare_token.txt` and `imgbb.key`
+ * sat beside `LON_*.miga` in the organization's folder, the hosting nodes named
+ * them relatively, and every reader resolved that against `base_dir` -- the
+ * folder the program was LAUNCHED from. The same database published or asked
+ * for keys depending on how Hormiga was started.
  *
- * So the opened bundle's folder is looked in first, then the working folder
- * (which keeps every setup that already worked). Which bundle this working copy
- * came from is a fact about THIS machine, so it is a note beside the working
- * copy (`<state>.bundle`, covered by `demo-org.json.*` in .gitignore) and never
- * `config`: config travels inside the database, and a path to somebody's
- * Documents folder has no business in a file that is handed to other people.
+ * Then, the same day: *"we should also have an option of selecting like, the
+ * folder where things live. and it looks for a json that has the information.
+ * there should be a 'priority folder' where the files there will be searched
+ * first."*
+ *
+ * So a relative key file is looked for in, in order:
+ *
+ *   1. the PRIORITY FOLDER, when one is chosen (Niche Tools > Where is this
+ *      database?) -- a person's own answer beats any inference;
+ *   2. the folder of the `.miga` this working copy was opened from or saved to;
+ *   3. the working folder, which keeps every setup that already worked.
+ *
+ * THE JSON is `<state>.local.json` beside the working copy (covered by
+ * `demo-org.json.*` in .gitignore). It is a fact about THIS computer, so it is
+ * never `config`: config travels inside the database, and a path into one
+ * person's Documents folder must not travel to the next person. Paths are
+ * written as UTF-8, because nlohmann refuses anything else and a user folder
+ * named with an accent is ordinary.
  *
  * Deliberately NOT `cur_miga`. Restoring that on boot would also change what
  * Save does after a restart, which is a different decision. */
@@ -276,35 +288,77 @@ std::filesystem::path find_key_file(const std::string& raw,
 
 } // namespace hormiga
 
+namespace {
+
+std::string to_u8(const std::filesystem::path& p) {
+    const std::u8string s = p.u8string();
+    return std::string(s.begin(), s.end());
+}
+
+std::filesystem::path from_u8(const std::string& s) {
+    return std::filesystem::path(std::u8string(s.begin(), s.end()));
+}
+
+void write_local_note(const std::filesystem::path& note, const std::filesystem::path& bundle,
+                      const std::filesystem::path& priority) {
+    std::error_code ec;
+    if (bundle.empty() && priority.empty()) {
+        std::filesystem::remove(note, ec);
+        return;
+    }
+    nlohmann::json j = nlohmann::json::object();
+    j["about"] = "Where this working copy's files live on THIS computer. Written by "
+                 "Void Hormiga; never part of the database, never shared.";
+    if (!bundle.empty()) j["bundle"] = to_u8(bundle);
+    if (!priority.empty()) j["priority_dir"] = to_u8(priority);
+    std::ofstream(note, std::ios::binary) << j.dump(2) << "\n";
+}
+
+} // namespace
+
+std::filesystem::path HormigaApp::local_note() const {
+    return base_dir / (state_name + ".local.json");
+}
+
 std::vector<std::filesystem::path> HormigaApp::key_dirs() const {
     namespace fs = std::filesystem;
-    std::error_code ec;
-    if (!bundle_read) {
-        bundle_read = true;
-        std::ifstream in(base_dir / (state_name + ".bundle"), std::ios::binary);
-        std::string line;
-        std::getline(in, line);
-        while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
-        if (!line.empty() && fs::is_directory(fs::path(line).parent_path(), ec))
-            bundle_dir = fs::path(line).parent_path();
+    if (!local_read) {
+        local_read = true;
+        std::ifstream in(local_note(), std::ios::binary);
+        const nlohmann::json j =
+            in ? nlohmann::json::parse(in, nullptr, false) : nlohmann::json();
+        if (j.is_object()) {
+            if (j.contains("bundle") && j["bundle"].is_string())
+                bundle_file = from_u8(j["bundle"].get<std::string>());
+            if (j.contains("priority_dir") && j["priority_dir"].is_string())
+                priority_dir = from_u8(j["priority_dir"].get<std::string>());
+        }
     }
     std::vector<fs::path> dirs;
-    if (!bundle_dir.empty()) dirs.push_back(bundle_dir);
-    if (dirs.empty() || !fs::equivalent(dirs.front(), base_dir, ec)) dirs.push_back(base_dir);
+    auto add = [&dirs](const fs::path& d) {
+        if (d.empty()) return;
+        std::error_code ec;
+        for (const auto& x : dirs)
+            if (x == d || fs::equivalent(x, d, ec)) return;
+        dirs.push_back(d);
+    };
+    add(priority_dir);
+    add(bundle_file.parent_path());
+    add(base_dir);
     return dirs;
 }
 
 void HormigaApp::remember_bundle(const std::string& miga) {
-    namespace fs = std::filesystem;
     std::error_code ec;
-    const fs::path note = base_dir / (state_name + ".bundle");
-    bundle_read = true;
-    bundle_dir.clear();
-    if (miga.empty()) {
-        fs::remove(note, ec);
-        return;
-    }
-    const fs::path abs = fs::absolute(miga, ec);
-    bundle_dir = abs.parent_path();
-    std::ofstream(note, std::ios::binary) << abs.string() << "\n";
+    key_dirs(); // read the note first, so the priority folder survives this write
+    bundle_file = miga.empty() ? std::filesystem::path()
+                               : std::filesystem::absolute(miga, ec);
+    write_local_note(local_note(), bundle_file, priority_dir);
+}
+
+void HormigaApp::set_priority_dir(const std::string& dir) {
+    std::error_code ec;
+    key_dirs();
+    priority_dir = dir.empty() ? std::filesystem::path() : std::filesystem::absolute(dir, ec);
+    write_local_note(local_note(), bundle_file, priority_dir);
 }

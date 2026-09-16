@@ -149,7 +149,7 @@ std::string shell_capture(const std::string& cmd) {
 /* A throwaway app over the session's state, wired for world-facing work. */
 void wire(HormigaApp& app) {
     app.base_dir = g_base_dir;
-    app.state_name = g_state_name; // names the machine-local `.bundle` note key_dirs() reads
+    app.state_name = g_state_name; // names the machine-local `.local.json` note key_dirs() reads
     app.ship_dir = g_ship_dir;   // the webfonts et al. travel with the EXE
     app.on_shell_capture = shell_capture;
     app.on_register_glyphs = [](maiz::Core& c) {
