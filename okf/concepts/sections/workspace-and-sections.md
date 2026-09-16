@@ -390,6 +390,48 @@ else depends on it. That rule is enforced by something sturdier than diligence â
 see the section-count note in `src/app_internal.hpp` for what happens when it is
 not followed.
 
+# A section is a tab that holds windows (2026-09-15)
+
+The author: *"the list of blocks in the builder ... should be a window that can be
+resized and such ... Same with the 'inspector' ... Then we have the 'document
+layout' editor, which is another window. Then we have the 'document options'
+window ... Im wondering if its a fine enough design to have tabs with windows
+inside the tabs?"*
+
+It is, and it needed no new machinery: a section's window hosts **its own
+dockspace**, and its panels are ordinary windows docked into it
+(`HormigaApp::nested_dockspace`, `ui/builder_ext.cpp`).
+
+| section | its windows |
+|---|---|
+| Builder | Document options (the toolbar), Blocks, Document, Inspector |
+| Antfarm | Node graph, Inspector |
+
+- **What this replaces:** hand-managed `BeginChild` panes, a splitter fraction
+  saved in config, and a palette fixed at 150px. That was this application
+  pretending to be a window manager.
+- **What it buys:** every panel resizes, tabs, floats, re-docks and closes like
+  any other window, and the arrangement is remembered by ImGui in `imgui.ini`.
+- **Seeded once.** The default arrangement is written only when the node has no
+  saved layout, so a person's own rearrangement wins afterwards - the rule the
+  main dockspace already followed.
+- **The Antfarm says what it is.** Its tab opens with a warning that the node
+  graph misbehaves and that the panels and the command line are the dependable
+  way in. The author: *"the bones of the antfarm works ... it's mostly the UI/UX
+  of the antfarm is horrible to a point where it might be unusable."* The
+  redesign is its own piece of work; the warning is what honesty costs until
+  then.
+
+**The blocks palette is grouped by what a block IS**, sorted once so each group
+appears once, and coloured per group: **Content** (what you write), **Data**
+(filled from the database by tags), **Media** (a video, a recording, a file) and
+**Interactive** (the block is a whole widget - a map or a calendar). The last
+name was the author's own uncertainty - *"maybe a better word would be
+'interactive'? Its a tough decision"* - because a map is interactive on a website
+and a picture in a newsletter, and an event grid gets a search box too. What
+separates the group is that the block IS a widget rather than a rendering of
+rows, and the heading's tooltip says so.
+
 # Precedents
 
 Old Hormiga's tab surface (contacts/events/images/resources/connections +

@@ -3693,3 +3693,101 @@ for the author to relay. Leans:
   `release.yml` attaches compile on runners with no display.
 - **The replacement itself is still unwitnessed.** No person has run the
   interactive installer from an installed 0.1.1.
+
+# Thirteen findings from a Linux machine (2026-09-15)
+
+The author ran 0.1.2 on a slow Linux laptop and sent thirteen notes. Two were
+"this works", one was a question, and the rest were bugs and asks. They landed in
+three commits.
+
+## The crash, which was two bugs
+
+Adding `color:blue` from the suggestions crashed Hormiga on Linux and raised
+ImGui's "2 visible items with conflicting ID" on Windows.
+
+1. **Every suggestion row shared one ID.** `tag_picker` labelled rows
+   `"@" + tag + "##" + id`, and every caller's id already began with `##`, so a
+   row read `@color:blue####noteaddtag`. ImGui reads `###` as *the id is what
+   follows*, so all rows hashed the same: the popup, and a click that could land
+   on a different row than the one pressed.
+2. **The Notes tab dispatched while holding `sel`**, a pointer into the
+   projection a dispatch replaces - once inside the loop over the tags it was
+   removing from, once after adding one. Windows survived the freed memory;
+   Linux did not. Notes now uses the Data tab's editor, whose commands are
+   deferred.
+
+## File dialogs did not exist off Windows
+
+`os_pick_file` and `os_save_file` had a Windows branch and nothing else, so every
+Browse, Open database and Save database as... returned "" on Linux and macOS -
+which callers read as "cancelled", so nothing was said either. They now ask
+zenity, kdialog, yad or qarma (osascript on macOS), and when none is installed
+the app says which to install rather than doing nothing. **It was not the
+machine**, which is what the author suspected.
+
+## The cats had no photos
+
+The Cat Colony seed names `demo-assets/cat-NN.jpg`, every reader resolved that
+against the DATABASE's folder, and the installer shipped no `demo-assets/`. The
+build stages it beside the binary, the manifest declares it, and `resolve_file`
+falls back to the program's folder for a relative path the database folder does
+not have. The database folder still wins, so an organization's own `assets/` is
+never shadowed.
+
+## Tags that come from somewhere else
+
+`domain/bestow.hpp`, and the concepts in
+[data model](/concepts/foundation/data-model.md) and
+[territory](/concepts/sections/territory.md): a map shape that bestows a tag is a
+**giver**; a tag it gives is drawn as given and sends a person to the shape
+instead of being removed where it landed; a tag a giver can give exists in the
+vocabulary before anything carries it; and one containment test now serves both
+the map's Apply and the editor, which also fixed an ellipse that was applied by
+its bounding box.
+
+**Redirection** came with it: `redirect_to` names a rune and its mantle,
+`apply_redirect` opens the right window at the start of the next frame, and the
+move is logged as a `view` entry. Drafted for upstream as
+`MESSAGE_FOR_VOIDMAIZ_hormiga-redirection-as-a-view-concept-2026-09-15.md`: the
+glyph could say which window it belongs to, and a `ViewRequest` returned through
+the IO structs would make the safe, after-the-frame path the easy one.
+
+**Widget tags**: a chip is its text plus a separate `x`, and the text of a
+`color:` or `icon:` tag opens a picker.
+
+## Sections hold windows
+
+The Builder is four windows in its tab (Document options, Blocks, Document,
+Inspector) and the Antfarm is two, each docked in a dockspace the tab hosts. The
+palette is sorted and coloured by group, and the groups are **Content, Data,
+Media, Interactive**. The Antfarm tab opens with a warning that its graph is not
+ready for everyday use.
+
+## The two that needed no code
+
+- **"Hormiga fully works on linux."** `platforms` in `void.json` now carries
+  `linux-x64`: it is a shipping record, and a person has watched a window open.
+  The Linux archive's read-me says so instead of calling itself untested.
+- **"i don't see any other libraries like void maiz, palabra, allomone."**
+  Correct and intended: only Void Core is a shared library (`link: "shared"` in
+  the manifest). Maiz, Allomone and Palabra are `link: "static"` - compiled into
+  `voidhormiga` and `voidhormiga-cli`, which is why the folder holds two large
+  binaries and one small `.so`.
+
+## Verification
+
+- 38/38 tests pass, all linters pass, 101 files within budget.
+- **Seen in a window, which is what this session was about**: the app was
+  launched under `HORMIGA_SECTION` and screenshotted. The Builder shows its four
+  docked windows, the palette's Content group coloured and first, and the Cat
+  Colony Gazette on the canvas; the Antfarm shows the warning, the node graph and
+  the Hosting images online panel.
+
+## Not done
+
+- **The file dialogs are unverified on the author's machine**: they were written
+  against zenity/kdialog/yad and compiled here, and nobody has opened one on
+  Linux yet.
+- **The Antfarm redesign**, which is the author's own next brief.
+- **`document` / `templates` and the rest of the Windows menu** are still single
+  panels rather than windows in a tab.

@@ -173,3 +173,52 @@ stays comfortable at 2×10³ small runes on desktop. **We measure and report**:
 our numbers are the first real data-heavy datapoint for Void Maiz's
 diff-seam question, and they size both the canvas and the coming table view,
 which share the one-sync path.
+
+# Tags that another rune gives (2026-09-15)
+
+A tag is usually a fact somebody wrote on a rune. Some tags are not: they are
+**given** by another rune, under a rule. The first giver is a map shape with
+`bestows` set, whose rule is "everything whose location is inside me"
+(`domain/bestow.hpp`).
+
+- **A given tag is an ordinary tag.** Applying a shape writes `tag x +y`
+  commands, so nothing in the model distinguishes them, and nothing should: a
+  second copy of "who gave this" on the rune would go stale the moment the shape
+  or the location moved.
+- **The giver is worked out when the tag is drawn.** The editor asks which
+  givers cover this rune now and what they give. That is why it can be told at
+  all, and why it is always current.
+- **A given tag is not removed where it lands.** Removing it there would be
+  undone by the next apply, so the tag editor sends the person to the giver
+  instead - the redirect below.
+- **A tag can exist before anything carries it.** A shape that gives `apple`
+  makes `apple` part of this database's vocabulary while the shape is still
+  empty. The author: *"the elipse giving the tag 'apple' doesn't itself need the
+  tag 'apple'."* So the tag search offers it, and a rune the shape covers is
+  offered it as something that *could be given*.
+- **An Allomone rule is the next giver.** It derives colour and icon today,
+  which are properties rather than tags, so it joins the table when it gives
+  something a tag editor shows.
+
+## Widget tags, and what clicking a tag means
+
+Some namespaced tags are not vocabulary but **settings**: `color:` and `icon:`
+are read by the map, the cards and the rules engine. Those now open a picker
+when the chip's text is clicked, and every chip carries a separate `x`:
+
+| chip | its text does | its x does |
+|---|---|---|
+| a plain or `kw:`-style tag | nothing | removes it |
+| `color:` / `icon:` | opens a colour or icon picker | removes it |
+| a tag another rune gives | goes to the giver | *(none: change it at the source)* |
+| `type:` | nothing - it is the glyph restated | *(none: queries rely on it)* |
+
+# Redirection: showing a thing where it lives
+
+A redirect names a rune and its mantle, and the GUI opens the window that rune
+belongs to, selects it, and (for a map shape) centres on it. It is **not a
+dispatcher command**: nothing in the model changes, so there is nothing to
+replay or undo. It **is** recorded, as a `view` entry in the log strip, because
+"how did I get here" deserves an answer. It is applied at the START of the next
+frame, never mid-draw, since changing the mantle or the selection inside a
+widget invalidates the scene that widget is drawing.

@@ -545,3 +545,24 @@ two surfaces; noted for that build.)*
    rides the layers model — a weather layer is a view whose content comes
    from a holiday instead of a channel). Both are opt-in cloud nodes managed
    in the Antfarm like ImgBB/Supabase — keys in the vault, never in state.
+
+# A shape that gives tags (2026-09-15)
+
+`mapshape.bestows` has existed since the shape did: a rectangle or ellipse whose
+"Apply tag to entities inside now" writes the tag onto everything inside it. Two
+things changed on 2026-09-15.
+
+- **One containment test** (`domain/bestow.hpp`), shared by the map's Apply and
+  by the tag editor, so the two cannot disagree about who is inside. Applying an
+  **ellipse** used its bounding box, so it reached its corners; it is an ellipse
+  now.
+- **The tag knows where it came from.** Anywhere a rune's tags are shown, a tag a
+  covering shape gives is drawn as given, and clicking it opens the Map centred
+  on that shape rather than removing the tag. See
+  [data model](/concepts/foundation/data-model.md).
+
+**The one asymmetry, stated because it will surprise somebody:** Apply reads a
+rune's position through the map's active **position channel** (a per-view
+position), while the tag editor reads the rune's own `geo`. A database that uses
+channels can therefore have a tag applied by a shape the editor does not consider
+covering. One of the two has to change once channels have a second real user.

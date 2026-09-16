@@ -364,7 +364,7 @@ inline void register_block_glyphs(maiz::Core& core) {
      * other block on this list learned that lesson already. */
     block("video", "video",
           R"("url","poster","ratio","caption_en","caption_es")",
-          "#b3592e", 84, false, "Content",
+          "#b3592e", 84, false, "Media",
           R"("poster":"image","ratio":"combo:16:9,4:3,1:1,9:16")",
           R"__("url":"Video link (YouTube or Vimeo; paste the address, not an )__"
           R"__(embed code)","poster":"Still image shown before play (blank = a )__"
@@ -415,7 +415,7 @@ inline void register_block_glyphs(maiz::Core& core) {
     block("audio", "audio",
           R"("src","title_en","title_es","artist","duration","cover",)"
           R"("caption_en","caption_es")",
-          "#7d5bb0", 104, false, "Content",
+          "#7d5bb0", 104, false, "Media",
           R"("src":"path","cover":"image")",
           R"__("src":"Audio file (mp3, m4a, ogg, wav) - browse to bring it into )__"
           R"__(this organization's assets",)__"
@@ -451,7 +451,7 @@ inline void register_block_glyphs(maiz::Core& core) {
     block("download", "download",
           R"("file","label_en","label_es","caption_en","caption_es",)"
           R"("download_style","platform")",
-          "#2e6b4f", 84, false, "Content",
+          "#2e6b4f", 84, false, "Media",
           R"("file":"path","download_style":"combo:button,card",)"
           R"("platform":"combo:any,windows-x64,macos,linux-x64")",
           R"__("file":"File to publish - a path beside the database, or the name )__"
@@ -517,7 +517,7 @@ inline void register_block_glyphs(maiz::Core& core) {
     // PRIVACY SEAM: contacts never render into either (personal coordinates
     // don't leave the machine; okf/concepts/sections/territory.md boundaries).
     block("map_embed", "map", R"("view","caption_en","caption_es")", "#2e6b4f",
-          72, false, "Data", R"("view":"hidden")", // picker in the builder UI
+          72, false, "Interactive", R"("view":"hidden")", // picker in the builder UI
           R"__("view":"Map view (name of a saved view)",)__"
           R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
     // the CALENDAR block: web → an interactive month/week/3-day JS widget
@@ -526,7 +526,7 @@ inline void register_block_glyphs(maiz::Core& core) {
     // are opt-in by query (they can be sensitive; publishing is a choice).
     block("calendar_embed", "calendar",
           R"("query","mode","caption_en","caption_es")",
-          "#b3592e", 72, false, "Data",
+          "#b3592e", 72, false, "Interactive",
           R"("query":"hidden","mode":"combo:agenda,month")",
           R"__("query":"Entry query (tags; empty = events only)",)__"
           R"__("mode":"agenda (a list) or month (a grid); default agenda",)__"

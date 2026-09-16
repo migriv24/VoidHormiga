@@ -1466,6 +1466,17 @@ void HormigaApp::init() {
     palette_blocks.entries.clear();
     for (const auto& e : hormiga::block_palette())
         palette_blocks.entries.push_back({e.glyph, e.label, e.category});
+    /* SORTED BY GROUP (2026-09-15), because the palette draws a heading whenever
+     * the category changes and registration order gave "Content, Data, Content,
+     * Data". Stable, so within a group the declaration order still decides. */
+    auto cat_rank = [](const std::string& c) {
+        return c == "Content" ? 0 : c == "Data" ? 1 : c == "Media" ? 2
+               : c == "Interactive" ? 3 : 4;
+    };
+    std::stable_sort(palette_blocks.entries.begin(), palette_blocks.entries.end(),
+                     [&](const auto& a, const auto& b) {
+                         return cat_rank(a.category) < cat_rank(b.category);
+                     });
     // grouped by PAYLOAD (Records / Assets / Publish), each entry local or cloud
     palette_antfarm.entries = {{"hol_sqlite", "SQLite - local store", "Records"},
                                {"hol_csv", "CSV - local source", "Records"},

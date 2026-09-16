@@ -763,3 +763,145 @@ void HormigaApp::draw_tag_expr_editor(const maiz::SceneNode& sel) {
     if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
     ImGui::EndPopup();
 }
+
+/* ── WINDOWS INSIDE A TAB (2026-09-15) ───────────────────────────────────────
+ *
+ * A section's tab hosts its own dockspace, and its panels are real windows
+ * docked into it: resizable, tabbable, floatable, remembered in imgui.ini. The
+ * arrangement below is seeded ONCE, when the node has no saved layout, so a
+ * person's own rearrangement wins forever after - the same rule the main
+ * dockspace in app.cpp follows. Pass nullptr for a slot a section does not use. */
+void HormigaApp::nested_dockspace(const char* id, const char* top, const char* left,
+                                  const char* center, const char* right) {
+#ifdef IMGUI_HAS_DOCK
+    const ImGuiID dock = ImGui::GetID(id);
+    if (ImGui::DockBuilderGetNode(dock) == nullptr) {
+        ImVec2 size = ImGui::GetContentRegionAvail();
+        if (size.x < 200.0f || size.y < 150.0f) size = ImVec2(1200.0f, 800.0f);
+        ImGui::DockBuilderAddNode(dock, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dock, size);
+        ImGuiID c = dock;
+        if (top)
+            ImGui::DockBuilderDockWindow(
+                top, ImGui::DockBuilderSplitNode(c, ImGuiDir_Up, 0.16f, nullptr, &c));
+        if (left)
+            ImGui::DockBuilderDockWindow(
+                left, ImGui::DockBuilderSplitNode(c, ImGuiDir_Left, 0.17f, nullptr, &c));
+        if (right)
+            ImGui::DockBuilderDockWindow(
+                right, ImGui::DockBuilderSplitNode(c, ImGuiDir_Right, 0.34f, nullptr, &c));
+        if (center) ImGui::DockBuilderDockWindow(center, c);
+        ImGui::DockBuilderFinish(dock);
+    }
+    ImGui::DockSpace(dock, ImVec2(0, 0));
+#else
+    (void)id; (void)top; (void)left; (void)center; (void)right;
+#endif
+}
+
+/* ── THE BLOCKS, BY WHAT THEY ARE (2026-09-15) ───────────────────────────────
+ *
+ * The author: *"the blocks window should be color coded, and the section names
+ * should be like: content, data, media, generated ... We have normal content
+ * blocks which includes the narrative stuff (things like footers, dividers, and
+ * quotes should go here instead). We have data blocks which directly calls for
+ * stuff from the database using tags. We have media blocks for video, audio, and
+ * other media things ... Then we have the generative blocks, like the map and
+ * calender. maybe a better word would be 'interactive'? Its a tough decision."*
+ *
+ * Four groups, and the fourth is called INTERACTIVE. The author named the
+ * difficulty exactly: a map is interactive on a website and a picture in a
+ * newsletter, and an event grid gets a search box on the website too. What
+ * separates the last group is not that it moves — it is that the block IS a
+ * widget: a whole map or a whole calendar, which the newsletter degrades to a
+ * static stand-in. The tooltip on each heading says so in the person's words
+ * rather than leaving the word to carry it alone.
+ *
+ * The palette was a column of identical grey buttons whose only sections were
+ * "Content, Data, Content, Data" — the registration order, repeated. The list is
+ * sorted by group once, in app.cpp, and each group has a colour. */
+static ImVec4 category_color(const std::string& c) {
+    if (c == "Content") return ImVec4(0.30f, 0.59f, 1.00f, 1.0f);
+    if (c == "Data") return ImVec4(0.60f, 0.40f, 0.80f, 1.0f);
+    if (c == "Media") return ImVec4(0.85f, 0.51f, 0.17f, 1.0f);
+    if (c == "Interactive") return ImVec4(0.18f, 0.58f, 0.42f, 1.0f);
+    return ImVec4(0.55f, 0.55f, 0.58f, 1.0f);
+}
+
+static const char* category_about(const std::string& c) {
+    if (c == "Content") return "what you write: headings, prose, quotes, buttons, dividers";
+    if (c == "Data") return "filled from the database by tags: events, postings, people, galleries";
+    if (c == "Media") return "a video, a recording or a file, shown or offered as it is";
+    if (c == "Interactive")
+        return "the block IS a widget - a whole map or calendar.\n"
+               "Interactive on the website; a picture or a list in the newsletter.";
+    return "";
+}
+
+void HormigaApp::draw_blocks_palette() {
+    std::string last_cat;
+    for (const auto& e : palette_blocks.entries) {
+        if (e.category != last_cat) {
+            const ImVec4 cc = category_color(e.category);
+            ImGui::PushStyleColor(ImGuiCol_Text, cc);
+            ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(cc.x, cc.y, cc.z, 0.5f));
+            ImGui::SeparatorText(e.category.c_str());
+            ImGui::PopStyleColor(2);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", category_about(e.category));
+            last_cat = e.category;
+        }
+        /* ── THE ICON GOES ON THE BUTTON, AND ON THE DRAG GHOST (2026-09-02) ─
+         *
+         * The author asked for *"little icons next to the drag and drop
+         * button"*. The palette is a column of same-width buttons whose only
+         * differentiator was a word, which is exactly the case an icon earns
+         * its place in: at a glance, `image grid` and `event grid` are the same
+         * shape and the same length, and a picture is not.
+         *
+         * `glyph_icon` (app_internal.hpp) maps the glyph to a Font Awesome
+         * codepoint already merged into the ImGui atlas. Unlisted glyphs get a
+         * neutral square rather than nothing, so a new block looks sparse
+         * instead of broken.
+         *
+         * The DRAG GHOST gets it too. That ghost is the only thing visible
+         * while a person is deciding where to drop, so it is the one place the
+         * icon is doing the most work. */
+        const std::string plabel =
+            std::string(glyph_icon(e.glyph)) + "  " + e.label;
+        const ImVec4 cc = category_color(e.category);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(cc.x, cc.y, cc.z, 0.22f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(cc.x, cc.y, cc.z, 0.42f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(cc.x, cc.y, cc.z, 0.60f));
+        bool clicked = ImGui::Button(plabel.c_str(), ImVec2(-1, 0));
+        ImGui::PopStyleColor(3);
+        // DRAG a palette element onto the document (author's one missing
+        // nicety, 2026-07-23): drop between rows in the doc canvas to insert
+        // AT a position; the click still appends.
+        if (builder_doc_view &&
+            ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+            ImGui::SetDragDropPayload("PALETTE_GLYPH", e.glyph.c_str(),
+                                      e.glyph.size() + 1);
+            ImGui::Text("%s  %s", glyph_icon(e.glyph), e.label.c_str());
+            ImGui::EndDragDropSource();
+        }
+        if (clicked) {
+            if (builder_doc_view) {
+                doc_palette_place(e.glyph); // append via the `doc place` verb
+            } else {
+                // interim click-to-mint: lands under the lowest block
+                std::string name;
+                for (int i = 1;; ++i) {
+                    name = e.glyph + "-" + std::to_string(i);
+                    if (!scene.find(name)) break;
+                }
+                float maxb = 60.0f;
+                for (const auto& n : scene.nodes)
+                    maxb = std::max(maxb, n.y + n.h);
+                dispatch_and_reproject(
+                    maiz::compile_add(e.glyph, name, 80.0f, maxb + 50.0f));
+                ed.selection = {name};
+            }
+        }
+    }
+}

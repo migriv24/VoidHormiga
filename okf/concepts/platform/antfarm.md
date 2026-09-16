@@ -321,3 +321,22 @@ The Antfarm view starts as a card list (roadmap phase C) and grows into the
 full node editor (phase E-ish). The reserved interfaces (`model`, Territory,
 Auth/Peer) arrive as holidays on the finished spine, in whatever order real
 use pulls them — futures, no longer entangled with the architecture.
+
+# The screen says it is not ready (2026-09-15)
+
+The author, running 0.1.2: *"antfarm in general should have like a little warning
+in the GUI that it's not really ready for human users yet. Sure we have the node
+graph, but i'll be honest, it does NOT work ... the bones of the antfarm works,
+and it can currently be driven by agents in a fine enough way. it's mostly the
+UI/UX of the antfarm is horrible to a point where it might be unusable."*
+
+So the Antfarm tab opens with a warning that says exactly which half is which:
+the node graph's editing surface misbehaves, while what it configures - every
+publish, upload and import in the application - works and is driven from the
+command line and from the panels. The tab is also two windows now (Node graph,
+Inspector), which is the [workspace](/concepts/sections/workspace-and-sections.md)
+change rather than the redesign.
+
+**The redesign is its own piece of work**, and the author has said it will come
+with detailed direction. Until then the warning is what keeps the screen honest,
+and the capability table (above) is the shape the rest of it should follow.

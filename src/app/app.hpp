@@ -595,6 +595,9 @@ private:
     void redirect_to(const std::string& rune, const std::string& mantle, const std::string& why);
     void apply_redirect();
     void draw_block_extras(const maiz::SceneNode& sel);   // Builder: featured event, order
+    void draw_blocks_palette();                           // Builder: the block palette
+    void nested_dockspace(const char* id, const char* top, const char* left,
+                          const char* center, const char* right); // panels as windows
     void open_tag_expr_editor(const maiz::SceneNode& sel);
     void draw_tag_expr_editor(const maiz::SceneNode& sel); // a filter, as an expression
     maiz::CodeEditorState tagexpr_editor;

@@ -954,6 +954,24 @@ void HormigaApp::draw_document_canvas(float body_h) {
 }
 
 void HormigaApp::draw_builder_section(float /*avail_h*/) {
+    /* ── THE BUILDER IS FOUR WINDOWS IN A TAB (2026-09-15) ───────────────────
+     *
+     * The author: *"the list of blocks in the builder ... should be a window that
+     * can be resized and such ... Same with the 'inspector' ... Then we have the
+     * 'document layout' editor, which is another window. Then we have the
+     * 'document options' window, which is what contains the document selector,
+     * the 'new' button, the 'save' button, and all the other 'ribon' like
+     * things ... Im wondering if its a fine enough design to have tabs with
+     * windows inside the tabs?"*
+     *
+     * It is, and ImGui does it directly: this tab hosts its own dockspace, and
+     * the four panels are real windows docked into it. They resize, tab, float
+     * and re-dock like any other, and the arrangement is remembered in
+     * imgui.ini. The splitter and the fixed 150px palette are gone: they were
+     * this file pretending to be a window manager. */
+    nested_dockspace("builder-dock", "Document options##builder", "Blocks##builder",
+                     "Document##builder", "Inspector##builder");
+    ImGui::Begin("Document options##builder");
     // ── DOCUMENT picker (author #9): switch between projects (each a mantle);
     // "+ New" mints one. The active document is what the canvas edits and the
     // previews render. ──────────────────────────────────────────────────────
@@ -1149,90 +1167,25 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
     ImGui::SameLine(0, 16);
     ImGui::TextDisabled("click: edit - double-click text: edit inline - "
                         "drag: reorder");
+    ImGui::End(); // Document options
 
-    float body_h = ImGui::GetContentRegionAvail().y;
-    ImVec2 area = ImGui::GetContentRegionAvail();
-    const float th = 6.0f;
-    const float pal_w = 150.0f;
+    ImGui::Begin("Blocks##builder");
+    draw_blocks_palette(); // ui/builder_ext.cpp: sorted and coloured by kind
+    ImGui::End(); // Blocks
 
-    ImGui::BeginChild("builder-palette", ImVec2(pal_w, body_h), ImGuiChildFlags_Borders);
-    std::string last_cat;
-    for (const auto& e : palette_blocks.entries) {
-        if (e.category != last_cat) {
-            ImGui::SeparatorText(e.category.c_str());
-            last_cat = e.category;
-        }
-        /* ── THE ICON GOES ON THE BUTTON, AND ON THE DRAG GHOST (2026-09-02) ─
-         *
-         * The author asked for *"little icons next to the drag and drop
-         * button"*. The palette is a column of same-width buttons whose only
-         * differentiator was a word, which is exactly the case an icon earns
-         * its place in: at a glance, `image grid` and `event grid` are the same
-         * shape and the same length, and a picture is not.
-         *
-         * `glyph_icon` (app_internal.hpp) maps the glyph to a Font Awesome
-         * codepoint already merged into the ImGui atlas. Unlisted glyphs get a
-         * neutral square rather than nothing, so a new block looks sparse
-         * instead of broken.
-         *
-         * The DRAG GHOST gets it too. That ghost is the only thing visible
-         * while a person is deciding where to drop, so it is the one place the
-         * icon is doing the most work. */
-        const std::string plabel =
-            std::string(glyph_icon(e.glyph)) + "  " + e.label;
-        bool clicked = ImGui::Button(plabel.c_str(), ImVec2(-1, 0));
-        // DRAG a palette element onto the document (author's one missing
-        // nicety, 2026-07-23): drop between rows in the doc canvas to insert
-        // AT a position; the click still appends.
-        if (builder_doc_view &&
-            ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-            ImGui::SetDragDropPayload("PALETTE_GLYPH", e.glyph.c_str(),
-                                      e.glyph.size() + 1);
-            ImGui::Text("%s  %s", glyph_icon(e.glyph), e.label.c_str());
-            ImGui::EndDragDropSource();
-        }
-        if (clicked) {
-            if (builder_doc_view) {
-                doc_palette_place(e.glyph); // append via the `doc place` verb
-            } else {
-                // interim click-to-mint: lands under the lowest block
-                std::string name;
-                for (int i = 1;; ++i) {
-                    name = e.glyph + "-" + std::to_string(i);
-                    if (!scene.find(name)) break;
-                }
-                float maxb = 60.0f;
-                for (const auto& n : scene.nodes)
-                    maxb = std::max(maxb, n.y + n.h);
-                dispatch_and_reproject(
-                    maiz::compile_add(e.glyph, name, 80.0f, maxb + 50.0f));
-                ed.selection = {name};
-            }
-        }
-    }
-    ImGui::EndChild();
-
-    ImGui::SameLine();
-    float main_w = std::max(120.0f, (area.x - pal_w - th) * canvas_frac);
+    ImGui::Begin("Document##builder", nullptr,
+                 builder_doc_view ? 0 : ImGuiWindowFlags_NoScrollbar);
     if (builder_doc_view) {
-        ImGui::BeginChild("builder-doc-pane", ImVec2(main_w, body_h));
-        draw_document_canvas(body_h);
-        ImGui::EndChild();
+        draw_document_canvas(ImGui::GetContentRegionAvail().y);
     } else {
-        ImGui::BeginChild("builder-canvas", ImVec2(main_w, body_h),
-                          ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
         maiz::CanvasIO cio = maiz::edit_canvas("builder-canvas", scene, ed,
                                                canvas_style, &palette_blocks,
                                                &faces);
         for (const auto& cmd : cio.commands) dispatch_and_reproject(cmd);
-        ImGui::EndChild();
     }
+    ImGui::End(); // Document
 
-    ImGui::SameLine(0, 0);
-    auto vs = maiz::splitter("##builder-vsplit", true, canvas_frac,
-                             area.x - pal_w - th, 0.4f, 0.92f, th, body_h);
-    ImGui::SameLine(0, 0);
-    ImGui::BeginChild("builder-inspector", ImVec2(0, body_h));
+    ImGui::Begin("Inspector##builder");
     // nothing selected → the PAGE MANAGER (map-style overview, author
     // 2026-07-23); a component selected → its inspector
     bool have_sel = !ed.selection.empty() && scene.find(ed.selection.front());
@@ -1466,8 +1419,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
         maiz::CanvasIO iio = maiz::draw_inspector(scene, ed, &widgets);
         for (const auto& cmd : iio.commands) dispatch_and_reproject(cmd);
     }
-    ImGui::EndChild();
-    if (vs.released) flush_panels();
+    ImGui::End(); // Inspector
 }
 
 /* The PAGE MANAGER (author 2026-07-23): pages are managed here, in the
@@ -1602,33 +1554,48 @@ void HormigaApp::draw_page_manager() {
 // ── the Antfarm section: placeholder cards until the registry exists ────────
 
 void HormigaApp::draw_antfarm_section() {
+    /* ── SAID ON THE SCREEN: NOT READY FOR PEOPLE YET (2026-09-15) ───────────
+     *
+     * The author: *"antfarm in general should have like a little warning in the
+     * GUI that it's not really ready for human users yet. Sure we have the node
+     * graph, but i'll be honest, it does NOT work ... the bones of the antfarm
+     * works, and it can currently be driven by agents in a fine enough way. it's
+     * mostly the UI/UX of the antfarm is horrible to a point where it might be
+     * unusable."*
+     *
+     * The warning is small and it is honest about which half is which: the model
+     * underneath is what every publish, upload and import already runs on, and it
+     * is the SCREEN that is not finished. A redesign is its own piece of work. */
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.60f, 0.15f, 1.0f));
+    ImGui::TextWrapped(ICON_FA_TRIANGLE_EXCLAMATION
+                       "  This screen is not ready for everyday use yet - the node graph "
+                       "misbehaves. What it configures does work: agents drive it from the "
+                       "command line, and the panels here (Hosting images online, Publish) "
+                       "are the dependable way in. A redesign is planned.");
+    ImGui::PopStyleColor();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("the backends themselves are fine - this is about the graph's\n"
+                          "editing surface, which is being redesigned");
+
+    nested_dockspace("antfarm-dock", nullptr, nullptr, "Node graph##antfarm",
+                     "Inspector##antfarm");
+    ImGui::Begin("Node graph##antfarm", nullptr, ImGuiWindowFlags_NoScrollbar);
     // the node graph IS the configuration surface (okf/concepts/platform/antfarm.md):
     // one core hub, typed sockets, providers plugged in; faces are live
     // describe() views; the Supabase node's button imports the real org
     ImGui::TextDisabled("the org's backends, by payload: records + assets flow "
                         "from the core; the HTML publisher builds a site the "
                         "server/deploy nodes carry. ports only fit their own type.");
-    float body_h = ImGui::GetContentRegionAvail().y;
-    ImVec2 area = ImGui::GetContentRegionAvail();
-    const float th = 6.0f;
-    float main_w = std::max(120.0f, (area.x - th) * canvas_frac);
-
-    ImGui::BeginChild("antfarm-canvas", ImVec2(main_w, body_h),
-                      ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
     maiz::CanvasIO cio = maiz::edit_canvas("antfarm-canvas", scene, ed,
                                            canvas_style, &palette_antfarm, &faces);
     for (const auto& cmd : cio.commands) dispatch_and_reproject(cmd);
-    ImGui::EndChild();
+    ImGui::End(); // Node graph
 
-    ImGui::SameLine(0, 0);
-    auto vs = maiz::splitter("##antfarm-vsplit", true, canvas_frac, area.x - th,
-                             0.4f, 0.92f, th, body_h);
-    ImGui::SameLine(0, 0);
-    ImGui::BeginChild("antfarm-inspector", ImVec2(0, body_h));
+    ImGui::Begin("Inspector##antfarm");
     draw_hosting_panel(); // "host it online": which node, and what is waiting
     maiz::CanvasIO iio = maiz::draw_inspector(scene, ed, &widgets);
     for (const auto& cmd : iio.commands) dispatch_and_reproject(cmd);
-    ImGui::EndChild();
-    if (vs.released) flush_panels();
+    ImGui::End(); // Inspector
+
 }
 
