@@ -52,6 +52,21 @@ first slice — the vault currently holds the ImgBB key; collaboration keys
 AEAD spine. Container-format growth (topology, templates, notes, media refs —
 the "org bundle") is [Q17](/developer_questions.md).
 
+**Where a key FILE is looked for (2026-09-16).** The other door — a
+`token_file`, `key_file` or `secret_file` on an Antfarm node, or a plain
+`imgbb.key` — keeps the secret out of the database on purpose, which means the
+database names the file and the file stays on this machine. A relative name is
+looked for **beside the `.miga` that was opened, then in the working folder**,
+and a failure names every path tried. "Beside the database" means the file a
+person opened, not the folder the program happened to be launched from: until
+this date it meant the latter, and one database published or "asked for keys"
+depending on how Hormiga was started. Which `.miga` a working copy came from is
+remembered in a note beside the working copy (`<state>.bundle`), never in
+`config` — config travels inside the database, and a path into somebody's
+Documents folder must not travel with it. One resolver, `find_key_file`
+(`app/paths.hpp`), serves deploy, rollback, the host check, the Publish panel,
+the object store and ImgBB.
+
 # 3. Privacy is a property of the seam, not the app
 
 The public-bio / internal-notes split is enforced where data leaves:

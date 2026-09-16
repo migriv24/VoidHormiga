@@ -13,6 +13,7 @@
  */
 
 #include "app/app_internal.hpp" // the shared includes, helpers and structs
+#include "app/paths.hpp"        // find_key_file
 
 // Heavy headers only the SHELL needs, kept out of app_internal.hpp so the six
 // section units do not pay for them (see the note there — this is what the
@@ -91,8 +92,8 @@ void HormigaApp::load_secrets() {
         imgbb_key = vault.get("imgbb_key");
         return;
     }
-    if (fs::exists(base_dir / "imgbb.key")) {
-        std::ifstream kf(base_dir / "imgbb.key");
+    if (const fs::path kp = hormiga::find_key_file("imgbb.key", key_dirs()); fs::exists(kp)) {
+        std::ifstream kf(kp);
         std::getline(kf, imgbb_key);
         while (!imgbb_key.empty() &&
                (imgbb_key.back() == '\r' || imgbb_key.back() == ' '))
@@ -980,6 +981,7 @@ void HormigaApp::save_database_as(const std::string& path) {
                                  referenced_files(core.export_state()));
     if (r.ok) {
         cur_miga = out.string();
+        remember_bundle(cur_miga);
         toast("saved database to " + out.string() + " (" +
               std::to_string(r.assets) + " assets, " +
               std::to_string(r.bytes / 1024) + " KB)");
@@ -1014,6 +1016,7 @@ void HormigaApp::new_database() {
     read_view_config();
     apply_theme();
     cur_miga.clear();      // unsaved: a new database has no file until Save As
+    remember_bundle("");
     cur_doc = "issue-demo";
     cur_page.clear();
     ed.selection.clear();
@@ -1055,6 +1058,8 @@ void HormigaApp::open_database(const std::string& path) {
     }
     reload_from_state(r.state);
     cur_miga = path;
+    remember_bundle(path);
+    load_secrets(); // an imgbb.key beside THIS bundle
     toast("opened database " + fs::path(path).filename().string() + " (" +
           std::to_string(r.assets) + " assets restored)");
 }

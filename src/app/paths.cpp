@@ -30,6 +30,8 @@
 #include "app/app_internal.hpp"
 #include "app/paths.hpp"
 
+#include <fstream>
+
 namespace hormiga {
 
 std::filesystem::path resolve_data_dir(maiz::Core& core,
@@ -224,4 +226,85 @@ std::filesystem::path HormigaApp::resolve_file(const std::string& raw) const {
     if (std::filesystem::exists(here, ec) || ship_dir.empty()) return here;
     const std::filesystem::path shipped = ship_dir / p;
     return std::filesystem::exists(shipped, ec) ? shipped : here;
+}
+
+/* ── A KEY FILE BESIDE THE DATABASE MEANS BESIDE THE .miga (2026-09-16) ──────
+ *
+ * The author: *"we have the IDs and stuff correct in the antfarm, but still
+ * can't publish? or it still ask for keys."* The IDs travel inside the database.
+ * The keys do not, by design: `cloudflare_token.txt` and `imgbb.key` sat beside
+ * `LON_15.miga` in the organization's folder, and the hosting nodes named them
+ * relatively. Every reader resolved that against `base_dir` -- the folder the
+ * program was LAUNCHED from, where the working copy lives -- so the same
+ * database published when started from one place and asked for keys when
+ * started from another. The glyphs' own hint says "a token file beside the
+ * database", and a person reads "the database" as the file they opened.
+ *
+ * So the opened bundle's folder is looked in first, then the working folder
+ * (which keeps every setup that already worked). Which bundle this working copy
+ * came from is a fact about THIS machine, so it is a note beside the working
+ * copy (`<state>.bundle`, covered by `demo-org.json.*` in .gitignore) and never
+ * `config`: config travels inside the database, and a path to somebody's
+ * Documents folder has no business in a file that is handed to other people.
+ *
+ * Deliberately NOT `cur_miga`. Restoring that on boot would also change what
+ * Save does after a restart, which is a different decision. */
+namespace hormiga {
+
+std::filesystem::path find_key_file(const std::string& raw,
+                                    const std::vector<std::filesystem::path>& dirs,
+                                    std::string* tried) {
+    namespace fs = std::filesystem;
+    std::string name = raw;
+    if (name.size() >= 2 && name.front() == 0x22 && name.back() == 0x22)
+        name = name.substr(1, name.size() - 2);
+    if (tried) tried->clear();
+    const fs::path p(name);
+    if (name.empty()) return {};
+    if (p.is_absolute() || dirs.empty()) {
+        if (tried) *tried = p.string();
+        return p;
+    }
+    std::error_code ec;
+    for (const auto& d : dirs) {
+        const fs::path c = d / p;
+        if (fs::exists(c, ec)) return c;
+        if (tried) *tried += (tried->empty() ? "" : ", or ") + c.string();
+    }
+    return dirs.front() / p;
+}
+
+} // namespace hormiga
+
+std::vector<std::filesystem::path> HormigaApp::key_dirs() const {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    if (!bundle_read) {
+        bundle_read = true;
+        std::ifstream in(base_dir / (state_name + ".bundle"), std::ios::binary);
+        std::string line;
+        std::getline(in, line);
+        while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
+        if (!line.empty() && fs::is_directory(fs::path(line).parent_path(), ec))
+            bundle_dir = fs::path(line).parent_path();
+    }
+    std::vector<fs::path> dirs;
+    if (!bundle_dir.empty()) dirs.push_back(bundle_dir);
+    if (dirs.empty() || !fs::equivalent(dirs.front(), base_dir, ec)) dirs.push_back(base_dir);
+    return dirs;
+}
+
+void HormigaApp::remember_bundle(const std::string& miga) {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    const fs::path note = base_dir / (state_name + ".bundle");
+    bundle_read = true;
+    bundle_dir.clear();
+    if (miga.empty()) {
+        fs::remove(note, ec);
+        return;
+    }
+    const fs::path abs = fs::absolute(miga, ec);
+    bundle_dir = abs.parent_path();
+    std::ofstream(note, std::ios::binary) << abs.string() << "\n";
 }

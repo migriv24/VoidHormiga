@@ -132,6 +132,8 @@ struct HormigaApp {
     std::filesystem::path ship_dir;
     void host_notice(const std::string& msg);                  // a shell's message, as a toast
     std::filesystem::path resolve_file(const std::string& raw) const;  // database folder, else ship_dir
+    std::vector<std::filesystem::path> key_dirs() const; // where a relative key file is looked for (paths.cpp)
+    void remember_bundle(const std::string& miga);      // which .miga this working copy is, on this machine
     ImFont* mono_font = nullptr;    // JetBrains Mono for the script IDE (set by the shell)
     /* MAY THIS FRONT-END OFFER AN UPDATE? Set by the DESKTOP shell and by
      * nothing else -- it is in the public section beside `ship_dir` because a
@@ -1166,6 +1168,8 @@ private:
     void do_save();
     // ── the .miga v3 DATABASE bundle (okf/concepts/platform/miga-format.md) ──────────
     std::string cur_miga;        // the active database bundle path ("" = none yet)
+    mutable std::filesystem::path bundle_dir; // its folder, remembered across restarts
+    mutable bool bundle_read = false;
     bool win_share = false;      // the "Share database" (in-development) window
     // ── Data Tools (author 2026-08-03): a detached window holding the Data
     // tab's utilities (CSV import, date-tag temper, …) — declutters the tab's

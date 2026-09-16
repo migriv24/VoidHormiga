@@ -3873,3 +3873,71 @@ application says it itself.
 - **The author's database still holds the duplicate image runes** this made:
   `the-latino-entrepreneurship-instinct`, `-4c4a3d10` and `-4c4a3d10-2`. They
   resolve again now, but they are clutter, and nothing prunes them.
+
+# Keys beside the database mean beside the .miga (2026-09-16, second entry)
+
+The author: *"we have the IDs and stuff correct in the antfarm, but still can't
+publish? or it still ask for keys or something, even though it exists in the
+antfarm. make sure the paths and such are properly configured."*
+
+## What was actually wrong
+
+Nothing in the Antfarm. `lon-pages` carried the right project and account id,
+`out-imgbb` named its key, and both named their key files **relatively** --
+`cloudflare_token.txt`, `imgbb.key` -- which is what the glyph hints recommend
+("a token file beside the database"). The files were exactly there, beside
+`LON_*.miga` in the organization's folder.
+
+Every reader resolved a relative key file against `base_dir`, and `base_dir` is
+the folder the program was **launched** from: the working copy lives there, and a
+`.miga` is extracted into it. So the IDs, which travel inside the database,
+always arrived, and the keys, which deliberately do not, were looked for in the
+launch folder. The same database published when Hormiga was started from one
+place and asked for keys when started from another -- and the previous turn had
+just pointed the author at `build/bin` rather than the installed program. The
+Publish panel's own comment recorded this failure once before (2026-08-20)
+and treated it as a message problem: the absolute path was printed so a person
+could see where it looked. That made the error readable and left the behaviour
+wrong.
+
+## The fix
+
+`hormiga::find_key_file(name, dirs, &tried)` in `app/paths.hpp`, and
+`HormigaApp::key_dirs()`: the opened `.miga`'s folder first, then the working
+folder, so every setup that already worked still does. A failure lists every
+path tried. Seven readers now use it -- deploy, rollback and `check-host`
+(`host_token`), the Publish panel's readiness check, the object store's
+`secret_file`, and ImgBB's `key_file` in both `host_problem` and `host_online` --
+plus `load_secrets`, so a plain `imgbb.key` beside the bundle is picked up, and
+re-read after Open.
+
+**Which `.miga` a working copy came from is remembered on this machine**, in
+`<state>.bundle` beside the working copy (already covered by `demo-org.json.*` in
+`.gitignore`). Open and Save as write it; New database removes it. Not `config`:
+config travels inside the database, and a path into one person's Documents
+folder must not travel to the next. Not `cur_miga` either: restoring that on
+boot would also change what Save does after a restart, which is a separate
+decision nobody asked for.
+
+The CLI's `wire()` now passes `state_name`, so a `--state` other than
+`demo-org.json` reads the right note.
+
+## Verification
+
+- Offline-shaped proof through the CLI: a working folder with no token, and a
+  fake org folder holding a deliberately malformed token beside a `.miga`.
+  Without the note, `check-host` says `cannot read token file: looked for
+  <work>\cloudflare_token.txt`; with it, the token is found and the check moves on
+  to judging it. The shape test turned out to be a warning rather than a gate, so
+  the second run did reach Cloudflare -- with that fake 16-character token and an
+  all-zero account id -- and was refused (9106), which is the expected answer.
+- 26/26 gating tests, every linter, 101 files within budget. The GUI links (to a
+  throwaway name; the real `voidhormiga.exe` was held open by the running app).
+- `okf/concepts/platform/security.md` and `AGENT-GUIDE.md` say where a key file
+  is looked for.
+
+## Not done
+
+- An existing working copy has no note until its `.miga` is opened or saved-as
+  once. The author's was seeded by hand this session.
+- `hol_dns` names `cloudflare_token.txt` too, but nothing reads that node yet.

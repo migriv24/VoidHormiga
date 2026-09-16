@@ -33,6 +33,7 @@
  * the admin plane in the clear, and this file is the reason there is not.
  */
 #include "app/app_internal.hpp"
+#include "app/paths.hpp"
 #include "publish/aws.hpp"
 #include "publish/cloudflare.hpp"   // trim_secret: one reader for every credential
 
@@ -73,7 +74,7 @@ static const maiz::SceneNode* find_store(const maiz::Scene& farm,
  * order `deploy_site` uses. Two places that resolve one secret differently is
  * how a "test this credential" button stops predicting the operation it tests. */
 static bool store_config(const maiz::SceneNode& store, const fs::path& base_dir,
-                         hormiga::Vault& vault,
+                         const std::vector<fs::path>& key_dirs, hormiga::Vault& vault,
                          const std::function<std::string(const std::string&)>& shell,
                          std::vector<maiz::LogEntry>& log,
                          hormiga::aws::Config& cc) {
@@ -94,8 +95,7 @@ static bool store_config(const maiz::SceneNode& store, const fs::path& base_dir,
         cc.creds.secret_access_key =
             hormiga::cloudflare::trim_secret(vault.get(skey));
     if (cc.creds.secret_access_key.empty() && !sfile.empty()) {
-        const fs::path p =
-            fs::path(sfile).is_absolute() ? fs::path(sfile) : base_dir / sfile;
+        const fs::path p = hormiga::find_key_file(sfile, key_dirs);
         std::ifstream in(p, std::ios::binary);
         if (in) {
             std::stringstream ss;
@@ -162,7 +162,7 @@ int HormigaApp::push_to_store(const maiz::Scene& farm, std::string_view node,
     }
 
     hormiga::aws::Config cc;
-    if (!store_config(*store, base_dir, vault, on_shell_capture, log, cc))
+    if (!store_config(*store, base_dir, key_dirs(), vault, on_shell_capture, log, cc))
         return -1;
 
     std::string prefix = field_value(*store, "prefix");
@@ -275,7 +275,7 @@ int HormigaApp::check_store(const maiz::Scene& farm, std::string_view node) {
         return -1;
     }
     hormiga::aws::Config cc;
-    if (!store_config(*store, base_dir, vault, on_shell_capture, log, cc))
+    if (!store_config(*store, base_dir, key_dirs(), vault, on_shell_capture, log, cc))
         return -1;
 
     const auto r = hormiga::aws::check_access(cc);
@@ -346,8 +346,7 @@ std::string HormigaApp::host_problem(const maiz::SceneNode& node, const std::str
     if (node.glyph == "hol_imgbb") {
         if (!imgbb_key.empty()) return {};
         const std::string kf = field_value(node, "key_file");
-        if (!kf.empty() &&
-            !read_trimmed(fs::path(kf).is_absolute() ? fs::path(kf) : base_dir / kf).empty())
+        if (!kf.empty() && !read_trimmed(hormiga::find_key_file(kf, key_dirs())).empty())
             return {};
         return "no ImgBB key - unlock the vault, add imgbb.key, or set key_file";
     }
@@ -424,8 +423,7 @@ HormigaApp::HostedLink HormigaApp::host_online(const maiz::Scene& farm, const st
         if (imgbb_key.empty()) {
             const std::string kf = field_value(*host, "key_file");
             if (!kf.empty())
-                imgbb_key =
-                    read_trimmed(fs::path(kf).is_absolute() ? fs::path(kf) : base_dir / kf);
+                imgbb_key = read_trimmed(hormiga::find_key_file(kf, key_dirs()));
         }
         out.url = upload_to_imgbb(path, name);
         if (out.url.empty())
@@ -433,7 +431,7 @@ HormigaApp::HostedLink HormigaApp::host_online(const maiz::Scene& farm, const st
                                     : "ImgBB did not answer with a link: " + log.back().msg;
     } else if (host->glyph == "hol_object_store") {
         hormiga::aws::Config cc;
-        if (!store_config(*host, base_dir, vault, on_shell_capture, log, cc)) {
+        if (!store_config(*host, base_dir, key_dirs(), vault, on_shell_capture, log, cc)) {
             // the reason, not a pointer to it: the CLI has no log strip to point at
             out.error = log.empty() ? std::string("the object store is not ready")
                                     : log.back().msg;

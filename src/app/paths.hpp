@@ -14,6 +14,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace hormiga {
 
@@ -24,5 +25,14 @@ namespace hormiga {
 std::filesystem::path resolve_data_dir(maiz::Core& core,
                                        const std::filesystem::path& base,
                                        const std::string& name);
+
+/* A KEY FILE NAMED RELATIVELY, found where a person put it (2026-09-16).
+ * `token_file`, `key_file`, `secret_file` and `imgbb.key` are looked for in
+ * each of `dirs` in order, and the first that holds the file wins. Absolute
+ * names are used as given. `tried`, when asked for, names every place looked,
+ * because "not found" without the paths is unfixable by staring at it. */
+std::filesystem::path find_key_file(const std::string& name,
+                                    const std::vector<std::filesystem::path>& dirs,
+                                    std::string* tried = nullptr);
 
 } // namespace hormiga

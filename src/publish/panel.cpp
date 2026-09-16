@@ -12,6 +12,7 @@
  * nowhere else, that is the bug. */
 
 #include "app/app_internal.hpp"
+#include "app/paths.hpp"
 #include "publish/cloudflare.hpp"
 
 using hormiga::cloudflare::trim_secret;
@@ -243,8 +244,8 @@ void HormigaApp::draw_publish_body() {
 
     // the token: configured, resolved, present, readable, non-empty
     fs::path kp;
-    if (!keyf.empty())
-        kp = fs::path(keyf).is_absolute() ? fs::path(keyf) : base_dir / keyf;
+    std::string kp_tried;
+    if (!keyf.empty()) kp = hormiga::find_key_file(keyf, key_dirs(), &kp_tried);
     bool tok_ok = false;
     std::string tok_detail;
     const std::string tkey = host ? field_value(*host, "token_key") : "";
@@ -260,7 +261,7 @@ void HormigaApp::draw_publish_body() {
          * against the folder the application was started in, which is not
          * necessarily the folder the database lives in — and when they differ,
          * the relative form is unfixable by staring at it. */
-        tok_detail = "not found: " + kp.string();
+        tok_detail = "not found - looked for " + kp_tried;
     } else {
         std::ifstream tf(kp, std::ios::binary);
         std::stringstream tb;

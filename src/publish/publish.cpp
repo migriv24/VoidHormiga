@@ -37,6 +37,7 @@
  * different jobs done by different people at different times.
  */
 #include "app/app_internal.hpp"
+#include "app/paths.hpp"
 #include "publish/cloudflare.hpp"
 #include "publish/github.hpp"
 #include "json.hpp"
@@ -194,7 +195,7 @@ static std::string fill(std::string tpl, const std::map<std::string, std::string
  * secret came from, because `deploy_cmd` templates expose `{token_file}` and a
  * template that names it needs the path the read actually used.
  */
-static bool host_token(const maiz::SceneNode& host, const fs::path& base_dir,
+static bool host_token(const maiz::SceneNode& host, const std::vector<fs::path>& dirs,
                        hormiga::Vault& vault, std::vector<maiz::LogEntry>& log,
                        const char* op, std::string& token, fs::path& kp) {
     token.clear();
@@ -219,14 +220,15 @@ static bool host_token(const maiz::SceneNode& host, const fs::path& base_dir,
                                  "token_file instead"});
         return false;
     }
-    kp = fs::path(keyfile).is_absolute() ? fs::path(keyfile) : base_dir / keyfile;
+    std::string tried;
+    kp = hormiga::find_key_file(keyfile, dirs, &tried);
     std::ifstream kin(kp, std::ios::binary);
     if (!kin) {
         log.push_back({"error", op,
-                       "cannot read token file: " + kp.string() +
-                           " (a relative token_file resolves against the "
-                           "database's own folder - check the file is there, "
-                           "or use token_key)"});
+                       "cannot read token file: looked for " + tried +
+                           " (a relative token_file is looked for beside the "
+                           "opened .miga, then in the working folder - check "
+                           "the file is there, or use token_key)"});
         return false;
     }
     std::stringstream kss;
@@ -473,7 +475,7 @@ std::string HormigaApp::deploy_site(const maiz::Scene& farm,
      * disagree about where a credential lives. */
     std::string token;
     fs::path kp;
-    if (!host_token(*host, base_dir, vault, log, "deploy", token, kp)) return {};
+    if (!host_token(*host, key_dirs(), vault, log, "deploy", token, kp)) return {};
 
     /* ── GITHUB PAGES (2026-09-02) ───────────────────────────────────────────
      *
@@ -879,7 +881,7 @@ std::string HormigaApp::rollback_site(const maiz::Scene& farm,
     }
     std::string token;
     fs::path kp;
-    if (!host_token(*host, base_dir, vault, log, "rollback", token, kp)) return {};
+    if (!host_token(*host, key_dirs(), vault, log, "rollback", token, kp)) return {};
 
     /* ── ROLLING BACK A GITHUB PAGES SITE IS A REF MOVE ──────────────────────
      *
@@ -1004,7 +1006,7 @@ int HormigaApp::check_host(const maiz::Scene& farm, std::string_view node) {
     }
     std::string token;
     fs::path kp;
-    if (!host_token(*host, base_dir, vault, log, "host", token, kp)) return -1;
+    if (!host_token(*host, key_dirs(), vault, log, "host", token, kp)) return -1;
 
     /* THE SHAPE TEST FIRST, because it is free and because both vendors issue
      * more than one kind of string that looks like a credential and only one of
