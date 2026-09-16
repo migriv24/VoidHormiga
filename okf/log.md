@@ -4043,3 +4043,100 @@ against a rune's tags (and its name), so `+flier` is what makes it appear.
 - **Banner has no consumer that asks for it yet.** A Hero block's banner field
   uses the gallery picker, which does not sort `banner`-tagged images first.
   That is the natural next step, and the author's call.
+
+# LAN sharing: profiles, joining, presence, private notes (2026-09-16, fifth entry)
+
+The author's brief was long and exact — a profile window independent of any
+database; "share database" offering *share over local LAN* when the Antfarm
+allows it; "discover databases" on the other device; the host asked *"cool_
+username_123 wants to be part of the network, allow?"*; everything the Antfarm
+says cannot be fetched sent end to end encrypted, keys included; seeing each
+other working with one colour per person; private and shared notes; admins and
+permissions as bones; an eye on an AWS-hosted future; and whether Void Palabra
+should own the "ledger". The design is
+[LAN sharing](/concepts/platform/lan-sharing.md); this is what was built and
+what it cost.
+
+## The decisions that shape it
+
+- **Joining is not syncing.** Collaboration's rule that credentials never travel
+  stands for sync; joining is a separate path that carries keys on purpose, and
+  only after a person allows it with the code on both screens.
+- **A profile is per computer; a membership is per database.** Identity.md's
+  per-database admin profile is revised, not contradicted: still a credential,
+  never a person.
+- **The Antfarm decides what is sent.** `hol_lan_share` (allow, presence, port,
+  room key file, private tags, send_hosted) and `hol_membership` (store, file,
+  default role, precedence) — new databases and a fresh Cat Colony have both.
+  `domain/collab.hpp` is the capability table, with a planned `hol_sync_relay`.
+- **The members registry is its own Void Core document** beside the `.miga`.
+- **Presence is sealed to a room key** that only members hold; a name in a
+  beacon in the clear would be a leak.
+- **The ledger is Palabra's.** No chain and no consensus here; asked for signed
+  utterances, capabilities, the transport and an ephemeral channel in
+  `MESSAGE_FOR_VOIDPALABRA_hormiga-lan-sharing-ledger-and-trust-2026-09-16.md`.
+
+## What was built
+
+- `platform/profile.*` — username, colour, picture, crypto_kx keypair in the user
+  settings folder (`HORMIGA_PROFILE_DIR` overrides); device facts detected live.
+- `sync/peer.*` — the beacon carries an opaque `extra` and can listen without
+  announcing; `Session` gained a receive ceiling and a timeout. Still ignorant of
+  runes.
+- `platform/miga.*` — `pack` takes a skip list (hosted pictures).
+- `app/lan_wire.*` — offer and presence codecs, room ids, the file-name rule.
+- `app/lan_share.*`, `lan_threads.cpp`, `lan_presence.cpp`, `lan_cli.cpp`,
+  `lan_internal.hpp` — the plan, the host and join threads, the members
+  registry, presence and colours, and the CLI verbs. Split along its seams when
+  the first version passed 1,000 lines.
+- `ui/share.cpp`, `ui/profile_window.cpp` — Share database (name, description,
+  icon; Allow LAN sharing for a database without the node; the plan; members),
+  Discover databases (destination folder, offers, Ask to join, the code), the
+  Allow/Deny window, the presence strip in the menu bar, marks on Data and Notes
+  rows, outlines on the Builder canvas.
+- Notes: **Private / Shared** on every note; private runes are withheld at the
+  join and at the LAN exchange (`sync_ops.cpp`).
+- CLI: `effect profile`, `lan-offers`, `lan-share [seconds] [approve]`,
+  `lan-join <address> <port> <folder>`. `HORMIGA_WINDOWS` opens the windows at
+  boot for screenshots.
+
+## Bugs the first runs found
+
+- **Colours ran out at about twenty people.** The golden-angle fallback only
+  moved hue, every candidate clashed, and the loop gave up and repeated a colour.
+  `hormiga_lan_smoke` caught it at 34 people; saturation and brightness now cycle
+  too, and the clash distance relaxes until an exact repeat is the only clash.
+- **The joiner's code was never printed** when the whole join finished inside
+  one 150 ms poll on loopback. Printed after the loop too.
+- **The members registry rode inside the bundle** as well as beside it, because
+  its node's `file` is a path field; a stale copy would have landed in the
+  joiner's working folder. Skipped in a share.
+- **A connect could land between the host's listening windows.** Six tries.
+- **A new profile picture under the old file name** would have kept showing the
+  cached one; each picture gets its own name.
+
+## Verification
+
+- `hormiga_lan_smoke` (new, gating): refused file names, sealed presence with
+  wrong-key and tamper refusal, one-datagram beacon with an offer and presence,
+  unique and deterministic colours. 27/27 gating tests; every linter.
+- **Two processes, two profiles, loopback** (CLI host with `approve`, CLI
+  joiner): the offer discovered; the same code on both sides; `Test-Colony.miga`,
+  `imgbb.key`, `members.json` (both people) and the host's own room key arrived;
+  the local picture inside the bundle and the hosted one not; the private note
+  absent; nothing written outside the destination. **A refusal** sent nothing and
+  created no folder.
+- **Seen in a window:** the Profile (facts detected: Windows 11 build, memory,
+  threads, versions), Share database for a fresh Cat Colony (the button live), and
+  Discover databases listing the CLI host's offer. Windows Firewall prompted for
+  `voidhormiga.exe` on first listen; that is left to the person.
+- `headless.cpp` budget 1460 -> 1480 for the four verbs' catalogue rows.
+
+## Not done
+
+- **Two real machines.** The author's test.
+- **Clicked in the GUI:** Share, Allow, and the joiner's open-and-download path.
+- **Presence between two running windows** — the pieces are unit-tested, the
+  live view is not.
+- Sync after joining (Q76), room-key rotation when someone leaves (Q73), vault
+  secrets for a joiner without a vault (Q74), roles enforced, a relay.

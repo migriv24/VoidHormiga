@@ -1175,7 +1175,8 @@ private:
     std::string cur_miga;        // the active database bundle path ("" = none yet)
     mutable std::filesystem::path bundle_file, priority_dir; // from local_note(), across restarts
     mutable bool local_read = false;
-    bool win_share = false;      // the "Share database" (in-development) window
+    bool win_share = false, win_discover = false, win_profile = false; // LAN sharing (lan_share.cpp)
+    std::shared_ptr<struct LanRuntime> lan; friend struct LanRuntime; // profile, share, join, presence
     // ── Data Tools (author 2026-08-03): a detached window holding the Data
     // tab's utilities (CSV import, date-tag temper, …) — declutters the tab's
     // toolbar. Sits behind a "Data Tools" button beside the connections view. ─
@@ -1206,5 +1207,5 @@ private:
     void save_database_as(const std::string& path);  // pack → chosen .miga path
     void open_database(const std::string& path);     // unpack + reload the core
     void reload_from_state(const std::string& state); // replace core, re-seed host
-    void draw_share_window();    // the LAN/P2P placeholder
+    void draw_share_window();    // Share, Discover, Profile, and presence (ui/share.cpp)
 };

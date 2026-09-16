@@ -278,7 +278,11 @@ BUDGET = {
     # online". The protocols are publish/push.cpp; what stays here is reading the
     # arguments, walking the images and writing the links back, which only the
     # front-end that owns the core can do.
-    'src/main/headless.cpp': 1460,
+    # 1460 -> 1480 (2026-09-16): four LAN-sharing verbs (`profile`, `lan-offers`,
+    # `lan-share`, `lan-join`) -- their catalogue rows and one dispatch branch.
+    # Everything they DO is app/lan_cli.cpp; a verb's consequence string has to
+    # be written where --allow-effects reads it, which is here.
+    'src/main/headless.cpp': 1480,
     # NEW ENTRY 2026-09-02 (was on the 1000 default): the Data tab lost 168 lines
     # to `ui/widgets.cpp` the same afternoon -- the rune-rename control (shared
     # with the Notes tab, which is why a note could not be renamed at all), the

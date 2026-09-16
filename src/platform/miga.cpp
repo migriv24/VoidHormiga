@@ -52,7 +52,8 @@ std::string iso_now() {
 PackResult pack(const std::string& state_json, const fs::path& base_dir,
                 const fs::path& out_path, const std::string& name,
                 const fs::path& assets_dir,
-                const std::map<std::string, fs::path>& extra) {
+                const std::map<std::string, fs::path>& extra,
+                const std::set<std::string>& skip) {
     (void)base_dir; // kept: the envelope's other paths are still base-relative
     PackResult r;
     json env;
@@ -98,7 +99,7 @@ PackResult pack(const std::string& state_json, const fs::path& base_dir,
                 inside ? under
                        : ("assets" / fs::relative(it->path(), adir, rec))
                              .generic_string();
-            if (rel.empty() || rel == "assets") continue;
+            if (rel.empty() || rel == "assets" || skip.count(rel)) continue;
             assets[rel] = b64_encode(read_file(it->path()));
             ++r.assets;
         }
@@ -124,7 +125,7 @@ PackResult pack(const std::string& state_json, const fs::path& base_dir,
      * assets walk is left alone — the folder version is the same bytes, and
      * counting it twice would make the report lie. */
     for (const auto& [rel, src] : extra) {
-        if (assets.contains(rel)) continue;
+        if (assets.contains(rel) || skip.count(rel)) continue;
         std::error_code fe;
         if (!fs::is_regular_file(src, fe)) continue;
         assets[rel] = b64_encode(read_file(src));

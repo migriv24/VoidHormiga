@@ -7,6 +7,7 @@
  * click and every drag is a `doc` verb, so the CLI stays complete.
  */
 #include "app/app_internal.hpp"
+#include "app/lan_share.hpp" // presence outlines
 /* The preview must resolve a query EXACTLY as the renderer will, `date:`
  * predicates included — a Builder that shows a different set from the page is
  * worse than one that shows nothing. */
@@ -1178,9 +1179,11 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
     if (builder_doc_view) {
         draw_document_canvas(ImGui::GetContentRegionAvail().y);
     } else {
+        const ImVec2 canvas_at = ImGui::GetCursorScreenPos();
         maiz::CanvasIO cio = maiz::edit_canvas("builder-canvas", scene, ed,
                                                canvas_style, &palette_blocks,
                                                &faces);
+        LanRuntime::outline_nodes(*this, canvas_at.x, canvas_at.y); // others' selections
         for (const auto& cmd : cio.commands) dispatch_and_reproject(cmd);
     }
     ImGui::End(); // Document

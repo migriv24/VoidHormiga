@@ -120,12 +120,13 @@ std::string encode_beacon(const PeerInfo& self) {
     o += ",\"n\":\"" + esc(self.display) + "\"";
     o += ",\"v\":\"" + esc(self.version) + "\"";
     o += ",\"f\":\"" + esc(self.fingerprint) + "\"";
+    if (!self.extra.empty()) o += ",\"x\":\"" + esc(self.extra) + "\"";
     o += ",\"port\":" + std::to_string(self.port) + "}";
     return o;
 }
 
 bool decode_beacon(const std::string& d, PeerInfo& out) {
-    if (d.size() < 20 || d.size() > 2048) return false;
+    if (d.size() < 20 || d.size() > kMaxBeacon) return false;
     if (d.find("\"app\":\"voidhormiga\"") == std::string::npos) return false;
     if (d.find("\"p\":1") == std::string::npos) return false;  // our version only
 
@@ -134,6 +135,7 @@ bool decode_beacon(const std::string& d, PeerInfo& out) {
     if (!field(d, "v", p.version)) return false;
     field(d, "n", p.display);
     field(d, "f", p.fingerprint);
+    field(d, "x", p.extra);
 
     auto i = d.find("\"port\":");
     if (i == std::string::npos) return false;
@@ -173,7 +175,7 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
         if (error) *error = "winsock unavailable";
         return false;
     }
-    p_->payload = encode_beacon(self);
+    p_->payload = self.peer_id.empty() ? std::string() : encode_beacon(self);
     p_->self_id = self.peer_id;
     p_->stop = false;
 
@@ -205,7 +207,7 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
     p_->listen_sock = s;
 
     p_->rx = std::thread([this] {
-        char buf[2048];
+        char buf[kMaxBeacon + 1];
         while (!p_->stop) {
             sockaddr_in from{};
 #ifdef _WIN32
@@ -245,7 +247,8 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
                 std::lock_guard<std::mutex> lk(p_->mu);
                 msg = p_->payload;
             }
-            sendto(o, msg.data(), (int)msg.size(), 0, (sockaddr*)&to, sizeof to);
+            if (!msg.empty() && msg.size() <= kMaxBeacon)  // empty = listening only
+                sendto(o, msg.data(), (int)msg.size(), 0, (sockaddr*)&to, sizeof to);
             for (int i = 0; i < 30 && !p_->stop; i++)
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
@@ -270,7 +273,7 @@ void Beacon::stop() {
 
 void Beacon::announce(const PeerInfo& self) {
     std::lock_guard<std::mutex> lk(p_->mu);
-    p_->payload = encode_beacon(self);
+    p_->payload = self.peer_id.empty() ? std::string() : encode_beacon(self);
     p_->self_id = self.peer_id;
 }
 
@@ -639,7 +642,18 @@ bool Session::send(const std::string& payload, std::string* error) {
     return true;
 }
 
-bool Session::receive(std::string& payload, std::string* error) {
+void Session::set_timeout_ms(int ms) {
+    if (!p_ || p_->sock == HZ_BAD_SOCKET) return;
+#ifdef _WIN32
+    DWORD tv = (DWORD)(ms < 0 ? 0 : ms);
+#else
+    timeval tv{ms / 1000, (ms % 1000) * 1000};
+#endif
+    setsockopt(p_->sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+    setsockopt(p_->sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
+}
+
+bool Session::receive(std::string& payload, std::string* error, std::size_t max_bytes) {
     if (!open()) {
         if (error) *error = "session is not open";
         return false;
@@ -661,6 +675,10 @@ bool Session::receive(std::string& payload, std::string* error) {
             return false;
         }
         payload.append((const char*)pt.data(), (std::size_t)mlen);
+        if (max_bytes && payload.size() > max_bytes) {
+            if (error) *error = "the peer sent a message larger than this step allows";
+            return false;
+        }
         if (tag == crypto_secretstream_xchacha20poly1305_TAG_FINAL) return true;
     }
 }

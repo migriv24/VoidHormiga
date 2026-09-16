@@ -1557,6 +1557,26 @@ Assets (images) do not travel yet either. Only the state document does.
 contains a secret key.** Never commit it, never copy it to another machine, and
 never put it in a `.miga` you hand to someone. It is gitignored.
 
+### Joining a database someone shares (2026-09-16)
+
+Syncing (above) keeps two copies of one database together. **Joining** is how a
+second person gets their copy in the first place — the database, the files that
+exist only on the host's computer, the Antfarm's key files, the members registry
+and the room key — sealed, after the host allows it. Design:
+`okf/concepts/platform/lan-sharing.md`.
+
+    effect profile username my_name          # who you are, outside any database
+    effect lan-offers 5                      # what is being shared here (listens only)
+    effect lan-share 120 approve             # share until someone joins; allow them
+    effect lan-join 10.0.0.42 47733 ~/HormigaFiles/Colony   # ask to join
+
+Both sides print the same six-character code; `lan-share` without `approve`
+refuses every request after printing it, which is the right default for an agent.
+Pictures that are hosted online are not sent (the app downloads them when the
+joined database is opened). Runes tagged `private` never leave the host.
+`HORMIGA_PROFILE_DIR` selects a different profile folder — two profiles on one
+machine is how the whole flow is tested.
+
 ## 9c. Is there a newer Hormiga?
 
 New 2026-09-04. Full design in `okf/concepts/platform/distribution.md`.

@@ -30,8 +30,9 @@ that reads better anyway, which is the point of keeping the rule this narrow.
 
 THE EXCEPTION, written down rather than assumed: a comment carrying `NO HOST
 SEAMS` within the few lines above the assignment exempts it, and is expected to
-say why that core never serves an effect. The CLI has the only one — it renders
-through a throwaway `HormigaApp` whose core is nobody's host.
+say why that core never serves an effect. There are two, both the CLI's: it
+renders, and runs the LAN verbs, through a throwaway `HormigaApp` whose core is
+nobody's host.
 """
 import os
 import re
@@ -41,8 +42,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, '..'))
 SRC = os.path.join(ROOT, 'src')
 
-# `core = maiz::Core(...)` — an assignment over the member, not a declaration
-ASSIGN = re.compile(r'(?<![\w.>])core\s*=\s*maiz::Core\s*\(')
+# `core = maiz::Core(...)` or `app.core = maiz::Core(...)` — an assignment over an
+# app's member, not a declaration. The `app.` form was missed until 2026-09-16,
+# when the LAN CLI verbs used it; a throwaway app's core is still an app's core.
+ASSIGN = re.compile(r'(?<![\w>])(?:\w+\.)?core\s*=\s*maiz::Core\s*\(')
 SEAMS = 'install_host()'
 ALLOW = 'NO HOST SEAMS'  # an exemption that has to say why, in the code
 LOOKAHEAD = 8  # lines: the reinstall belongs with the assignment, not far below

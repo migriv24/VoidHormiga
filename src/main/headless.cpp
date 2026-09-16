@@ -36,6 +36,7 @@
  * struct; it simply never calls them. The honest cost is binary size, and the
  * honest alternative was a second renderer, which is worse.
  */
+#include "app/lan_share.hpp" // LanRuntime: profile, lan-offers, lan-share, lan-join
 #include "app/app_internal.hpp"
 #include "domain/ical_import.hpp" // X3: an incoming calendar, as a PLAN
 #include "platform/backup.hpp"
@@ -719,6 +720,15 @@ maiz::HostApp build_app() {
             }
             return std::to_string(worst);
         }
+        if (op == "profile" || op == "lan-offers" || op == "lan-share" || op == "lan-join") {
+            // LAN sharing: the windows' own runtime (app/lan_cli.cpp; lan-sharing.md)
+            if (!g_core) return {};
+            HormigaApp app;
+            wire(app);
+            std::string v;
+            return LanRuntime::cli(app, op, effect_args(args), g_core->export_state(), v) ? std::string()
+                                                                                           : json_str(v);
+        }
         if (op == "check-host") {
             /* The smallest REAL reads a publish performs, against the publish
              * target. The last check worth making before the one-way door, and
@@ -1066,6 +1076,17 @@ maiz::HostApp build_app() {
          true,
          "reads the database and writes one script file beside it; changes "
          "nothing in the model and sends nothing anywhere"},
+        {"profile", "This computer's profile: username, colour, key, device facts. "
+         "Args: [username <name>] [color <#rrggbb>].", true,
+         "reads, and with arguments rewrites, the profile file; sends nothing"},
+        {"lan-offers", "List databases shared on this network. Args: [seconds].", true,
+         "listens on the local network only; announces nothing, connects nowhere"},
+        {"lan-share", "Share this database until someone joins. Args: [seconds] [approve].",
+         false, "announces the database's name here; with `approve` SENDS the database, "
+         "its files and the Antfarm's keys, sealed, to whoever asks - check their code"},
+        {"lan-join", "Join a shared database. Args: <address> <port> <folder>.", false,
+         "sends your username, colour, picture and public key, and writes what the "
+         "host sends into the folder - check the host shows the same code"},
         {"check-host",
          "Can these credentials publish to this host? Performs the smallest "
          "real reads a deploy performs - the repository or project, the branch, "

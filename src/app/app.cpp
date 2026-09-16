@@ -13,6 +13,7 @@
  */
 
 #include "app/app_internal.hpp" // the shared includes, helpers and structs
+#include "app/lan_share.hpp"     // LanRuntime: sharing, joining, presence
 #include "app/paths.hpp"        // find_key_file
 
 // Heavy headers only the SHELL needs, kept out of app_internal.hpp so the six
@@ -1064,31 +1065,6 @@ void HormigaApp::open_database(const std::string& path) {
           std::to_string(r.assets) + " assets restored)");
 }
 
-void HormigaApp::draw_share_window() {
-    if (!win_share) return;
-    ImGui::SetNextWindowSize(ImVec2(440, 0), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Share database", &win_share)) {
-        ImGui::TextDisabled("in development");
-        ImGui::Spacing();
-        ImGui::TextWrapped(
-            "Sharing a database means syncing it with other people's devices - "
-            "over the local network, and eventually across the internet - so an "
-            "org can work together. This is a large build (a git-shaped, "
-            "server-less, peer-to-peer sync; see okf/concepts/platform/miga-format.md) "
-            "and is not implemented yet.");
-        ImGui::Spacing();
-        ImGui::SeparatorText("Planned");
-        ImGui::BulletText("Find devices on the local network (LAN discovery)");
-        ImGui::BulletText("Push / pull changes (Save = commit; Share = push)");
-        ImGui::BulletText("Merge concurrent edits (CRDT) without a central server");
-        ImGui::BulletText("Encrypted transport; secrets stay sealed");
-        ImGui::Spacing();
-        ImGui::TextDisabled("For now: Save database as... makes a portable .miga\n"
-                            "you can copy to another machine and Open there.");
-    }
-    ImGui::End();
-}
-
 void HormigaApp::toast(std::string msg, bool error) {
     toasts.push_back({std::move(msg), 4.0f, error});
     if (toasts.size() > 4) toasts.erase(toasts.begin());
@@ -1506,6 +1482,8 @@ void HormigaApp::init() {
                                {"hol_object_store", "Object store - S3 or R2", "Assets"},
                                {"hol_uploads", "Uploads - visitor object store", "Assets"},
                                {"hol_lan_peer", "LAN peer - another device", "Records"},
+                               {"hol_lan_share", "Share over LAN", "Records"},
+                               {"hol_membership", "Members", "Records"},
                                {"hol_auth", "Sign-in - identity provider", "Visitors"},
                                {"hol_accounts", "Accounts + submissions", "Visitors"}};
     palette_allomone.entries = {{"allo_when", "When (a rule)", "Allomone"},
@@ -1717,6 +1695,12 @@ void HormigaApp::init() {
         if (scene.find(sel)) ed.selection = {sel};
     if (std::getenv("HORMIGA_CONNECTIONS")) data_show_connections = true;
     if (std::getenv("HORMIGA_DATATOOLS")) win_data_tools = true; // dev/test seam
+    if (const char* w = std::getenv("HORMIGA_WINDOWS")) { // dev/test seam: "profile,share,discover"
+        const std::string ws = w;
+        win_profile = ws.find("profile") != std::string::npos;
+        win_share = ws.find("share") != std::string::npos;
+        win_discover = ws.find("discover") != std::string::npos;
+    }
     if (std::getenv("HORMIGA_DATACARDS")) data_view_mode = 1;    // dev/test seam
     if (const char* df = std::getenv("HORMIGA_DATAFILTER")) {    // dev/test seam
         std::string s = df, one;                                // comma-separated
@@ -2693,6 +2677,8 @@ void HormigaApp::frame() {
                 }
             }
             if (ImGui::MenuItem("Share database...")) win_share = true;
+            if (ImGui::MenuItem("Discover databases...")) win_discover = true;
+            if (ImGui::MenuItem("Profile...")) win_profile = true;
             ImGui::Separator();
             // credential vault (security.md §2: off by default, loudly offered)
             if (secrets_locked) {
@@ -2743,6 +2729,7 @@ void HormigaApp::frame() {
         if (ImGui::SmallButton("undo")) dispatch_and_reproject("undo");
         ImGui::SameLine();
         if (ImGui::SmallButton("redo")) dispatch_and_reproject("redo");
+        LanRuntime::draw_presence_strip(*this); // who else is here, and you
         ImGui::EndMainMenuBar();
     }
     // Ctrl+S saves the working copy; Ctrl+Shift+S saves the database bundle

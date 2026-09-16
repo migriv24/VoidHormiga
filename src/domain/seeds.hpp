@@ -14,6 +14,7 @@
 #pragma once
 #pragma once
 #include "domain/civic.hpp"            // the civic record owns its own glyphs too
+#include "domain/collab.hpp"           // the default Share-over-LAN and Members nodes
 #include "domain/hormiga_allomone.hpp" // the domain Allomone owns its own glyphs
 #include "voidmaiz/embed.hpp"
 #include "json.hpp"
@@ -26,7 +27,7 @@
 namespace hormiga {
 
 inline std::vector<std::string> seed_antfarm_transcript() {
-    return {
+    std::vector<std::string> t = {
         "mantle new antfarm",
         "rune new org_core core",
         R"(set core org_name "demo-org")",
@@ -55,8 +56,12 @@ inline std::vector<std::string> seed_antfarm_transcript() {
         "link core out-html --relation 1:1",     // records → publisher.records
         "link core out-html --relation 2:2",     // assets  → publisher.assets
         "link out-html out-localhost --relation 3:1", // publisher.site → server
-        "use demo-org",
     };
+    // collaboration (lan-sharing.md §5): shareable over the LAN by default, with
+    // the members kept in their own small database beside the .miga
+    for (auto& c : collab::default_nodes(true, true)) t.push_back(std::move(c));
+    t.push_back("use demo-org");
+    return t;
 }
 
 /* A starter SUMMER issue — a stack of query-backed blocks that AUTO-UPDATE:

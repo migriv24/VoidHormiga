@@ -11,6 +11,39 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q73 — when someone leaves, does the room key change?** (Opened 2026-09-16
+  by [LAN sharing](/concepts/platform/lan-sharing.md).) **Lean: yes, and not
+  yet.** The room key is what lets a member read presence; a person who leaves
+  still holds it, and still holds every key file the join sent them. Rotating the
+  room key is cheap (a new file sent to the remaining members); the Antfarm's
+  *credentials* cannot be rotated by Hormiga at all — that is a trip to Cloudflare
+  or ImgBB. So "remove a member" is really a checklist the application can show
+  (new room key, then these N vendor keys to revoke by hand), and it wants the
+  signed members registry (§9) before it means anything against a hostile ex-member.
+
+- **Q74 — should a join carry the vault's secrets when the joiner has no vault?**
+  (Opened 2026-09-16.) **Lean: no; offer to make one.** Today a secret that
+  arrives for the vault is kept only if the joiner's credentials are already
+  encrypted and unlocked, and otherwise reported and dropped. Writing it as a
+  plaintext file instead would quietly downgrade the host's choice to encrypt
+  it. The better shape is the join asking the joiner for a passphrase before it
+  starts, when there are vault secrets in the plan.
+
+- **Q75 — the short code is the same every time two people connect.** (Opened
+  2026-09-16.) **Lean: keep it, and say so.** The code is derived from the two
+  long-term public keys, so `cool_username_123` and `host_person` always see
+  the same six characters. That is what makes a *changed* code a loud signal, and
+  it is how the existing sync already behaves; the cost is that a code once
+  photographed is not a secret. It never was one — it is compared, not typed —
+  but the Allow dialog should not imply otherwise.
+
+- **Q76 — sync after joining: automatic, or a button?** (Opened 2026-09-16.)
+  **Lean: a button first ("Sync with the members here"), automatic once
+  deletions propagate.** Joining is built; keeping two copies together afterwards
+  is the LAN exchange, which today reports and asks for `apply` because a merge
+  can bring back something you deleted (collaboration.md §2). Making that silent
+  and periodic before deletions propagate would resurrect deletions on a timer.
+
 - **Q69 — Google Calendar WRITE needs an OAuth client secret, and this repo is
   public. Do we ship one?** (Opened 2026-09-10, by the calendar hub reframe.)
   **Lean: the operator brings their own client; the secret ICS address is the

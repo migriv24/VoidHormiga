@@ -8,6 +8,7 @@
  * no write path in this file that does not go through one.
  */
 #include "app/app_internal.hpp"
+#include "app/lan_share.hpp" // presence marks, and the private tag
 #include "domain/image_presets.hpp"
 #include "domain/submission.hpp"   // ONE gate for every proposed transcript
 #include "json.hpp" // one typed-form field decodes a setjson value
@@ -447,6 +448,7 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
             }
             if (ImGui::Selectable(n.name.c_str(), ed.selected(n.name)) || row_clicked)
                 pick(n.name);
+            LanRuntime::mark_item(*this, n.name); // someone else is on it (lan-sharing.md §6)
             std::string sub = subtitle(n);
             if (!sub.empty()) {
                 ImGui::Indent(10);
@@ -823,6 +825,12 @@ void HormigaApp::draw_data_tools_window() {
 // (markdown/Obsidian interop, Allomone text mechanics, "note → newsletter") is
 // a far-future build (Q22). Everything is still a dispatcher command. ────────
 void HormigaApp::draw_notes_body() {
+    // the Antfarm says which tag keeps a note on this computer (lan-sharing.md §7)
+    maiz::ProjectOptions farm_po;
+    farm_po.mantle = kAntfarmMantle;
+    const auto share = hormiga::collab::share_settings(maiz::project_scene(core, farm_po));
+    const std::string private_tag = share.private_tags.empty() ? "private" : share.private_tags.front();
+    auto notes_private_tag = [&private_tag] { return private_tag; };
     // top: name search + the SAME tag-filter builder as the Data tab (author
     // 2026-08-03: notes get tags + filter searching too)
     ImGui::SetNextItemWidth(160);
@@ -850,8 +858,10 @@ void HormigaApp::draw_notes_body() {
         if (!contains_ci(n.name, notes_search)) continue;
         if (!maiz::node_matches(notes_filter_expr, n)) continue;
         ++shown;
-        if (ImGui::Selectable(n.name.c_str(), ed.selected(n.name)))
+        const bool priv = std::find(n.tags.begin(), n.tags.end(), notes_private_tag()) != n.tags.end();
+        if (ImGui::Selectable(((priv ? ICON_FA_LOCK " " : "") + n.name).c_str(), ed.selected(n.name)))
             ed.selection = {n.name};
+        LanRuntime::mark_item(*this, n.name);
     }
     if (shown == 0)
         ImGui::TextDisabled(notes_search[0] || notes_filter_expr[0]
@@ -878,6 +888,23 @@ void HormigaApp::draw_notes_body() {
         }
         ImGui::SameLine();
         ImGui::TextDisabled("(note)");
+        /* PRIVATE OR SHARED (2026-09-16, lan-sharing.md §7). The author: *"the
+         * notes should have the option of making private and shared notes."* A
+         * private note carries the Antfarm's private tag, and every share and
+         * LAN sync withholds it at the seam. The command lands next frame, like
+         * the tag editor's below. */
+        {
+            const std::string tag = notes_private_tag();
+            const bool priv = std::find(sel->tags.begin(), sel->tags.end(), tag) != sel->tags.end();
+            ImGui::SameLine(0, 14);
+            if (ImGui::SmallButton(priv ? ICON_FA_LOCK "  Private" : ICON_FA_USERS "  Shared"))
+                pending_cmds.push_back("tag " + sel->name + (priv ? " -" : " +") + tag);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", priv ? "Only on this computer - never sent when the database is shared.\n"
+                                               "Click to share it with the database's members."
+                                             : "Shared with everyone this database is shared with.\n"
+                                               "Click to keep it on this computer only.");
+        }
         /* THE SAME TAG EDITOR AS DATA, AND NOTHING DISPATCHED WHILE `sel` IS HELD
          * (2026-09-15). The author: adding `color:blue` from the suggestions
          * crashed Hormiga on Linux. This tab dispatched in two places while still

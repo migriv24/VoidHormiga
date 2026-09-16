@@ -141,6 +141,52 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
         R"__("peer_host":"Optional fixed address, when discovery is blocked")__", 116,
         in("records"));
 
+    /* ── SHARING A DATABASE, AND WHO IS IN IT (2026-09-16) ──────────────────
+     *
+     * okf/concepts/platform/lan-sharing.md §5, and `domain/collab.hpp` reads
+     * them. `hol_lan_share` answers "may this database be shared, and how";
+     * `hol_membership` answers "who is in, where that list lives, and whose
+     * change is offered first". Both carry no secret: the room key is a FILE the
+     * node names, found where every key file is found. */
+    core.register_glyph(
+        R"({"glyph":"hol_lan_share","label":"Share over LAN",)"
+        R"("fields":["allow","presence","port","key_file","private_tags","send_hosted"],)"
+        R"("hints":{"color":"#2e6b4f","face":{"w":230,"h":150},"category":"Antfarm",)"
+        R"("editors":{"allow":"combo:yes,no","presence":"combo:yes,no",)"
+        R"("send_hosted":"combo:no,yes"},)"
+        R"__("labels":{"allow":"Allow sharing this database over the local network",)__"
+        R"__("presence":"Show who else is working in it (sealed to members)",)__"
+        R"__("port":"TCP port for joining (default 47733)",)__"
+        R"__("key_file":"Room key file, beside the database (gitignored)",)__"
+        R"__("private_tags":"Tags that keep a rune on this device (space-separated)",)__"
+        R"__("send_hosted":"Also send files that are already hosted online"},)__"
+        R"("ports":[{"name":"plug","dir":"in","type":"records"}]}})");
+    core.register_glyph(
+        R"({"glyph":"hol_membership","label":"Members",)"
+        R"("fields":["store","file","default_role","precedence"],)"
+        R"("hints":{"color":"#2e6b4f","face":{"w":230,"h":120},"category":"Antfarm",)"
+        R"("editors":{"store":"combo:local-file,mantle,relay","file":"path",)"
+        R"("default_role":"combo:admin,editor,viewer",)"
+        R"("precedence":"combo:everyone-equal,admins-first"},)"
+        R"__("labels":{"store":"Where the members list lives (only local-file is built)",)__"
+        R"__("file":"Members file, beside the database",)__"
+        R"__("default_role":"Role a new member gets (everyone is an admin for now)",)__"
+        R"__("precedence":"Whose side a conflict offers first (recorded, not enforced)"},)__"
+        R"("ports":[{"name":"plug","dir":"in","type":"records"}]}})");
+    /* A MEMBER lives in the members registry, not in the organization's data:
+     * a profile that joined this database. `avatar` is a small PNG, base64. */
+    core.register_glyph(
+        R"({"glyph":"member","label":"Member",)"
+        R"("fields":["username","color","fingerprint","public_key","role","joined",)"
+        R"("invited_by","last_seen","left","avatar"],)"
+        R"("hints":{"color":"#2e6b4f","face":{"w":230,"h":120},"category":"Antfarm",)"
+        R"("editors":{"role":"combo:admin,editor,viewer","joined":"date",)"
+        R"("last_seen":"date","left":"date"},)"
+        R"__("labels":{"username":"Username","color":"Preferred colour",)__"
+        R"__("fingerprint":"Key fingerprint","public_key":"Public key (base64; not a secret)",)__"
+        R"__("role":"Role","joined":"Joined","invited_by":"Let in by",)__"
+        R"__("last_seen":"Last seen","left":"Left","avatar":"Picture (PNG, base64)"}}})");
+
     /* A REMEMBERED PEER: one rune per device we have paired with.
      *
      * Trust on first use, then pinned. The short authentication string is

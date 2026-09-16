@@ -247,7 +247,10 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
   src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
   src/publish/github.cpp
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
-  src/platform/miga.cpp src/platform/preview_server.cpp src/main/desktop.cpp)
+  src/platform/miga.cpp src/platform/preview_server.cpp src/main/desktop.cpp
+  src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
+  src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp
+  src/ui/share.cpp src/ui/profile_window.cpp)
 # Void Core's C ABI header, for the SPEC 6.1 command codec exported in 0.2.7
 # (vc_arg_quote / vc_argv_split_json / vc_transcript_split_json). The library
 # itself already arrives transitively through Void Maiz; only the header is new.
@@ -376,7 +379,10 @@ add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
   src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
   src/publish/github.cpp
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
-  src/platform/miga.cpp src/platform/preview_server.cpp)
+  src/platform/miga.cpp src/platform/preview_server.cpp
+  src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
+  src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp
+  src/ui/share.cpp src/ui/profile_window.cpp)
 target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
 target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
   HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
@@ -663,6 +669,18 @@ if(WIN32 AND HORMIGA_VOIDCORE_LIB)
   add_custom_command(TARGET hormiga_sync_smoke POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${HORMIGA_VOIDCORE_LIB}" "$<TARGET_FILE_DIR:hormiga_sync_smoke>")
+endif()
+
+# LAN sharing without a network (okf/concepts/platform/lan-sharing.md): refused
+# file names, presence sealed to the room key, the beacon's size, unique colours.
+add_executable(hormiga_lan_smoke tests/lan_smoke.cpp src/app/lan_wire.cpp)
+target_link_libraries(hormiga_lan_smoke PRIVATE hormiga_sync voidmaiz_headless Threads::Threads)
+target_include_directories(hormiga_lan_smoke PRIVATE src vendor/json)
+add_test(NAME hormiga_lan_smoke COMMAND hormiga_lan_smoke)
+if(WIN32 AND HORMIGA_VOIDCORE_LIB)
+  add_custom_command(TARGET hormiga_lan_smoke POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${HORMIGA_VOIDCORE_LIB}" "$<TARGET_FILE_DIR:hormiga_lan_smoke>")
 endif()
 
 add_executable(hormiga_backup_smoke tests/backup_smoke.cpp src/platform/backup.cpp)

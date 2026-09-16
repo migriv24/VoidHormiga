@@ -20,6 +20,7 @@
 
 #include <filesystem>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -55,10 +56,14 @@ struct OpenResult {
  * the one that gets bundled; a bundler that silently backs up an empty default
  * folder is worse than one that refuses. Entries are still keyed `assets/<rel>`
  * inside the envelope, so bundles written before the move still open. */
+/* `skip` (2026-09-16): bundle keys to leave out -- a LAN share omits pictures
+ * the Antfarm already hosts online, because the joining device downloads them
+ * (lan-sharing.md §3). Empty for every ordinary save. */
 PackResult pack(const std::string& state_json, const std::filesystem::path& base_dir,
                 const std::filesystem::path& out_path, const std::string& name,
                 const std::filesystem::path& assets_dir,
-                const std::map<std::string, std::filesystem::path>& extra = {});
+                const std::map<std::string, std::filesystem::path>& extra = {},
+                const std::set<std::string>& skip = {});
 
 /* Open a .miga: parse it, and for a v3 bundle EXTRACT its assets into
  * base_dir/assets/ (overwriting) and return its state document. A v2 legacy

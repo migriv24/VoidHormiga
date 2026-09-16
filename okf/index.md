@@ -154,6 +154,13 @@ with it.
   before the application you actually wanted. The rule the whole design turns
   on: *a check is a network request a person did not make*, so the preference
   starts at "unasked" and lives beside the install rather than in the org.
+- [LAN sharing](/concepts/platform/lan-sharing.md) — **opened 2026-09-16**: a
+  profile that belongs to the person at the computer; sharing a database as the
+  sealed, approved provisioning of another device (the database, the files the
+  Antfarm says cannot be fetched, the keys); a members registry of its own;
+  presence sealed to a room key with one colour per person; private notes; and
+  the Antfarm nodes that decide it. What is Void Palabra's, and what an AWS relay
+  would change.
 - [Collaboration](/concepts/platform/collaboration.md) — **opened 2026-08-27**:
   one database, several devices. The merge is Void Palabra's and is built; the
   transport is ours for now, LAN first, with a UDP beacon, an out-of-band short

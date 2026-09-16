@@ -288,7 +288,9 @@ int main() {
     // ── 4: the antfarm colony replays like everything else ─────────────────
     for (const auto& cmd : hormiga::seed_antfarm_transcript()) a.dispatch(cmd);
     maiz::Scene farm = project(a, "antfarm");
-    CHECK(farm.nodes.size() == 6);  // core + 5 LOCAL holidays (no cloud default)
+    // core + 5 LOCAL holidays (no cloud default) + Share over LAN and Members
+    // (2026-09-16, lan-sharing.md §5: every new database is shareable by default)
+    CHECK(farm.nodes.size() == 8);
     CHECK(farm.wires.size() == 6);  // records×3, assets×1, publisher.site→server
 
     // ── 5: map actions (one definition → batch → located rune; declines) ───

@@ -35,6 +35,9 @@ Read in this order the first time:
 - [The web platform](/concepts/platform/web-platform.md) — what is hosted and
   on which vendor; what a visitor is allowed to do; the AWS mapping and the
   order to build it.
+- [LAN sharing](/concepts/platform/lan-sharing.md) — **opened 2026-09-16.**
+  Profiles, joining a database over the local network, the members registry,
+  presence and private data, and the Antfarm nodes that decide them.
 - [Identity](/concepts/platform/identity.md) — **opened 2026-08-27.** Who is
   making a change: the admin profile, the signed-in identity, and the contact.
   Three different things that a conventional design would collapse into one

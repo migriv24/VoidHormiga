@@ -64,7 +64,18 @@ struct PeerInfo {
     std::uint16_t port = kStreamPortDefault;
     std::string address;      // filled in by the receiver, never by the sender
     std::int64_t last_seen = 0;
+    /* OPAQUE TO THIS LAYER (2026-09-16). The application's own announcement --
+     * a share offer, or presence sealed to a room key -- as printable text
+     * (base64). This file carries it and never reads it, which is what keeps
+     * it replaceable (collaboration.md §3). Kept small: a beacon is one
+     * datagram, and the whole thing must stay under `kMaxBeacon`. */
+    std::string extra;
 };
+
+/* A beacon larger than this is refused on both ends. One Ethernet frame is
+ * ~1500 bytes; this allows a sealed presence body without fragmenting on any
+ * ordinary network. */
+inline constexpr std::size_t kMaxBeacon = 1400;
 
 /* --- the beacon --------------------------------------------------------- */
 
@@ -81,7 +92,9 @@ public:
     Beacon(const Beacon&) = delete;
     Beacon& operator=(const Beacon&) = delete;
 
-    /* Begin announcing `self` and listening for others. Idempotent. */
+    /* Begin announcing `self` and listening for others. Idempotent. An EMPTY
+     * `peer_id` listens without announcing -- "Discover databases" looks around
+     * without telling the network it is there. */
     bool start(const PeerInfo& self, std::string* error = nullptr);
     void stop();
     bool running() const { return running_; }
@@ -148,7 +161,15 @@ public:
                     std::string& sas, int timeout_ms, std::string* error = nullptr);
 
     bool send(const std::string& payload, std::string* error = nullptr);
-    bool receive(std::string& payload, std::string* error = nullptr);
+    /* `max_bytes` (0 = no limit) refuses a message larger than the caller
+     * expects -- a peer decides how much it sends, so a receiver that holds a
+     * whole message in memory needs its own ceiling (2026-09-16). */
+    bool receive(std::string& payload, std::string* error = nullptr, std::size_t max_bytes = 0);
+
+    /* Receive and send give up after `ms` of silence; 0 = wait forever (the
+     * default). A join waits on a person to click Allow, and a thread that can
+     * never time out is a thread that can never be cancelled. */
+    void set_timeout_ms(int ms);
     void close();
     bool open() const;
 

@@ -17,6 +17,12 @@ subject. *Multiple people* is this one's, and the two are genuinely separate:
 one person with a laptop and a desktop needs sync and no identity system at
 all, and the design gets worse if the two problems are solved with one object.
 
+> **Revised 2026-09-16** by [LAN sharing](/concepts/platform/lan-sharing.md) §1:
+> the author asked for a profile that is *"independent of a database"*. The key
+> now lives with the person at the computer, and what is per database is a
+> **membership** in that database's members registry. Everything below about a
+> profile being a credential rather than a person still holds.
+
 # 1. Three things, and a conventional design has one
 
 | | **admin profile** | **identity** | **contact** |

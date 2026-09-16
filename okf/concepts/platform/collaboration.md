@@ -311,7 +311,11 @@ opened.
   Palabra, not a function here.
 - **Sync writes through the dispatcher.** No exceptions for the network.
 - **`config`, `domains` and `bindings` do not sync** — each device keeps its own
-  backends, and credentials therefore cannot travel by accident.
+  backends, and credentials therefore cannot travel by accident. **Joining** a
+  database is a different act and carries keys on purpose, after a person allows
+  it: [LAN sharing](/concepts/platform/lan-sharing.md) §0.
+- **Runes carrying a private tag are withheld from the exchange** (2026-09-16,
+  [LAN sharing](/concepts/platform/lan-sharing.md) §7).
 - **A conflict is reported, never resolved silently.** `flatten` without
   checking `conflicts()` is the one way to lose data here.
 - **The peer layer stays ignorant of runes**, so Palabra's Phase 4 can replace

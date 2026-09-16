@@ -30,6 +30,7 @@
 #include "app/app_internal.hpp"
 #include "sync/merge.hpp"
 #include "sync/peer.hpp"
+#include "app/lan_share.hpp" // strip_private: the private-tag seam
 
 #include "json.hpp" // telling a .miga bundle from a bare state document
 
@@ -241,7 +242,7 @@ const maiz::SceneNode* known_peer(const maiz::Scene& farm, const std::string& fi
 int finish_exchange(maiz::Core& core, Log& log, const std::string& state_name,
                     hormiga::sync::Session& s, const std::string& peer_pk,
                     const std::string& sas, bool apply, const std::string& mine,
-                    std::string& merged_version, std::string& merged_state,
+                    const std::string& outgoing, std::string& merged_version, std::string& merged_state,
                     std::vector<std::string>& peer_cmds) {
     const std::string fp = hormiga::sync::fingerprint_of(peer_pk);
 
@@ -266,7 +267,9 @@ int finish_exchange(maiz::Core& core, Log& log, const std::string& state_name,
     }
 
     std::string err;
-    if (!s.send(mine, &err)) {
+    /* `outgoing` is `mine` without the private runes (lan-sharing.md §7): the
+     * peer never receives them, and the merge below still keeps them here. */
+    if (!s.send(outgoing, &err)) {
         log.push_back({"error", "sync", "send: " + err});
         return 1;
     }
@@ -482,7 +485,16 @@ HormigaApp::SyncReport HormigaApp::sync_op(std::string_view op,
     }
 
     std::vector<std::string> peer_cmds;
-    out.rc = finish_exchange(probe, log, state_name, s, peer_pk, sas, apply, state_json,
+    int withheld = 0;
+    const std::string outgoing = LanRuntime::strip_private(
+        *this, state_json, hormiga::collab::share_settings(maiz::project_scene(probe, [] {
+            maiz::ProjectOptions o;
+            o.mantle = kAntfarmMantle;
+            return o;
+        }())), &withheld);
+    if (withheld)
+        log.push_back({"info", "sync", std::to_string(withheld) + " private rune(s) stay on this device"});
+    out.rc = finish_exchange(probe, log, state_name, s, peer_pk, sas, apply, state_json, outgoing,
                              out.value, out.merged_state, peer_cmds);
 
     /* THE PEER RUNE GOES ONTO THE MERGED DOCUMENT, not the pre-merge one. This
