@@ -1209,6 +1209,11 @@ std::string HormigaApp::render_from_state(const std::string& state_json,
                                           std::string_view op,
                                           std::string_view lang,
                                           std::string_view document) {
+    /* NO HOST SEAMS, and this is the only place that may say so (the guard is
+     * `tools/lint_host_seams.py`). `render_through_app` hands this a throwaway
+     * `HormigaApp` that exists for the length of one render; the CLI's real
+     * core is `g_core`, and the CLI answers `effect` itself rather than through
+     * a handler. There is no running host here whose seams could be lost. */
     core = maiz::Core(state_json);
     hormiga::register_glyphs(core);
     hormiga::register_block_glyphs(core);

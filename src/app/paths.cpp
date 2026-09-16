@@ -125,8 +125,15 @@ std::map<std::string, fs::path> HormigaApp::referenced_files(
     /* Boots its own core from the document it is handed, like `sync_ops.cpp`
      * and `translation_report`: this walks EVERY mantle, so it cannot ride the
      * active projection. */
-    core = maiz::Core(state_json);
-    if (on_register_glyphs) on_register_glyphs(core);
+    /* ITS OWN CORE, NEVER THE APP'S (2026-09-16). This read `core = maiz::Core(
+     * state_json)`, which replaced the RUNNING core -- and `install_host()` is
+     * what puts the effect handler and the log sink on a core, so afterwards
+     * every `effect render-site`, `deploy-site` or `host-online` answered "no
+     * host effect handler for 'effect'" until the app was restarted, with the
+     * core's own warning going nowhere because the sink went with it. The
+     * comment above always said this boots its own core; now it does. */
+    maiz::Core probe(state_json);
+    if (on_register_glyphs) on_register_glyphs(probe);
     std::map<std::string, fs::path> out;
 
     /* A file that must never travel in a bundle, whatever declared it. Matched
@@ -151,7 +158,7 @@ std::map<std::string, fs::path> HormigaApp::referenced_files(
     };
 
     std::vector<std::string> mantles;
-    for (std::string line : core.dispatch("mantles").lines) {
+    for (std::string line : probe.dispatch("mantles").lines) {
         while (!line.empty() && (line.front() == '*' || line.front() == ' '))
             line.erase(line.begin());
         if (auto p = line.find(" ("); p != std::string::npos) line.resize(p);
@@ -163,7 +170,7 @@ std::map<std::string, fs::path> HormigaApp::referenced_files(
     for (const std::string& mt : mantles) {
         maiz::ProjectOptions po;
         po.mantle = mt;
-        const maiz::Scene sc = maiz::project_scene(core, po);
+        const maiz::Scene sc = maiz::project_scene(probe, po);
         for (const auto& n : sc.nodes)
             for (const auto& f : n.fields) {
                 if (f.editor != "path" && f.editor != "image") continue;
@@ -202,7 +209,14 @@ std::map<std::string, fs::path> HormigaApp::referenced_files(
  * The database folder still wins, so an organization's own `assets/` is never
  * shadowed by something shipped. The program's folder is only the fallback, and
  * only for a relative path that does not exist under the database. */
-std::filesystem::path HormigaApp::resolve_file(const std::string& rel) const {
+std::filesystem::path HormigaApp::resolve_file(const std::string& raw) const {
+    /* A value written before 2026-09-16 can carry its own quotes (the `set` /
+     * `setjson` mix-up), and a path that cannot be opened is a picture that
+     * silently is not there. They are stripped here, at the one door every local
+     * file goes through, so a database that already has them still works. */
+    std::string rel = raw;
+    if (rel.size() >= 2 && rel.front() == 0x22 && rel.back() == 0x22)
+        rel = rel.substr(1, rel.size() - 2);
     const std::filesystem::path p(rel);
     if (rel.empty() || p.is_absolute()) return p;
     std::error_code ec;

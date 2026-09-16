@@ -504,8 +504,12 @@ bool HormigaApp::host_image(const std::string& rune, const std::string& prefer) 
     const std::string was = scene.mantle;
     const bool away = !was.empty() && was != kDataMantle;
     if (away) dispatch_and_reproject(std::string("use ") + kDataMantle);
-    dispatch_and_reproject("set " + rune + " url " + json_arg(json_str(link.url)));
-    dispatch_and_reproject("set " + rune + " hosted_by " + json_arg(json_str(link.node)));
+    /* `set` TAKES A PLAIN VALUE (2026-09-16). `json_arg(json_str(x))` is the pairing
+     * for `setjson`, whose argument has to survive as JSON; on `set` it stored the
+     * quotes as part of the value, so a path came back as `"assets/x.webp"` and
+     * matched nothing -- which is how one picture became three image runes. */
+    dispatch_and_reproject("set " + rune + " url " + json_str(link.url));
+    dispatch_and_reproject("set " + rune + " hosted_by " + json_str(link.node));
     if (away) dispatch_and_reproject("use " + was);
     toast(link.after_publish ? rune + " has its link - it works after the next publish"
                              : rune + " is online");

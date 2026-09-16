@@ -558,6 +558,14 @@ if(Python3_Interpreter_FOUND)
            COMMAND ${Python3_EXECUTABLE}
                    ${CMAKE_CURRENT_SOURCE_DIR}/tools/lint_i18n.py --strict
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  # Replacing the app's core drops the effect handler AND the log sink with it,
+  # so the app half-works and cannot say why (2026-09-16). Strict: the failure
+  # is invisible to every behavioural test we have, which is the whole reason
+  # this is a linter and not a test case.
+  add_test(NAME hormiga_host_seams
+           COMMAND ${Python3_EXECUTABLE}
+                   ${CMAKE_CURRENT_SOURCE_DIR}/tools/lint_host_seams.py --strict
+           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   # The NFC precondition is the CALLER's to hold (Void Palabra SPEC 6.1,
   # normative 2026-08-21, at Hormiga's own proposal). With no argument this
   # checks the working database if one is present and passes trivially if not,

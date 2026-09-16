@@ -330,8 +330,15 @@ HormigaApp::SyncReport HormigaApp::sync_op(std::string_view op,
     /* Boot a core from the document we were handed. Every verb below reads the
      * state from HERE rather than from `this`, which is the whole reason the
      * signature takes it -- see app.hpp. */
-    core = maiz::Core(state_json);
-    if (on_register_glyphs) on_register_glyphs(core);
+    /* ITS OWN CORE, NEVER THE APP'S (2026-09-16). This read `core = maiz::Core(
+     * state_json)`, which replaced the RUNNING core -- and `install_host()` is
+     * what puts the effect handler and the log sink on a core, so afterwards
+     * every `effect render-site`, `deploy-site` or `host-online` answered "no
+     * host effect handler for 'effect'" until the app was restarted, with the
+     * core's own warning going nowhere because the sink went with it. The
+     * comment above always said this boots its own core; now it does. */
+    maiz::Core probe(state_json);
+    if (on_register_glyphs) on_register_glyphs(probe);
 
     auto arg = [&](std::size_t n) -> std::string {
         std::size_t seen = 0;
@@ -475,15 +482,15 @@ HormigaApp::SyncReport HormigaApp::sync_op(std::string_view op,
     }
 
     std::vector<std::string> peer_cmds;
-    out.rc = finish_exchange(core, log, state_name, s, peer_pk, sas, apply, state_json,
+    out.rc = finish_exchange(probe, log, state_name, s, peer_pk, sas, apply, state_json,
                              out.value, out.merged_state, peer_cmds);
 
     /* THE PEER RUNE GOES ONTO THE MERGED DOCUMENT, not the pre-merge one. This
      * is also the only place with `on_register_glyphs` in reach, which is why
      * the replay lives here rather than inside the exchange. */
     if (out.rc == 0 && !out.merged_state.empty() && !peer_cmds.empty()) {
-        core = maiz::Core(out.merged_state);
-        if (on_register_glyphs) on_register_glyphs(core);
+        probe = maiz::Core(out.merged_state);
+        if (on_register_glyphs) on_register_glyphs(probe);
         /* `use <mantle>` on a mantle that is not there leaves the ACTIVE mantle
          * alone, so the peer record would be written into whatever was active --
          * measured on a fixture with no Antfarm: a `peer` rune landed among the
@@ -493,9 +500,9 @@ HormigaApp::SyncReport HormigaApp::sync_op(std::string_view op,
          * is worth three lines to not make. */
         if (out.merged_state.find("\"name\":\"" + std::string(kAntfarmMantle) + "\"") ==
             std::string::npos)
-            core.dispatch(std::string("mantle new ") + kAntfarmMantle);
-        for (const auto& c : peer_cmds) core.dispatch(c);
-        out.merged_state = core.export_state();
+            probe.dispatch(std::string("mantle new ") + kAntfarmMantle);
+        for (const auto& c : peer_cmds) probe.dispatch(c);
+        out.merged_state = probe.export_state();
         out.value = hormiga::sync::version_name(out.merged_state);
         log.push_back({"info", "sync", "remembered this device; the pairing code will "
                                        "not be asked for again unless its key changes"});

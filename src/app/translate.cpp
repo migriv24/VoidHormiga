@@ -121,8 +121,15 @@ int HormigaApp::translation_report(const std::string& state_json,
      * (No `refresh_allo_rules()`: a translation gap is a field being empty, and
      * no derived rule can fill one in. Adding the call would be borrowing a
      * step from `render_from_state` that this does not need.) */
-    core = maiz::Core(state_json);
-    if (on_register_glyphs) on_register_glyphs(core);
+    /* ITS OWN CORE, NEVER THE APP'S (2026-09-16). This read `core = maiz::Core(
+     * state_json)`, which replaced the RUNNING core -- and `install_host()` is
+     * what puts the effect handler and the log sink on a core, so afterwards
+     * every `effect render-site`, `deploy-site` or `host-online` answered "no
+     * host effect handler for 'effect'" until the app was restarted, with the
+     * core's own warning going nowhere because the sink went with it. The
+     * comment above always said this boots its own core; now it does. */
+    maiz::Core probe(state_json);
+    if (on_register_glyphs) on_register_glyphs(probe);
     const size_t log_from = log.size();
     struct Reporter {
         const std::vector<maiz::LogEntry>& log;
@@ -150,7 +157,7 @@ int HormigaApp::translation_report(const std::string& state_json,
      * them in a chosen language. Including them would bury the pages a person
      * actually reads under node labels. */
     std::vector<std::string> mantles{kDataMantle};
-    for (std::string line : core.dispatch("mantles").lines) {
+    for (std::string line : probe.dispatch("mantles").lines) {
         while (!line.empty() && (line.front() == '*' || line.front() == ' '))
             line.erase(line.begin());
         if (auto p = line.find(" ("); p != std::string::npos) line.resize(p);
@@ -168,7 +175,7 @@ int HormigaApp::translation_report(const std::string& state_json,
     for (const std::string& mt : mantles) {
         maiz::ProjectOptions po;
         po.mantle = mt;
-        const maiz::Scene sc = maiz::project_scene(core, po);
+        const maiz::Scene sc = maiz::project_scene(probe, po);
         for (const auto& n : sc.nodes) {
             /* Every base name this rune carries a per-language field for. A set,
              * so `title_en` and `title_es` are one entry and the gap is asked

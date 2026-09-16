@@ -186,6 +186,26 @@ each deployment at its own permanent URL, so *looking at* the old version before
 deciding is one click. That is what turns a rollback from a frightening button
 into an ordinary one.
 
+## The core behind those buttons carries the host seams
+
+Every button above is an `effect`, and an effect is answered by a handler the
+application installs **on the core** — together with the log sink, in
+`install_host()`. Both live on the core object, so **replacing the core drops
+both**: Build and PUBLISH answer *"no host effect handler for 'effect'"* until
+the app is restarted, and the core's own warning about it has no sink left to
+reach the console with. One cause, and the second symptom hides the first.
+
+So: **the app's core is replaced in exactly three places** — new database,
+reload, boot — and each reinstalls the seams. A helper that needs to look at a
+state document (what does it reference, what is untranslated, what does a merge
+produce) gets **its own local core** and leaves the running one alone. The
+invariant is enforced by `tools/lint_host_seams.py`, a gating test; a core that
+genuinely hosts nothing says so in a comment and says why.
+
+This is the same object lesson as the use-after-free in
+[collaboration](/concepts/platform/collaboration.md) §7.2: the handler is owned
+by the core, so what happens to the core happens to the handler.
+
 # Planned sections
 
 - **Notes** — **bare-bones tab BUILT (2026-08-03)**, its own dockable window

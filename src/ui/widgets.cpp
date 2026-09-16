@@ -352,8 +352,13 @@ void HormigaApp::adopt_image(const std::string& path, const std::string& stem) {
     po.mantle = kDataMantle;
     maiz::Scene data = maiz::project_scene(core, po);
     std::string name, url;
+    auto unquoted = [](std::string v) {
+        if (v.size() >= 2 && v.front() == 0x22 && v.back() == 0x22)
+            v = v.substr(1, v.size() - 2);
+        return v;
+    };
     for (const auto& n : data.nodes)
-        if (n.glyph == "image" && hormiga::temper::field_value(n, "path") == path) {
+        if (n.glyph == "image" && unquoted(hormiga::temper::field_value(n, "path")) == path) {
             name = n.name;
             url = hormiga::temper::field_value(n, "url");
             break;
@@ -371,7 +376,7 @@ void HormigaApp::adopt_image(const std::string& path, const std::string& stem) {
         name = base;
         for (int i = 2; data.find(name); ++i) name = base + "-" + std::to_string(i);
         if (dispatch_and_reproject("rune new image " + name).ok) {
-            dispatch_and_reproject("set " + name + " path " + json_arg(json_str(path)));
+            dispatch_and_reproject("set " + name + " path " + json_str(path));
             dispatch_and_reproject("tag " + name + " +type:image");
             toast("added image '" + name + "' to the gallery - taggable and queryable "
                   "like every other image");

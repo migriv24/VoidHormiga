@@ -169,7 +169,8 @@ std::string HormigaApp::render_preview(std::string_view lang) {
     auto image_at = [&](const std::string& path) -> std::string {
         if (path.empty()) return {};
         for (const auto& dn : data.nodes)
-            if (dn.glyph == "image" && field_value(dn, "path") == path) {
+            if (dn.glyph == "image" &&
+                resolve_file(field_value(dn, "path")) == resolve_file(path)) {
                 bool ok = false;
                 return email_src(dn, ok);
             }

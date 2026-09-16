@@ -841,8 +841,15 @@ void HormigaApp::allo_cmd(const std::string& c) {
 
 maiz::Result HormigaApp::dispatch_and_reproject(const std::string& cmd) {
     maiz::Result r = core.dispatch(cmd);
-    if (!r.ok) // upstream convention: surface res.ok=false as a toast
-        toast(r.text().empty() ? "failed: " + cmd : r.text(), true);
+    if (!r.ok) {
+        /* THE STRIP GETS IT TOO (2026-09-16). A toast is gone in four seconds and
+         * was the ONLY trace of a failure: the author hit "no host effect handler"
+         * and found nothing in the console to copy. The core's own log sink cannot
+         * cover this one - a core that lost its host seams lost the sink with them. */
+        const std::string why = r.text().empty() ? std::string("failed") : r.text();
+        toast(why == "failed" ? "failed: " + cmd : why, true);
+        log.push_back({"error", cmd.substr(0, cmd.find(0x20)), why + "  (" + cmd + ")"});
+    }
     reproject();
     if (r.ok && preview_live) { // live preview: any landed edit re-renders
         preview_dirty = true;   // (debounced in frame(); render is VIEW-side,

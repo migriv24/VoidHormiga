@@ -3791,3 +3791,85 @@ ready for everyday use.
 - **The Antfarm redesign**, which is the author's own next brief.
 - **`document` / `templates` and the rest of the Windows menu** are still single
   panels rather than windows in a tab.
+
+# The core that lost its host, and one picture that became three runes (2026-09-16)
+
+The author, with a screenshot of two red toasts: *"error when trying to build
+and publish. i was able to build a couple times, but then it stopped working.
+also for some reason this error message isn't in the console log? weird."* The
+toast read `no host effect handler for 'effect' (register one via
+vc_set_effect_handler)`.
+
+## One cause, and the second symptom hid the first
+
+`install_host()` puts **two** things on the core: the effect handler and the log
+sink. Four helpers wanted a core of their own to read a state document with --
+`referenced_files` (which runs when a database is bundled), `translation_report`,
+and two paths in `sync_ops` -- and each wrote `core = maiz::Core(state_json)`,
+assigning over the **running** core and then re-registering only the glyphs.
+
+From that moment every `effect render-site`, `deploy-site` and `host-online`
+answered the toast, for the rest of the process. *"a couple times, then it
+stopped"* is exactly the shape: nothing about publishing was broken, an
+unrelated action had removed the door. And the missing console line is the same
+sentence twice -- the core's warning goes to the sink, and the sink left with the
+handler, so the one place the author would have copied the error from was the one
+place it could no longer reach.
+
+All four now declare `maiz::Core probe(state_json)`, which is what their comments
+already claimed they did. The app's own core is still replaced in three places --
+new database, reload, boot -- and each one calls `install_host()`.
+
+**The guard**: `tools/lint_host_seams.py`, gating as `hormiga_host_seams`. Every
+`core = maiz::Core(` in `src/` must be followed by `install_host()` within a few
+lines. Run against the previous commit it names all four sites; run against this
+one it passes. A core that genuinely hosts nothing -- the CLI renders through a
+throwaway `HormigaApp` whose core answers no effects -- is exempted by a comment
+carrying `NO HOST SEAMS` that has to say why. There is exactly one.
+
+This is a class of bug worth a linter rather than a test: it compiles, every
+behavioural test passes, and it presents as an application that half works after
+something unrelated.
+
+## The other half of the console: one picture, three image runes
+
+The author's log had three `image` runes minted for a single file, each written
+with `set <rune> path '"assets/the-latino-entrepreneurship-instinct.webp"'` --
+the value carrying its own quotes.
+
+`json_arg(json_str(x))` is the pairing for **`setjson`**, whose argument has to
+survive the tokenizer as JSON. On **`set`**, which takes a plain value, the
+quotes are stored as part of the value. So `adopt_image` looked for a rune whose
+`path` was `assets/x.webp`, found `"assets/x.webp"` instead, concluded the
+picture was new, and minted another rune -- every time the same file was chosen.
+Three call sites were wrong this way (`adopt_image`, and the two `set`s that
+record a hosted image's URL and node).
+
+Fixed at the source, and tolerated at the seams for databases that already have
+them: `resolve_file` strips a surrounding pair of quotes at the one door every
+local file goes through, the gallery matcher unquotes before comparing, and the
+newsletter renderer compares *resolved paths* rather than strings. A quoted path
+that cannot be opened is a picture that is silently not there.
+
+## A failed command reaches the strip, not just a toast
+
+`dispatch_and_reproject` surfaced `!ok` as a toast and nothing else -- four
+seconds, then gone, which is why the author had nothing to paste. Failures now
+also push an `error` row into the console log with the command that caused them.
+The core's own sink cannot cover this case for the reason above, so the
+application says it itself.
+
+## Verification
+
+- The four sites, before and after, through the new linter: 4 named, then clean.
+- 26/26 gating tests pass, all linters pass, build clean with no warnings.
+- The one red test in the run is Void Maiz's `reduce_conformance` at its known
+  17/25 -- upstream's, documented in their README as a real gap and non-gating
+  there; it appears in our list only because the build directory now picks up
+  Maiz's subdirectory tests. Not ours to patch (rule 4).
+
+## Not done
+
+- **The author's database still holds the duplicate image runes** this made:
+  `the-latino-entrepreneurship-instinct`, `-4c4a3d10` and `-4c4a3d10-2`. They
+  resolve again now, but they are clutter, and nothing prunes them.

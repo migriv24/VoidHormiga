@@ -131,7 +131,7 @@ struct HormigaApp {
      * set this from argv[0]; empty falls back to the working directory. */
     std::filesystem::path ship_dir;
     void host_notice(const std::string& msg);                  // a shell's message, as a toast
-    std::filesystem::path resolve_file(const std::string& rel) const; // database folder, else ship_dir
+    std::filesystem::path resolve_file(const std::string& raw) const;  // database folder, else ship_dir
     ImFont* mono_font = nullptr;    // JetBrains Mono for the script IDE (set by the shell)
     /* MAY THIS FRONT-END OFFER AN UPDATE? Set by the DESKTOP shell and by
      * nothing else -- it is in the public section beside `ship_dir` because a
