@@ -302,7 +302,10 @@ std::string HormigaApp::ingest_image_rune(const std::string& src) {
  * `run_busy`, which runs it at the start of the next frame: it is a network
  * call, and dispatching mid-draw would invalidate the very node being drawn.
  */
+#include "domain/image_presets.hpp"
+
 #include <map>
+#include <sstream>
 
 namespace {
 struct ImgState {
@@ -346,8 +349,8 @@ std::string HormigaApp::upload_to_imgbb(const std::string& path, const std::stri
  * already, and is uploaded if the Antfarm can and it has no `url`. Synchronous
  * dispatches: call it between frames (`run_busy`) or from a control that returns
  * straight afterwards, never from inside a widget still drawing a node. */
-void HormigaApp::adopt_image(const std::string& path, const std::string& stem) {
-    if (path.empty()) return;
+std::string HormigaApp::adopt_image(const std::string& path, const std::string& stem) {
+    if (path.empty()) return {};
     maiz::ProjectOptions po;
     po.mantle = kDataMantle;
     maiz::Scene data = maiz::project_scene(core, po);
@@ -388,6 +391,35 @@ void HormigaApp::adopt_image(const std::string& path, const std::string& stem) {
     // online through whichever image host the Antfarm has, if one can answer now
     if (!name.empty() && url.empty() && image_host_ready()) host_image(name);
     g_img_state.erase(path);
+    return name;
+}
+
+/* + Flier, + Banner (domain/image_presets.hpp). The file first, because the
+ * preset means a picture; cancelling the dialog adds nothing. The work runs
+ * between frames: adopting can upload, and the button that asked is mid-draw. */
+void HormigaApp::new_image_preset(const hormiga::ImagePreset& p) {
+    if (!on_pick_file) {
+        toast("no file dialog on this front-end", true);
+        return;
+    }
+    const std::string picked = on_pick_file("");
+    if (picked.empty()) return;
+    const std::string managed = ingest_asset(picked);
+    if (managed.empty()) return;
+    const std::string stem = fs::path(picked).stem().string();
+    const std::string id = p.id, tags = p.tags;
+    run_busy(std::string("Adding the ") + p.id,
+             [this, managed, stem, id, tags] {
+                 const std::string name = adopt_image(managed, stem.empty() ? id : stem);
+                 if (name.empty()) return;
+                 std::vector<std::string> cmds;
+                 std::istringstream ts(tags);
+                 for (std::string t; ts >> t;) cmds.push_back("tag " + name + " +" + t);
+                 if (!cmds.empty()) dispatch_and_reproject(maiz::compile_commit(cmds));
+                 ed.selection = {name};
+                 kind_sel = "image";
+                 toast("added " + id + " '" + name + "' - tagged " + tags);
+             });
 }
 
 void HormigaApp::register_image_editors() {

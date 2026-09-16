@@ -41,6 +41,7 @@
 #include <vector>
 
 namespace hormiga {
+struct ImagePreset; // domain/image_presets.hpp
 
 /* ── THE LANGUAGES THIS SITE CARRIES (2026-08-20) ────────────────────────────
  *
@@ -1036,7 +1037,8 @@ private:
     void register_hosting_faces();                          // publish/panel.cpp
     void draw_hosting_panel();                              // top of the Antfarm inspector
     std::string doc_batch(const std::vector<std::string>& cmds); // `doc ...` lines, one undo
-    void adopt_image(const std::string& path, const std::string& stem); // rune + upload
+    std::string adopt_image(const std::string& path, const std::string& stem); // rune + upload; its name
+    void new_image_preset(const hormiga::ImagePreset& p); // + Flier: pick, adopt, tag (image_presets.hpp)
 
     // ── the credential vault (.miga v2; okf/concepts/platform/security.md) ───────────
     hormiga::Vault vault;

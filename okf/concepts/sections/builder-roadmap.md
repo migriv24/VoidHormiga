@@ -505,6 +505,14 @@ presets and screenshotting each. GUI-only parts are marked 🔨.
   - Every image brought in becomes an `image` rune, and uploads itself when an
     `hol_imgbb` node and a key exist.
   - Built and compiled. The upload has not been run against ImgBB.
+  - 🔨 **Image presets (2026-09-16).** The Data tab's Images list opens with
+    **+ Flier** and **+ Banner** above **+ Blank image**; the "+ New..." menu
+    lists them under Image. A preset picks the file first (cancelling adds
+    nothing), goes through `adopt_image`, and adds its tags: `flier` (what a
+    flier `image_grid` queries) or `banner`. A picture already in the gallery
+    gains the tags instead of a second rune. Presets are rows in
+    `domain/image_presets.hpp`; more are one line each. Compiled, not yet
+    clicked in a window.
 - ✅ **6. Side-by-side images in the preview.** The cause was #5: a block's image
   had no rune, so it had no url, and the email could draw nothing.
   - The preview now draws local-only images from their files, outlined in red,

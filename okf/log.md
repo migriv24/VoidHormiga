@@ -4001,3 +4001,45 @@ nlohmann refuses non-UTF-8 and a user folder with an accent is ordinary.
   paths still resolve database folder, then program folder (`resolve_file`),
   because putting a folder of keys and backups ahead of an organization's own
   `assets/` would let it shadow them. Widening it is the author's call.
+
+# Image presets: + Flier, + Banner (2026-09-16, fourth entry)
+
+The author: *"for the images, instead of just 'add new image' there should be a
+preset like 'add flier' or 'add banner option' or something (we can think of
+others latter)."*
+
+**A preset is an image rune with its purpose already said**, not a new glyph. A
+flier is still an `image` -- same gallery, same hosting, same publishing. What
+the preset adds is the tag a block looks for, so the picture turns up where it
+is meant to without a person knowing the query: the seed's flier grid is
+`type:image AND flier`, and Void Maiz's filter grammar matches a bare word
+against a rune's tags (and its name), so `+flier` is what makes it appear.
+
+- `domain/image_presets.hpp`: `{id, label, tags, hint}` rows. Flier (`flier`),
+  Banner (`banner`). The next preset is one row.
+- The Data tab's Images list: **+ Flier** and **+ Banner** side by side, then
+  **+ Blank image** (the old button, renamed so the difference is visible). The
+  "+ New..." menu lists the presets under Image. Each has its hint as a tooltip.
+- `new_image_preset` picks the **file first** -- "add a flier" means a picture,
+  so cancelling adds nothing -- ingests it, then between frames (`run_busy`:
+  adopting can upload, and the button is mid-draw) runs `adopt_image`, adds the
+  preset's tags as one undo step, selects the rune and toasts what it did.
+- `adopt_image` now returns the rune's name. It already deduplicated by content,
+  so choosing a picture that is already in the gallery tags that rune rather
+  than minting a second.
+
+## Verification
+
+- Compiles with no warnings; the GUI links (to a throwaway name -- the app was
+  open); 26/26 gating tests, every linter, 102 files within budget.
+- That `+flier` satisfies `type:image AND flier` is from Void Maiz's documented
+  grammar (`node_matches`: tags + name + `glyph:`), not from a render run; the
+  CLI's `find` verb turned out not to take the block query language, so it could
+  not stand in.
+
+## Not done
+
+- **Not clicked in a window.**
+- **Banner has no consumer that asks for it yet.** A Hero block's banner field
+  uses the gallery picker, which does not sort `banner`-tagged images first.
+  That is the natural next step, and the author's call.

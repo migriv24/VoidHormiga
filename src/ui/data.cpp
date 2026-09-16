@@ -8,6 +8,7 @@
  * no write path in this file that does not go through one.
  */
 #include "app/app_internal.hpp"
+#include "domain/image_presets.hpp"
 #include "domain/submission.hpp"   // ONE gate for every proposed transcript
 #include "json.hpp" // one typed-form field decodes a setjson value
 
@@ -268,16 +269,39 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
                 /* An icon per kind (2026-09-02). This menu is a list of
                  * words of similar length; the glyph is what a person actually
                  * recognises when they open it for the hundredth time. */
+            {
                 if (ImGui::MenuItem(
                         (std::string(glyph_icon(e.glyph)) + "  " + e.label)
                             .c_str()))
                     new_rune(e.glyph);
+                if (e.glyph != "image") continue;
+                for (const auto& p : hormiga::kImagePresets) { // + Flier, + Banner
+                    if (ImGui::MenuItem((std::string("      ") + p.label + "...").c_str()))
+                        new_image_preset(p);
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", p.hint);
+                }
+            }
             ImGui::EndPopup();
         }
     } else {
         std::string lbl = "+ New ";
         for (const auto& e : palette.entries)
             if (e.glyph == kind_sel) lbl += e.label;
+        /* IMAGES COME WITH PURPOSES (2026-09-16): a row of presets above the
+         * blank one, each picking a file and tagging it for where it goes. */
+        if (kind_sel == "image") {
+            const int np = (int)(sizeof hormiga::kImagePresets / sizeof *hormiga::kImagePresets);
+            const float gap = ImGui::GetStyle().ItemSpacing.x;
+            const float bw = (ImGui::GetContentRegionAvail().x - gap * (np - 1)) / np;
+            for (int i = 0; i < np; ++i) {
+                const auto& p = hormiga::kImagePresets[i];
+                if (i) ImGui::SameLine();
+                if (ImGui::Button((std::string("+ ") + p.label).c_str(), ImVec2(bw, 0)))
+                    new_image_preset(p);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", p.hint);
+            }
+            lbl = "+ Blank image";
+        }
         if (ImGui::Button(lbl.c_str(), ImVec2(-1, 0))) new_rune(kind_sel);
     }
     ImGui::Separator();
