@@ -2573,6 +2573,7 @@ void HormigaApp::frame() {
         toast("sync applied - the merged database is open; check the log for "
               "conflicts");
     }
+    LanRuntime::apply_incoming(*this); // members' changes, merged by the replica (lan_sync.cpp)
 
     // a DEFERRED heavy op runs now — the "working…" overlay painted last frame
     if (busy_action) {

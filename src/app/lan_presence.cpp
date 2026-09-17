@@ -68,6 +68,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
         if (rt.beacon) rt.beacon->stop();
         rt.beacon.reset();
         rt.present.clear();
+        rt.listening = false;  // the member-sync listener stops with presence
         return;
     }
 
@@ -87,6 +88,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
         me.section = app.section >= 0 && app.section < 4 ? kSections[app.section] : "";
         me.mantle = app.scene.mantle;
         me.selection = app.ed.selection;
+        me.version = rt.shown_version;  // members compare this before connecting (§3b)
         sealed = hormiga::lan::seal_activity(me, rt.room_key);
         room = hormiga::lan::room_id(rt.room_key);
     }
@@ -120,6 +122,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
             hormiga::lan::Activity a;
             if (!hormiga::lan::open_activity(parts.sealed, rt.room_key, a) || a.fingerprint == fp) continue;
             a.seen = peer.last_seen;
+            a.address = peer.address;
             rt.present[a.fingerprint] = a;
         }
     }
@@ -155,5 +158,6 @@ void LanRuntime::tick(HormigaApp& app, double now) {
     people.push_back({fp, rt.me.color, joined_of(fp)});
     for (const auto& [k, a] : rt.present) people.push_back({k, a.color, joined_of(k)});
     rt.shown_color = hormiga::collab::assign_colors(people);
+    sync_tick(app, now, presence);
 }
 

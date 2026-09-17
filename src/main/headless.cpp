@@ -720,14 +720,18 @@ maiz::HostApp build_app() {
             }
             return std::to_string(worst);
         }
-        if (op == "profile" || op == "lan-offers" || op == "lan-share" || op == "lan-join") {
+        if (op == "profile" || op == "lan-offers" || op == "lan-share" || op == "lan-join" ||
+            op == "lan-stay") {
             // LAN sharing: the windows' own runtime (app/lan_cli.cpp; lan-sharing.md)
             if (!g_core) return {};
             HormigaApp app;
             wire(app);
             std::string v;
-            return LanRuntime::cli(app, op, effect_args(args), g_core->export_state(), v) ? std::string()
-                                                                                           : json_str(v);
+            const int rc = LanRuntime::cli(app, op, effect_args(args), g_core->export_state(), v);
+            // `lan-stay` hands back the merged document; `lan-share` hands back the
+            // one carrying this database's new sync id, which must persist
+            if ((op == "lan-stay" || op == "lan-share") && rc == 0) g_pending_state = v, v = "ok";
+            return rc ? std::string() : json_str(v);
         }
         if (op == "check-host") {
             /* The smallest REAL reads a publish performs, against the publish
@@ -1084,6 +1088,9 @@ maiz::HostApp build_app() {
         {"lan-share", "Share this database until someone joins. Args: [seconds] [approve].",
          false, "announces the database's name here; with `approve` SENDS the database, "
          "its files and the Antfarm's keys, sealed, to whoever asks - check their code"},
+        {"lan-stay", "Stay present and keep in sync with the members here. Args: [seconds].",
+         false, "announces presence sealed to the room and exchanges this database with members "
+         "who are present; writes their changes into it"},
         {"lan-join", "Join a shared database. Args: <address> <port> <folder>.", false,
          "sends your username, colour, picture and public key, and writes what the "
          "host sends into the folder - check the host shows the same code"},
@@ -1136,22 +1143,6 @@ maiz::HostApp build_app() {
          true,
          "sends a small announcement on the local network only (never routed "
          "off this subnet) and opens no connection"},
-        {"lan-serve",
-         "Wait for another device on this network to connect, then exchange "
-         "and merge. Args: [seconds] [apply]. Compare the six-character code "
-         "with the other screen before trusting it.",
-         false,
-         "accepts one encrypted connection from this network and sends this "
-         "database's contents to whoever completes the handshake - compare the "
-         "code on both screens first. Without `apply` the merge is only reported"},
-        {"lan-sync",
-         "Connect to another device on this network, exchange and merge. "
-         "Args: <host> [port] [apply]. Compare the six-character code with the "
-         "other screen before trusting it.",
-         false,
-         "sends this database's contents to that address over an encrypted "
-         "channel - compare the code on both screens first. Without `apply` the "
-         "merge is only reported"},
         {"read-flier",
          "Propose `kw:` tags and check the printed date for one image rune, "
          "using the recognizer named in `config tools.image_text`. Args: "

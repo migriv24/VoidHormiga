@@ -127,6 +127,17 @@ void LanRuntime::draw_presence_strip(HormigaApp& app) {
         ImGui::SameLine(0, 4);
         ++shown;
     }
+    {
+        // a sync in flight shows as a small bar beside the people it is with
+        std::lock_guard<std::mutex> lk(rt.mu);
+        for (const auto& [fp, pr] : rt.progress) {
+            ImGui::SetNextItemWidth(60);
+            ImGui::ProgressBar(pr.total > 0 ? (float)pr.done / (float)pr.total : 0.0f, ImVec2(60, size * 0.5f), "");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("syncing with %s", pr.user.c_str());
+            ImGui::SameLine(0, 6);
+            break;
+        }
+    }
     const ImVec2 p = ImGui::GetCursorScreenPos();
     draw_avatar(app, hormiga::profile::avatar_path(rt.me).string(), rt.me.username.empty() ? "?" : rt.me.username,
                 color_of(rt, fingerprint(rt)) == "#888888" ? rt.me.color : color_of(rt, fingerprint(rt)), p.x,
@@ -346,6 +357,8 @@ void LanRuntime::draw_share(HormigaApp& app) {
             for (const auto& n : rt.plan.notes) ImGui::BulletText("%s", n.c_str());
         }
 
+        draw_sync_section(app);
+
         // ── members ──────────────────────────────────────────────────────────
         ImGui::SeparatorText(ICON_FA_USERS "  Members");
         if (rt.member_rows.empty()) {
@@ -458,4 +471,73 @@ void LanRuntime::draw_discover(HormigaApp& app) {
         if (!error.empty()) ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.35f, 1), "%s", error.c_str());
     }
     ImGui::End();
+}
+
+/* ── keeping in sync (lan-sharing.md §3b) ───────────────────────────────────── */
+
+void LanRuntime::draw_sync_section(HormigaApp& app) {
+    LanRuntime& rt = of(app);
+    ImGui::SeparatorText(ICON_FA_ROTATE "  Keeping in sync");
+    if (!rt.replica) {
+        ImGui::TextDisabled("Starts once this database is shared or joined: members who are on the "
+                            "same network then keep it in sync on their own.");
+        return;
+    }
+    ImGui::TextDisabled("Members who are here sync automatically. Private notes stay on this computer.");
+    if (!rt.synced_note.empty()) ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.5f, 1), "%s", rt.synced_note.c_str());
+
+    std::map<std::string, Progress> progress;
+    {
+        std::lock_guard<std::mutex> lk(rt.mu);
+        progress = rt.progress;
+    }
+    for (const auto& [fp, p] : progress) {
+        ImGui::PushID(fp.c_str());
+        char label[96];
+        if (p.total > 0)
+            std::snprintf(label, sizeof label, "%s %s: %s of %s", p.sending ? "sending to" : "receiving from",
+                          p.user.c_str(), human(p.done).c_str(), human(p.total).c_str());
+        else
+            std::snprintf(label, sizeof label, "connecting to %s...", p.user.c_str());
+        ImGui::ProgressBar(p.total > 0 ? (float)p.done / (float)p.total : 0.0f, ImVec2(-1, 0), label);
+        ImGui::PopID();
+    }
+
+    if (rt.conflicts.empty()) {
+        ImGui::TextDisabled("No conflicts.");
+        return;
+    }
+    ImGui::TextColored(ImVec4(0.95f, 0.7f, 0.3f, 1), "%d conflict(s) - nothing was decided for you",
+                       (int)rt.conflicts.size());
+    auto name_of = [&app](const std::string& id) {
+        for (const auto& n : app.scene.nodes)
+            if (n.id == id) return n.name;
+        return id.empty() ? std::string("(the mantle)") : id;
+    };
+    int i = 0;
+    for (const auto& c : rt.conflicts) {
+        ImGui::PushID(i++);
+        const std::string what = !c.glyph.empty() ? "type " + c.glyph : c.mantle + " / " + name_of(c.rune);
+        if (c.kind == "deleted_while_edited") {
+            ImGui::TextWrapped("%s: one member deleted it while another was editing it.", what.c_str());
+            for (std::size_t s = 0; s < c.sides.size(); ++s) {
+                if (s) ImGui::SameLine();
+                const std::string label = c.sides[s] == "kept" ? "Keep it" : "Delete it";
+                if (ImGui::SmallButton(label.c_str())) {
+                    const std::string hash = c.hash;
+                    app.run_busy("Settling the conflict", [&app, hash, s] { LanRuntime::resolve_conflict(app, hash, s); });
+                }
+            }
+        } else {
+            ImGui::TextWrapped("%s, %s: two different edits.", what.c_str(), c.field.c_str());
+            for (std::size_t s = 0; s < c.sides.size(); ++s) {
+                std::string shown = c.sides[s].size() > 60 ? c.sides[s].substr(0, 57) + "..." : c.sides[s];
+                if (ImGui::SmallButton(("Use: " + shown + "##" + std::to_string(s)).c_str())) {
+                    const std::string hash = c.hash;
+                    app.run_busy("Settling the conflict", [&app, hash, s] { LanRuntime::resolve_conflict(app, hash, s); });
+                }
+            }
+        }
+        ImGui::PopID();
+    }
 }

@@ -36,6 +36,10 @@ using hormiga::lan::Request;
 using json = nlohmann::json;
 using RegisterFn = std::function<void(maiz::Core&)>;
 
+/* A joined database arrives with the host's replica document under this name; the
+ * joiner's first replica starts from it and deletes it (lan_sync.cpp). */
+inline constexpr const char* kSyncSeedFile = "sync-start.replica.json";
+
 inline std::string slurp(const fs::path& p) {
     std::ifstream in(p, std::ios::binary);
     return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());

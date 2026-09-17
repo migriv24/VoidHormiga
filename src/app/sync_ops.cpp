@@ -70,34 +70,6 @@ std::string state_from(const std::string& text) {
     return {};
 }
 
-std::string iso_today() {
-    const std::time_t t = std::time(nullptr);
-    std::tm tm{};
-#ifdef _WIN32
-    gmtime_s(&tm, &t);
-#else
-    gmtime_r(&t, &tm);
-#endif
-    char buf[16];
-    std::strftime(buf, sizeof buf, "%Y-%m-%d", &tm);
-    return buf;
-}
-
-std::string b64(const std::string& raw) {
-    static const char* a = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string o;
-    for (std::size_t i = 0; i < raw.size(); i += 3) {
-        const unsigned n = ((unsigned char)raw[i] << 16) |
-                           (i + 1 < raw.size() ? (unsigned char)raw[i + 1] << 8 : 0) |
-                           (i + 2 < raw.size() ? (unsigned char)raw[i + 2] : 0);
-        o.push_back(a[(n >> 18) & 63]);
-        o.push_back(a[(n >> 12) & 63]);
-        o.push_back(i + 1 < raw.size() ? a[(n >> 6) & 63] : '=');
-        o.push_back(i + 2 < raw.size() ? a[n & 63] : '=');
-    }
-    return o;
-}
-
 /* Hand a merged document to whichever front-end we are running in.
  *
  * Refusing rather than silently doing nothing is the point: an application that
@@ -221,100 +193,6 @@ hormiga::sync::KeyPair device_keys(const fs::path& base_dir, const std::string& 
     std::ofstream out(kf, std::ios::binary | std::ios::trunc);
     out << kp.public_key << kp.secret_key;
     return kp;
-}
-
-/* Trust on first use, then PINNED. A known peer arriving with a different
- * public key is a refusal, not a prompt: re-prompting on every connection is
- * how a person learns to click yes. */
-const maiz::SceneNode* known_peer(const maiz::Scene& farm, const std::string& fingerprint) {
-    for (const auto& n : farm.nodes)
-        if (n.glyph == "peer" && field_value(n, "fingerprint") == fingerprint) return &n;
-    return nullptr;
-}
-
-/* The half of a LAN sync that is the same whether we dialled or were dialled.
- *
- * FILE-LOCAL RATHER THAN A METHOD, deliberately: its parameter is a
- * `sync::Session`, and a member with that signature would pull `sync/peer.hpp`
- * -- winsock and all -- into `app.hpp`, which most of the tree includes. Same
- * reasoning `push.cpp` records for keeping its store-config resolver out of the
- * header, and the same one `check_layering.py` enforces at the folder level. */
-int finish_exchange(maiz::Core& core, Log& log, const std::string& state_name,
-                    hormiga::sync::Session& s, const std::string& peer_pk,
-                    const std::string& sas, bool apply, const std::string& mine,
-                    const std::string& outgoing, std::string& merged_version, std::string& merged_state,
-                    std::vector<std::string>& peer_cmds) {
-    const std::string fp = hormiga::sync::fingerprint_of(peer_pk);
-
-    maiz::ProjectOptions o;
-    o.mantle = kAntfarmMantle;
-    const maiz::Scene farm = maiz::project_scene(core, o);
-    const bool first_time = (known_peer(farm, fp) == nullptr);
-
-    /* THE SHORT AUTHENTICATION STRING, BEFORE ANY DATA CROSSES. Two people in
-     * one room read six characters at each other; an attacker who substituted
-     * keys produces two different strings and cannot make them agree. This is
-     * not a pairing code -- a value that travelled over the attacked channel
-     * could not authenticate that channel. */
-    if (first_time) {
-        log.push_back({"warn", "sync",
-                       "NEW DEVICE. Compare this code with the other screen - they must "
-                       "match exactly:   " + sas});
-        log.push_back({"info", "sync", "if they differ, stop now: someone is between you."});
-    } else {
-        log.push_back({"info", "sync",
-                       "known device " + fp.substr(0, 8) + " (code " + sas + ")"});
-    }
-
-    std::string err;
-    /* `outgoing` is `mine` without the private runes (lan-sharing.md §7): the
-     * peer never receives them, and the merge below still keeps them here. */
-    if (!s.send(outgoing, &err)) {
-        log.push_back({"error", "sync", "send: " + err});
-        return 1;
-    }
-    std::string theirs;
-    if (!s.receive(theirs, &err)) {
-        log.push_back({"error", "sync", "receive: " + err});
-        return 1;
-    }
-    s.close();
-
-    const auto r = hormiga::sync::merge_states(mine, theirs, "local:" + state_name,
-                                               "peer:" + fp);
-    if (!r.ok) {
-        log.push_back({"error", "sync", "merge refused: " + r.error});
-        return 1;
-    }
-    report(log, r, "the peer", apply);
-    merged_version = r.version_merged;
-    if (!apply) return 0;
-
-    /* REMEMBERING THE PEER IS A COMMAND, like every other fact about the world:
-     * logged, replayable, and in the `.miga` when the data moves.
-     *
-     * RETURNED RATHER THAN DISPATCHED HERE, and the first version got this
-     * wrong in a way only a real two-database run showed: dispatching onto
-     * `core` writes into the PRE-MERGE document, and the merged document then
-     * replaces it, so the peer was never remembered and every later sync
-     * re-prompted the pairing code as though the device were new. Trust on
-     * first use is worthless if the "first use" is every time. The caller
-     * replays these onto the MERGED document instead. */
-    if (first_time) {
-        const std::string name = "peer-" + fp.substr(0, 8);
-        peer_cmds.push_back(std::string("use ") + kAntfarmMantle);
-        peer_cmds.push_back("rune new peer " + name);
-        peer_cmds.push_back("set " + name + " fingerprint " + fp);
-        peer_cmds.push_back("set " + name + " public_key " + b64(peer_pk));
-        peer_cmds.push_back("set " + name + " sas " + sas);
-        peer_cmds.push_back("set " + name + " last_seen " + iso_today());
-        peer_cmds.push_back("set " + name + " last_version " + r.version_remote);
-    }
-    /* Even when there is nothing to merge, a NEW peer is worth remembering --
-     * otherwise two devices that are already in sync can never get past the
-     * pairing prompt. `merged_state` is set so the caller has something to
-     * replay the peer commands onto. */
-    return take(merged_state, log, r.merged_state, r.version_merged);
 }
 
 }  // namespace
@@ -449,75 +327,22 @@ HormigaApp::SyncReport HormigaApp::sync_op(std::string_view op,
         return out;
     }
 
-    hormiga::sync::Session s;
-    std::string peer_pk, sas;
-    if (op == "lan-serve") {
-        const int seconds = number(0, 60);
-        log.push_back({"info", "sync",
-                       "waiting up to " + std::to_string(seconds) + "s for a peer..."});
-        if (!s.accept_one(hormiga::sync::kStreamPortDefault, keys, peer_pk, sas,
-                          seconds * 1000, &err)) {
-            log.push_back({"error", "sync", err});
-            out.rc = 1;
-            out.lines = std::move(log);
-            return out;
-        }
-    } else if (op == "lan-sync") {
-        const std::string host = arg(0);
-        if (host.empty()) {
-            log.push_back({"error", "sync", "usage: effect lan-sync <host> [port] [apply]"});
-            out.rc = 1;
-            out.lines = std::move(log);
-            return out;
-        }
-        const int port = number(1, hormiga::sync::kStreamPortDefault);
-        if (!s.connect(host, (std::uint16_t)port, keys, peer_pk, sas, &err)) {
-            log.push_back({"error", "sync", err});
-            out.rc = 1;
-            out.lines = std::move(log);
-            return out;
-        }
+    /* `lan-serve` AND `lan-sync` ARE RETIRED (2026-09-17). They enriched both
+     * current states on every exchange, which is precisely what resurrects
+     * deletions -- and Void Palabra's point was that ONE peer still doing it
+     * brings deletions back for everyone it syncs with. Members of a shared
+     * database now keep in sync automatically through a replica that survives
+     * between exchanges (app/lan_sync.cpp, lan-sharing.md §3b). A file from
+     * elsewhere is still merged once with `sync-merge`. */
+    if (op == "lan-serve" || op == "lan-sync") {
+        log.push_back({"error", "sync",
+                       "retired: members of a shared database sync automatically now "
+                       "(Share database > Share over local network; `effect lan-stay` in the "
+                       "CLI). To fold in a copy from a file, use `effect sync-merge`."});
+        out.rc = 1;
     } else {
         log.push_back({"error", "sync", "unknown sync verb: " + std::string(op)});
         out.rc = 1;
-        out.lines = std::move(log);
-        return out;
-    }
-
-    std::vector<std::string> peer_cmds;
-    int withheld = 0;
-    const std::string outgoing = LanRuntime::strip_private(
-        *this, state_json, hormiga::collab::share_settings(maiz::project_scene(probe, [] {
-            maiz::ProjectOptions o;
-            o.mantle = kAntfarmMantle;
-            return o;
-        }())), &withheld);
-    if (withheld)
-        log.push_back({"info", "sync", std::to_string(withheld) + " private rune(s) stay on this device"});
-    out.rc = finish_exchange(probe, log, state_name, s, peer_pk, sas, apply, state_json, outgoing,
-                             out.value, out.merged_state, peer_cmds);
-
-    /* THE PEER RUNE GOES ONTO THE MERGED DOCUMENT, not the pre-merge one. This
-     * is also the only place with `on_register_glyphs` in reach, which is why
-     * the replay lives here rather than inside the exchange. */
-    if (out.rc == 0 && !out.merged_state.empty() && !peer_cmds.empty()) {
-        probe = maiz::Core(out.merged_state);
-        if (on_register_glyphs) on_register_glyphs(probe);
-        /* `use <mantle>` on a mantle that is not there leaves the ACTIVE mantle
-         * alone, so the peer record would be written into whatever was active --
-         * measured on a fixture with no Antfarm: a `peer` rune landed among the
-         * contacts, where a volunteer would see a device fingerprint sitting in
-         * the address book. Every real database has this mantle; a fixture may
-         * not, and "every real database has it" is exactly the assumption that
-         * is worth three lines to not make. */
-        if (out.merged_state.find("\"name\":\"" + std::string(kAntfarmMantle) + "\"") ==
-            std::string::npos)
-            probe.dispatch(std::string("mantle new ") + kAntfarmMantle);
-        for (const auto& c : peer_cmds) probe.dispatch(c);
-        out.merged_state = probe.export_state();
-        out.value = hormiga::sync::version_name(out.merged_state);
-        log.push_back({"info", "sync", "remembered this device; the pairing code will "
-                                       "not be asked for again unless its key changes"});
     }
     out.lines = std::move(log);
     return out;

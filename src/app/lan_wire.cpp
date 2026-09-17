@@ -62,6 +62,19 @@ std::string new_room_key() {
     return k;
 }
 
+std::string random_id(const char* prefix) {
+    if (sodium_init() < 0) return {};
+    unsigned char b[16];
+    randombytes_buf(b, sizeof b);
+    static const char* d = "0123456789abcdef";
+    std::string o = prefix;
+    for (unsigned char c : b) {
+        o += d[c >> 4];
+        o += d[c & 15];
+    }
+    return o;
+}
+
 std::string room_id(const std::string& room_key) {
     if (sodium_init() < 0 || room_key.size() != 32) return {};
     unsigned char h[6];
@@ -132,7 +145,8 @@ bool read_extra(const std::string& extra, ExtraParts& out) {
 
 std::string seal_activity(const Activity& a, const std::string& room_key) {
     nlohmann::json j = {{"f", a.fingerprint}, {"u", clip(a.user, 40)}, {"c", clip(a.color, 7)},
-                        {"t", clip(a.section, 24)}, {"m", clip(a.mantle, 48)}};
+                        {"t", clip(a.section, 24)}, {"m", clip(a.mantle, 48)},
+                        {"v", clip(a.version, 80)}};
     nlohmann::json sel = nlohmann::json::array();
     for (std::size_t i = 0; i < a.selection.size() && i < 6; ++i) sel.push_back(clip(a.selection[i], 48));
     j["sel"] = sel;
@@ -152,6 +166,7 @@ bool open_activity(const std::string& sealed, const std::string& room_key, Activ
     a.color = str(j, "c");
     a.section = str(j, "t");
     a.mantle = str(j, "m");
+    a.version = str(j, "v");
     if (j.contains("sel") && j["sel"].is_array())
         for (const auto& s : j["sel"])
             if (s.is_string() && a.selection.size() < 6) a.selection.push_back(s.get<std::string>());

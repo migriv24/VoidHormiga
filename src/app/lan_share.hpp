@@ -23,6 +23,7 @@
 #include "app/lan_wire.hpp"
 #include "domain/collab.hpp"
 #include "platform/profile.hpp"
+#include "sync/replica.hpp"
 
 #include <array>
 #include <atomic>
@@ -30,6 +31,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -114,6 +116,29 @@ struct LanRuntime {
     std::string room_for;  // which database `room_key` was read for
     bool finishing = false;  // finish_join is queued
 
+    // ── keeping members in sync (lan-sharing.md §3b; Palabra's replica) ──────
+    struct Progress {
+        std::string user;
+        long long done = 0, total = 0;
+        bool sending = false;
+    };
+    std::unique_ptr<hormiga::sync::SharedReplica> replica;
+    std::string replica_for;        // the database id it belongs to
+    std::string shown_version;      // what it shows
+    std::size_t observed_hash = 0;  // of the state last observed, so an idle tick is free
+    double prepared_at = -100.0;
+    std::atomic<bool> listening{false};
+    std::vector<hormiga::sync::ReplicaConflict> conflicts;
+    std::map<std::string, double> exchange_started;  // fingerprint -> when (GUI thread)
+    std::string synced_note;                         // "synced with X at 14:02"
+    bool headless = false;                           // the CLI: no working-copy save
+    std::string cli_state;                           // the CLI: what to write back
+    // under `mu`:
+    std::string outgoing_doc;                        // the latest document to hand a member
+    std::set<std::string> member_fps;                // who may connect to sync
+    std::vector<std::pair<std::string, std::string>> incoming;  // (user, document)
+    std::map<std::string, Progress> progress;        // fingerprint -> transfer
+
     ~LanRuntime();
 
     /* ── operations: GUI thread (or the CLI's only thread) ─────────────────── */
@@ -140,8 +165,21 @@ struct LanRuntime {
     static void tick(HormigaApp& app, double now);
 
     /* Runes removed from a document before it leaves this device. */
+    /* `antfarm_too`: member sync also leaves the Antfarm out -- wiring and keys come
+     * from the host (lan-sharing.md §3a), they are not merged. */
     static std::string strip_private(HormigaApp& app, const std::string& state_json,
-                                     const hormiga::collab::ShareSettings& s, int* withheld);
+                                     const hormiga::collab::ShareSettings& s, int* withheld,
+                                     bool antfarm_too = false);
+
+    /* Member sync (app/lan_sync.cpp). */
+    static std::string database_id(HormigaApp& app, bool create);
+    static bool sync_prepare(HormigaApp& app, double now, bool force);
+    static void sync_tick(HormigaApp& app, double now, bool presence);
+    static void apply_incoming(HormigaApp& app);  // start of a frame
+    static bool resolve_conflict(HormigaApp& app, const std::string& hash, std::size_t side);
+    static std::set<std::pair<std::string, std::string>> private_keys(HormigaApp& app);
+    static void swap_state(HormigaApp& app, const std::string& state);
+    static void draw_sync_section(HormigaApp& app);
 
     /* The members registry (lan-sharing.md §4), its own small database. */
     static bool add_member(HormigaApp& app, const std::filesystem::path& file,

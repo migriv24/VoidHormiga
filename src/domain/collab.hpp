@@ -60,7 +60,8 @@ inline constexpr const char* kPalette[12] = {"#e0555a", "#e8903a", "#d6b52e", "#
                                              "#2fa4a0", "#3c8fd6", "#6a6ee0", "#9a5bd6",
                                              "#d65bb0", "#8a6a4a", "#5a7a8a", "#c0506e"};
 
-inline constexpr int kShareStreamPort = 47733;  // one above the sync stream's
+inline constexpr int kShareStreamPort = 47733;  // joining (lan-sharing.md §2)
+inline constexpr int kMemberSyncPort = 47734;   // members keeping in sync (§3b)
 
 /* ── the Antfarm's answers, read once ───────────────────────────────────────── */
 

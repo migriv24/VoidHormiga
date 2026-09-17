@@ -42,6 +42,35 @@ int LanRuntime::cli(HormigaApp& app, std::string_view op, const std::vector<std:
     if (app.on_register_glyphs) app.on_register_glyphs(app.core);
     app.reproject();
 
+    if (op == "lan-stay") {
+        /* Present and in sync for a while (lan-sharing.md §3b): the same tick the
+         * window runs, and the merged document handed back for the CLI to write. */
+        rt.headless = true;
+        const double end = now() + seconds(0, 30);
+        std::string last;
+        while (now() < end) {
+            tick(app, now());
+            apply_incoming(app);
+            {
+                std::lock_guard<std::mutex> lk(rt.mu);
+                for (const auto& [lvl, msg] : rt.thread_log) std::cerr << "  [" << lvl << "] " << msg << "\n";
+                rt.thread_log.clear();
+            }
+            for (const auto& e : app.log)
+                if (e.op == "sync") std::cerr << "  [" << e.level << "] sync: " << e.msg << "\n";
+            app.log.clear();
+            if (rt.synced_note != last) std::cerr << "  " << (last = rt.synced_note) << "\n";
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+        std::cerr << "  present: " << rt.present.size() << ", conflicts: " << rt.conflicts.size() << "\n";
+        for (const auto& c : rt.conflicts) {
+            std::cerr << "    conflict " << c.kind << " at " << c.mantle << "/" << c.rune << " field " << c.field;
+            for (const auto& side : c.sides) std::cerr << " [" << side << "]";
+            std::cerr << "\n";
+        }
+        value = app.core.export_state();
+        return 0;
+    }
     if (op == "lan-offers") {
         rt.discovering = true;
         const double end = now() + seconds(0, 5);
@@ -92,7 +121,8 @@ int LanRuntime::cli(HormigaApp& app, std::string_view op, const std::vector<std:
             std::this_thread::sleep_for(std::chrono::milliseconds(150));
         }
         stop_sharing(app);
-        value = last;
+        std::cerr << "  " << last << "\n";
+        value = app.core.export_state();  // carries this database's sync id
         return last.find(" joined - ") != std::string::npos ? 0 : 1;
     }
     if (op == "lan-join") {

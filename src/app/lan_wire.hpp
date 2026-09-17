@@ -38,8 +38,14 @@ struct Offer {
 struct Activity {
     std::string fingerprint, user, color, section, mantle;
     std::vector<std::string> selection;
+    std::string version;   // what this member's replica shows (lan-sharing.md §3b)
+    std::string address;   // filled in by the receiver, from the datagram
     std::int64_t seen = 0;
 };
+
+/* 16 random bytes as hex after a prefix: a replica id (unique per device and per
+ * database, which is what Void Palabra requires of one). */
+std::string random_id(const char* prefix);
 
 std::string b64(const std::string& raw);
 std::string unb64(const std::string& text);  // "" on malformed input

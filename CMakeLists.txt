@@ -95,6 +95,8 @@ add_library(voidpalabra STATIC
   ${VOIDPALABRA_ROOT}/src/crdt/document.cpp
   ${VOIDPALABRA_ROOT}/src/crdt/conflict.cpp
   ${VOIDPALABRA_ROOT}/src/crdt/sequence.cpp
+  ${VOIDPALABRA_ROOT}/src/crdt/validate.cpp   # 2026-09-16: validate what a peer sends
+  ${VOIDPALABRA_ROOT}/src/crdt/replica.cpp    # 2026-09-16: deletions that propagate
   ${VOIDPALABRA_ROOT}/src/store/chunk.cpp
   ${VOIDPALABRA_ROOT}/src/store/blocks.cpp
   ${VOIDPALABRA_ROOT}/src/store/container.cpp
@@ -112,7 +114,7 @@ target_compile_definitions(voidpalabra PRIVATE CJSON_HIDE_SYMBOLS)
 # Their tree, their warnings: we do not police a sibling's source, and turning
 # -Wall -Wextra on someone else's code produces noise we cannot act on without
 # breaking ground rule 4.
-add_library(hormiga_sync STATIC src/sync/merge.cpp src/sync/peer.cpp)
+add_library(hormiga_sync STATIC src/sync/merge.cpp src/sync/peer.cpp src/sync/replica.cpp)
 target_include_directories(hormiga_sync PUBLIC src PRIVATE ${VOIDMAIZ_ROOT}/vendor)
 target_link_libraries(hormiga_sync PUBLIC voidpalabra sodium)
 if(WIN32)
@@ -249,7 +251,7 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
   src/platform/miga.cpp src/platform/preview_server.cpp src/main/desktop.cpp
   src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
-  src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp
+  src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
   src/ui/share.cpp src/ui/profile_window.cpp)
 # Void Core's C ABI header, for the SPEC 6.1 command codec exported in 0.2.7
 # (vc_arg_quote / vc_argv_split_json / vc_transcript_split_json). The library
@@ -381,7 +383,7 @@ add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
   src/platform/miga.cpp src/platform/preview_server.cpp
   src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
-  src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp
+  src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
   src/ui/share.cpp src/ui/profile_window.cpp)
 target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
 target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"

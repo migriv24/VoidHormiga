@@ -41,7 +41,8 @@ std::string LanRuntime::fingerprint(const LanRuntime& rt) {
 /* ── privacy at the seam (lan-sharing.md §7) ────────────────────────────────── */
 
 std::string LanRuntime::strip_private(HormigaApp& app, const std::string& state_json,
-                                      const hormiga::collab::ShareSettings& s, int* withheld) {
+                                      const hormiga::collab::ShareSettings& s, int* withheld,
+                                      bool antfarm_too) {
     if (withheld) *withheld = 0;
     maiz::Core probe(state_json);
     if (app.on_register_glyphs) app.on_register_glyphs(probe);
@@ -57,7 +58,8 @@ std::string LanRuntime::strip_private(HormigaApp& app, const std::string& state_
     for (const auto& mt : mantles_of(probe)) {
         std::vector<std::string> names;
         for (const auto& node : project(probe, mt.c_str()).nodes)
-            if (hormiga::collab::is_private(node, s)) names.push_back(node.name);
+            if (hormiga::collab::is_private(node, s) || (antfarm_too && mt == kAntfarmMantle))
+                names.push_back(node.name);
         if (names.empty()) continue;
         probe.dispatch("use " + mt);
         for (const auto& nm : names)
@@ -180,6 +182,13 @@ bool LanRuntime::start_sharing(HormigaApp& app, std::string& error) {
         error = "set a username in your Profile first - it is how the other device sees you";
         return false;
     }
+    /* THE SHARED HISTORY STARTS HERE. The database gets its sync id before it is
+     * packed (so the joiner's copy carries it), and this device's replica observes
+     * what is about to be sent (lan-sharing.md §3b). */
+    if (!sync_prepare(app, 0.0, true)) {
+        error = "could not prepare this database for syncing - see the log";
+        return false;
+    }
     std::string state;
     rt.plan = build_plan(app, &state);
     const std::vector<fs::path> dirs = app.key_dirs();
@@ -230,6 +239,21 @@ bool LanRuntime::start_sharing(HormigaApp& app, std::string& error) {
     rt.plan.items.front().why += " (" + std::to_string(packed.assets) + " files inside)";
     rt.plan.items.push_back({"members", u8(mf.filename()), "who is in this database - you, and whoever you let in", mf, (long long)fs::file_size(mf, ec), true});
     rt.plan.items.push_back({"room-key", u8(rk.filename()), "the room key, so members can see each other", rk, 32, true});
+    /* THE REPLICA'S DOCUMENT, so the joiner's history starts from this one and a
+     * deletion made after they join reaches them. Safe to hand over: private runes
+     * were never observed into it, and a deleted rune's content does not stay in
+     * it (pinned in hormiga_lan_smoke). The joiner adopts it under its OWN id --
+     * replica identity never travels (Palabra, provisioning). */
+    {
+        std::string doc;
+        {
+            std::lock_guard<std::mutex> lk(rt.mu);
+            doc = rt.outgoing_doc;
+        }
+        const fs::path seed = fs::temp_directory_path(ec) / ("hormiga-share-" + fingerprint(rt).substr(0, 8) + ".replica.json");
+        if (!doc.empty() && write_atomic(seed, doc))
+            rt.plan.items.push_back({"replica", kSyncSeedFile, "where the shared history starts, so later deletions reach them", seed, (long long)doc.size(), true});
+    }
     rt.plan.bytes = 0;
     for (const auto& it : rt.plan.items)
         if (it.send) rt.plan.bytes += it.bytes;
