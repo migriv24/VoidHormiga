@@ -26,6 +26,7 @@ spends a month on sockets and discovers its merge duplicates data.
 | rung | the question | who owns it | status |
 |---|---|---|---|
 | **merge** | given two states, what is the correct single state? | **Void Palabra** | **built, and correct** |
+| **memory** | which of those two states *removed* something? | **Void Palabra** (`Replica`, 2026-09-16) | **built; adopted 2026-09-17** |
 | **transport** | how do the bytes get from A to B, privately? | Palabra eventually; **ours in the meantime** | ours, LAN |
 | **discovery** | who is out there to sync with? | ours | ours, LAN |
 
@@ -53,6 +54,22 @@ Doc m = join(a, b);                   // commutative, associative, idempotent
 for (auto& c : conflicts(m)) { … }    // a conflict is a VALUE, not an error
 cJSON* merged = flatten(m).root;      // back to a Core state document
 ```
+
+> **A REPLICA, NOT `enrich`, IS WHAT A SYNC LOOP USES (2026-09-17).** `enrich`
+> rebuilds an enriched document from bare state, which forgets every removal the
+> device ever made — so a deletion comes back on the next merge, and on a timer it
+> comes back forever. Palabra's `Replica` keeps that document between exchanges and
+> is what [LAN sharing](/concepts/platform/lan-sharing.md) §3b runs on;
+> `sync/replica.*` is the adapter. `enrich` stays where it belongs: a **one-shot
+> import**, which is what `effect sync-merge` does with a file. The two LAN verbs
+> that used it are retired.
+>
+> Palabra also found **two silent data-loss bugs in the merge path we already
+> shipped**: every mantle's `tags` and `rules` and every rune's `relations` were
+> dropped on each merge, and two mantles named `a` and `r` merged to zero mantles.
+> Both are fixed upstream and arrive by rebuilding. Checked against the author's
+> own database: its mantle `tags` survived and it has no `rules`, so nothing was
+> lost there — and our links live in `layout.edges`, which was never affected.
 
 **Why `enrich` exists, and why it is not overhead.** A join over bare Void Core
 state is impossible: two peers holding `{a}` and `{}` cannot distinguish "I
@@ -223,8 +240,9 @@ against two real databases on 2026-08-27, not asserted.
 | two separate MACHINES on one Wi-Fi | **not done** — needs a second machine. Everything up to the socket is proven; the socket has only been proven on loopback and on one host's own interface |
 | signed utterances (attribution as proof) | not started; wants Palabra Phase 4 |
 | asset sync by content hash | not started — only the state document moves today |
-| conflict resolution UI | not started — conflicts are reported, not yet edited |
-| automatic sync between members | **decided 2026-09-16** ([LAN sharing](/concepts/platform/lan-sharing.md) §3b); waits for deletions to propagate, which needs each device's enriched state kept between exchanges |
+| conflict resolution UI | **built 2026-09-17** — Share database lists every conflict with a button per side, including delete-versus-edit |
+| automatic sync between members | **built and verified on loopback 2026-09-17** ([LAN sharing](/concepts/platform/lan-sharing.md) §3b) |
+| deletions propagate | **built 2026-09-17** — Palabra's `Replica`; the enrich-both verbs are retired |
 | S3 rendezvous | the pieces exist; awaiting the field agent's credential |
 
 ## 7.1 The two-database run, and what it proved
@@ -309,7 +327,10 @@ opened.
 # Boundaries
 
 - **We do not implement merge.** If a merge question arises, it is a message to
-  Palabra, not a function here.
+  Palabra, not a function here. (It paid for itself twice: our message got
+  deletions that propagate *and* two data-loss bugs we had not noticed.)
+- **A sync loop uses a replica; `enrich` is for an import.** One peer enriching
+  afresh resurrects deletions for everyone it meets.
 - **Sync writes through the dispatcher.** No exceptions for the network.
 - **`config`, `domains` and `bindings` do not sync** — each device keeps its own
   backends, and credentials therefore cannot travel by accident. **Joining** a

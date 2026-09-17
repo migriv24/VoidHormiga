@@ -196,26 +196,50 @@ today such secrets are reported and not kept.
 member who wants a copy that never syncs is better served by an Antfarm that says
 so than by a switch in this window.
 
-**The author's condition is not met yet, and it is the whole order of work.**
-Deletions do not propagate ([collaboration](/concepts/platform/collaboration.md)
-§7.1): each exchange enriches both *current* states afresh, so a rune deleted on
-one device is indistinguishable from one the other device never had, and it comes
-back. A manual sync reports that and asks for `apply`; **an automatic one would
-resurrect deletions on a timer.** What fixes it, as we understand Palabra's
-design, is each device keeping its enriched document — its history — between
-exchanges, so a removal is a recorded act rather than an absence. That is
-Palabra's `archive` / history work (Q40) and is in the message to them.
+**The condition was met the next day, and this is built** (2026-09-17). Void
+Palabra shipped a **replica**: a device's enriched document, kept between
+exchanges, so a removal is a recorded act rather than an absence. Our old merge
+enriched both current states afresh every time, which is what brought deleted
+runes back — and their point was sharper than ours: *one* peer still doing
+that resurrects deletions for **everyone** it syncs with. So the old `lan-serve`
+and `lan-sync` verbs are **retired**, not kept as an alternative.
 
-The build order that respects the condition:
+**How it runs.** Each device keeps one replica per database in its profile folder
+(`replicas/<database id>.replica`; the id is `config sync.database`, which travels
+in the bundle). Once a second, if the document changed, the private runes are
+stripped, the replica `observe`s what the person did, and **the replica is saved
+before anything leaves the device** — a crash between sending and saving would
+reuse tags. The version a replica *shows* rides inside the sealed presence beacon,
+so two members who agree never open a connection; when they differ, the one with
+the **lower key fingerprint** connects and both send their whole document, with a
+progress bar. What arrives is merged at the start of the next frame: observe again
+(an edit made in between is recorded, not overwritten), merge, save, splice
+`mantles` and `glyphs`, put the private runes back, and swap the core — keeping
+the selection and the open document, which is why this is not `reload_from_state`.
 
-1. a progress bar on the join and the first exchange (the byte counts already
-   flow; today they are a line of text);
-2. keep each device's enriched state between exchanges, so deletions propagate
-   (Palabra);
-3. exchange automatically with members who are present (presence already knows
-   who they are), reporting in the log strip and surfacing conflicts, never
-   resolving them;
-4. refresh credentials from the host (§3a) on the same meeting.
+**A join hands over the host's replica document**, adopted under the joiner's own
+fresh id, so the two share one history from the first minute and a deletion made
+after they join reaches them. Handing it over is safe: private runes were never
+observed into it, and a deleted rune's content does not stay in it — pinned in
+`hormiga_lan_smoke` rather than assumed. Replica *identity* never travels, which
+is Palabra's own condition on provisioning.
+
+**The Antfarm is not merged.** Wiring and keys come from the host (§3a), so member
+sync strips the Antfarm mantle the way it strips private runes and puts this
+device's own back on the splice. Without that, the plan's absolute-to-relative key
+rewrite on one device would flow back and change the host's own Antfarm.
+
+**What Palabra warned an automatic loop gets wrong, and where each is answered:**
+a conflicted field shown as one value is never written back as a decision (their
+`observe`); an idle tick mints nothing (theirs, and ours skips an unchanged
+document for the price of one hash); a delete that raced an edit is reported as
+`deleted_while_edited` and shown with **Keep it** / **Delete it** rather than
+vanishing; a restored or copied replica is caught as `identity_collision` and
+forks to a fresh id; undo cannot revert another member's change, because the
+swapped-in core starts with an empty undo stack; and whole documents are always
+exchanged, so a lost delta cannot go unnoticed.
+
+Still to build: **credential refresh from the host** (§3a), on the same meeting.
 
 # 4. The members registry is its own small database
 
@@ -393,8 +417,10 @@ between two computers yet** — that is the author's test.
 | unique colours | unit-tested up to 34 people |
 | vault secrets across a join | built; kept only when both vaults are unlocked; not run. A joiner without a vault is asked to make one — **decided (§3a), not built** |
 | credential refresh from the host when members meet | **decided (§3a), not built** |
-| automatic sync after joining, with a first-sync progress bar | **decided (§3b), not built** — waits for deletions to propagate; the LAN exchange (`effect lan-serve` / `lan-sync`) is the manual path meanwhile |
-| room key and pairing code stay the same | **decided** (§6, §2) — as built |
+| automatic sync between present members, with a progress bar | **verified on loopback** (2026-09-17): after a join, the host's deletion and contact edit and the joiner's new note all landed, the private note never left, and each side kept its own Antfarm |
+| deletions that stay deleted | **verified** — `hormiga_lan_smoke` pins it, and the two-process run shows it |
+| a delete that raced an edit, shown with a choice | built; the conflict list is in Share database. Not yet provoked on purpose |
+| `lan-serve` / `lan-sync` | **retired** — they resurrected deletions for every peer they met |
 | roles enforced, signed changes, relay | **not built** — §8, §9, Palabra |
 
 **Windows Firewall asks the first time Hormiga listens.** Sharing and presence

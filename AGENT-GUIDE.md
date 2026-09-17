@@ -1523,25 +1523,24 @@ and you should read all three:
 ### On another machine, same Wi-Fi
 
     effect lan-peers 8                  # who is out there (read-only)
-    effect lan-serve 60 apply           # wait for someone to connect
-    effect lan-sync 10.0.0.42 apply     # connect to someone
+    effect lan-stay 60                  # be present, and sync with the members here
 
-Both sides print a six-character code. **Compare it with the other screen before
-you trust the connection.** If the two codes differ, someone is between you —
-stop. The code is not a password and you do not type it anywhere; it is checked
-by two people looking at two screens. After the first successful pairing the
-device is remembered and you will not be asked again unless its key changes.
+`lan-stay` is the whole loop: it announces presence sealed to the room key,
+exchanges this database with any member present whose copy differs, and writes
+their changes in. `lan-serve` and `lan-sync` are **retired** — they rebuilt
+their view of the data on every exchange, which resurrected deletions for every
+device they met. A file from elsewhere is still folded in once with
+`effect sync-merge`.
 
-### The one limitation you must know about
+**Deletions propagate** (2026-09-17). Each device keeps a Void Palabra *replica*
+in its profile folder, so a removal is a recorded act rather than an absence. Two
+things follow for an agent:
 
-**Deletions do not propagate yet.** If you delete a contact and then merge with a
-device that still has it, the contact comes back. The report names every rune
-that arrives and warns you, so the fix is: read the arrivals, and re-delete
-anything you meant to be gone. Then sync again so the other side agrees.
-
-This is not a bug to work around quietly — it is the honest state of the merge
-today (`collaboration.md` §2 explains why), and the report exists so it is
-visible rather than silent.
+- **Do not copy a profile folder between machines.** Two devices minting under one
+  replica id is caught (`identity_collision`, and it forks), but it is worth not
+  causing.
+- **A conflict is never resolved for you.** `lan-stay` prints them, including
+  *delete-versus-edit*, and the window offers a button per side.
 
 ### What does NOT travel
 

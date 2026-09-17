@@ -4172,3 +4172,115 @@ from `developer_questions.md`:
 Brushed up in passing: `security.md` §4 still described LAN mode as mDNS and
 unbuilt, and §5 predated profiles and the members registry; `collaboration.md`'s
 status table gains the automatic-sync decision and what it waits on.
+
+# Palabra answered, deletions propagate, and members sync themselves (2026-09-17)
+
+Void Palabra replied to yesterday's message
+(`MESSAGE_FOR_VOIDHORMIGA_palabra-sharing-answered-2026-09-16.md`). It is the most
+useful reply this project has had: one feature unblocked, two data-loss bugs in
+code we already shipped, and two design answers that ruled out what we had asked
+for.
+
+## Two bugs in our merge path, found by them
+
+Both lose data on an ordinary sync, with no attacker and no error:
+
+1. **every mantle's `tags` and `rules`, and every rune's `relations`, were dropped
+   on every merge** -- `enrich` never carried them and `flatten` wrote them back
+   empty, and our splice then replaced the local ones;
+2. **two mantles named `a` and `r` merged to zero mantles**, because a CRDT set was
+   recognised by its members being named `a` and `r`.
+
+Fixed upstream; we get them by compiling their new sources. **Checked against the
+author's own data** as they asked: LON's one mantle with `tags` kept them through
+every version back to 2026-08-19, and it has no `rules` -- nothing was lost. Worth
+recording why the third item could not have bitten us: our links live in each
+mantle's `layout.edges`, not in a rune's `relations`.
+
+## The replica, and automatic sync
+
+Their `Replica` keeps a device's enriched document **between** exchanges, which is
+the memory a removal needs. `sync/replica.*` is the adapter (strings in and out,
+no merge logic); `app/lan_sync.cpp` is the loop, and
+[LAN sharing](/concepts/platform/lan-sharing.md) §3b is the design as built.
+
+- One replica per database per device, in the profile folder, keyed by
+  `config sync.database`. Saved **before** anything is sent.
+- The version a replica shows rides in the **sealed presence beacon**, so two
+  members who agree never open a connection. When they differ the lower key
+  fingerprint connects; both send whole documents, with a progress bar.
+- What arrives is merged at the **start of a frame**, and the swap keeps the
+  selection and the open document -- `reload_from_state` would have thrown a
+  person's place away every few seconds.
+- **A join carries the host's replica document**, adopted under the joiner's own
+  fresh id, so a deletion made after they join reaches them. Safe to hand over:
+  private runes were never observed into it, and a deleted rune's content does not
+  stay in it -- probed rather than assumed, and the probe is now a test.
+- **The Antfarm is not merged**: §3a says wiring and keys are the host's. Without
+  that exclusion the plan's absolute-to-relative key rewrite travelled back and
+  changed the host's own Antfarm.
+- **`lan-serve` and `lan-sync` are retired.** Palabra's sharpest sentence: one peer
+  still enriching afresh resurrects deletions for *everyone* it syncs with. Their
+  replacement is `effect lan-stay`, which is also what made the two-process test
+  possible.
+
+## What they refused, and why it was worth asking
+
+- **Signing utterances would protect nothing on our path**: we ship documents, not
+  utterances, and a signature on a merged document proves who relayed it. Per-change
+  authorship needs signed deltas, which decides a wire format that is still open.
+- **Our profile key cannot sign.** X25519 agrees; it does not sign. A separate
+  Ed25519 key per member is needed, and using one key in two protocols is how
+  cross-protocol attacks happen.
+- **"Runes carrying a tag" cannot be a capability region**, because whether a rune
+  carries a tag depends on state that changes concurrently: two peers would admit
+  and refuse the same change and never reconcile. So `role:admin` as a capability
+  is out, for a concrete reason rather than taste.
+- **Admins-first fits** -- and only as *offering* a default, because the registry
+  that says who is an admin is itself synced state.
+
+Recorded in [collaboration](/concepts/platform/collaboration.md) §2 and §4.
+
+## Verification
+
+- `hormiga_lan_smoke` gained replica checks: a deletion propagates after first
+  contact, `observe` of its own output records nothing, private runes survive a
+  splice, a copied replica is caught as `identity_collision`, and a deleted rune's
+  content is gone from the document.
+- **Two processes, two profiles, loopback:** join, then the host deletes a note and
+  edits a contact while the joiner adds a note; both run `lan-stay`. The deletion
+  stayed deleted, both new changes landed, the private note never left, and each
+  side kept its own Antfarm. **Seen in a window:** Share database shows *Keeping in
+  sync* and both members, the host marked *here*.
+- 27/27 gating tests, every linter, 118 files within budget.
+- **A bug the first run found:** `effect lan-share` dispatched the new database id
+  onto a throwaway core and never wrote it back, so every CLI run invented a new id,
+  loaded an empty replica, and re-recorded the whole database as its own -- which
+  produced a spurious conflict on a contact's role. The CLI now writes that document
+  back, the way `lan-stay` does.
+
+## 0.1.3
+
+`void.json` carries twelve `adds` and **seven `behavior_changes`**, each an object
+naming who is affected; the first two are the ones that change what leaves a
+computer (joining hands over the Antfarm's keys; members sync without being asked).
+`provides.effects` gained `profile`, `lan-offers`, `lan-share`, `lan-join` and
+`lan-stay`, and lost `lan-serve` and `lan-sync`.
+
+- **`mago stage` worked this time** -- the check that refused over other platforms'
+  Void Core artifacts for 0.1.2 is gone, and `DisplayVersion` came out as `0.1.3`
+  without a hand edit. Both findings we sent Void Mago are answered in their tool.
+- The staged script now includes `demo-assets`, so the cat photos the Linux report
+  found missing actually reach the installer.
+- **Installer:** 13,579,216 bytes (0.1.2 was 8.54 MB; the demo assets are 4.4 MB of
+  the difference). **Feed:** checked by hand, not taken from its word -- the
+  versioned and version-free copies both hash to `082baa3a…`, the sizes match, and
+  it says `latest 0.1.3`.
+
+## Still not true
+
+- **Nothing is signed**, and nobody has run the interactive installer over an
+  installed 0.1.2.
+- **Two real machines have still not met.** Everything above is one machine.
+- **Credential refresh from the host** (§3a) is designed and not built, so a
+  member's Antfarm keys go stale until they join again.
