@@ -68,6 +68,15 @@ somebody's Documents folder must not travel with it. One resolver,
 `find_key_file` (`app/paths.hpp`), serves deploy, rollback, the host check, the
 Publish panel, the object store and ImgBB.
 
+**Credentials given to members are meant to expire (2026-09-16).** Joining a
+shared database hands over the Antfarm's keys, and Hormiga cannot take a vendor's
+key back from a device. The author's answer is operational rather than
+cryptographic: short-lived API keys, rotated at the vendor, with the host's
+Antfarm winning when members meet so the new ones reach whoever keeps showing up
+([LAN sharing](/concepts/platform/lan-sharing.md) §3a). A vault secret is never
+written to a joiner's disk in plaintext; a joiner without a vault is asked to
+make one.
+
 # 3. Privacy is a property of the seam, not the app
 
 The public-bio / internal-notes split is enforced where data leaves:
@@ -113,9 +122,11 @@ all E2EE. **The sync unit is the command log** — the thing the core already
 gives us; log-shipping between peers (with materialized snapshots for
 bootstrap) is the CRDT-adjacent starting point.
 
-- **LAN mode** — mDNS discovery on shared Wi-Fi, pairing via QR/short
-  authentication string (Noise-style handshake), encrypted sync between
-  trusted devices. No server at all.
+- **LAN mode** — **built.** A UDP beacon on the local network (not mDNS —
+  [collaboration](/concepts/platform/collaboration.md) §4 says why), X25519 and a
+  short authentication string compared on both screens, `secretstream` for the
+  channel. Joining a shared database, presence and private data ride the same
+  primitives ([LAN sharing](/concepts/platform/lan-sharing.md)). No server at all.
 - **Login mode** — a shared relay for distributed teams that stores and
   forwards **ciphertext only**. The server is dumb by design: running one is
   not a position of power over the org's data.
@@ -126,9 +137,11 @@ solved on paper here.
 
 # 5. Trust topology
 
-Lives in `.miga` v2: the admin builds the Antfarm and invites peers; members
-hold **keys, not passwords-to-a-cloud**. Key loss = data loss is a real
-trade; recovery codes at org creation are the mitigation lean.
+The host builds the Antfarm and lets people in; members hold **keys, not
+passwords-to-a-cloud** — a profile key per computer, and a record in the
+database's members registry (2026-09-16, [LAN sharing](/concepts/platform/lan-sharing.md)
+§1, §4). Everyone is an admin until changes are signed. Key loss = data loss is
+a real trade; recovery codes at org creation are the mitigation lean.
 
 # 6. Releases are signed
 

@@ -4140,3 +4140,35 @@ what it cost.
   live view is not.
 - Sync after joining (Q76), room-key rotation when someone leaves (Q73), vault
   secrets for a joiner without a vault (Q74), roles enforced, a relay.
+
+# The author's answers on LAN sharing (2026-09-16, sixth entry)
+
+Four questions went to the author with leans (Q73-Q76) and came back the same
+day. Folded into [LAN sharing](/concepts/platform/lan-sharing.md) and cleared
+from `developer_questions.md`:
+
+- **The room key stays the same** (§6). The author's lean was no, with an
+  explicit instruction not to let easier testing decide it. Decided on the merits:
+  the room key reads presence and nothing else, and what a departed member really
+  keeps is the API keys, which the next answer handles. It must change for a relay
+  (where it would seal data at rest) or when removing a member for cause.
+- **The host's Antfarm wins, and keys are meant to go stale** (§3a). *"someone
+  can't just join once, then leave forever with my api key … someone has to be
+  actively with me frequently, to recieve the new api keys."* So: short-lived API
+  keys rotated at the vendor; the host's credentials and hosting nodes supersede a
+  member's when they meet; the data still merges. The credential half of a join,
+  repeated, is a **refresh** — the join's path, never the sync's. A joiner with no
+  encrypted vault is asked to make one rather than given plaintext secrets.
+  Decided, not built.
+- **The pairing code stays the same for two people** (§2), revisited when trust
+  becomes vouching.
+- **Sync after joining is automatic, with a progress bar for the first one**
+  (§3b), *"as long as it WORKS correctly"* — which it does not yet: deletions do
+  not propagate, and an automatic sync would bring deleted runes back on a timer.
+  The build order is written down: progress bar; keep each device's enriched state
+  between exchanges (Palabra); automatic exchange with present members; credential
+  refresh on the same meeting.
+
+Brushed up in passing: `security.md` §4 still described LAN mode as mDNS and
+unbuilt, and §5 predated profiles and the members registry; `collaboration.md`'s
+status table gains the automatic-sync decision and what it waits on.

@@ -224,6 +224,7 @@ against two real databases on 2026-08-27, not asserted.
 | signed utterances (attribution as proof) | not started; wants Palabra Phase 4 |
 | asset sync by content hash | not started — only the state document moves today |
 | conflict resolution UI | not started — conflicts are reported, not yet edited |
+| automatic sync between members | **decided 2026-09-16** ([LAN sharing](/concepts/platform/lan-sharing.md) §3b); waits for deletions to propagate, which needs each device's enriched state kept between exchanges |
 | S3 rendezvous | the pieces exist; awaiting the field agent's credential |
 
 ## 7.1 The two-database run, and what it proved

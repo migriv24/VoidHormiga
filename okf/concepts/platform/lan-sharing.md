@@ -1,7 +1,7 @@
 ---
 type: Concept
 title: LAN sharing — profiles, joining a database, and seeing each other
-description: "The author's LAN-sharing brief (2026-09-16), as a design: a profile that belongs to the person at this computer rather than to a database; sharing as the PROVISIONING of another device (the database, the files the Antfarm says it cannot fetch for itself, and the keys), sealed and approved; a members registry as its own small database; presence sealed to a room key, with one colour per person; and the Antfarm nodes that decide all of it. What is built, what is bones, and what is Void Palabra's."
+description: "The author's LAN-sharing brief (2026-09-16), as a design: a profile that belongs to the person at this computer rather than to a database; sharing as the PROVISIONING of another device (the database, the files the Antfarm says it cannot fetch for itself, and the keys), sealed and approved; a members registry as its own small database; presence sealed to a room key, with one colour per person; and the Antfarm nodes that decide all of it. The author's answers the same day: the host's Antfarm wins on credentials and keys are meant to go stale, sync after joining is automatic once it is correct, the room key and the pairing code stay stable. What is built, what is bones, and what is Void Palabra's."
 tags: [status:current, audience:dev, confidence:asserted]
 timestamp: 2026-09-16T00:00:00Z
 ---
@@ -28,6 +28,11 @@ internally is essentially the construction and configuration of the other
 device's hormiga antfarm. we are giving it all the keys and access tokens."*
 Keeping the two paths separate is what keeps the old sentence true: a routine
 sync still cannot carry a token, because a sync is not a join.
+
+**And joining is not once-and-done** (the author, the same day — §3a): the
+host's credentials are meant to go stale, so the credential half of a join is
+repeated whenever members meet again. That repetition is a **refresh**, still
+the join's path and never the sync's.
 
 # 1. A profile is the person at THIS computer, not a database's
 
@@ -102,6 +107,13 @@ to that person*. On a café's Wi-Fi they are different questions, and only the
 second one stops a device in the middle that relays the handshake and receives
 the keys. It costs a glance.
 
+**The same two people always see the same code**, because it is derived from
+their two long-term keys. **Decided 2026-09-16: keep it.** The author: *"sounds
+alright for testing. though we may wanna think more about it later."* It never
+was a secret — it is compared, not typed — and a stable code is what makes a
+*changed* one a loud signal. Revisit when trust stops being two people in a room
+and becomes vouching (§6, §9).
+
 # 3. What the transfer carries is the Antfarm's decision
 
 > this is determined by the antfarm though. If there is a personal SQLite server
@@ -132,6 +144,78 @@ before anything is written. An Antfarm path that was **absolute** on the host is
 rewritten to the plain file name **in the copy the host sends**, with dispatcher
 `set`s on a throwaway core, so the host's own database is untouched and the
 joiner opens a document that already points at the files beside it.
+
+# 3a. The host's Antfarm wins, and keys are meant to go stale
+
+> anyone who joins is given everything right now. this really means that im gonna
+> have to start making api keys with smaller durration times, so that updates for
+> rooms are required. someone can't just join once, then leave forever with my
+> api key … someone has to be actively with me frequently, to recieve the new api
+> keys. When sharing in general, the host's antfarm should be prioritized (but new
+> content in the database should be merged of course, the priority is mostly about
+> the api keys and such)
+
+**Decided 2026-09-16.** Three rules follow, and together they replace "revoke a
+member" — which Hormiga cannot do to a vendor's key — with "keys expire, and only
+people who keep showing up get new ones":
+
+1. **Credentials are short-lived by the operator's practice.** A token handed to a
+   member is expected to stop working. Hormiga's job is not to prevent a copy; it
+   is to make handing over the *next* one cheap.
+2. **The host's Antfarm wins on credentials and wiring.** When members meet on the
+   network, the host's key files, vault secrets and hosting nodes supersede the
+   member's copies. "The host" is the member who shared the database — the first
+   member in the registry today; `precedence: admins-first` names who else may
+   act as one once roles are enforced.
+3. **The organization's data still merges.** Priority is about keys and backends;
+   contacts, events, notes and documents go through Palabra's merge and nobody's
+   side wins by rank (§5: a conflict is a value).
+
+**A refresh** is the credential half of a join, repeated: sealed, over the same
+path, carrying only what changed. A member already in the registry, recognised
+by their key, is refreshed without a new Allow while both are present — the
+first Allow is what admitted them — and a refresh is logged on both sides.
+**Decided, not built.**
+
+**A joiner without an encrypted vault.** The author asked how one could exist:
+a first-time user has not made one, because encrypting credentials is offered
+rather than forced ([security](/concepts/platform/security.md) §2). The answer
+to *"anyone who joins is given everything"* is therefore: **when a plan carries
+vault secrets and the joiner has no vault, the join asks them for a passphrase
+and makes one before it accepts.** Writing the secrets as plain files instead
+would silently undo the host's choice to encrypt them. **Decided, not built** —
+today such secrets are reported and not kept.
+
+# 3b. After joining, syncing is automatic — once it is correct
+
+> i would want syncing to be automatic. because i dont see a reason to share a
+> database, share antfarms, and just, not sync? … as long as it WORKS correctly.
+> … there should be a mini loading bar or something for an initial sync.
+
+**Decided 2026-09-16: automatic, with a progress bar for the first sync.** A
+member who wants a copy that never syncs is better served by an Antfarm that says
+so than by a switch in this window.
+
+**The author's condition is not met yet, and it is the whole order of work.**
+Deletions do not propagate ([collaboration](/concepts/platform/collaboration.md)
+§7.1): each exchange enriches both *current* states afresh, so a rune deleted on
+one device is indistinguishable from one the other device never had, and it comes
+back. A manual sync reports that and asks for `apply`; **an automatic one would
+resurrect deletions on a timer.** What fixes it, as we understand Palabra's
+design, is each device keeping its enriched document — its history — between
+exchanges, so a removal is a recorded act rather than an absence. That is
+Palabra's `archive` / history work (Q40) and is in the message to them.
+
+The build order that respects the condition:
+
+1. a progress bar on the join and the first exchange (the byte counts already
+   flow; today they are a line of text);
+2. keep each device's enriched state between exchanges, so deletions propagate
+   (Palabra);
+3. exchange automatically with members who are present (presence already knows
+   who they are), reporting in the log strip and surfacing conflicts, never
+   resolving them;
+4. refresh credentials from the host (§3a) on the same meeting.
 
 # 4. The members registry is its own small database
 
@@ -186,6 +270,20 @@ member at join. Presence is a beacon whose body is **sealed with the room key**
 mantle, and which runes are selected. Everyone on the network can see that *a*
 Hormiga is present; only members can read *who* or *what*. A beacon in the clear
 would announce the names of an organization's contacts to a café.
+
+**The room key does not change — decided 2026-09-16.** The author's lean was no
+("easier to test") with an explicit instruction not to let that decide it, so the
+reasoning, for the record: the room key **reads presence and nothing else** — who
+is here, which section, which runes are selected. It decrypts no data and no
+credential. What a departed member really keeps is the API keys, and §3a's answer
+to that is expiry at the vendor, not a new room key. So on a local network,
+rotating it would buy the ability to stop an ex-member on the same Wi-Fi seeing
+*which rune someone has selected*, which is not worth a re-key round today.
+
+**When it must change**, so the decision has an exit: (a) the relay (§8), where
+the room key would seal the organization's data at rest in someone else's cloud,
+and a departed member holding it could read everything; (b) removing a member for
+cause. Rotation is then a new key handed to present members by a refresh (§3a).
 
 **Highlighting.** A rune another member has selected is marked in their colour:
 a coloured bar and their initial on its row in the Data and Notes lists, a
@@ -293,8 +391,10 @@ between two computers yet** — that is the author's test.
 | the GUI's Share button, the Allow dialog, the joiner opening the database, hosted pictures downloading | built; **not clicked** |
 | presence and highlighting between two running windows | built; the sealing and the beacon round trip are unit-tested (`hormiga_lan_smoke`); **not seen live** |
 | unique colours | unit-tested up to 34 people |
-| vault secrets across a join | built; kept only when both vaults are unlocked; not run |
-| continuous sync after joining | **not built** — the LAN exchange (`effect lan-serve` / `lan-sync`) is the manual path |
+| vault secrets across a join | built; kept only when both vaults are unlocked; not run. A joiner without a vault is asked to make one — **decided (§3a), not built** |
+| credential refresh from the host when members meet | **decided (§3a), not built** |
+| automatic sync after joining, with a first-sync progress bar | **decided (§3b), not built** — waits for deletions to propagate; the LAN exchange (`effect lan-serve` / `lan-sync`) is the manual path meanwhile |
+| room key and pairing code stay the same | **decided** (§6, §2) — as built |
 | roles enforced, signed changes, relay | **not built** — §8, §9, Palabra |
 
 **Windows Firewall asks the first time Hormiga listens.** Sharing and presence
@@ -304,7 +404,12 @@ answering it is the person's decision, not the application's.
 
 # Boundaries
 
-- **Joining carries keys; syncing never does.** Two paths, kept two.
+- **Joining carries keys; syncing never does.** Two paths, kept two. A refresh
+  is a join's credential half, not a sync.
+- **The host's Antfarm wins on credentials; the data merges.** Keys are expected
+  to expire, and only people who keep meeting the host get new ones.
+- **Sync is automatic only once deletions propagate.** Automatic and wrong is
+  worse than manual and reported.
 - **Nothing sensitive moves before a person allows it and the code is on both
   screens.**
 - **The Antfarm decides what is sent.** The share window shows the plan it read.
