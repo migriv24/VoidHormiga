@@ -312,6 +312,37 @@ void HormigaApp::draw_update_modal() {
         ImGui::Spacing();
     }
 
+    /* AN ARCHIVE (Linux, macOS) IS UNPACKED HERE, beside this install and never
+     * over it, and the new binary is started on the database this one has open.
+     * There is no installer to hand it to -- see `unpack_beside`. */
+    if (!update_file.empty() && up::is_archive(update_file)) {
+        ImGui::TextWrapped("Downloaded and verified. Unpacking will NOT touch "
+                           "this copy: the new version goes into its own folder "
+                           "beside this one, so if it is wrong you still have "
+                           "this one.");
+        ImGui::Spacing();
+        if (ImGui::Button("Unpack and open it", ImVec2(170, 0))) {
+            const up::Unpacked u = up::unpack_beside(update_file, ship_dir);
+            if (!u.ok) {
+                update_error = u.error;
+            } else if (!up::launch_unpacked(u, base_dir / state_name)) {
+                update_error = "unpacked into " + u.folder.string() +
+                               ", but could not start it. Run " +
+                               u.binary.string() + " yourself.";
+            } else {
+                toast("opened " + u.folder.filename().string() +
+                      " - you can close this version");
+                update_modal = UpdateModal::None;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Later", ImVec2(90, 0))) update_modal = UpdateModal::None;
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", update_file.c_str());
+        ImGui::EndPopup();
+        return;
+    }
+
     if (!update_file.empty()) {
         ImGui::TextWrapped("Downloaded and verified. Running the installer will "
                            "NOT touch this copy: each version installs into its "

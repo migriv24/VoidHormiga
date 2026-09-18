@@ -321,9 +321,52 @@ int main() {
               std::string::npos);
     }
 
+    // ── 11: off Windows the download is an archive, unpacked BESIDE us ───────
+    //
+    // 0.1.3's Linux client was handed a `.tar.gz` and `xdg-open`ed it, which
+    // opens an archive viewer. The archive is now unpacked next to the running
+    // install, never over it.
+    CHECK(up::is_archive("VoidHormiga-0.1.4-linux-x64.tar.gz"));
+    CHECK(!up::is_archive("VoidHormiga-0.1.4-windows-x64-setup.exe"));
+    CHECK(!up::is_archive(".tar.gz"));
+#ifndef _WIN32
+    {
+        const fs::path root = fs::temp_directory_path() / "hormiga_update_unpack";
+        std::error_code ec;
+        fs::remove_all(root, ec);
+        const fs::path src = root / "src" / "VoidHormiga-9.9.9-linux-x64";
+        fs::create_directories(src);
+        std::ofstream(src / "voidhormiga") << "#!/bin/sh\n";
+        std::ofstream(src / "voidhormiga-cli") << "#!/bin/sh\n";
+        const fs::path dl = root / "dl";
+        fs::create_directories(dl);
+        const fs::path archive = dl / "VoidHormiga-9.9.9-linux-x64.tar.gz";
+        const std::string pack = "tar -czf '" + archive.string() + "' -C '" +
+                                 (root / "src").string() + "' VoidHormiga-9.9.9-linux-x64";
+        CHECK(std::system(pack.c_str()) == 0);
+
+        const fs::path running = root / "apps" / "VoidHormiga-0.1.3-linux-x64";
+        fs::create_directories(running);
+        const up::Unpacked u = up::unpack_beside(archive, running);
+        CHECK(u.ok);
+        CHECK(u.folder == root / "apps" / "VoidHormiga-9.9.9-linux-x64");
+        CHECK(fs::is_regular_file(u.binary));
+        CHECK((fs::status(u.binary).permissions() & fs::perms::owner_exec) !=
+              fs::perms::none);
+        CHECK(fs::is_directory(running));   // the running copy is untouched
+
+        // and never OVER the running copy, whatever the folders are called
+        const fs::path same = root / "apps" / "VoidHormiga-9.9.9-linux-x64";
+        const up::Unpacked over = up::unpack_beside(archive, same);
+        CHECK(!over.ok);
+        CHECK(over.error.find("running") != std::string::npos);
+        fs::remove_all(root, ec);
+    }
+#endif
+
     if (failures == 0) {
         std::cout << "OK - version ordering + feed parsing + the decision + "
-                     "the prompt + sha256 + the refusals\n";
+                     "the prompt + sha256 + the refusals + the archive\n";
         return 0;
     }
     std::cerr << failures << " check(s) failed\n";

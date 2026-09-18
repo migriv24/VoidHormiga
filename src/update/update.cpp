@@ -36,6 +36,18 @@ using nlohmann::json;
  * the rest of the application does not should not link the deploy holidays. */
 std::string q(const std::string& s) { return "\"" + s + "\""; }
 
+/* POSIX single-quoting, for paths this process did NOT build: the install
+ * folder and the database come from wherever the person put them, and a `$` or
+ * a backtick inside `q`'s double quotes would be read by the shell. */
+[[maybe_unused]] std::string sq(const std::string& s) {
+    std::string out = "'";
+    for (const char c : s) {
+        if (c == '\'') out += "'\\''";
+        else out += c;
+    }
+    return out + "'";
+}
+
 std::string str_of(const json& o, const char* key) {
     const auto it = o.find(key);
     return (it != o.end() && it->is_string()) ? it->get<std::string>() : std::string();
@@ -548,6 +560,77 @@ bool launch_installer(const fs::path& file) {
     return (INT_PTR)h > 32;   // ShellExecute's own success threshold
 #else
     const std::string cmd = "xdg-open " + q(file.string()) + " >/dev/null 2>&1 &";
+    return std::system(cmd.c_str()) == 0;
+#endif
+}
+
+bool is_archive(const fs::path& file) {
+    const std::string n = file.filename().string();
+    const std::string ext = ".tar.gz";
+    return n.size() > ext.size() && n.compare(n.size() - ext.size(), ext.size(), ext) == 0;
+}
+
+Unpacked unpack_beside(const fs::path& archive, const fs::path& current_install) {
+    Unpacked u;
+    std::error_code ec;
+    if (!is_archive(archive) || !fs::is_regular_file(archive, ec)) {
+        u.error = "not a .tar.gz on disk: " + archive.string();
+        return u;
+    }
+#ifdef _WIN32
+    (void)current_install;
+    u.error = "archives are unpacked by hand on Windows; it is at " + archive.string();
+    return u;
+#else
+    const std::string n = archive.filename().string();
+    const std::string stem = n.substr(0, n.size() - std::string(".tar.gz").size());
+    fs::path parent = current_install.empty() ? archive.parent_path()
+                                              : current_install.parent_path();
+    if (parent.empty()) parent = archive.parent_path();
+    u.folder = parent / stem;
+    u.binary = u.folder / "voidhormiga";
+
+    /* NEVER OVER THE RUNNING COPY. Only possible if somebody renamed their
+     * install folder to the new version's name, but the rule is the rule: the
+     * running copy is what a person falls back to. */
+    if (!current_install.empty() &&
+        fs::weakly_canonical(u.folder, ec) == fs::weakly_canonical(current_install, ec)) {
+        u.error = "the new version would unpack over the one that is running (" +
+                  u.folder.string() + "); rename that folder and try again";
+        return u;
+    }
+    const std::string cmd = "tar -xzf " + sq(archive.string()) + " -C " +
+                            sq(parent.string()) + " >/dev/null 2>&1";
+    if (std::system(cmd.c_str()) != 0) {
+        u.error = "could not unpack into " + parent.string() +
+                  " (is that folder writable?). The verified archive is at " +
+                  archive.string();
+        return u;
+    }
+    if (!fs::is_regular_file(u.binary, ec)) {
+        u.error = "unpacked, but " + u.binary.string() +
+                  " is not there: the archive is not laid out the way a release is";
+        return u;
+    }
+    for (const char* exe : {"voidhormiga", "voidhormiga-cli"})
+        fs::permissions(u.folder / exe,
+                        fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec,
+                        fs::perm_options::add, ec);
+    u.ok = true;
+    return u;
+#endif
+}
+
+bool launch_unpacked(const Unpacked& u, const fs::path& state) {
+    std::error_code ec;
+    if (!u.ok || !fs::is_regular_file(u.binary, ec)) return false;
+#ifdef _WIN32
+    (void)state;
+    return false;
+#else
+    std::string cmd = sq(u.binary.string());
+    if (!state.empty()) cmd += " --state " + sq(state.string());
+    cmd += " >/dev/null 2>&1 &";
     return std::system(cmd.c_str()) == 0;
 #endif
 }

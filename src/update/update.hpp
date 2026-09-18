@@ -218,6 +218,35 @@ Download download(const Shell&, const Release&, const fs::path& dir);
  * and every caller says where. */
 bool launch_installer(const fs::path&);
 
+/* ── OFF WINDOWS THE DOWNLOAD IS AN ARCHIVE (2026-09-18) ─────────────────────
+ *
+ * Linux and macOS releases are the `.tar.gz` the release runner packs, holding
+ * one folder named like the archive (`VoidHormiga-0.1.4-linux-x64/`). There is
+ * no installer to hand it to, and `xdg-open` on a tarball opens an archive
+ * viewer, not a new version. So the client does the installer's one job itself,
+ * by the same side-by-side rule: unpack the verified archive BESIDE the running
+ * install, never over it, and start the new binary on the same database.
+ *
+ * `is_archive` is decided by the filename the feed named, not by `#ifdef`, so a
+ * feed that ever carries an archive for Windows is handled the same way. */
+bool is_archive(const fs::path&);
+
+struct Unpacked {
+    bool ok = false;
+    std::string error;
+    fs::path folder;   // the new version's folder, beside the running one
+    fs::path binary;   // <folder>/voidhormiga
+};
+/* Unpack `archive` into `current_install`'s PARENT (or the archive's own folder
+ * when the install folder is unknown). Refuses when the new folder would be the
+ * running one. Uses the system `tar`, which refuses `..` members by default;
+ * the archive's sha256 has already been checked by `download`. */
+Unpacked unpack_beside(const fs::path& archive, const fs::path& current_install);
+
+/* Start the unpacked binary detached, opening `state` (the database the running
+ * copy has open) so the new version is looking at the same organization. */
+bool launch_unpacked(const Unpacked&, const fs::path& state);
+
 /* Streaming SHA-256 (libsodium — ground rule 6, never hand-rolled). Lowercase
  * hex, "" if the file cannot be read. */
 std::string sha256_file(const fs::path&);

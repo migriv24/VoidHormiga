@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -215,61 +215,27 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.1.3",
-    "previous": "0.1.2",
+    "version": "0.1.4",
+    "previous": "0.1.3",
     "change": "compatible",
-    "date": "2026-09-17",
-    "summary": "share a database with someone on your network: a profile of your own, an approved and encrypted join that carries the files and keys, seeing each other work, and members keeping in sync automatically",
+    "date": "2026-09-18",
+    "summary": "updates work on Linux: the release carries a checked Linux archive, and the app unpacks it beside the running copy and opens it on the same database",
     "adds": [
-      "A Profile of your own (File > Profile), the same for every database: a username, a colour, a picture and a key. It also lists what this computer is - operating system, memory, processor, versions",
-      "Share database > Share over local network: another Hormiga on the same network can ask to join, and you allow or deny it. Both screens show the same six-character code to compare",
-      "Discover databases (File menu): the databases being shared on your network, with a folder of your choosing for the one you join",
-      "Joining brings the whole database over, encrypted: its data and documents, the pictures and files that exist only on that computer, the Antfarm keys it names, and the members list. Pictures already hosted online are downloaded afterwards instead of being sent",
-      "The Share window shows exactly what would be sent, and why, before anything moves",
-      "Members: a small database of its own beside the .miga - who joined, when, and who let them in. Everyone is an admin for now",
-      "See who else is working: their avatars in the menu bar, their colour on the rows and blocks they have selected, and no two people shown in the same colour",
-      "Members present on the network now keep the database in sync automatically, with a progress bar, and conflicts are listed in Share database with a button per side - nothing is decided for you",
-      "Notes can be Private (kept on this computer) or Shared with the database members",
-      "Images: + Flier and + Banner pick a picture and tag it for where it belongs",
-      "Niche Tools > Where is this database? shows the order key files are looked for in, lets you choose a priority folder, and checks every Antfarm key file",
-      "A folder picker, on Windows, macOS and Linux"
+      "On Linux (and macOS), Download it > Unpack and open it: the verified archive is unpacked into its own folder next to the one you are running, and the new version opens on the database you had open",
+      "The macOS archives are built again, for Apple Silicon and for Intel Macs. Nobody has run them yet"
     ],
     "behavior_changes": [
       {
-        "what": "JOINING A DATABASE HANDS OVER ITS ANTFARM KEYS. When you allow someone to join, the key files your Antfarm names travel with the database - and so do vault secrets, if your credentials are unlocked. That is what makes their copy able to publish, and it is why the join asks you to allow it and shows a code to compare first. Nothing is sent before you allow it.",
-        "who_is_affected": "Anyone who shares a database. Treat API keys as short-lived: a person who joins keeps a copy of whatever you sent, so rotate keys at the vendor rather than relying on taking them back."
+        "what": "ON LINUX, AN UPDATE IS A NEW FOLDER BESIDE THE OLD ONE. Hormiga unpacks the new version next to the folder it is running from (for example VoidHormiga-0.1.4-linux-x64 beside VoidHormiga-0.1.3-linux-x64) and never over it. The old folder stays until you delete it.",
+        "who_is_affected": "Linux users. The folder the running copy lives in must be one you can write to. If it is not, the update says so and leaves the checked archive where it was downloaded."
       },
       {
-        "what": "MEMBERS NOW SYNC WITHOUT BEING ASKED. Two members of a shared database who are on the same network exchange changes on their own, every few seconds, and what arrives is merged into the open database. Deletions now travel too, so a contact you delete stays deleted everywhere instead of coming back on the next merge.",
-        "who_is_affected": "Anyone in a shared database. If you want a copy that never syncs, remove the Share over LAN node from its Antfarm."
-      },
-      {
-        "what": "`effect lan-serve` AND `effect lan-sync` ARE GONE. They rebuilt their view of the data on every exchange, which brought deleted runes back - for every device they met, not only their own. Use `effect lan-stay` to be present and sync with members, or `effect sync-merge <file>` to fold in a copy from a file.",
-        "who_is_affected": "Agents and anyone scripting a sync. The two verbs now refuse and say what to use instead."
-      },
-      {
-        "what": "A NEW DATABASE CAN BE SHARED OVER THE NETWORK BY DEFAULT. New databases, and a fresh Cat Colony, come with Share over LAN (allow: yes) and Members nodes in the Antfarm. Nothing is announced until someone presses Share over local network.",
-        "who_is_affected": "Anyone making a new database who does not want it shareable: set the node's allow to no, or delete it."
-      },
-      {
-        "what": "KEY FILES ARE LOOKED FOR BESIDE THE DATABASE YOU OPENED. A key named by a plain file name (cloudflare_token.txt, imgbb.key) used to be looked for in the folder Hormiga was started from; it is now looked for in your priority folder, then beside the .miga you opened, then in the working folder - and a failure lists every path it tried.",
-        "who_is_affected": "Anyone whose publishing suddenly asked for keys depending on how they started Hormiga. This is the fix for that."
-      },
-      {
-        "what": "THE ANTFARM IS NOT MERGED BETWEEN MEMBERS. Wiring, hosts and keys stay each device's own, and the host's are the ones that count; only the organization's data is merged.",
-        "who_is_affected": "Members who change Antfarm wiring expecting it to reach the others. It does not yet - the host hands keys over when you join."
-      },
-      {
-        "what": "A FAILED COMMAND NOW APPEARS IN THE CONSOLE LOG, not only as a toast that disappears after four seconds.",
-        "who_is_affected": "Anyone who has had to report an error and had nothing to copy."
+        "what": "0.1.3 ON LINUX INSTALLS THIS ONE BY HAND, ONCE. 0.1.3 can now download and check this release, but it opens the archive in an archive viewer instead of installing it, because unpacking is new in 0.1.4. Unpack it yourself this once. Updates after that happen from inside the app.",
+        "who_is_affected": "Anyone running 0.1.3 or earlier on Linux. Download VoidHormiga-linux-x64.tar.gz from the release page and unpack it. Your database is not in the program folder, so nothing is lost."
       }
     ],
     "read_more": [
-      "README.md",
-      "AGENT-GUIDE.md",
-      "okf/concepts/platform/lan-sharing.md",
-      "okf/concepts/sections/builder-roadmap.md",
-      "okf/concepts/platform/antfarm.md"
+      "okf/concepts/platform/distribution.md"
     ]
   },
   "update": {

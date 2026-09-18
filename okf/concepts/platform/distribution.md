@@ -103,6 +103,27 @@ back. Nothing in this repository ever deletes a version folder.
 Repointing the Start Menu shortcut and removing an old version are still open
 (Mago's, or Velopack's, later).
 
+## 4a. Off Windows the same rule is kept by the client itself (0.1.4)
+
+Linux and macOS have no installer. What the release carries is the archive the
+release runner packs, `VoidHormiga-<version>-<platform>.tar.gz`, holding one
+folder of the same name. Mago's feed names that archive (Mago 0.1.8) and hashes
+it, **provided the archive is in `--artifacts` when the feed is written**. The
+client checks the sha256 as it does on Windows. Then, rather than handing the
+file to the OS, it unpacks it **beside** the running install and starts the new
+binary with `--state` pointing at the open database:
+
+```
+~/apps/
+  VoidHormiga-0.1.3-linux-x64/     the running copy, never touched
+  VoidHormiga-0.1.4-linux-x64/     unpacked next to it
+```
+
+It refuses to unpack over the running folder. If the parent folder is not
+writable, it says so and leaves the verified archive where it was downloaded.
+`update/update.hpp` `unpack_beside`, tested in `update_smoke` §11 on the Linux
+and macOS runners.
+
 # 5. What is NOT proven yet
 
 Stated plainly, because a distribution story that overstates itself is worse

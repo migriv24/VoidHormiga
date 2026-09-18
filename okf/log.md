@@ -4284,3 +4284,56 @@ computer (joining hands over the Antfarm's keys; members sync without being aske
 - **Two real machines have still not met.** Everything above is one machine.
 - **Credential refresh from the host** (§3a) is designed and not built, so a
   member's Antfarm keys go stale until they join again.
+
+# Linux updates, and the release that never built (2026-09-18)
+
+The author's Linux machine refused the 0.1.3 update: *"this release carries no
+usable sha256"*. The client was right to refuse. Everything upstream of it was
+wrong, in three places, and the author authorised this session to act in Void
+Palabra, Void Core and Void Mago for this one update. Each repository's change
+was made in that repository and recorded in its own OKF. Nothing was patched on
+behalf of an agent that had not already committed it.
+
+## What was wrong
+
+1. **The 0.1.3 Linux and macOS archives were never built.** `release.yml` cloned
+   Void Palabra and Void Core from GitHub. Each had a committed and **unpushed**
+   commit that 0.1.3 needs: Palabra `4578ed4` (which adds `src/crdt/validate.cpp`)
+   and Core `0355351` (0.2.14, our floor). Configure failed on the missing file.
+   The same two commits are why `ci.yml` has been red since 0.1.2
+   (`spine_smoke`'s glyph checks fail against the older core).
+2. **The feed named a file nobody builds.** Mago's `installer_name()` answered
+   `VoidHormiga-0.1.3-linux-x64-setup` for Linux. The runner packs
+   `...-linux-x64.tar.gz`. `feed --artifacts` found nothing and wrote
+   `"bytes": 0, "sha256": null`. **Mago 0.1.8** names the archive. See
+   `../VoidMago/okf/concepts/shipping.md`.
+3. **Even a checked archive would not have installed.** Off Windows,
+   `launch_installer` ran `xdg-open` on it, which opens an archive viewer.
+   **0.1.4** unpacks it beside the running install and opens the new binary on
+   the same database: [distribution §4a](/concepts/platform/distribution.md).
+4. **The Intel macOS leg had never run.** `macos-13` is a retired image, so every
+   release run queued on it for 24 hours and was then cancelled. It is now
+   `macos-15-intel`.
+
+## 0.1.4
+
+- `update::is_archive`, `unpack_beside`, `launch_unpacked`. The modal offers
+  *Unpack and open it* for an archive. `update_smoke` §11 builds a tarball,
+  unpacks it beside a fake install, and checks that it refuses to unpack over
+  the running folder. Those checks run on POSIX only, because Windows is still
+  the installer path.
+- 40/40 tests on Windows.
+- **Release order, now binding:** tag → the runner attaches the archives →
+  download them into the stage folder → `mago feed --artifacts` → upload the
+  feed. A feed written before the archives exist repeats 0.1.3.
+
+## Still not true
+
+- **A 0.1.3 Linux install has to be updated to 0.1.4 by hand, once.** After
+  that, updates run from inside the app.
+- **Nobody has run a macOS archive.** `platforms` stays
+  `["windows-x64", "linux-x64"]`, so the feed lists no macOS entry.
+- **`ci.yml`'s Windows leg fails at configure.** Void Maiz's `find_library`
+  looks in `build/` and `build/bin/`, but an MSVC multi-config build puts the
+  core in `build/Release/`. The Windows release is built locally, so this does
+  not block shipping. It is noted here and not fixed.
