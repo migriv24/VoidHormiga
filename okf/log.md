@@ -4337,3 +4337,21 @@ behalf of an agent that had not already committed it.
   looks in `build/` and `build/bin/`, but an MSVC multi-config build puts the
   core in `build/Release/`. The Windows release is built locally, so this does
   not block shipping. It is noted here and not fixed.
+
+## Shipped (2026-09-19)
+
+- **All three release legs built on the first run**, `macos-15-intel` included.
+  The release carries the Windows installer and Linux, Apple Silicon and Intel
+  macOS archives, each also under its version-free name.
+- **Feed:** the Linux archives were downloaded into the stage folder *before*
+  `mago feed --artifacts` ran. Checked by hand: all four files hash to what the
+  feed says and match its `bytes`. The Linux digest `d59106f8…` equals the
+  runner's own `SHA256SUMS-linux-x64.txt`. The live feed says `latest 0.1.4` with
+  a sha256 for both `windows-x64` and `linux-x64`, and `voidhormiga-cli update
+  --check` reads it.
+- **`ci.yml`, first run with Core 0.2.14 and Palabra `4578ed4` public:** macOS
+  passes 37/38. `spine_smoke`'s glyph failures are gone, and `update_smoke` §11
+  (the unpack) passed on a real BSD `tar`. The one failure is `golden_render`,
+  where BSD `sed` stops with *illegal byte sequence* on UTF-8 input, the same as
+  since 0.1.2 (a locale issue in `tools/golden_render.sh`). Windows still fails
+  at configure, as noted above.
