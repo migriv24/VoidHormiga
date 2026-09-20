@@ -128,8 +128,13 @@ EOF
 # DTSTAMP and the cache-busting query string carry the clock, so they differ on
 # every run by design. Neutralise them rather than excluding the files: the rest
 # of a calendar and the rest of a page are exactly what we want pinned.
+# BYTES, NOT CHARACTERS (2026-09-20). macOS's sed refuses UTF-8 input it cannot
+# decode in the runner's locale -- "RE error: illegal byte sequence" -- and this
+# fixture is full of Spanish. Every pattern here is ASCII, so reading the file as
+# bytes is not a compromise: it is what these substitutions always meant. This is
+# why the golden has been red on every macOS CI run since 0.1.2.
 norm() {
-  sed -E -e 's/DTSTAMP:[0-9TZ]+/DTSTAMP:X/' \
+  LC_ALL=C sed -E -e 's/DTSTAMP:[0-9TZ]+/DTSTAMP:X/' \
          -e 's/UID:[A-Za-z0-9_]+@/UID:X@/' \
          -e 's/\?v=[0-9]+/?v=X/g' \
          -e 's/(--bdim:)[0-9.]+/\1X/g' "$1"
