@@ -4586,3 +4586,50 @@ recorded in its own history; nothing was patched from here.
 **The exit test is the two machines.** 0.1.4 and 0.1.5 do not sync with each
 other, by design: the whole-document exchange is gone. Both computers take the
 update, or neither does.
+
+# The link that died and was never rebuilt, and a console worth typing in (2026-09-20)
+
+The author ran 0.1.5 on two real machines. Presence worked — *"i can see what
+profiles are selecting or editing their things"* — and **nothing synced**: not an
+edit to an existing rune, not a new one.
+
+## The defect
+
+`net_tick` queued outgoing frames with `rt.link_io[o.link]`, and `operator[]`
+CREATES. A finished link thread erased its entry; the next frame put an empty
+one back; and that ghost was enough to convince `net_links` a link already
+existed. The member was never dialled again, every frame went into a queue
+nobody carried, and the two devices sat there present to each other and silent.
+
+**It could not have been caught by the test that passed.** A link lived 25
+seconds and the two-process test ran for fewer. So the test now models the
+failure instead: B syncs, leaves, makes an edit, and comes back inside one
+session on A. The edit arrives, with its field value. A link also lives as long
+as its session now, rather than 25 seconds.
+
+The honest lesson is about the shape of the test, not the bug: a test shorter
+than the lifetime of the thing it tests proves the first moment and nothing
+after it.
+
+## The console (ui/console.cpp), and why it left `maiz::draw_log_strip`
+
+The author asked for per-library tags and colours (CRE / MAZ / PLB / ALM / HRG),
+a `clear` that does not destroy the record, selectable text, verbosity that
+suits an agent as well as a person, `ls` and `cd` over graphs, and an Apply
+button for settings that deserve a second step. All of it is in, written to be
+lifted, and offered to Void Maiz
+(`MESSAGE_FOR_VOIDMAIZ_hormiga-the-console-is-a-shared-surface-2026-09-20.md`,
+[Q81](/developer_questions.md)).
+
+`profile`, `profile username <name>` and `profile color #rrggbb` are typeable
+there too — the author's point that Void Maiz owning the profile is *more*
+reason for it to be reachable from the console, not less.
+
+## Two asks that are design, not code
+
+- **[Q79](/developer_questions.md)**: the database deserves a profile of its own
+  — id, name, description, picture, who made it, and what its Antfarm can do —
+  rather than two config keys read at share time.
+- **[Q80](/developer_questions.md)**: the room key should change on every new
+  share, which reverses 2026-09-16. The hard part is the member who is offline
+  when it rotates, and that is the author's call to make.

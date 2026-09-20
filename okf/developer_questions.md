@@ -11,6 +11,57 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q79 — the database needs a profile of its own, and today it is three
+  config keys.** (Opened 2026-09-20.) **Lean: a dedicated structure, minted
+  when a database is first shared, carrying a stable id, a name, a
+  description, a picture, who made it, when, and a summary of what its
+  Antfarm can do. It travels in the bundle and shows on the Discover card.**
+
+  The author: *"hormiga should handle a 'database profile' ... but this needs
+  to be a more dedicated structure, because it's important! it includes the
+  antfarms and everything!"* Today `org.name` and `org.description` are
+  config keys read at share time, and the Antfarm is described nowhere a
+  joiner can read before joining. **What settles it:** whether the profile is
+  a rune (undoable, synced, conflictable) or a config block (device-tier,
+  unmergeable). The lean is a rune in its own mantle, because two admins
+  editing the description is exactly the merge Palabra is for, and because
+  the Discover card wants a picture and pictures are runes here.
+
+- **Q80 — should the room key change on every new share?** (Opened
+  2026-09-20.) **Lean: yes, and this reverses the 2026-09-16 decision that it
+  never changes. Each new member forces a new key, every current member is
+  handed it over their existing trusted link, and a member who was removed
+  keeps only a key that no longer opens anything.**
+
+  The author: *"for every new share of the database, the key should change,
+  however, those already on it can stay on it and their keys will be updated
+  ... being a bit more mindful of cryptography will be useful later."* The
+  2026-09-16 reasoning was that rotation buys nothing while nobody can be
+  removed. That is still true, and it stops being true the moment removal
+  exists, which it will. **The cost is the hard part:** a member who is
+  offline when the key rotates cannot read the beacon and cannot be handed
+  the new key by the thing they can no longer hear. So rotation needs either
+  a grace period where both keys open presence, or a rejoin for anyone who
+  missed it. **What settles it:** the author's tolerance for "a member who was
+  away last week must ask to rejoin". Not built until then, because a
+  half-built rotation is worse than none.
+
+- **Q81 — the console is a shared surface, and Hormiga now has its own.**
+  (Opened 2026-09-20.) **Lean: keep ours while it earns its keep, and offer
+  it upstream. If Void Maiz takes it, we delete ours the way we deleted our
+  presence drawing.**
+
+  The author: *"the CLI is home to MANY different groups. different
+  libraries, all with the void core in common"*, and asked for per-library
+  tags and colours (CRE, MAZ, PLB, ALM, HRG), a clear that does not destroy
+  the record, selectable text, and verbosity settings that suit an agent as
+  well as a person. All of that is now in `ui/console.cpp`, written to be
+  lifted. Asked in
+  `MESSAGE_FOR_VOIDMAIZ_hormiga-the-console-is-a-shared-surface-2026-09-20.md`.
+  Also open there: `ls` and `cd` mean holidays to Void Core and graphs to a
+  person, and we answer them as graphs before dispatch. One of those two
+  meanings should win upstream rather than each host inventing its own.
+
 - **Q73 — Does networking move into Void Maiz as an optional module?**
   (Opened 2026-09-19, from the author's two-machine test.) **Lean: yes, staged.
   Hormiga keeps its working LAN code and fixes bugs in it. We stop wiring
