@@ -152,12 +152,30 @@ void LanRuntime::net_tick(HormigaApp& app, double now) {
     rt.net->settings().cautious_files = app.net_settings.cautious_files;
     rt.net->tick(ms, maiz::selection_ids(app.scene, app.ed.selection), app.surfaces);
 
-    // frames out, to whichever link thread is carrying them
+    /* ── FRAMES GO ONLY TO A LINK SOMEBODY IS CARRYING (2026-09-20) ──────────
+     *
+     * This used to be `rt.link_io[o.link]`, and `operator[]` CREATES. A link
+     * thread that had finished erased its entry, the next frame put an empty one
+     * back, and that ghost was enough to convince `net_links` a link existed:
+     * it never dialled that member again, and `Network` was handed frames
+     * nobody could send. Two devices stayed present to each other and exchanged
+     * nothing for the rest of the session -- which is exactly what the author
+     * saw between two real machines, and what a test shorter than one link's
+     * lifetime cannot see. Dropping a frame is safe: Palabra's session resends
+     * what a peer has not acknowledged once the link is rebuilt. */
     auto outgoing = rt.net->take_outgoing();
+    std::size_t dropped = 0;
     if (!outgoing.empty()) {
         std::lock_guard<std::mutex> lk(rt.mu);
-        for (auto& o : outgoing) rt.link_io[o.link].out.push_back(std::move(o.frame));
+        for (auto& o : outgoing) {
+            auto it = rt.link_io.find(o.link);
+            if (it == rt.link_io.end() || !it->second.carrying) { ++dropped; continue; }
+            it->second.out.push_back(std::move(o.frame));
+        }
     }
+    if (dropped)
+        app.log.push_back({"info", "sync",
+                           std::to_string(dropped) + " frame(s) had no link; it will be rebuilt"});
     for (const auto& n : rt.net->take_notes())
         app.log.push_back({n.level, "sync", n.link.empty() ? n.text : n.text + " (" + n.link + ")"});
     if (rt.net->take_spliced()) {
@@ -236,6 +254,10 @@ void LanRuntime::net_links(HormigaApp& app, double now) {
     std::vector<std::string> to_open, to_close;
     {
         std::lock_guard<std::mutex> lk(rt.mu);
+        // an entry nobody is carrying is finished: close the session with it, so
+        // the next tick may dial that member again
+        for (auto it = rt.link_io.begin(); it != rt.link_io.end();)
+            it = it->second.carrying ? std::next(it) : rt.link_io.erase(it);
         for (auto& [link, io] : rt.link_io)
             if (!io.connected) { io.connected = true; to_open.push_back(link); }
         for (const auto& s : rt.net->links())
@@ -291,7 +313,7 @@ void LanRuntime::net_dial(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPair
         std::lock_guard<std::mutex> lk(rt->mu);
         rt->thread_log.push_back({"info", "sync: reached " + peer.user + ", carrying frames"});
     }
-    net_pump(rt, &s, link, now_seconds() + 25.0);
+    net_pump(rt, &s, link, now_seconds() + 600.0);
 }
 
 /* The listening half. A link is accepted only from a member of this database;
@@ -313,7 +335,7 @@ void LanRuntime::net_listen(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPa
          * reconnecting -- would dial a closed port and the failure would look
          * like a network problem. The session moves into its own thread. */
         std::thread([rt, carried, link] {
-            net_pump(rt, carried.get(), link, now_seconds() + 25.0);
+            net_pump(rt, carried.get(), link, now_seconds() + 600.0);
         }).detach();
     }
 }
