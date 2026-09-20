@@ -4,6 +4,7 @@
  * preferences are logged and ride the saved org exactly like the cameras. */
 
 #include "app/app_internal.hpp"
+#include "app/lan_share.hpp" // the Networking section is Void Maiz's; its file is ours
 #include "stb_image_write.h" // decls only - the map exports as a PNG; the ONE implementation lives in app.cpp
 #include "json.hpp" // the position channel is a JSON payload
 
@@ -101,6 +102,18 @@ void HormigaApp::draw_settings() {
             }
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", rmodes[i].help);
         }
+
+        /* ── NETWORKING, IN ONE PLACE (stage B, 2026-09-19) ──────────────────
+         * The author asked for it: "networking needs its own section in the
+         * settings". Void Maiz draws it, so the sender's switches and the
+         * receiver's switches stay visibly apart -- one hides things from you,
+         * the other hides you from others -- and every Void application that
+         * networks shows the same section. Saved beside the profile, because
+         * these are this device's, not the database's. */
+        ImGui::SeparatorText(ICON_FA_USERS "  Networking");
+        if (maiz::draw_network_settings(net_settings)) LanRuntime::save_net_settings(*this);
+        ImGui::TextDisabled("Kept on this computer (%s), not in the database.",
+                            LanRuntime::net_settings_file().filename().string().c_str());
 
         ImGui::SeparatorText("Advanced");
         bool legacy = show_legacy;

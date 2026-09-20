@@ -2487,6 +2487,20 @@ void HormigaApp::section_window(const char* title, int which) {
             if (scene.mantle != mantle)
                 dispatch_and_reproject(std::string("use ") + mantle);
         }
+        /* WHO ELSE IS IN THIS WORKFLOW (stage B). Avatars for the peers whose
+         * presence says they have this section's main surface open, collapsing
+         * to "+N" past three -- the author's warning was tabs "filled with a
+         * ton of like, circles and profile icons", and Settings > Networking
+         * turns them off. Drawn at the top of the window rather than on the tab
+         * itself: a docked tab bar is ImGui's, not ours. */
+        {
+            static const char* kMainSurface[] = {"table:data", "canvas:builder",
+                                                 "canvas:antfarm", "map"};
+            if (which >= 0 && which < 4) {
+                maiz::presence_surface_badges(roster, net_settings.show, kMainSurface[which]);
+                if (!roster.on_surface(kMainSurface[which]).empty()) ImGui::SameLine();
+            }
+        }
         switch (which) {
         case Data: draw_data_section(0); break;
         case Builder: draw_builder_section(0); break;

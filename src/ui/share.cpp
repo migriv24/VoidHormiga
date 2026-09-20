@@ -323,6 +323,12 @@ void LanRuntime::draw_share(HormigaApp& app) {
 
         draw_sync_section(app);
 
+        /* WHO IS HERE, drawn by Void Maiz from the roster: the live half, with
+         * what each person is working in. The registry below is the other half
+         * -- who was let in, when, by whom -- and it is ours. */
+        ImGui::SeparatorText(ICON_FA_SIGNAL "  Here now");
+        maiz::draw_member_list(app.roster, app.net_settings.self);
+
         // ── members ──────────────────────────────────────────────────────────
         ImGui::SeparatorText(ICON_FA_USERS "  Members");
         if (rt.member_rows.empty()) {

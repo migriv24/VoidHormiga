@@ -4468,3 +4468,23 @@ target if Maiz already brought it, and bring it in ourselves otherwise.
   blocked upstream:** Void Maiz's networking is not committed (its GitHub repo
   still holds only the 2026-09-01 commit) and Void Palabra is two commits ahead
   of its remote. CI and the release runners clone both from GitHub.
+
+## Stage B: the profile, the member list and a Networking section
+
+- **Settings > Networking** is `maiz::draw_network_settings`, drawn whole. The
+  author asked for the section; what Void Maiz adds is that the SENDER's
+  switches and the RECEIVER's switches stay visibly apart. Saved to
+  `network.json` beside the profile, never in the database, because these are
+  this device's.
+- **Who is here** in the Share window is `maiz::draw_member_list` over the
+  roster, with what each person is working in. The members registry below it
+  stays ours: who was let in, when, and by whom is not presence.
+- **Avatars per workflow**: `presence_surface_badges` at the top of each
+  section window, collapsing to "+N" past three. Not on the tab itself — a
+  docked tab bar belongs to ImGui. Settings turns them off, which is the
+  answer to the author's *"then you'd have these tabs be filled with a ton of
+  like, circles and profile icons"*.
+- **The Profile window stays ours** (avatar, device facts, the key, the twelve
+  colours the members registry assigns from). `maiz::draw_profile_editor` edits
+  a name and a colour, and ours edits the thing those are read from. Reported
+  back to Void Maiz rather than worked around.

@@ -197,6 +197,12 @@ struct LanRuntime {
                                                               const std::string& id = {});
     static std::string color_of(const LanRuntime& rt, const std::string& fingerprint);
 
+    /* This device's networking preferences, beside the profile (stage B). */
+    static std::filesystem::path net_settings_file();
+    static void load_net_settings(HormigaApp& app);
+    static bool save_net_settings(HormigaApp& app);
+    static void refresh_self(HormigaApp& app);   // profile -> net_settings.self
+
     /* The windows (ui/share.cpp, ui/profile_window.cpp). */
     static void draw_windows(HormigaApp& app);
     static void draw_presence_strip(HormigaApp& app);

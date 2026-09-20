@@ -30,12 +30,80 @@ LanRuntime& LanRuntime::of(HormigaApp& app) {
     if (!app.lan) {
         app.lan = std::make_shared<LanRuntime>();
         app.lan->me = hormiga::profile::load_or_create(&app.lan->profile_error);
+        // this device's networking preferences, and Void Maiz's view of who I am
+        load_net_settings(app);
     }
     return *app.lan;
 }
 
 std::string LanRuntime::fingerprint(const LanRuntime& rt) {
     return hormiga::sync::fingerprint_of(rt.me.public_key);
+}
+
+/* ── THE DEVICE'S NETWORKING PREFERENCES (stage B) ───────────────────────────
+ *
+ * Void Maiz's `NetSettings` is about THIS device and this person -- what I
+ * broadcast, what I draw of what others broadcast, whether files are fetched --
+ * so it is kept beside the profile, never in the shared document. The name,
+ * colour and picture stay in `profile.json`; only the switches are here. */
+std::filesystem::path LanRuntime::net_settings_file() {
+    return hormiga::profile::dir() / "network.json";
+}
+
+void LanRuntime::load_net_settings(HormigaApp& app) {
+    maiz::NetSettings& s = app.net_settings;
+    std::ifstream in(net_settings_file());
+    if (in) {
+        const nlohmann::json j = nlohmann::json::parse(in, nullptr, false);
+        if (j.is_object()) {
+            auto flag = [&j](const char* k, bool& into) {
+                if (j.contains(k) && j[k].is_boolean()) into = j[k].get<bool>();
+            };
+            flag("send_selection", s.send.selection);
+            flag("send_surfaces", s.send.surfaces);
+            flag("show_marks", s.show.marks);
+            flag("show_surface_badges", s.show.surface_badges);
+            flag("show_private_marks", s.show.private_marks);
+            flag("cautious_files", s.cautious_files);
+        }
+    }
+    refresh_self(app);
+}
+
+bool LanRuntime::save_net_settings(HormigaApp& app) {
+    const maiz::NetSettings& s = app.net_settings;
+    const nlohmann::json j = {{"send_selection", s.send.selection},
+                              {"send_surfaces", s.send.surfaces},
+                              {"show_marks", s.show.marks},
+                              {"show_surface_badges", s.show.surface_badges},
+                              {"show_private_marks", s.show.private_marks},
+                              {"cautious_files", s.cautious_files}};
+    std::error_code ec;
+    std::filesystem::create_directories(hormiga::profile::dir(), ec);
+    std::ofstream out(net_settings_file(), std::ios::trunc);
+    if (!out) return false;
+    out << j.dump(2);
+    return (bool)out;
+}
+
+/* The profile is the one place a name, a colour and a picture live; Void Maiz's
+ * Profile is presentation, so it is filled FROM it rather than edited beside it. */
+void LanRuntime::refresh_self(HormigaApp& app) {
+    LanRuntime& rt = of(app);
+    maiz::Profile& self = app.net_settings.self;
+    self.id = fingerprint(rt);
+    self.name = hormiga::profile::display_name(rt.me);
+    self.rgb = hormiga::collab::rgb_of(rt.me.color);
+    self.avatar = hormiga::profile::avatar_path(rt.me).string();
+}
+
+/* ONE ANSWER TO "MAY THIS RUNE LEAVE?", read by sync AND by presence (Void
+ * Maiz, stage A: the two cannot disagree if they call the same function). The
+ * private tags come from the Antfarm's hol_lan_share node, so the Antfarm still
+ * decides; what changed is that no view checks a tag itself. */
+maiz::ShareFilter HormigaApp::share_filter() {
+    const auto share = hormiga::collab::share_settings(project(core, kAntfarmMantle));
+    return [share](const maiz::SceneNode& n) { return !hormiga::collab::is_private(n, share); };
 }
 
 /* ── NAMES THAT TWO MEMBERS CANNOT BOTH MINT (2026-09-19) ─────────────────────
@@ -52,15 +120,6 @@ std::string LanRuntime::fingerprint(const LanRuntime& rt) {
  * database that is never shared keeps `note-1`. The durable answer -- an
  * identity for a rune that is not its name -- belongs upstream (Void Core /
  * Palabra), and is asked for in MESSAGE_FOR_VOIDMAIZ_hormiga-networking-*. */
-/* ONE ANSWER TO "MAY THIS RUNE LEAVE?", read by sync AND by presence (Void
- * Maiz, stage A: the two cannot disagree if they call the same function). The
- * private tags come from the Antfarm's hol_lan_share node, so the Antfarm still
- * decides; what changed is that no view checks a tag itself. */
-maiz::ShareFilter HormigaApp::share_filter() {
-    const auto share = hormiga::collab::share_settings(project(core, kAntfarmMantle));
-    return [share](const maiz::SceneNode& n) { return !hormiga::collab::is_private(n, share); };
-}
-
 std::string HormigaApp::device_tag() {
     if (hormiga::collab::share_settings(project(core, kAntfarmMantle)).node.empty()) return {};
     const std::string fp = LanRuntime::fingerprint(LanRuntime::of(*this));
