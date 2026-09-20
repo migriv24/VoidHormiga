@@ -4568,3 +4568,21 @@ recorded in its own history; nothing was patched from here.
   the cause is not line endings at the seam we looked at, and it was not chased
   during a release. The golden remains a **Windows-captured** net, which is what
   it has always been in practice.
+
+## 0.1.5 shipped (2026-09-20)
+
+- **All three release legs built on the first run**, from GitHub, with Void Maiz
+  and Void Palabra finally public — which is what stage D was waiting on.
+- **Installer:** 13,919,311 bytes. The staged script is identical to 0.1.4's
+  apart from the version, diffed with the version and date masked.
+- **Feed:** the Linux archives were downloaded into the stage folder before
+  `mago feed --artifacts` ran. Checked by hand: all four files hash to what the
+  feed says and match its `bytes`, and the Linux digest `51b8807b…` equals the
+  runner's own `SHA256SUMS-linux-x64.txt`. The live feed says `latest 0.1.5`
+  with a sha256 for both platforms, and the client reads it.
+- **The macOS archives are built and unrun**, so `platforms` stays
+  `["windows-x64", "linux-x64"]` and the feed lists no macOS entry.
+
+**The exit test is the two machines.** 0.1.4 and 0.1.5 do not sync with each
+other, by design: the whole-document exchange is gone. Both computers take the
+update, or neither does.
