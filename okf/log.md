@@ -4535,3 +4535,36 @@ do today.
 - 42/42 tests, the desktop application starts and draws.
 - Conflicts are Void Maiz's `draw_conflicts` over `Network::conflicts()`, and a
   stale answer is refused rather than overwriting a value nobody saw.
+
+# 0.1.5, and four decisions taken in other repositories (2026-09-20)
+
+The author authorised this session to decide for the siblings and for Void Mago,
+and to push. Every change was made in the repository that owns it and is
+recorded in its own history; nothing was patched from here.
+
+- **Void Maiz** — its networking, touch and mobile work existed only on this
+  machine (its GitHub repository held one commit, from 2026-09-01). Built and
+  tested it first: 15/16, the sixteenth being `reduce_conformance` at its known
+  17/25. Committed and pushed. Its correspondence file was left out of the
+  commit, on the family's rule that a message is not project.
+- **Void Maiz, second** — `find_library` for Void Core searched `build/` and
+  `build/bin/`, and Visual Studio writes to `build/Release/`. So a Windows host
+  was told to build a core it had already built. **This is what had made our own
+  Windows CI red since 0.1.2**, and it read as a missing step rather than a
+  search path. Fixed there and pushed.
+- **Void Palabra** — two commits, including the sync protocol stage C needs,
+  existed only here. Pushed unchanged.
+- **Void Mago 0.1.8** (2026-09-18, this session) — non-Windows artifacts are
+  named `.tar.gz`, which is what a release runner actually builds.
+
+## What is still not right, and is not a release blocker
+
+`golden_render` fails off Windows. Two causes, one fixed:
+
+- **macOS**: `sed` refused UTF-8 it could not decode in the runner's locale, on a
+  fixture full of Spanish. `LC_ALL=C` — every pattern there is ASCII. Fixed.
+- **Linux**: the rendered bytes genuinely differ — the calendar `.ics` and three
+  webfonts. Both writes are binary and the fonts are copied with `copy_file`, so
+  the cause is not line endings at the seam we looked at, and it was not chased
+  during a release. The golden remains a **Windows-captured** net, which is what
+  it has always been in practice.
