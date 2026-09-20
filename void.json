@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -215,27 +215,36 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.1.4",
-    "previous": "0.1.3",
+    "version": "0.1.5",
+    "previous": "0.1.4",
     "change": "compatible",
-    "date": "2026-09-18",
-    "summary": "updates work on Linux: the release carries a checked Linux archive, and the app unpacks it beside the running copy and opens it on the same database",
+    "date": "2026-09-20",
+    "summary": "seeing each other work now happens the same way everywhere - the map and the calendar included - and members exchange only what changed instead of the whole database",
     "adds": [
-      "On Linux (and macOS), Download it > Unpack and open it: the verified archive is unpacked into its own folder next to the one you are running, and the new version opens on the database you had open",
-      "The macOS archives are built again, for Apple Silicon and for Intel Macs. Nobody has run them yet"
+      "The map and the calendar show who else is on something, which they never did before",
+      "A Networking section in Settings: what you broadcast, what you see of others, and whether files members add are downloaded automatically",
+      "Here now, in Share database: who is on the network and what each person is working in",
+      "Each workflow shows small pictures of the people who have it open, up to three and then a count. Settings turns them off",
+      "A padlock on anything that stays on this computer, so private is something you can see rather than remember",
+      "Notes and other new things get a name that another member cannot create at the same time"
     ],
     "behavior_changes": [
       {
-        "what": "ON LINUX, AN UPDATE IS A NEW FOLDER BESIDE THE OLD ONE. Hormiga unpacks the new version next to the folder it is running from (for example VoidHormiga-0.1.4-linux-x64 beside VoidHormiga-0.1.3-linux-x64) and never over it. The old folder stays until you delete it.",
-        "who_is_affected": "Linux users. The folder the running copy lives in must be one you can write to. If it is not, the update says so and leaves the checked archive where it was downloaded."
+        "what": "MEMBERS NOW EXCHANGE ONLY WHAT CHANGED. Keeping in sync used to send the whole database each time. It now sends the difference, through Void Palabra's sync protocol, and conflicts are shown as a question with a button per side as before. Private things and the Antfarm still never leave this computer.",
+        "who_is_affected": "Anyone sharing a database. A member still running 0.1.4 CANNOT sync with 0.1.5 - the two speak differently. Update every computer that shares a database, or they will see each other present and exchange nothing."
       },
       {
-        "what": "0.1.3 ON LINUX INSTALLS THIS ONE BY HAND, ONCE. 0.1.3 can now download and check this release, but it opens the archive in an archive viewer instead of installing it, because unpacking is new in 0.1.4. Unpack it yourself this once. Updates after that happen from inside the app.",
-        "who_is_affected": "Anyone running 0.1.3 or earlier on Linux. Download VoidHormiga-linux-x64.tar.gz from the release page and unpack it. Your database is not in the program folder, so nothing is lost."
+        "what": "PICTURES ARE FILED UNDER THEIR OWN FINGERPRINT. A picture added to the database is now named by a checksum of its contents, which is what lets another member check that the file they received is the file that was sent. Pictures already in a database keep their old names and still work.",
+        "who_is_affected": "Nobody has to do anything. It is the groundwork for pictures travelling between members, which today they still do not."
+      },
+      {
+        "what": "A DEVICE SAYS WHICH PORT TO REACH IT ON. It used to be the same number for everybody, so two copies of Hormiga on ONE computer called themselves instead of each other. Two computers were never affected.",
+        "who_is_affected": "Anyone testing with two copies on one machine: give each database a different share port and they will find each other."
       }
     ],
     "read_more": [
-      "okf/concepts/platform/distribution.md"
+      "okf/concepts/platform/lan-sharing.md",
+      "../VoidMaiz/okf/concepts/networking.md"
     ]
   },
   "update": {
