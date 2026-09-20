@@ -188,6 +188,19 @@ today such secrets are reported and not kept.
 
 # 3b. After joining, syncing is automatic — once it is correct
 
+**From 0.1.5 the sync seam is Void Maiz's** (`voidmaiz_net` over Void Palabra's
+session; their 2026-09-19 message). What travels is a DELTA, not the whole
+document, and the splice, the conflicts and the files come with it. What stays
+ours: where the replica is saved, what may leave (the share filter below, which
+presence reads too), which fields name files, and the sealed LAN session that
+carries the frames. The author decided on 2026-09-19 that Palabra frames may
+ride that session before Palabra's trust model lands, **on the LAN only**.
+
+**A device announces where to reach it**, as `sync_port` in its presence
+(`share.port + 1`). It used to be one constant for everyone, which is right on
+two machines and wrong on one: a second Hormiga on the same host dialled its own
+listener, because the address and the port both matched.
+
 > i would want syncing to be automatic. because i dont see a reason to share a
 > database, share antfarms, and just, not sync? … as long as it WORKS correctly.
 > … there should be a mini loading bar or something for an initial sync.

@@ -1798,8 +1798,22 @@ std::string HormigaApp::ingest_asset(const std::string& src, bool quiet) {
     }
     std::stringstream ss;
     ss << in.rdbuf();
-    char hex[20];
-    std::snprintf(hex, sizeof hex, "%08llx", (unsigned long long)(fnv1a64(ss.str()) & 0xffffffffull));
+    /* ── THE NAME IS THE CONTENT ADDRESS (2026-09-19) ───────────────────────
+     * It used to be 32 bits of FNV, which deduplicates fine and proves
+     * nothing. A file that travels between members is verified against its
+     * address by the receiver (Void Palabra: "a peer cannot hand over the
+     * wrong file under the right name"), so the address has to be a real
+     * digest -- and `sha256_hex_anywhere()` is what finds it in the path a
+     * rune stores. libsodium, never hand-rolled (ground rule 6).
+     *
+     * Files ingested by an older version keep their 8-hex names. They are not
+     * addresses, so they are never asked for, which is what they do today. */
+    const std::string body = ss.str();
+    unsigned char digest[crypto_hash_sha256_BYTES];
+    crypto_hash_sha256(digest, (const unsigned char*)body.data(), body.size());
+    char hex[2 * crypto_hash_sha256_BYTES + 1];
+    for (std::size_t i = 0; i < sizeof digest; ++i)
+        std::snprintf(hex + 2 * i, 3, "%02x", digest[i]);
     fs::path p(src);
     std::string name = hormiga::detail::slug(p.stem().string());
     if (name.empty()) name = "asset";

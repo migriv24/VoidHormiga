@@ -242,8 +242,38 @@ void LanRuntime::sync_tick(HormigaApp& app, double now, bool presence) {
     LanRuntime& rt = of(app);
     if (!presence) {
         rt.listening = false;
+#ifdef HORMIGA_HAVE_NET
+        if (rt.net) net_close(rt);
+#endif
         return;
     }
+#ifdef HORMIGA_HAVE_NET
+    /* ── STAGE C (2026-09-19): the whole-document exchange below is not used ──
+     * Void Maiz's `Network` drives Palabra's session per link: deltas, not
+     * documents, and the splice, the conflicts and the files with them. The
+     * 0.1.4 path stays compiled for a build without `voidmaiz_net` (no
+     * ../VoidPalabra checkout), and is the only thing a 0.1.4 peer speaks. */
+    if (!net_open(app)) return;
+    {
+        std::lock_guard<std::mutex> lk(rt.mu);
+        rt.member_fps.clear();
+        for (const auto& row : rt.member_rows)
+            if (auto f = row.find("fingerprint"), l = row.find("left");
+                f != row.end() && (l == row.end() || l->second.empty()))
+                rt.member_fps.insert(f->second);
+    }
+    if (!rt.listening) {
+        rt.listening = true;
+        const auto mine_share = hormiga::collab::share_settings(project(app.core, kAntfarmMantle));
+        std::thread(net_listen, app.lan,
+                    hormiga::sync::KeyPair{rt.me.public_key, rt.me.secret_key},
+                    mine_share.port + 1)
+            .detach();
+    }
+    net_links(app, now);
+    net_tick(app, now);
+    return;
+#else
     if (now - rt.prepared_at > 3.0 && !sync_prepare(app, now, false)) return;
     {
         std::lock_guard<std::mutex> lk(rt.mu);
@@ -276,6 +306,7 @@ void LanRuntime::sync_tick(HormigaApp& app, double now, bool presence) {
         rt.exchange_started[fp] = now;
         std::thread(exchange, app.lan, keys, a, rt.me.username, hormiga::collab::kMemberSyncPort).detach();
     }
+#endif
 }
 
 /* ── landing what arrived ───────────────────────────────────────────────────── */

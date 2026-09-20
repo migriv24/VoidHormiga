@@ -350,10 +350,32 @@ bool send_all(socket_t s, const char* p, std::size_t n) {
     return true;
 }
 
-bool recv_all(socket_t s, char* p, std::size_t n) {
+/* ── A QUIET SOCKET IS NOT A BROKEN ONE (2026-09-19) ─────────────────────────
+ *
+ * `recv` returning -1 because the receive timeout elapsed and `recv` returning
+ * -1 because the peer went away were the same answer here, and every caller
+ * read it as "the connection dropped". That was harmless while a receive only
+ * ever followed a send -- a request/response exchange is never idle -- and it
+ * stopped being harmless the moment a link carried Void Palabra's frames, which
+ * arrive when the other side has something to say and not before: the first
+ * 700ms of silence tore the link down, and the peer reported that we never said
+ * hello. `timed_out` is set when NOTHING had been read and the wait expired;
+ * mid-frame silence is still a drop, because a frame that stops halfway is. */
+bool recv_all(socket_t s, char* p, std::size_t n, bool* timed_out = nullptr) {
+    bool first = true;
     while (n) {
         int r = ::recv(s, p, (int)n, 0);
-        if (r <= 0) return false;
+        if (r <= 0) {
+            if (timed_out && first && r < 0) {
+#ifdef _WIN32
+                *timed_out = WSAGetLastError() == WSAETIMEDOUT;
+#else
+                *timed_out = errno == EAGAIN || errno == EWOULDBLOCK;
+#endif
+            }
+            return false;
+        }
+        first = false;
         p += r;
         n -= (std::size_t)r;
     }
@@ -366,9 +388,9 @@ bool send_frame(socket_t s, const std::string& b) {
     return send_all(s, (const char*)len, 4) && send_all(s, b.data(), b.size());
 }
 
-bool recv_frame(socket_t s, std::string& out) {
+bool recv_frame(socket_t s, std::string& out, bool* timed_out = nullptr) {
     unsigned char len[4];
-    if (!recv_all(s, (char*)len, 4)) return false;
+    if (!recv_all(s, (char*)len, 4, timed_out)) return false;
     std::size_t n = ((std::size_t)len[0] << 24) | ((std::size_t)len[1] << 16) |
                     ((std::size_t)len[2] << 8) | len[3];
     if (n > kMaxFrame) return false;  // a length prefix is attacker-controlled
@@ -662,8 +684,10 @@ bool Session::receive(std::string& payload, std::string* error, std::size_t max_
     std::vector<unsigned char> pt(kChunk + crypto_secretstream_xchacha20poly1305_ABYTES);
     for (;;) {
         std::string frame;
-        if (!recv_frame(p_->sock, frame)) {
-            if (error) *error = "the connection dropped mid-receive";
+        bool timed_out = false;
+        if (!recv_frame(p_->sock, frame, &timed_out)) {
+            if (error) *error = timed_out ? "the receive timed out with nothing to read"
+                                          : "the connection dropped mid-receive";
             return false;
         }
         unsigned long long mlen = 0;

@@ -91,6 +91,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
         static const char* kSections[] = {"Data", "Builder", "Antfarm", "Map"};
         me.section = app.section >= 0 && app.section < 4 ? kSections[app.section] : "";
         me.mantle = app.scene.mantle;
+        me.sync_port = share.port + 1;   // where this device listens for member sync
         me.selection = app.ed.selection;
         for (const auto& s : me.selection) {
             const auto* n = app.scene.find(s);

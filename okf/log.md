@@ -4488,3 +4488,50 @@ target if Maiz already brought it, and bring it in ourselves otherwise.
   colours the members registry assigns from). `maiz::draw_profile_editor` edits
   a name and a colour, and ours edits the thing those are read from. Reported
   back to Void Maiz rather than worked around.
+
+## Stage C: the sync seam is Void Maiz's, and two processes proved it
+
+`app/lan_sync.cpp`'s whole-document exchange is no longer the path. `maiz::Network`
+drives Void Palabra's session per link; `app/lan_net.cpp` is what an application
+still owns, and it is four things: where the replica is saved (`persist`, which
+runs before anything leaves), what may leave (the same `ShareFilter` presence
+reads, plus "not the Antfarm"), which fields name files, and moving the bytes.
+The 0.1.4 path stays compiled for a build without `voidmaiz_net`.
+
+**Tested between two processes**, two profile folders, two databases, over the
+real sealed transport — the first time anything here was proven outside one
+document:
+
+- a contact made on A appeared on B, and one made on B appeared on A, with its
+  field values;
+- a note tagged `private` did **not** travel, while a note beside it did;
+- both sides logged the hello, the merge and the goodbye.
+
+## Three defects the test found, none of them Void Maiz's
+
+1. **A quiet socket read as a broken one.** `sync::Session::receive` reported a
+   receive timeout and a dropped connection with one message, and every caller
+   had read it as "the connection dropped". That was harmless while a receive
+   only ever followed a send; Palabra's frames arrive when the peer has
+   something to say, so the first 700ms of silence tore the link down and the
+   peer reported *"the peer never said hello"*. `recv_all` now distinguishes a
+   timeout with nothing read from a frame that stopped halfway.
+2. **One member-sync port for every device.** Two Hormigas on one machine dialled
+   each other's port — which is to say, their own. A device now announces its
+   sync port in its presence (`share.port + 1`). On two machines nothing changes;
+   on one, testing is possible at all.
+3. **The listener stopped listening while it pumped.** A session moved into its
+   own thread, so a second member (or a reconnect) does not meet a closed port.
+
+## Assets are named by their sha256 now
+
+`ingest_asset` used 32 bits of FNV, which deduplicates fine and proves nothing.
+A file that travels is verified against its address by the receiver, so the
+address has to be a real digest, and `sha256_hex_anywhere()` is what finds it in
+the path a rune stores. Files ingested by an older version keep their 8-hex
+names: they are not addresses, so they are never asked for, which is what they
+do today.
+
+- 42/42 tests, the desktop application starts and draws.
+- Conflicts are Void Maiz's `draw_conflicts` over `Network::conflicts()`, and a
+  stale answer is refused rather than overwriting a value nobody saw.

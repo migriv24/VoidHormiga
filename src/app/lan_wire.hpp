@@ -47,6 +47,13 @@ struct Activity {
      * the real one from 0.1.5 on; the fields above stay so a 0.1.4 peer is
      * still understood, and are how a 0.1.4 peer understands us. */
     std::string presence;
+    /* WHERE TO REACH THIS DEVICE FOR SYNC (2026-09-19). It used to be one
+     * constant for everybody, which is right on two machines and wrong on one:
+     * a second Hormiga on this host dialled its OWN listener, because the
+     * address and the port both matched. The port a database shares on decides
+     * it (share.port + 1), so two databases on one machine differ. 0 = a 0.1.4
+     * peer, which is only ever on kMemberSyncPort. */
+    int sync_port = 0;
     std::string version;   // what this member's replica shows (lan-sharing.md §3b)
     std::string address;   // filled in by the receiver, from the datagram
     std::int64_t seen = 0;

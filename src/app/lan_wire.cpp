@@ -154,6 +154,7 @@ std::string seal_activity(const Activity& a, const std::string& room_key) {
     for (std::size_t i = 0; i < a.ids.size() && i < 6; ++i) ids.push_back(clip(a.ids[i], 48));
     j["ids"] = ids;
     if (!a.presence.empty()) j["p"] = a.presence;
+    if (a.sync_port > 0) j["sp"] = a.sync_port;
     std::string sealed;
     if (!hormiga::sync::seal_blob(dump(j), room_key, sealed)) return {};
     return sealed;
@@ -178,6 +179,7 @@ bool open_activity(const std::string& sealed, const std::string& room_key, Activ
         for (const auto& s : j["ids"])
             if (s.is_string() && a.ids.size() < 6) a.ids.push_back(s.get<std::string>());
     a.presence = str(j, "p");
+    if (j.contains("sp") && j["sp"].is_number_integer()) a.sync_port = j["sp"].get<int>();
     if (a.fingerprint.empty()) return false;
     out = a;
     return true;

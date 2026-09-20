@@ -448,6 +448,32 @@ void LanRuntime::draw_discover(HormigaApp& app) {
 void LanRuntime::draw_sync_section(HormigaApp& app) {
     LanRuntime& rt = of(app);
     ImGui::SeparatorText(ICON_FA_ROTATE "  Keeping in sync");
+#ifdef HORMIGA_HAVE_NET
+    /* STAGE C: the questions and the answer both belong to Void Maiz now.
+     * `draw_conflicts` returns the choice made this frame; `Network::resolve`
+     * records it as THIS device's act, so the other member sees the question
+     * answered rather than asked again. A stale row is refused rather than
+     * overwriting a value nobody saw, which is why the rows are re-read. */
+    if (!rt.net) {
+        ImGui::TextDisabled("Starts once this database is shared or joined: members who are on the "
+                            "same network then keep it in sync on their own.");
+        return;
+    }
+    ImGui::TextDisabled("Members who are here sync automatically. Private notes and the Antfarm "
+                        "stay on this computer.");
+    int open_links = 0;
+    for (const auto& l : rt.net->links()) open_links += l.open ? 1 : 0;
+    if (open_links)
+        ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.5f, 1), "%d member(s) connected", open_links);
+    const maiz::ConflictChoice chose = maiz::draw_conflicts(rt.net->conflicts());
+    if (!chose.row.empty() && chose.side >= 0) {
+        const double now = ImGui::GetTime();
+        if (!rt.net->resolve(chose.row, (std::size_t)chose.side, (maiz::NetMillis)(now * 1000.0)))
+            app.toast("that conflict changed while you were reading it - look again", true);
+    }
+    maiz::draw_anomalies(rt.net->anomalies());
+    return;
+#else
     if (!rt.replica) {
         ImGui::TextDisabled("Starts once this database is shared or joined: members who are on the "
                             "same network then keep it in sync on their own.");
@@ -510,4 +536,5 @@ void LanRuntime::draw_sync_section(HormigaApp& app) {
         }
         ImGui::PopID();
     }
+#endif
 }

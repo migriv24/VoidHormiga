@@ -98,6 +98,18 @@ target_include_directories(voidpalabra PUBLIC ${VOIDMAIZ_ROOT}/vendor)
 add_library(hormiga_sync STATIC src/sync/merge.cpp src/sync/peer.cpp src/sync/replica.cpp)
 target_include_directories(hormiga_sync PUBLIC src PRIVATE ${VOIDMAIZ_ROOT}/vendor)
 target_link_libraries(hormiga_sync PUBLIC voidpalabra sodium)
+
+# ── STAGE C: Void Maiz's networking module (2026-09-19) ──────────────────────
+# `voidmaiz_net` is the ONLY target that links Void Palabra's session, and Void
+# Maiz builds it only when ../VoidPalabra is checked out. An application that
+# never networks links none of it -- which is the shape the author asked for, so
+# we consume it the same way: if it is there we use it, and if it is not, the
+# 0.1.4 whole-document sync still compiles and runs.
+if(TARGET voidmaiz_net)
+  message(STATUS "Void Maiz networking (voidmaiz_net) found: stage C is in")
+else()
+  message(WARNING "voidmaiz_net not built (is ../VoidPalabra/include/voidpalabra/sync.hpp there?) -- members sync the 0.1.4 way")
+endif()
 if(WIN32)
   target_link_libraries(hormiga_sync PUBLIC ws2_32) # the LAN beacon + stream
 endif()
@@ -233,6 +245,7 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
   src/platform/miga.cpp src/platform/preview_server.cpp src/main/desktop.cpp
   src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
   src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
+  src/app/lan_net.cpp
   src/ui/share.cpp src/ui/profile_window.cpp)
 # Void Core's C ABI header, for the SPEC 6.1 command codec exported in 0.2.7
 # (vc_arg_quote / vc_argv_split_json / vc_transcript_split_json). The library
@@ -284,6 +297,10 @@ else()
 endif()
 target_compile_definitions(voidhormiga PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
   HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
+if(TARGET voidmaiz_net)
+  target_link_libraries(voidhormiga PRIVATE voidmaiz_net)
+  target_compile_definitions(voidhormiga PRIVATE HORMIGA_HAVE_NET=1)
+endif()
 target_include_directories(voidhormiga PRIVATE src vendor/stb vendor/json vendor/fonts
   vendor/icons vendor/blake3 vendor/qrcodegen ${HORMIGA_GEN})
 add_dependencies(voidhormiga hormiga_web_assets)
@@ -365,10 +382,15 @@ add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
   src/platform/miga.cpp src/platform/preview_server.cpp
   src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
   src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
+  src/app/lan_net.cpp
   src/ui/share.cpp src/ui/profile_window.cpp)
 target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
 target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
   HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
+if(TARGET voidmaiz_net)
+  target_link_libraries(voidhormiga-cli PRIVATE voidmaiz_net)
+  target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_HAVE_NET=1)
+endif()
 target_include_directories(voidhormiga-cli PRIVATE src vendor/stb vendor/json vendor/fonts
   vendor/icons vendor/blake3 vendor/qrcodegen ${HORMIGA_GEN})
 

@@ -23,7 +23,11 @@
 #include "app/lan_wire.hpp"
 #include "domain/collab.hpp"
 #include "platform/profile.hpp"
+#include "sync/peer.hpp"   // the sealed LAN session that carries frames
 #include "sync/replica.hpp"
+#ifdef HORMIGA_HAVE_NET
+#include "voidmaiz/net.hpp"  // stage C: the sync seam is Void Maiz's
+#endif
 
 #include <array>
 #include <atomic>
@@ -122,6 +126,19 @@ struct LanRuntime {
         long long done = 0, total = 0;
         bool sending = false;
     };
+#ifdef HORMIGA_HAVE_NET
+    /* STAGE C: the sync seam is Void Maiz's. `net` owns the replica, the
+     * sessions, the splice and the files; `link_io` is the only thing the link
+     * threads touch, under `mu`. */
+    struct LinkIO {
+        std::vector<std::string> out, in;
+        bool connected = false;   // the frame thread has called Network::connect
+        bool carrying = false;    // a link thread is on it
+    };
+    std::unique_ptr<maiz::Network> net;
+    std::string net_for;                       // the database id it belongs to
+    std::map<std::string, LinkIO> link_io;     // link id (a peer fingerprint) -> queues
+#endif
     std::unique_ptr<hormiga::sync::SharedReplica> replica;
     std::string replica_for;        // the database id it belongs to
     std::string shown_version;      // what it shows
@@ -196,6 +213,20 @@ struct LanRuntime {
                                                               const std::string& rune,
                                                               const std::string& id = {});
     static std::string color_of(const LanRuntime& rt, const std::string& fingerprint);
+
+#ifdef HORMIGA_HAVE_NET
+    /* Stage C (app/lan_net.cpp). Everything here runs on the FRAME thread
+     * except `net_pump`, which only moves bytes. */
+    static bool net_open(HormigaApp& app);
+    static void net_close(LanRuntime& rt);
+    static void net_tick(HormigaApp& app, double now);
+    static void net_links(HormigaApp& app, double now);
+    static void net_pump(std::shared_ptr<LanRuntime> rt, hormiga::sync::Session* session,
+                         const std::string& link, double until);
+    static void net_dial(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPair keys,
+                         hormiga::lan::Activity peer, int port);
+    static void net_listen(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPair keys, int port);
+#endif
 
     /* This device's networking preferences, beside the profile (stage B). */
     static std::filesystem::path net_settings_file();

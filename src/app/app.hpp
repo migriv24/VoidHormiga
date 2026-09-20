@@ -1167,7 +1167,7 @@ private:
 
     std::filesystem::path org_file() const;
     std::filesystem::path db_file() const;
-    std::filesystem::path assets_dir() const;
+    std::filesystem::path assets_dir() const;   // public: lan_net.cpp serves files from it
     void install_host(); // log sink + effect handler (survive core replacement)
     void apply_theme();
     void read_view_config();
