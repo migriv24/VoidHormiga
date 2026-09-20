@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20)
 # does not produce a missing answer, it produces a confident wrong one. It is
 # also what the running binary reports to the update client, which is the other
 # reason it cannot be a literal typed into a third place.
-project(voidhormiga VERSION 0.1.5 LANGUAGES CXX C)
+project(voidhormiga VERSION 0.1.6 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
