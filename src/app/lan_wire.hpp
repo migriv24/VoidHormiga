@@ -38,6 +38,15 @@ struct Offer {
 struct Activity {
     std::string fingerprint, user, color, section, mantle;
     std::vector<std::string> selection;
+    /* The selected runes' spirit.id, parallel to `selection` (2026-09-19). Two
+     * members can each mint a rune with the same NAME; Void Core's id is random
+     * and is what sync merges on, so presence matches on it too. Empty from a
+     * 0.1.4 peer, which is matched by name as before. */
+    std::vector<std::string> ids;
+    /* Void Maiz's presence payload (`presence_to_json`), carried whole. It is
+     * the real one from 0.1.5 on; the fields above stay so a 0.1.4 peer is
+     * still understood, and are how a 0.1.4 peer understands us. */
+    std::string presence;
     std::string version;   // what this member's replica shows (lan-sharing.md §3b)
     std::string address;   // filled in by the receiver, from the datagram
     std::int64_t seen = 0;

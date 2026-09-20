@@ -21,11 +21,17 @@ std::string HormigaApp::search_picker(
         if (keep && !keep(n)) continue;
         if (!contains_ci(n.name, buf)) continue;
         if (++shown > 8) { ImGui::TextDisabled("(keep typing...)"); break; }
-        std::string lbl = n.name + "  (" + n.glyph + ")##" + std::string(id);
+        /* ONE ID PER ROW, BY RUNE NAME (2026-09-19). The label used to end in
+         * "##" + id, and every caller's `id` already starts with "##" -- ImGui
+         * reads from the FIRST "##", so all eight rows shared the id
+         * "##linksearch" and Dear ImGui's conflict detector painted them red. */
+        ImGui::PushID(n.name.c_str());
+        std::string lbl = n.name + "  (" + n.glyph + ")";
         if (ImGui::Selectable(lbl.c_str())) {
             picked = n.name;
             buf[0] = 0;
         }
+        ImGui::PopID();
         std::string sub = subtitle(n);
         if (!sub.empty()) {
             ImGui::Indent(12);

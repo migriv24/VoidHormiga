@@ -21,11 +21,7 @@
 /* Append a new component to the document via the `doc place` verb — the
  * palette's click IS the verb (one definition, builder.md B3). */
 void HormigaApp::doc_palette_place(const std::string& glyph) {
-    std::string name;
-    for (int i = 1;; ++i) {
-        name = glyph + "-" + std::to_string(i);
-        if (!scene.find(name)) break;
-    }
+    const std::string name = mint_name(glyph);
     int maxrow = -1;
     for (const auto& n : scene.nodes)
         maxrow = std::max(maxrow, hormiga::doc_field_int(n, "row", -1));
@@ -898,11 +894,7 @@ void HormigaApp::draw_document_canvas(float body_h) {
             if (const ImGuiPayload* pl =
                     ImGui::AcceptDragDropPayload("PALETTE_GLYPH")) {
                 std::string glyph((const char*)pl->Data);
-                std::string name;
-                for (int i = 1;; ++i) {
-                    name = glyph + "-" + std::to_string(i);
-                    if (!scene.find(name)) break;
-                }
+                const std::string name = mint_name(glyph);
                 std::vector<std::string> cmds;
                 // renumber the visual rows to CONTIGUOUS values with a gap at
                 // `at` (robust when original rows had gaps; also tidies them)
@@ -989,7 +981,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
             }
         ImGui::EndCombo();
     }
-    ImGui::SameLine();
+    flow_button(ICON_FA_SQUARE_PLUS " New##doc");
     if (ImGui::SmallButton(ICON_FA_SQUARE_PLUS " New##doc")) ImGui::OpenPopup("##newdoc");
     if (ImGui::BeginPopup("##newdoc")) {
         ImGui::TextDisabled("a new document (newsletter or website)");
@@ -1012,7 +1004,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
      * The roadmap's "blocked on Core `mantle rm`/`rename`" note outlived its
      * blocker; both verbs are in `verbs_edit.c`. See `rename_document` /
      * `delete_document` for why one of these asks and the other does not. */
-    ImGui::SameLine();
+    flow_button(ICON_FA_PEN_TO_SQUARE " Rename##doc");
     if (ImGui::SmallButton(ICON_FA_PEN_TO_SQUARE " Rename##doc")) {
         std::snprintf(rename_doc_name, sizeof rename_doc_name, "%s",
                       cur_doc.c_str());
@@ -1032,7 +1024,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
         ImGui::TextDisabled("every element comes with it; links repoint");
         ImGui::EndPopup();
     }
-    ImGui::SameLine();
+    flow_button(ICON_FA_TRASH " Delete##doc");
     if (ImGui::SmallButton(ICON_FA_TRASH " Delete##doc")) ImGui::OpenPopup("##deldoc");
     if (ImGui::BeginPopup("##deldoc")) {
         /* The consequence in words, with a count, rather than "are you sure?".
@@ -1069,7 +1061,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
      * it. `edits_since_save` is incremented by `dispatch_and_reproject` — one
      * counter, at the one door every GUI edit goes through, which is the only
      * place it cannot drift from the truth. */
-    ImGui::SameLine(0, 16);
+    flow_button(ICON_FA_FLOPPY_DISK " Save*", 16);
     if (ImGui::SmallButton(edits_since_save ? ICON_FA_FLOPPY_DISK " Save*"
                                         : ICON_FA_FLOPPY_DISK " Save")) do_save();
     if (ImGui::IsItemHovered())
@@ -1081,32 +1073,32 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
                 : "everything is written to disk (Ctrl+S).\nThis is NOT 'save as "
                   "a .miga' - that packs a portable bundle.",
             edits_since_save);
-    ImGui::SameLine();
+    flow(ImGui::CalcTextSize("000 unsaved").x);
     if (edits_since_save)
         ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.3f, 1), "%d unsaved",
                            edits_since_save);
     else
         ImGui::TextDisabled("saved");
-    ImGui::SameLine();
+    flow_button(ICON_FA_DOWNLOAD " Save to file");
     if (ImGui::SmallButton(ICON_FA_DOWNLOAD " Save to file")) export_document();
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("export this document to documents/<name>.json -\n"
                           "a portable file you can back up or share");
-    ImGui::SameLine();
+    flow_button(ICON_FA_FOLDER_OPEN " Load file");
     if (ImGui::SmallButton(ICON_FA_FOLDER_OPEN " Load file")) import_document();
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("open a document .json as a NEW document (never\n"
                           "overwrites the current one)");
-    ImGui::SameLine(0, 16);
+    flow(60, 16);
     // toolbar
     ImGui::SetNextItemWidth(60);
     ImGui::Combo("##lang", &preview_lang, "EN\0ES\0");
-    ImGui::SameLine();
+    flow_button(ICON_FA_ENVELOPE " Email preview");
     if (ImGui::SmallButton(ICON_FA_ENVELOPE " Email preview"))
         dispatch_and_reproject(preview_lang ? "effect render es" : "effect render en");
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("email domain: table-safe HTML for pasting into a mail client");
-    ImGui::SameLine();
+    flow_button(ICON_FA_GLOBE " Build website");
     if (ImGui::SmallButton(ICON_FA_GLOBE " Build website"))
         dispatch_and_reproject(preview_lang ? "effect render-site es"
                                             : "effect render-site en");
@@ -1119,12 +1111,12 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
         ImGui::SetTooltip("web domain: a responsive static site in site/ (CSS + JS +\n"
                           "self-hosted images). This builds it; it does not put it\n"
                           "online - open the Publish tab for that.");
-    ImGui::SameLine();
+    flow_button("Publish...");
     if (ImGui::SmallButton("Publish...")) win_publish = true;
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("build, preview, and put this website online -\n"
                           "with the history of what was published when");
-    ImGui::SameLine(0, 16);
+    flow_button("Live preview", 16);
     // B2: the live preview — server + browser auto-reload on every edit
     bool was_live = preview_live;
     if (was_live) ImGui::PushStyleColor(ImGuiCol_Button,
@@ -1143,7 +1135,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
                           "re-renders and the page reloads itself.\n"
                           "email twin: /preview-%s.html on the same server",
                           preview_lang ? "es" : "en");
-    ImGui::SameLine();
+    flow_button("Templates");
     if (ImGui::SmallButton("Templates")) show_templates = true;
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("start from a designed layout + theme, or save\n"
@@ -1151,23 +1143,25 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
     // the legacy block canvas is hidden by default (Settings > show legacy);
     // "Migrate to grid" retired — new documents are grid-native
     if (show_legacy) {
-        ImGui::SameLine(0, 16);
+        flow_button("elements (legacy)", 16);
         if (ImGui::SmallButton(builder_doc_view ? "elements (legacy)" : "document"))
             builder_doc_view = !builder_doc_view;
-        ImGui::SameLine();
+        flow_button("tidy stacks");
         if (ImGui::SmallButton("tidy stacks")) {
             std::string cmd = maiz::compile_stack_layout(scene, canvas_style.block);
             if (!cmd.empty()) dispatch_and_reproject(cmd);
         }
-        ImGui::SameLine();
+        flow_button("Migrate to grid");
         if (ImGui::SmallButton("Migrate to grid"))
             pending_cmds.push_back("doc migrate");
     } else {
         builder_doc_view = true; // always the document canvas when legacy hidden
     }
-    ImGui::SameLine(0, 16);
-    ImGui::TextDisabled("click: edit - double-click text: edit inline - "
-                        "drag: reorder");
+    {
+        const char* hint = "click: edit - double-click text: edit inline - drag: reorder";
+        flow(ImGui::CalcTextSize(hint).x, 16);
+        ImGui::TextDisabled("%s", hint);
+    }
     ImGui::End(); // Document options
 
     ImGui::Begin("Blocks##builder");
@@ -1179,11 +1173,15 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
     if (builder_doc_view) {
         draw_document_canvas(ImGui::GetContentRegionAvail().y);
     } else {
-        const ImVec2 canvas_at = ImGui::GetCursorScreenPos();
+        maiz::CanvasNet net;
+        net.surfaces = &surfaces;
+        net.roster = &roster;
+        net.display = net_settings.show;
+        net.shareable = share_now;
+        net.surface_id = "canvas:builder";
         maiz::CanvasIO cio = maiz::edit_canvas("builder-canvas", scene, ed,
                                                canvas_style, &palette_blocks,
-                                               &faces);
-        LanRuntime::outline_nodes(*this, canvas_at.x, canvas_at.y); // others' selections
+                                               &faces, {}, nullptr, &net);
         for (const auto& cmd : cio.commands) dispatch_and_reproject(cmd);
     }
     ImGui::End(); // Document
@@ -1589,8 +1587,15 @@ void HormigaApp::draw_antfarm_section() {
     ImGui::TextDisabled("the org's backends, by payload: records + assets flow "
                         "from the core; the HTML publisher builds a site the "
                         "server/deploy nodes carry. ports only fit their own type.");
+    maiz::CanvasNet anet;
+    anet.surfaces = &surfaces;
+    anet.roster = &roster;
+    anet.display = net_settings.show;
+    anet.shareable = share_now;
+    anet.surface_id = "canvas:antfarm";
     maiz::CanvasIO cio = maiz::edit_canvas("antfarm-canvas", scene, ed,
-                                           canvas_style, &palette_antfarm, &faces);
+                                           canvas_style, &palette_antfarm, &faces,
+                                           {}, nullptr, &anet);
     for (const auto& cmd : cio.commands) dispatch_and_reproject(cmd);
     ImGui::End(); // Node graph
 

@@ -62,6 +62,7 @@
 #include "voidmaiz/project.hpp"
 
 #include "imgui.h"
+#include "voidmaiz/netview.hpp" // presence_item / presence_rect: every view draws marks the same way
 #include "imgui_internal.h" // DockBuilder* — seed the default dock arrangement
 
 
@@ -201,6 +202,26 @@ inline constexpr int kBaseSourceCount = hormiga::gis::kBuiltinSourceCount;
 template <class T>
 inline T clamp_fit(T v, T lo, T hi) {
     return hi < lo ? lo : (v < lo ? lo : (hi < v ? hi : v));
+}
+
+/* ── A TOOLBAR THAT WRAPS (2026-09-19) ───────────────────────────────────────
+ *
+ * The author: *"the buttons should wrap around if the window isn't big enough
+ * (in general, there's some things that should wrap around if things dont
+ * fit)"*. `SameLine()` never wraps; the row runs off the window's edge. Call
+ * `flow(width)` INSTEAD of `SameLine()` before an item: it stays on the line
+ * when the next item fits in the window, and starts a new line when it does
+ * not. `flow_button(label)` measures a (Small)Button's label for you; anything
+ * else passes its own width. `gap` < 0 is the style's spacing. */
+inline void flow(float next_width, float gap = -1.0f) {
+    const ImGuiStyle& st = ImGui::GetStyle();
+    const float g = gap < 0 ? st.ItemSpacing.x : gap;
+    const float right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    if (ImGui::GetItemRectMax().x + g + next_width <= right) ImGui::SameLine(0, g);
+}
+inline void flow_button(const char* label, float gap = -1.0f) {
+    flow(ImGui::CalcTextSize(label, nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2,
+         gap);
 }
 
 /* ── AN ICON FOR EVERY GLYPH (2026-09-02) ────────────────────────────────────

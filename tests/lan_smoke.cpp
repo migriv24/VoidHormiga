@@ -59,12 +59,14 @@ int main() {
     a.section = "Data";
     a.mantle = "demo-org";
     a.selection = {"maria", "flyer-taller"};
+    a.ids = {"rune_9fa3c1b7e2", "rune_00000000aa"};  // matched on these, not names
     const std::string sealed = lan::seal_activity(a, key);
     CHECK(!sealed.empty());
     CHECK(sealed.find("cool_username_123") == std::string::npos);  // not in the clear
     lan::Activity back;
     CHECK(lan::open_activity(sealed, key, back));
     CHECK(back.user == a.user && back.selection == a.selection && back.mantle == a.mantle);
+    CHECK(back.ids == a.ids);
     CHECK(!lan::open_activity(sealed, other, back));
     std::string tampered = sealed;
     tampered[tampered.size() / 2] ^= 0x01;

@@ -7,14 +7,18 @@ using namespace lan_detail;
 
 /* ── presence ───────────────────────────────────────────────────────────────── */
 
-std::vector<const hormiga::lan::Activity*> LanRuntime::on_rune(const LanRuntime& rt, const std::string& rune) {
+/* BY ID WHEN THE PEER SENT IDS (2026-09-19). The author made a PRIVATE note on
+ * one device and a shared note on another, both named `note-1`, and the private
+ * one lit up with the other person's colour: a name is a handle two members can
+ * both mint, and matching on it cannot tell their runes apart. */
+std::vector<const hormiga::lan::Activity*> LanRuntime::on_rune(const LanRuntime& rt, const std::string& rune,
+                                                                const std::string& id) {
     std::vector<const hormiga::lan::Activity*> out;
-    for (const auto& [fp, a] : rt.present)
-        for (const auto& s : a.selection)
-            if (s == rune) {
-                out.push_back(&a);
-                break;
-            }
+    for (const auto& [fp, a] : rt.present) {
+        const auto& keys = a.ids.empty() || id.empty() ? a.selection : a.ids;
+        const std::string& want = a.ids.empty() || id.empty() ? rune : id;
+        if (std::find(keys.begin(), keys.end(), want) != keys.end()) out.push_back(&a);
+    }
     return out;
 }
 
@@ -88,6 +92,21 @@ void LanRuntime::tick(HormigaApp& app, double now) {
         me.section = app.section >= 0 && app.section < 4 ? kSections[app.section] : "";
         me.mantle = app.scene.mantle;
         me.selection = app.ed.selection;
+        for (const auto& s : me.selection) {
+            const auto* n = app.scene.find(s);
+            me.ids.push_back(n ? n->id : std::string());
+        }
+        /* WHAT WE ACTUALLY SEND, from 0.1.5: Void Maiz composes it from this
+         * frame's surfaces, applies the sender's switches, and drops every
+         * selected rune the share filter keeps on this device. The legacy
+         * fields above go out beside it for a 0.1.4 peer. */
+        maiz::Profile self_profile;
+        self_profile.id = fp;
+        self_profile.name = rt.me.username;
+        self_profile.rgb = hormiga::collab::rgb_of(rt.me.color);
+        me.presence = maiz::presence_to_json(
+            maiz::compose_presence(self_profile, maiz::selection_ids(app.scene, app.ed.selection),
+                                   app.surfaces, app.net_settings.send, app.scene, app.share_now));
         me.version = rt.shown_version;  // members compare this before connecting (§3b)
         sealed = hormiga::lan::seal_activity(me, rt.room_key);
         room = hormiga::lan::room_id(rt.room_key);
@@ -129,6 +148,28 @@ void LanRuntime::tick(HormigaApp& app, double now) {
     const std::int64_t cut = (std::int64_t)std::time(nullptr) - 12;
     for (auto it = rt.present.begin(); it != rt.present.end();)
         it = it->second.seen < cut ? rt.present.erase(it) : std::next(it);
+
+    /* ── THE ROSTER IS WHAT THE VIEWS READ (Void Maiz, stage A) ──────────────
+     * A peer that sends Maiz presence is taken at its word about surfaces and
+     * selection; a 0.1.4 peer is rebuilt from the fields it does send. WHO it
+     * is comes from the transport either way -- the fingerprint we opened the
+     * sealed payload with -- never from the payload, or a peer could speak as
+     * another. The colour is the members registry's, so no two people are
+     * shown alike whatever they each prefer. */
+    app.roster.set_self(fp);
+    for (const auto& [peer_fp, a] : rt.present) {
+        maiz::PresenceState ps;
+        if (a.presence.empty() || !maiz::presence_from_json(a.presence, ps)) {
+            ps = {};
+            ps.selection = a.ids.empty() ? a.selection : a.ids;
+            if (!a.section.empty()) { ps.surfaces = {a.section}; ps.focus = a.section; }
+        }
+        ps.who.id = peer_fp;
+        ps.who.name = a.user;
+        ps.who.rgb = hormiga::collab::rgb_of(color_of(rt, peer_fp));
+        app.roster.update(ps, now);
+    }
+    app.roster.prune(now, 12.0);
 
     // colours, against the registry
     if (now - rt.members_read_at > 5.0) {

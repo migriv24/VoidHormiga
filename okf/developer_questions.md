@@ -11,6 +11,83 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q73 — Does networking move into Void Maiz as an optional module?**
+  (Opened 2026-09-19, from the author's two-machine test.) **Lean: yes, staged.
+  Hormiga keeps its working LAN code and fixes bugs in it. We stop wiring
+  networking into more views one at a time. We migrate once Maiz answers.**
+
+  The author: *"void maiz should own networking. and void hormiga will
+  implement a specialized version of that networking … It should be possible
+  for someone to make a non-networking application with void maiz … if
+  networking with void maiz, void palabra will be a required library as
+  well."* The reason is consistency. Data rows had presence marks, the Map had
+  none, and the Antfarm did not sync, because each view decided for itself.
+  Asked upstream in
+  `MESSAGE_FOR_VOIDMAIZ_hormiga-networking-belongs-in-maiz-2026-09-19.md` and
+  `MESSAGE_FOR_VOIDPALABRA_…-2026-09-19.md`. **What settles it:** Maiz's answer
+  on where the line sits. Also open: whether a *profile* is a Maiz concept or a
+  host concept that Maiz reads through a callback.
+
+- **Q74 — Rune names collide across members. Is the name or the id the
+  identity people work with?** (Opened 2026-09-19.) **Lean: the id is the
+  identity everywhere the machine decides (presence, highlighting, sync).
+  The name stays the human handle. A shared database mints names that cannot
+  collide.**
+
+  Two devices each made `note-1`. Void Core already gives every rune a random
+  40-bit `spirit.id`, and Palabra merges on it, so these were two runes that
+  shared a name. Presence matched on the name, so a private note showed the
+  other person's colour. **Done 2026-09-19:** presence carries and matches
+  `spirit.id`. A database with a `hol_lan_share` node mints
+  `<glyph>-<4 hex of the device fingerprint>-<n>`. That is the author's "ID
+  parameterized by the device", made from the profile key rather than the
+  username, because two people can pick the same username. **Still open:**
+  names a person types (a contact called `tigger`) can still collide.
+  Palabra is asked whether a duplicate name after a merge should be reported
+  as a conflict.
+
+- **Q75 — Tag the application's own UI so presence and highlighting follow
+  rules instead of hand-written code.** (Opened 2026-09-19.) **Lean: every
+  surface that shows a rune (row, card, cell, marker, block) registers the
+  rune's id and a presence tag (outline, badge, tint). Build it on Void Maiz's
+  widget-registry "tag awareness" once Q73 is answered.**
+
+  The author: *"we need to start tagging UI elements themselves (internal to
+  the GUI, these tags are not really on the database …)"* and *"Please do NOT
+  assume the final state"* of the Builder, Calendar and Map. So nothing is
+  built per view now. The Map has no presence today, and that is the
+  motivating gap.
+
+- **Q76 — Show which tab and window each person is in, with a setting to hide
+  it?** (Opened 2026-09-19.) **Lean: yes. Presence already carries the
+  section. Extend it to "which registered surfaces are visible", draw small
+  avatars on tabs, and add a Networking setting to turn it off (default on).**
+  The author warned it could fill tabs with icons, so the setting ships with
+  the feature.
+
+- **Q77 — Files over sync, a Networking section in Settings, and "cautious
+  file transfer".** (Opened 2026-09-19.) **Lean: a present member pulls
+  missing `assets/` files by their content hash, with a progress bar.
+  Cautious mode shows a placeholder colour instead. All networking settings
+  move into one Settings section.**
+
+  Today only the state document syncs after a join, so a picture added later
+  shows on the other device as a path to a missing file. Asset names are
+  already content-hashed, so this is well defined. It waits on Q73 for *where*
+  it lives (Maiz, Palabra, or here).
+
+- **Q78 — Should the Antfarm sync between members, with private nodes?**
+  (Opened 2026-09-19.) **Lean: yes for wiring, no for secrets. Nodes sync like
+  any other rune, a `private` tag keeps a node on its device, and key files
+  and vault secrets keep travelling only at join time (§3a).**
+
+  This reverses §3a (*"the host's Antfarm wins"*). The author, after testing:
+  *"if i add a node on one antfarm, it should do stuff on the other. maybe
+  private nodes can exist?"* The hard part is keys. A synced node that names a
+  key file the other device does not have is a node that fails there. The
+  author also floated an Antfarm overhaul, *"potentially isolate it in its own
+  void based thing"*. That is bigger than this question and not led by it.
+
 - **Q69 — Google Calendar WRITE needs an OAuth client secret, and this repo is
   public. Do we ship one?** (Opened 2026-09-10, by the calendar hub reframe.)
   **Lean: the operator brings their own client; the secret ICS address is the

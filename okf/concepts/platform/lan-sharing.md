@@ -295,6 +295,15 @@ mantle, and which runes are selected. Everyone on the network can see that *a*
 Hormiga is present; only members can read *who* or *what*. A beacon in the clear
 would announce the names of an organization's contacts to a café.
 
+**Selected runes are matched by `spirit.id`, not by name (2026-09-19).** Two
+members can each mint a rune with the same name. Void Core's id is random, and
+Palabra merges on it. A private `note-1` lit up with another member's colour
+because presence matched on the name. The beacon now carries the ids next to
+the names, and a 0.1.4 peer that sends none is matched by name as before. A
+database with a `hol_lan_share` node also mints names that carry four hex of the
+device fingerprint (`note-3fa9-1`), so the collision is rarer to begin with.
+[Q74](/developer_questions.md).
+
 **The room key does not change — decided 2026-09-16.** The author's lean was no
 ("easier to test") with an explicit instruction not to let that decide it, so the
 reasoning, for the record: the room key **reads presence and nothing else** — who

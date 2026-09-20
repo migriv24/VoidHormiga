@@ -221,7 +221,11 @@ BUDGET = {
     # -> 1215 (2026-09-15): redirection (a Redirect and two calls), host_notice and
     # resolve_file (public, for the shell), and the Builder/Antfarm windows. The
     # code is ui/widgets.cpp, app/paths.cpp and ui/builder_ext.cpp.
-    'src/app/app.hpp': 1215,
+    # -> 1225 (2026-09-19): networking moved to Void Maiz (their stage A) -- a
+    # Surfaces, a Roster, the device's NetSettings and the share filter. Four
+    # members that REPLACE per-view presence code: ui/share.cpp lost its
+    # mark_item and outline_nodes, and no view checks a private tag itself.
+    'src/app/app.hpp': 1230,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

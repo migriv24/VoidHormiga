@@ -890,11 +890,7 @@ void HormigaApp::draw_blocks_palette() {
                 doc_palette_place(e.glyph); // append via the `doc place` verb
             } else {
                 // interim click-to-mint: lands under the lowest block
-                std::string name;
-                for (int i = 1;; ++i) {
-                    name = e.glyph + "-" + std::to_string(i);
-                    if (!scene.find(name)) break;
-                }
+                const std::string name = mint_name(e.glyph);
                 float maxb = 60.0f;
                 for (const auto& n : scene.nodes)
                     maxb = std::max(maxb, n.y + n.h);

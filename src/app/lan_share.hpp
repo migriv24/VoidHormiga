@@ -188,9 +188,13 @@ struct LanRuntime {
     static std::vector<std::map<std::string, std::string>> members(
         HormigaApp& app, const std::filesystem::path& file);
 
-    /* Presence, for highlighting: the present members whose selection holds `rune`. */
+    /* Presence, for highlighting: the present members whose selection holds
+     * `rune` (by id when the peer sent ids). The VIEWS no longer call this --
+     * they read `app.roster`, which lan_presence.cpp fills. Kept for the
+     * presence strip and the share window. */
     static std::vector<const hormiga::lan::Activity*> on_rune(const LanRuntime& rt,
-                                                              const std::string& rune);
+                                                              const std::string& rune,
+                                                              const std::string& id = {});
     static std::string color_of(const LanRuntime& rt, const std::string& fingerprint);
 
     /* The windows (ui/share.cpp, ui/profile_window.cpp). */
@@ -205,8 +209,6 @@ struct LanRuntime {
                             const std::string& color, float x, float y, float size);
     /* Highlighting (lan-sharing.md §6): marks on the last-drawn list row, and
      * outlines on a node canvas whose top-left screen corner is (x, y). */
-    static void mark_item(HormigaApp& app, const std::string& rune);
-    static void outline_nodes(HormigaApp& app, float canvas_x, float canvas_y);
 
     /* `effect lan-offers`, `effect lan-share`, `effect lan-join` (headless). */
     static int cli(HormigaApp& app, std::string_view op, const std::vector<std::string>& args,

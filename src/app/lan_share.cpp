@@ -38,6 +38,44 @@ std::string LanRuntime::fingerprint(const LanRuntime& rt) {
     return hormiga::sync::fingerprint_of(rt.me.public_key);
 }
 
+/* ── NAMES THAT TWO MEMBERS CANNOT BOTH MINT (2026-09-19) ─────────────────────
+ *
+ * The author: two devices each made a new note, both got `note-1`, and one
+ * person's PRIVATE note showed the other person's presence on it. A rune's name
+ * is its identity in Void Core, so two `note-1`s are not two notes that look
+ * alike -- they are one note, as far as sync and presence can tell. Counting
+ * what THIS scene holds cannot see what another member minted a second ago.
+ *
+ * So when the database is set up for sharing (its Antfarm has a hol_lan_share
+ * node), the name carries four hex of this profile's fingerprint:
+ * `note-3fa9-1`. Deterministic, readable, and different on every device. A
+ * database that is never shared keeps `note-1`. The durable answer -- an
+ * identity for a rune that is not its name -- belongs upstream (Void Core /
+ * Palabra), and is asked for in MESSAGE_FOR_VOIDMAIZ_hormiga-networking-*. */
+/* ONE ANSWER TO "MAY THIS RUNE LEAVE?", read by sync AND by presence (Void
+ * Maiz, stage A: the two cannot disagree if they call the same function). The
+ * private tags come from the Antfarm's hol_lan_share node, so the Antfarm still
+ * decides; what changed is that no view checks a tag itself. */
+maiz::ShareFilter HormigaApp::share_filter() {
+    const auto share = hormiga::collab::share_settings(project(core, kAntfarmMantle));
+    return [share](const maiz::SceneNode& n) { return !hormiga::collab::is_private(n, share); };
+}
+
+std::string HormigaApp::device_tag() {
+    if (hormiga::collab::share_settings(project(core, kAntfarmMantle)).node.empty()) return {};
+    const std::string fp = LanRuntime::fingerprint(LanRuntime::of(*this));
+    return fp.size() >= 4 ? fp.substr(0, 4) : std::string();
+}
+
+std::string HormigaApp::mint_name(const std::string& base, int first) {
+    const std::string tag = device_tag();
+    const std::string stem = tag.empty() ? base : base + "-" + tag;
+    for (int i = first;; ++i) {
+        std::string name = stem + "-" + std::to_string(i);
+        if (!scene.find(name)) return name;
+    }
+}
+
 /* ── privacy at the seam (lan-sharing.md §7) ────────────────────────────────── */
 
 std::string LanRuntime::strip_private(HormigaApp& app, const std::string& state_json,

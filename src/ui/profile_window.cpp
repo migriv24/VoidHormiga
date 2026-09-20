@@ -5,6 +5,12 @@
  * picture, a colour -- and for the device facts to be *"automatically"* checked.
  * The facts are detected each time the window opens; the rest is saved in the
  * profile folder the moment it changes.
+ *
+ * EVERY CHANGE IS WRITTEN TO THE LOG (2026-09-19): the author changed a picture
+ * and a username and saw nothing in the log panel. They are deliberately NOT
+ * dispatcher commands -- the journal travels with a shared database, and a
+ * replayed `set username` would rewrite the other member's profile. Whether
+ * device-level settings get a journal of their own is a developer question.
  */
 #include "app/app_internal.hpp"
 #include "app/lan_share.hpp"
@@ -33,11 +39,13 @@ void LanRuntime::draw_profile(HormigaApp& app) {
         const std::string picked = app.on_pick_file("");
         std::string err;
         if (!picked.empty() && !hormiga::profile::set_avatar(rt.me, picked, &err)) app.toast(err, true);
+        else if (!picked.empty()) app.log.push_back({"info", "profile", "picture set from " + picked});
         rt.members_read_at = -100.0;
     }
     if (!rt.me.avatar.empty() && ImGui::Button("Use the default picture")) {
         std::string err;
-        hormiga::profile::set_avatar(rt.me, {}, &err);
+        if (hormiga::profile::set_avatar(rt.me, {}, &err))
+            app.log.push_back({"info", "profile", "picture reset to the default"});
     }
     ImGui::TextDisabled("Without a picture, your initial\non your colour is shown.");
     ImGui::EndGroup();
@@ -56,7 +64,10 @@ void LanRuntime::draw_profile(HormigaApp& app) {
         rt.me.username = buf;
         std::string err;
         if (!hormiga::profile::save(rt.me, &err)) app.toast(err, true);
-        else app.toast("username saved");
+        else {
+            app.toast("username saved");
+            app.log.push_back({"info", "profile", "username set to " + rt.me.username});
+        }
     }
     ImGui::TextDisabled("No password yet. Your key below is what proves this computer is you.");
 
@@ -73,6 +84,7 @@ void LanRuntime::draw_profile(HormigaApp& app) {
         if (ImGui::ColorButton(mine ? "yours" : hex.c_str(), c, ImGuiColorEditFlags_NoTooltip, ImVec2(26, 26))) {
             rt.me.color = hex;
             hormiga::profile::save(rt.me);
+            app.log.push_back({"info", "profile", "colour set to " + hex});
         }
         if (mine) {
             const ImVec2 mn = ImGui::GetItemRectMin(), mx = ImGui::GetItemRectMax();

@@ -147,50 +147,14 @@ void LanRuntime::draw_presence_strip(HormigaApp& app) {
         ImGui::SetTooltip("%s\nYour profile", hormiga::profile::display_name(rt.me).c_str());
 }
 
-/* ── highlighting ───────────────────────────────────────────────────────────── */
-
-void LanRuntime::mark_item(HormigaApp& app, const std::string& rune) {
-    if (!app.lan || app.lan->present.empty()) return;
-    const auto who = on_rune(*app.lan, rune);
-    if (who.empty()) return;
-    const ImVec2 mn = ImGui::GetItemRectMin(), mx = ImGui::GetItemRectMax();
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-    float x = mx.x - 4.0f;
-    const float r = (mx.y - mn.y) * 0.32f;
-    for (std::size_t i = 0; i < who.size(); ++i) {
-        const ImU32 col = ImGui::ColorConvertFloat4ToU32(hex_color(color_of(*app.lan, who[i]->fingerprint)));
-        dl->AddRectFilled(ImVec2(mn.x - 6.0f - 4.0f * i, mn.y), ImVec2(mn.x - 3.0f - 4.0f * i, mx.y), col);
-        dl->AddCircleFilled(ImVec2(x - r, (mn.y + mx.y) * 0.5f), r, col);
-        const std::string l = first_letter(who[i]->user);
-        const ImVec2 ts = ImGui::CalcTextSize(l.c_str());
-        dl->AddText(ImVec2(x - r - ts.x * 0.5f, (mn.y + mx.y) * 0.5f - ts.y * 0.5f), IM_COL32_WHITE, l.c_str());
-        x -= r * 2.0f + 3.0f;
-    }
-    if (ImGui::IsItemHovered()) {
-        std::string names;
-        for (const auto* a : who) names += (names.empty() ? "" : ", ") + a->user;
-        ImGui::SetTooltip("%s %s here", names.c_str(), who.size() == 1 ? "is" : "are");
-    }
-}
-
-void LanRuntime::outline_nodes(HormigaApp& app, float canvas_x, float canvas_y) {
-    if (!app.lan || app.lan->present.empty()) return;
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-    const auto& cam = app.ed.cam;
-    for (const auto& n : app.scene.nodes) {
-        const auto who = on_rune(*app.lan, n.name);
-        if (who.empty()) continue;
-        const float w = n.w > 0 ? n.w : 180.0f, h = n.h > 0 ? n.h : 80.0f;
-        const float x0 = canvas_x + (n.x - cam.x) * cam.zoom, y0 = canvas_y + (n.y - cam.y) * cam.zoom;
-        for (std::size_t i = 0; i < who.size(); ++i) {
-            const float pad = 3.0f + 4.0f * (float)i;
-            const ImU32 col = ImGui::ColorConvertFloat4ToU32(hex_color(color_of(*app.lan, who[i]->fingerprint)));
-            dl->AddRect(ImVec2(x0 - pad, y0 - pad), ImVec2(x0 + w * cam.zoom + pad, y0 + h * cam.zoom + pad), col,
-                        6.0f, 0, 3.0f);
-            if (i == 0) dl->AddText(ImVec2(x0 - pad, y0 - pad - ImGui::GetTextLineHeight()), col, who[i]->user.c_str());
-        }
-    }
-}
+/* ── highlighting ───────────────────────────────────────────────────────────
+ *
+ * GONE, TO VOID MAIZ (2026-09-19). `mark_item` and `outline_nodes` drew
+ * presence here, which is why the Data tab had marks, the Builder canvas had
+ * outlines and the Map had nothing: each view was wired by hand, or was not.
+ * Views now declare what they show into `app.surfaces` and Void Maiz's
+ * `presence_item` / `presence_rect` / `CanvasNet` draw every mark, so a peer's
+ * colour looks the same on a row, a marker and a node. */
 
 /* ── someone wants to join ──────────────────────────────────────────────────── */
 

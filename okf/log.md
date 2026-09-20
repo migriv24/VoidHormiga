@@ -4355,3 +4355,116 @@ behalf of an agent that had not already committed it.
   where BSD `sed` stops with *illegal byte sequence* on UTF-8 input, the same as
   since 0.1.2 (a locale issue in `tools/golden_render.sh`). Windows still fails
   at configure, as noted above.
+
+# The author's two-machine test: fixes, and networking belongs in Void Maiz (2026-09-19)
+
+The author ran 0.1.4 on Windows and Linux against one shared database and sent
+nine notes. *"Overall connecting to each other works fantastically."* Their
+conclusion is the headline: **Void Maiz should own networking, as an optional
+module that requires Void Palabra, and Hormiga should specialize it.** That is
+now [Q73](/developer_questions.md) with a lean. It is asked upstream in
+`MESSAGE_FOR_VOIDMAIZ_hormiga-networking-belongs-in-maiz-2026-09-19.md` and in a
+companion message to Void Palabra.
+
+## Fixed
+
+- **Presence matches on rune id** (note 3). Private `note-1` on one device and
+  shared `note-1` on the other: presence matched on the name and marked the
+  private note as someone else's. Void Core already gives every rune a random
+  40-bit `spirit.id`, and Palabra already merges on it, so the fix was ours. The
+  beacon carries `ids`, and `on_rune` matches on them.
+  [lan-sharing §6](/concepts/platform/lan-sharing.md). `lan_smoke` checks the
+  round trip.
+- **Names that two members cannot both mint** (note 3). `mint_name()` replaces
+  seven copies of the counting loop: `new_rune`, both Builder palettes, the Map,
+  and the Calendar. In a database with a `hol_lan_share` node it mints
+  `<glyph>-<4 hex of the device fingerprint>-<n>`.
+- **The link picker's ID conflict** (the screenshot). Every row's label ended in
+  `"##" + id`, and `id` was already `"##linksearch"`, so all rows shared one ID.
+  Now there is one `PushID` per rune.
+- **The Document options toolbar wraps** (note 7). A new `flow()` /
+  `flow_button()` in `app_internal.hpp` stays on the line only when the next
+  item fits. It is available to any other toolbar that runs off its window.
+- **Profile edits are written to the log** (note 1). They are deliberately not
+  dispatcher commands: the journal travels with a shared database, and a
+  replayed "set username" would rewrite the other member's profile.
+
+## Not fixed, and why
+
+- **Pictures do not reach the other member** (note 9). Only the state document
+  syncs after a join. This is a protocol feature, and Q73 decides where it lives
+  ([Q77](/developer_questions.md)).
+- **The Antfarm does not sync** (note 8). That was deliberate (§3a). The author
+  now wants it to, so it is [Q78](/developer_questions.md).
+- **Tagging the UI, and presence on tabs** (notes 4 and 5) are
+  [Q75](/developer_questions.md) and [Q76](/developer_questions.md). Nothing is
+  built per view, because the author said not to assume the final Builder,
+  Calendar or Map.
+- **The document builder on the Linux member** (note 6: empty event and contact
+  cards, content that differs and does not update) is **not diagnosed**. It needs
+  a reproduction. Candidates to rule out: runes minted with the same name on
+  both devices (now mitigated), and the joiner's view of a mantle created after
+  the join.
+- **The crash adding an image on Linux** (note 9) did not happen again after a
+  restart. Nothing is known about it yet.
+- **Other people's highlights did not show on Linux until a restart** (note 2).
+  This is probably presence not starting after a join, not a Linux problem. It
+  needs checking.
+
+40/40 tests on Windows.
+
+# Networking moves to Void Maiz — stage A (2026-09-19, second entry)
+
+Void Maiz answered our proposal by building it:
+`MESSAGE_FOR_VOIDHORMIGA_maiz-networking-is-built-here-is-how-to-adopt-it-2026-09-19.md`,
+and `../VoidMaiz/okf/concepts/networking.md`. Three stages; this is A, and it is
+a **migration, not a redesign** — the application behaves as it did, except that
+the Map and the Calendar now have presence, which they never had.
+
+## What changed
+
+- **Views declare, Void Maiz draws.** `HormigaApp` holds a `maiz::Surfaces`
+  (rebuilt every frame in `frame()`), a `maiz::Roster` and this device's
+  `maiz::NetSettings`. `ui/share.cpp`'s `mark_item` and `outline_nodes` are
+  **deleted**. Surfaces so far: `table:data`, `list:notes`, `canvas:builder`,
+  `canvas:antfarm`, `map`, `calendar`.
+- **One answer to "may this rune leave?"** `share_filter()` reads the Antfarm's
+  private tags once; `share_now` holds it for the frame. Sync and presence call
+  the same function, so they cannot disagree, and the padlock a person sees is
+  that function's answer rather than a second opinion.
+- **The wire carries Void Maiz's presence payload** in the sealed beacon's `p`.
+  The 0.1.4 fields go out beside it, and a peer that sends none is rebuilt from
+  them, so a 0.1.4 client still works both ways.
+- **Who a peer is comes from the transport**, not from the payload: the roster
+  is keyed on the fingerprint whose key opened the sealed blob. The colour is
+  still the members registry's, so no two people are shown alike.
+
+## Void Palabra is a TARGET now, not a copied source list
+
+Configure broke the moment Maiz's networking appeared: Maiz embeds Palabra with
+`add_subdirectory`, and our `CMakeLists.txt` compiled its own `voidpalabra`
+target from a hand-copied file list. Two targets, one name.
+
+The copied list was already the thing that broke the 0.1.3 release build —
+Palabra added `src/crdt/validate.cpp` and nobody updated the list. The original
+reason for copying (their tests ran against our source root as a subdirectory)
+is gone: Palabra guards its suite behind `VOIDPALABRA_TOP_LEVEL`. So we take the
+target if Maiz already brought it, and bring it in ourselves otherwise.
+
+- 42/42 tests, which now include Void Maiz's `presence_smoke` and `net_smoke`.
+- The desktop application starts and draws.
+- `app.hpp`'s budget 1215 → 1230, with the ratchet note the table asks for: four
+  members that REPLACED per-view presence code.
+
+## Still to do
+
+- **Stage B**: the profile editor, the member list and a Networking section in
+  Settings, all Void Maiz's.
+- **Stage C**: `voidmaiz_net` over Palabra's session, replacing `lan_sync.cpp`.
+  **The author decided (2026-09-19):** our room-key-sealed LAN channel MAY carry
+  Palabra session frames before Palabra's trust model lands — **on the LAN
+  only**. Signing plugs into `NetOptions::sign`/`verify` later.
+- **Stage D**: push and release, so both machines can be tested again. **It is
+  blocked upstream:** Void Maiz's networking is not committed (its GitHub repo
+  still holds only the 2026-09-01 commit) and Void Palabra is two commits ahead
+  of its remote. CI and the release runners clone both from GitHub.

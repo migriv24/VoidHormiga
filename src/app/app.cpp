@@ -1774,11 +1774,7 @@ void HormigaApp::shutdown() {
 // ── + New (mint, tag, select — the predecessor's "add" buttons, as commands) ─
 
 void HormigaApp::new_rune(const std::string& glyph) {
-    std::string name;
-    for (int i = 1;; ++i) {
-        name = glyph + "-" + std::to_string(i);
-        if (!scene.find(name)) break;
-    }
+    const std::string name = mint_name(glyph);
     // mint + tag as ONE undo frame (compile_commit, the batch helper that
     // landed on our bruise report)
     dispatch_and_reproject(maiz::compile_commit(
@@ -2560,6 +2556,11 @@ void HormigaApp::draw_busy_overlay() {
 
 void HormigaApp::frame() {
     ImGuiIO& io = ImGui::GetIO();
+    /* EVERY VIEW REDECLARES WHAT IT SHOWS, this frame (Void Maiz's Surfaces is
+     * immediate mode on purpose: a registry with a lifecycle goes stale the
+     * moment a window closes on one device and not another). */
+    surfaces.begin_frame();
+    share_now = share_filter();  // read once a frame, not once a row
     tex_decodes_this_frame = 0; // reset the per-frame texture-decode budget
 
     /* A MERGED DOCUMENT LANDS HERE, not where it was computed (app.hpp,

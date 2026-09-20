@@ -436,11 +436,7 @@ void HormigaApp::map_new_earth() {
 }
 
 void HormigaApp::map_place_new(const char* glyph) {
-    std::string name;
-    for (int i = 1;; ++i) {
-        name = std::string(glyph) + "-" + std::to_string(i);
-        if (!scene.find(name)) break;
-    }
+    const std::string name = mint_name(glyph);
     char geo[64];
     std::snprintf(geo, sizeof geo, "%.7g,%.7g", map_ctx_lat, map_ctx_lon);
     auto cmds = map_actions.run("place", scene,
@@ -708,6 +704,7 @@ void HormigaApp::draw_map_section() {
 
     ImGui::BeginChild("map-canvas", ImVec2(main_w, body_h), ImGuiChildFlags_None,
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    maiz::presence_focus_if_active(surfaces, "map");  // inside the window it asks about
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImGui::GetCursorScreenPos();
     ImVec2 sz = ImGui::GetContentRegionAvail();
@@ -1070,6 +1067,13 @@ void HormigaApp::draw_map_section() {
         }
         MShape msh = shape_from(shape);
         float r = (icon ? 11.0f : 6.5f) + (selected ? 2.5f : 0.0f);
+        /* PRESENCE ON THE MAP (2026-09-19). The author: "im looking at the map,
+         * and right now there's no indication or highlight based on what users
+         * are interacting with". The marker declares itself and Void Maiz draws
+         * every mark, so it looks the same here as on a Data row. */
+        maiz::presence_rect(surfaces, roster, net_settings.show, "map", node.id,
+                            ImVec2(s.x - r - 2, s.y - r - 2), ImVec2(s.x + r + 2, s.y + r + 2),
+                            maiz::Mark::Outline, share_now && !share_now(node));
         if (mst && mst->weight > 0) r += std::min((float)mst->weight, 6.0f);
         ImVec2 ic_at = draw_marker_shape(dl, s, r, col, IM_COL32(255, 255, 255, 230),
                                          msh);

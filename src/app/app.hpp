@@ -22,6 +22,7 @@
 #include "voidmaiz/code.hpp" // the from-scratch code editor that shipped with Allomone
 #include "voidmaiz/embed.hpp"
 #include "voidmaiz/face.hpp" // FaceRegistry is a member, not just a pointer
+#include "voidmaiz/presence.hpp" // Surfaces/Roster: networking is Void Maiz's
 #include "voidmaiz/widget.hpp"
 #include "voidmaiz/widgets.hpp"
 
@@ -976,6 +977,9 @@ private:
     std::string tag_picker(const char* id, char* buf, size_t bufsz,
                            const char* hint = "add a tag...");
     void new_rune(const std::string& glyph);  // + New: mint, tag, select
+    // `<base>-<n>`, or `<base>-<device>-<n>` in a shared database (lan_share.cpp)
+    std::string mint_name(const std::string& base, int first = 1);
+    std::string device_tag();  // 4 hex of this profile's fingerprint when shared, else ""
     std::string render_preview(std::string_view lang); // email domain → HTML path
     std::string render_site(std::string_view lang);    // web domain → site/ folder
     /* THE PUBLISHED SUBSET AS DATA, not as pages (2026-08-21).
@@ -1177,6 +1181,14 @@ private:
     mutable bool local_read = false;
     bool win_share = false, win_discover = false, win_profile = false; // LAN sharing (lan_share.cpp)
     std::shared_ptr<struct LanRuntime> lan; friend struct LanRuntime; // profile, share, join, presence
+    /* NETWORKING IS VOID MAIZ'S (their 2026-09-19 message, stage A). Views
+     * declare what they show into `surfaces` each frame and draw marks from
+     * `roster`; `net_settings` is this device's, not the database's. */
+    maiz::Surfaces surfaces;
+    maiz::Roster roster;
+    maiz::NetSettings net_settings;
+    maiz::ShareFilter share_filter();  // "may this rune leave?" (lan_share.cpp)
+    maiz::ShareFilter share_now;       // the same, read this frame (set in frame())
     // ── Data Tools (author 2026-08-03): a detached window holding the Data
     // tab's utilities (CSV import, date-tag temper, …) — declutters the tab's
     // toolbar. Sits behind a "Data Tools" button beside the connections view. ─

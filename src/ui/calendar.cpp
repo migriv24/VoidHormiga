@@ -27,12 +27,11 @@ void HormigaApp::cal_new_dated(const char* glyph, int y, int m, int d, float t0,
      * renderers actually print. */
     std::string name;
     if (title && *title) name = hormiga::quick::slug(title);
-    if (name.empty() || scene.find(name)) {
-        std::string base = name.empty() ? std::string(glyph) : name;
-        for (int i = name.empty() ? 1 : 2;; ++i) {
-            name = base + "-" + std::to_string(i);
-            if (!scene.find(name)) break;
-        }
+    // a shared database always mints (`tigger-birthday-3fa9-1`): two members
+    // quick-adding the same title at once must not mint one rune (mint_name)
+    if (name.empty() || scene.find(name) || !device_tag().empty()) {
+        const std::string base = name.empty() ? std::string(glyph) : name;
+        name = mint_name(base, name.empty() || !device_tag().empty() ? 1 : 2);
     }
     char date[16];
     std::snprintf(date, sizeof date, "%04d-%02d-%02d", y, m, d);
@@ -231,6 +230,8 @@ void HormigaApp::draw_calendar_body() {
         if (ImGui::Selectable(lbl.c_str(), ed.selected(e.node->name), 0,
                               ImVec2(w, 0)))
             ed.selection = {e.node->name};
+        maiz::presence_item(surfaces, roster, net_settings.show, "calendar", e.node->id,
+                            maiz::Mark::Badge, share_now && !share_now(*e.node));
         ImGui::PopStyleColor();
         // C1d: drag an entry onto another day to RESCHEDULE it (month view)
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
@@ -711,6 +712,9 @@ void HormigaApp::draw_calendar_body() {
                 ImU32 fill = (e.col & 0x00FFFFFF) | (sel ? 0xE0000000 : 0x59000000);
                 dl->AddRectFilled(a, b, fill, 4.0f);
                 dl->AddRect(a, b, e.col, 4.0f, 0, e.incident ? 2.5f : 1.5f);
+                maiz::presence_rect(surfaces, roster, net_settings.show, "calendar",
+                                    e.node->id, a, b, maiz::Mark::Outline,
+                                    share_now && !share_now(*e.node));
                 std::string bl;
                 if (e.incident) bl += "! ";
                 bl += e.node->name;

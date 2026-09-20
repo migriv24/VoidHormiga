@@ -423,6 +423,8 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
     } else {
         // ── LIST view: a row per entity, now with a small avatar for people
         // and the existing rectangular thumbnail for images ─────────────────
+        // the surface a person is WORKING in, when this window has focus
+        maiz::presence_focus_if_active(surfaces, "table:data");
         for (const auto* np : rows) {
             const maiz::SceneNode& n = *np;
             bool row_clicked = false;
@@ -448,7 +450,10 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
             }
             if (ImGui::Selectable(n.name.c_str(), ed.selected(n.name)) || row_clicked)
                 pick(n.name);
-            LanRuntime::mark_item(*this, n.name); // someone else is on it (lan-sharing.md §6)
+            // declares "table:data shows this rune" AND draws the marks, in one
+            // call (Void Maiz's netview: a view cannot do half of it)
+            maiz::presence_item(surfaces, roster, net_settings.show, "table:data", n.id,
+                                maiz::Mark::Badge, share_now && !share_now(n));
             std::string sub = subtitle(n);
             if (!sub.empty()) {
                 ImGui::Indent(10);
@@ -849,6 +854,7 @@ void HormigaApp::draw_notes_body() {
 
     // left: the filtered note list + create
     ImGui::BeginChild("notes-list", ImVec2(190, 0), ImGuiChildFlags_Borders);
+    maiz::presence_focus_if_active(surfaces, "list:notes");
     if (ImGui::Button(ICON_FA_SQUARE_PLUS " New note", ImVec2(-1, 0)))
         new_rune("note");
     ImGui::Separator();
@@ -861,7 +867,8 @@ void HormigaApp::draw_notes_body() {
         const bool priv = std::find(n.tags.begin(), n.tags.end(), notes_private_tag()) != n.tags.end();
         if (ImGui::Selectable(((priv ? ICON_FA_LOCK " " : "") + n.name).c_str(), ed.selected(n.name)))
             ed.selection = {n.name};
-        LanRuntime::mark_item(*this, n.name);
+        maiz::presence_item(surfaces, roster, net_settings.show, "list:notes", n.id,
+                            maiz::Mark::Badge, share_now && !share_now(n));
     }
     if (shown == 0)
         ImGui::TextDisabled(notes_search[0] || notes_filter_expr[0]

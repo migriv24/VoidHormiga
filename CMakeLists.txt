@@ -66,51 +66,32 @@ add_subdirectory("${VOIDMAIZ_ROOT}" voidmaiz)
 # impossible — two peers holding {a} and {} cannot tell "never had it" from
 # "removed it" — which is why this is a library and not fifty lines here.
 #
-# COMPILED FROM THEIR SOURCES RATHER THAN `add_subdirectory`, and the reason is
-# specific rather than stylistic: their CMakeLists calls `enable_testing()` and
-# registers nine `add_test`s unguarded, two of which use `${CMAKE_SOURCE_DIR}`
-# for a working directory. Included as a subdirectory, that resolves to OUR
-# source root, so their conformance vectors and OKF checker would run against
-# this repo and fail — a sibling library's suite failing our build for a reason
-# that has nothing to do with us. Compiling the sources is the same thing Void
-# Maiz already does with Void Core's vendored cJSON, so the pattern is the
-# stack's own.
+# AS A TARGET, NOT A COPIED SOURCE LIST (2026-09-19). This block used to
+# compile Palabra's sources by hand, because their CMakeLists registered tests
+# unguarded and, as a subdirectory, ran them against OUR source root. Two things
+# ended that. Palabra now guards its tests behind `VOIDPALABRA_TOP_LEVEL`, so a
+# consumer gets the library and none of the suite. And Void Maiz's networking
+# module embeds Palabra as a target itself, so a copied list would put a SECOND
+# `voidpalabra` in the same build -- which is the configure error that found
+# this.
 #
-# THEIR cJSON IS DELIBERATELY OMITTED. Palabra's README: "A consumer that
-# already vendors cJSON should link its own copy and drop ours" — Void Maiz's is
+# The copied list also had the failure it was always going to have: Palabra
+# added `src/crdt/validate.cpp`, nobody updated the list, and the 0.1.3 release
+# build broke on a missing file.
+#
+# So: if Void Maiz already brought Palabra in, use that target; otherwise bring
+# it in ourselves. Their cJSON stays off either way -- Void Maiz's copy is
 # already in every one of our links, and their public header only
-# forward-declares the type, so the two never meet at the interface. One cJSON
-# in the binary, and no archive-ordering luck involved.
-#
-# Reported upstream: MESSAGE_FOR_VOIDPALABRA_hormiga-consuming-the-merge-2026-08-27.md
+# forward-declares the type ("a consumer that already vendors cJSON should link
+# its own copy and drop ours").
 set(VOIDPALABRA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../VoidPalabra" CACHE PATH
     "Path to the Void Palabra repo")
-add_library(voidpalabra STATIC
-  ${VOIDPALABRA_ROOT}/src/encoding/encode.cpp
-  ${VOIDPALABRA_ROOT}/src/encoding/decode.cpp
-  ${VOIDPALABRA_ROOT}/src/encoding/sha256.cpp
-  ${VOIDPALABRA_ROOT}/src/canonical/bindings.cpp
-  ${VOIDPALABRA_ROOT}/src/crdt/orset.cpp
-  ${VOIDPALABRA_ROOT}/src/crdt/policy.cpp
-  ${VOIDPALABRA_ROOT}/src/crdt/document.cpp
-  ${VOIDPALABRA_ROOT}/src/crdt/conflict.cpp
-  ${VOIDPALABRA_ROOT}/src/crdt/sequence.cpp
-  ${VOIDPALABRA_ROOT}/src/crdt/validate.cpp   # 2026-09-16: validate what a peer sends
-  ${VOIDPALABRA_ROOT}/src/crdt/replica.cpp    # 2026-09-16: deletions that propagate
-  ${VOIDPALABRA_ROOT}/src/store/chunk.cpp
-  ${VOIDPALABRA_ROOT}/src/store/blocks.cpp
-  ${VOIDPALABRA_ROOT}/src/store/container.cpp
-  ${VOIDPALABRA_ROOT}/src/utterance/journal.cpp
-  ${VOIDPALABRA_ROOT}/src/utterance/utterance.cpp
-  ${VOIDPALABRA_ROOT}/src/utterance/history.cpp
-  ${VOIDPALABRA_ROOT}/src/archive/archive.cpp
-  ${VOIDPALABRA_ROOT}/src/archive/miga.cpp)
-target_include_directories(voidpalabra
-  PUBLIC  ${VOIDPALABRA_ROOT}/include ${VOIDMAIZ_ROOT}/vendor
-  PRIVATE ${VOIDPALABRA_ROOT}/src ${VOIDPALABRA_ROOT}/src/encoding
-          ${VOIDPALABRA_ROOT}/src/crdt ${VOIDPALABRA_ROOT}/src/store
-          ${VOIDPALABRA_ROOT}/src/utterance)
-target_compile_definitions(voidpalabra PRIVATE CJSON_HIDE_SYMBOLS)
+if(NOT TARGET voidpalabra)
+  set(VOIDPALABRA_VENDOR_CJSON OFF CACHE BOOL "" FORCE)
+  add_subdirectory("${VOIDPALABRA_ROOT}" voidpalabra)
+endif()
+# cJSON's header comes from Void Maiz's vendor/ (the one copy in the binary).
+target_include_directories(voidpalabra PUBLIC ${VOIDMAIZ_ROOT}/vendor)
 # Their tree, their warnings: we do not police a sibling's source, and turning
 # -Wall -Wextra on someone else's code produces noise we cannot act on without
 # breaking ground rule 4.
