@@ -4633,3 +4633,14 @@ reason for it to be reachable from the console, not less.
 - **[Q80](/developer_questions.md)**: the room key should change on every new
   share, which reverses 2026-09-16. The hard part is the member who is offline
   when it rotates, and that is the author's call to make.
+
+## 0.1.6 shipped (2026-09-20)
+
+All three release legs built on the first run. Installer 13,951,696 bytes. The
+feed was written after the Linux archives were on disk and checked by hand: all
+four files hash to what it says and match its `bytes`, and the Linux digest
+`3741f4e3…` equals the runner's own. The live feed says `latest 0.1.6` and the
+client reads it.
+
+**0.1.5 should not be used for sharing** — its members go quiet after the first
+link ends. The release notes say so in the first behaviour change.
