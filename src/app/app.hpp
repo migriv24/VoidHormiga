@@ -476,7 +476,23 @@ private:
     void draw_builder_section(float avail_h);
     void draw_antfarm_section();
     void draw_map_section();  // Territory placeholder (concept: territory.md)
-    void draw_console();      // log strip + command bar (its own dock window)
+    /* THE CONSOLE (ui/console.cpp). Its settings are a VIEW of the log, so they
+     * live here and persist as config; `cleared_to` hides lines, never drops
+     * them. See the file header for why this is not `maiz::draw_log_strip`. */
+    struct ConsoleView {
+        bool timestamps = false;    // useful to a person, tokens to an agent
+        bool sources = true;        // CRE | MAZ | PLB | ALM | HRG
+        bool only_changes = false;  // what `copy condensed` keeps
+        bool as_text = false;       // one selectable box instead of coloured lines
+        std::size_t cleared_to = 0; // lines before this are hidden, not gone
+        std::vector<std::string> stamps;  // when this session first saw each line
+    };
+    ConsoleView console;
+    ConsoleView console_pending;   // what Settings edits until Apply is pressed
+    void draw_console();      // transcript + command bar (its own dock window)
+    void console_command_bar();
+    void console_stamp_new_lines();
+    std::vector<std::string> mantles_here();  // the graphs `ls` lists
 
     // ── Territory's action vocabulary (one definition, two front-ends) ──────
     maiz::ActionRegistry map_actions;         // place / move (map_actions.hpp)

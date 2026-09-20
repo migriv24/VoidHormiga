@@ -110,6 +110,48 @@ void HormigaApp::draw_settings() {
          * the other hides you from others -- and every Void application that
          * networks shows the same section. Saved beside the profile, because
          * these are this device's, not the database's. */
+        /* ── THE CONSOLE, AND THE ONE PLACE A BUTTON IS BETTER THAN A SWITCH ──
+         * The author: *"usually i would want things to be automatic, but in
+         * this case settings are more sensitive and should require a couple
+         * more steps"*. So the console's view settings are edited on a copy and
+         * committed by Apply -- and a person can see what they are about to
+         * change before it changes under them. Everything else in this window
+         * still takes effect as you touch it, because everything else is one
+         * switch with one visible consequence. */
+        ImGui::SeparatorText(ICON_FA_TERMINAL "  Console");
+        ImGui::Checkbox("Show the time each line arrived", &console_pending.timestamps);
+        ImGui::TextDisabled("useful to a person reading along; wasted tokens to an\n"
+                            "agent reading the transcript");
+        ImGui::Checkbox("Show who said it (CRE / MAZ / PLB / ALM / HRG)",
+                        &console_pending.sources);
+        ImGui::TextDisabled("Void Core, Void Maiz, Void Palabra, Allomone, Void Hormiga");
+        ImGui::Checkbox("Only what changed the database", &console_pending.only_changes);
+        ImGui::TextDisabled("hides view chatter - the same rule as `copy condensed`");
+        ImGui::Checkbox("Selectable text instead of coloured lines", &console_pending.as_text);
+        const bool dirty = console_pending.timestamps != console.timestamps ||
+                           console_pending.sources != console.sources ||
+                           console_pending.only_changes != console.only_changes ||
+                           console_pending.as_text != console.as_text;
+        ImGui::BeginDisabled(!dirty);
+        if (ImGui::Button("Apply console settings")) {
+            console.timestamps = console_pending.timestamps;
+            console.sources = console_pending.sources;
+            console.only_changes = console_pending.only_changes;
+            console.as_text = console_pending.as_text;
+            dispatch_and_reproject(
+                std::string("config set ui.console \"") +
+                (console.timestamps ? "t" : "-") + (console.sources ? "s" : "-") +
+                (console.only_changes ? "c" : "-") + (console.as_text ? "x" : "-") + "\"");
+            toast("console settings applied");
+        }
+        ImGui::EndDisabled();
+        if (dirty) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.3f, 1), "not applied yet");
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Discard")) console_pending = console;
+        }
+
         ImGui::SeparatorText(ICON_FA_USERS "  Networking");
         if (maiz::draw_network_settings(net_settings)) LanRuntime::save_net_settings(*this);
         ImGui::TextDisabled("Kept on this computer (%s), not in the database.",

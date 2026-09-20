@@ -225,7 +225,11 @@ BUDGET = {
     # Surfaces, a Roster, the device's NetSettings and the share filter. Four
     # members that REPLACE per-view presence code: ui/share.cpp lost its
     # mark_item and outline_nodes, and no view checks a private tag itself.
-    'src/app/app.hpp': 1230,
+    # -> 1245 (2026-09-20): the console's view settings (ConsoleView, the
+    # pending copy Settings edits until Apply, and four calls). The console
+    # itself LEFT app.cpp for ui/console.cpp in the same change, so the pair
+    # of files got smaller, not larger.
+    'src/app/app.hpp': 1245,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

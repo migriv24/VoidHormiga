@@ -246,7 +246,7 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
   src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
   src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
   src/app/lan_net.cpp
-  src/ui/share.cpp src/ui/profile_window.cpp)
+  src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp)
 # Void Core's C ABI header, for the SPEC 6.1 command codec exported in 0.2.7
 # (vc_arg_quote / vc_argv_split_json / vc_transcript_split_json). The library
 # itself already arrives transitively through Void Maiz; only the header is new.
@@ -383,7 +383,7 @@ add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
   src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
   src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
   src/app/lan_net.cpp
-  src/ui/share.cpp src/ui/profile_window.cpp)
+  src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp)
 target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
 target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
   HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")

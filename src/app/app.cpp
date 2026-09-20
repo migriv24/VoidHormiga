@@ -1244,6 +1244,16 @@ void HormigaApp::init() {
         }
         show_legacy = core.dispatch("config get ui.show_legacy").data.find('1') !=
                       std::string::npos; // legacy block canvas off by default
+        { // the console's view: "tscx", each letter on or '-' (ui/console.cpp)
+            const std::string s = core.dispatch("config get ui.console").data;
+            if (s.find_first_of("ts-cx") != std::string::npos) {
+                console.timestamps = s.find('t') != std::string::npos;
+                console.sources = s.find('s') != std::string::npos;
+                console.only_changes = s.find('c') != std::string::npos;
+                console.as_text = s.find('x') != std::string::npos;
+            }
+            console_pending = console;   // Settings edits a copy until Apply
+        }
         { // tag-recommendation mode (0 similar / 1 distinct / 2 comprehensive)
             std::string s =
                 core.dispatch("config get ui.tags.recommend_mode").data;
@@ -2460,28 +2470,7 @@ void HormigaApp::draw_physics_view(float /*body_h*/) {
 }
 
 
-// ── the console: log strip + command bar, its own dockable window ───────────
-
-void HormigaApp::draw_console() {
-    if (ImGui::SmallButton("copy condensed"))
-        ImGui::SetClipboardText(maiz::log_to_text(log, true).c_str());
-    ImGui::SameLine();
-    if (ImGui::SmallButton("copy all"))
-        ImGui::SetClipboardText(maiz::log_to_text(log, false).c_str());
-    ImGui::SameLine(0, 16);
-    ImGui::TextDisabled("the transcript IS the session");
-    float footer = ImGui::GetFrameHeightWithSpacing();
-    ImGui::BeginChild("##lines", ImVec2(0, -footer));
-    maiz::draw_log_strip(log);
-    ImGui::EndChild();
-    maiz::CanvasIO bio = maiz::draw_command_bar(cmdbar);
-    for (const auto& cmd : bio.commands) {
-        if (try_map_verb(cmd)) continue; // `map …` verb macros (one batch)
-        if (try_doc_verb(cmd)) continue; // `doc …` — the Builder's verbs
-        maiz::Result r = dispatch_and_reproject(cmd);
-        log.push_back({">", cmd, r.text().empty() ? (r.ok ? "ok" : "failed") : r.text()});
-    }
-}
+// ── the console lives in ui/console.cpp (2026-09-20) ────────────────────────
 
 /* One workflow window. A VISIBLE window (its tab is up front, or it's floated)
  * is the active context: it makes its mantle active and draws its content.
