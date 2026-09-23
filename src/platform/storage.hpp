@@ -1,4 +1,4 @@
-/* storage.hpp — the SQLite Data holiday, v1 (phase C; okf/concepts/platform/antfarm.md).
+/* storage.hpp — the SQLite Data holiday, v1 (phase C; okf/concepts/platform/antfarm/index.md).
  *
  * The shape, honest about what owns what: the CORE owns the model in memory
  * and the dispatcher owns change; this holiday owns WHERE THE ORG LIVES.

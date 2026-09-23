@@ -23,6 +23,12 @@ itself.
   policy is defined by its delta. Also where "should Hormiga become five
   applications?" is answered: four views over one model stay together, the
   dataset generator does not.
+- [Void Maiz, September 2026 — what we take up](/concepts/projects/void-maiz-uptake.md)
+  — **2026-09-22.** Void Maiz absorbed networking, updates and tag suggestions
+  from Hormiga and proved a collaborative canvas and a mobile kit on
+  Interaction Combinators. Piece by piece: adopted, proven compatible, waiting,
+  or declined, with why. Hormiga builds against it unchanged, and Void Maiz's
+  update client already reads Hormiga's live feed.
 - [The Cat Dataset](/concepts/projects/cat-dataset.md) — a public, synthetic
   test colony: 50 tag-rich fictional cats and linked birthday events, built by
   a C++ generator through the real dispatcher. **This is what the pipeline is

@@ -23,7 +23,7 @@ one interaction surface.
   holiday (data, assets, deploy, import, translate…), typed ports, live
   status. The default Antfarm is entirely local: embedded SQLite, filesystem
   assets, a snapshot fallback so no failure mode is a dead app. Cloud is
-  something an admin *adds*. See [the Antfarm](okf/concepts/platform/antfarm.md).
+  something an admin *adds*. See [the Antfarm](okf/concepts/platform/antfarm/index.md).
 - **Encryption is a pillar.** One vendored crypto dependency, a
   passphrase-sealed org registry, privacy enforced at the render seam, and
   E2EE collaboration designed-for from day one. See

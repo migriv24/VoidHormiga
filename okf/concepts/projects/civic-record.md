@@ -121,7 +121,7 @@ share the data structures and schema of hormiga… it would also need to kinda
 export a node for the antfarm?"*
 
 **Yes — exactly that, and the schema it shares is the verb vocabulary, not a
-library.** The [Antfarm](/concepts/platform/antfarm.md) already types its ports by payload,
+library.** The [Antfarm](/concepts/platform/antfarm/index.md) already types its ports by payload,
 and `records` is the payload of "the org's structured data." A dataset generator
 is a **`records` source**, precisely like the CSV importer and the Sheets
 importer already are. It plugs into `core.records` and the canvas enforces the

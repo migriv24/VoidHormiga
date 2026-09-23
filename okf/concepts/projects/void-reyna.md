@@ -85,7 +85,7 @@ Three things this buys, and each of them is load-bearing:
    that emits a text transcript is a tool you are never locked into.
 
 **In the Antfarm it is a `records` source**, exactly like the CSV and Sheets
-importers ([the Antfarm](/concepts/platform/antfarm.md)). The payload-typed canvas
+importers ([the Antfarm](/concepts/platform/antfarm/index.md)). The payload-typed canvas
 enforces the connection for free: a `records` plug fits `core.records` and
 nothing else.
 
@@ -219,11 +219,14 @@ small ask, concrete forcing case, law attached.
 
 ## The Antfarm graph, read back
 
-Hormiga's [Antfarm](/concepts/platform/antfarm.md) already types ports by **payload**
+Hormiga's [Antfarm](/concepts/platform/antfarm/index.md) already types ports by **payload**
 (records / assets / site) and already refuses a mismatched plug. Read against the
 above, that canvas is doing something precise: **payload types are the objects,
 holidays are the arrows, and wiring is composition.** The type-check the canvas
-performs for free *is* composability.
+performs for free *is* composability. (**2026-09-22:** only the canvas performs
+it. The dispatcher accepts an ill-typed `link`, so composition is not yet
+checked at the door. See [the Antfarm CLI examples](/concepts/platform/antfarm/cli-examples.md)
+§8 and [Q83](/developer_questions.md).)
 
 Two things already in that document turn out to be the same idea and are worth
 naming as such:

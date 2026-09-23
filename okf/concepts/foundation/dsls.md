@@ -21,7 +21,7 @@ the point.
 | has logic? | **no** — placement + content only | **no** — it defines the interface, doesn't compute | **yes** — variables, conditionals, iteration |
 | natural surface | a **layout grid** (WYSIWYG) | a **node graph** (dataflow/wiring) | **text** (a scripting language) |
 | output | documents (newsletter / website) | typed I/O interfaces (Data/Asset/Output/Import/…) | annotations now; later mutations + driving I/O |
-| concept | [builder](/concepts/sections/builder.md) | [the Antfarm](/concepts/platform/antfarm.md) | [Allomone](/concepts/allomone/index.md) |
+| concept | [builder](/concepts/sections/builder.md) | [the Antfarm](/concepts/platform/antfarm/index.md) | [Allomone](/concepts/allomone/index.md) |
 
 # What each one is (and is NOT)
 
@@ -39,7 +39,7 @@ the point.
    Import / LLM / Geo / Auth / Translate). It **defines the language of I/O**;
    it does not run logic. It is already conceived and partly built as a **node
    graph** — holidays as nodes, typed ports, wiring-is-configuration
-   ([the Antfarm](/concepts/platform/antfarm.md)) — which is exactly right, because I/O is
+   ([the Antfarm](/concepts/platform/antfarm/index.md)) — which is exactly right, because I/O is
    **dataflow**, and dataflow's natural surface is a node graph. This is the
    interaction-net **I/O boundary** the literature says to keep separate from the
    pure core ([allomone/foundations](/concepts/allomone/foundations.md)):
@@ -117,4 +117,4 @@ through the Antfarm (boundary).** That single line is the architecture.
   status cards and the uniform "any external ↔ a fixed typed interface" mapping,
   and the program-callable holiday seam, are **not built yet**. That is fine:
   nothing in Allomone's current work needs them, and they get built when Allomone
-  reaches the boundary. See [the Antfarm](/concepts/platform/antfarm.md) for the plan.
+  reaches the boundary. See [the Antfarm](/concepts/platform/antfarm/index.md) for the plan.

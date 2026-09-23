@@ -20,7 +20,7 @@ agreement).
 
 # 2. At rest (v1)
 
-- The `.miga` v2 registry ([Antfarm](/concepts/platform/antfarm.md)) lives under a
+- The `.miga` v2 registry ([Antfarm](/concepts/platform/antfarm/index.md)) lives under a
   **passphrase**; credentials are encrypted. No hardcoded fallback secret
   exists, ever.
 - The data store is encryptable at the app level — content columns sealed

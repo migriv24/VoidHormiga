@@ -19,10 +19,14 @@ Read in this order the first time:
   most important file the application owns**, and — per
   [Q45](/developer_questions.md) — arguably the best answer to "what is
   Hormiga?".
-- [The Antfarm](/concepts/platform/antfarm.md) — holidays as the visible
-  nervous system: one rune per backend, typed ports, live status faces. The
-  Antfarm topology *is* the protocol layer the bundle stores, which is why a
-  database can be reconstructed from it.
+- [The Antfarm](/concepts/platform/antfarm/index.md) — **a folder since
+  2026-09-22**, because it is the structure the author is redesigning. Holidays
+  as the visible nervous system: one rune per backend, ports typed by payload,
+  every crossing a gated effect, capabilities instead of vendors. The folder
+  holds the graph as built, holidays, capabilities, research on how outside APIs
+  map on, the Antfarm across devices, **real CLI transcripts**, and the redesign
+  workbook. The Antfarm topology *is* the protocol layer the bundle stores,
+  which is why a database can be reconstructed from it.
 - [Security](/concepts/platform/security.md) — the E2EE posture: libsodium as
   the one crypto dependency, at-rest encryption, the render-seam privacy rule
   (subtractive for things, **additive for people**), the collaboration modes,

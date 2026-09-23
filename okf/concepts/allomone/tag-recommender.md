@@ -3,7 +3,7 @@ type: Concept
 title: Allomone — the tag recommender
 description: "When adding tags, suggest tags over the tag co-occurrence graph — the same graph substrate Allomone reads, run in reverse (structure → suggested tags). Three settings-selectable modes: similarity (reinforce clusters), dissimilarity (make distinct), comprehensive (connect stranded nodes)."
 tags: [status:built, audience:dev, confidence:asserted]
-timestamp: 2026-08-05T00:00:00Z
+timestamp: 2026-09-22T00:00:00Z
 ---
 
 Part of [Allomone](/concepts/allomone/index.md). **Built 2026-08-05** (author's
@@ -43,9 +43,13 @@ are excluded from the similarity signal and from suggestions).
   "make sure everything is connected… don't leave stranded nodes/branches."
   Suggest tags that forge a **new** link (to things the target shares nothing
   with yet), preferring the **least-connected** of those:
-  `score(t) = Σ_{c carries t, sim(target,c)=0} 1 / (1 + degree(c))`, where
+  `score(t) = max_{c carries t, sim(target,c)=0} 1 / (1 + degree(c))`, where
   `degree(c)` is how many peers `c` co-occurs with. So the **most stranded**
-  node's tags surface first.
+  node's tags surface first. **It was a sum (Σ) until 2026-09-22.** Void Maiz,
+  porting it, found that a sum lets *two* well-connected peers holding one tag
+  outscore *one* stranded peer holding another, which sinks exactly the node
+  the mode exists to reach. The maximum takes the best link a tag would forge,
+  and their `tags_smoke` pins the case.
 
 Verified on a synthetic two-cluster-plus-stranded graph: for a target inside
 cluster A, similarity → the cluster-A tag it lacks; dissimilarity → the *other*
@@ -55,9 +59,16 @@ provably distinct and each behaves as designed.
 
 # Where it lives
 
-- `HormigaApp::compute_tag_suggestions(target, mode, k)` — the scoring, a pure
-  read of `scene.nodes` filtered to the target's glyph. Cached by
-  `(target · tags · mode)` so it recomputes only when they change, not per frame.
+- **`maiz::suggest_tags(scene, target, opt)` in Void Maiz**
+  (`voidmaiz/tags.hpp`), since 2026-09-22. The author: *"tag suggestion ...
+  should be a maiz native thing (because multiple other void based applications
+  should be able to do it)"*. The port was mechanical, because ours was already
+  a pure read of `scene.nodes` filtered to the target's glyph. `skip_prefixes`
+  defaults to our `type:`, `icon:` and `color:`. Hormiga's own
+  `compute_tag_suggestions` is deleted.
+- **The cache stays Hormiga's** (`tag_rec_cache`, keyed on
+  `(target · tags · mode)`), because the library function is pure and only the
+  host knows when its scene changed.
 - `draw_tag_editor` renders the chips (each emits a `tag <name> +<t>` command —
   a normal logged dispatcher command, like every other change).
 - **Settings** writes `ui.tags.recommend_mode`; it is read on boot into

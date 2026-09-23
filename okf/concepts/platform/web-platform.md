@@ -8,7 +8,7 @@ timestamp: 2026-08-19T00:00:00Z
 
 # The decision that opens this
 
-[antfarm](/concepts/platform/antfarm.md) records the author's direction of 2026-07-16:
+[antfarm](/concepts/platform/antfarm/index.md) records the author's direction of 2026-07-16:
 
 > **no subscription services** … the preference is the org running its own
 > infrastructure with tools Hormiga provides, on a domain the org purchases.

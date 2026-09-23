@@ -37,11 +37,19 @@ rather than a rewrite ([application boundaries](/concepts/foundation/application
   runes on a canvas over a swappable map source (not assumed to be Earth); the
   Neighborhood analysis and its mapping to runes / holidays / tags / Scry;
   reactive visuals as interaction-net-flavoured projections.
+- [Hormiga on a phone](/concepts/sections/mobile.md) — **opened
+  2026-09-22.** Which rooms exist on a phone, and in what form. The phone is a
+  *member doing field work*, never the host or the composer. The Builder is
+  answered by the query-backed block: you edit the data, and the documents
+  follow. The phone is a third front-end over the same core, not a responsive
+  desktop. Includes a gap analysis of what Void Maiz carries, has staged and
+  lacks (accented keys, a Back button, platform intents), and Hormiga's own
+  blocker: libsodium on Android.
 
 # The one section documented elsewhere
 
-**The Antfarm** is a section too, but its page lives in
-[platform](/concepts/platform/antfarm.md) rather than here, because it is a
+**The Antfarm** is a section too, but its folder lives in
+[platform](/concepts/platform/antfarm/index.md) rather than here, because it is a
 section *of* the machine underneath: it is where backends are configured, and
 it is the protocol layer the `.miga` bundle stores. The Antfarm's
 user-interface story is here in

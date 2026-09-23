@@ -51,7 +51,7 @@ completely** — a click in a form and a typed verb are the same command.
    snap, an inspector for the property-rich block arguments, and a preview.
    The MIT-Scratch layout is the usability precedent, not just the block
    geometry. See [blocks & domains](/concepts/sections/blocks-and-domains.md).
-3. **The Antfarm** — the node graph ([the Antfarm](/concepts/platform/antfarm.md)),
+3. **The Antfarm** — the node graph ([the Antfarm](/concepts/platform/antfarm/index.md)),
    plus the layer the author flagged as missing: **user-friendliness**. The
    graph alone is a diagram, not a tool. The section needs status-at-a-glance
    (per-node health cards, last-sync, errors surfaced plainly), guided

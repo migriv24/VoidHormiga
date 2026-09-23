@@ -83,7 +83,7 @@ Hormiga already has both halves of that argument written down:
   rule** outright — *never write a direct A→B adapter when A→pivot→B exists* —
   along with the shape that makes it work: a holiday is *an effect boundary
   plus a pure `Lens`*, and lenses compose.
-- [The Antfarm](/concepts/platform/antfarm.md) already renders one rune per
+- [The Antfarm](/concepts/platform/antfarm/index.md) already renders one rune per
   backend with typed ports and live status. `hol_sheets` is a cloud **record
   source**; a calendar feed is a cloud record source. The mechanism exists.
 

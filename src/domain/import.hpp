@@ -1,6 +1,6 @@
 /* import.hpp — the CSV import compiler (phase C, headless).
  *
- * The import philosophy (okf/concepts/platform/antfarm.md, Import interface): a file
+ * The import philosophy (okf/concepts/platform/antfarm/index.md, Import interface): a file
  * comes in ONCE, but what lands in the org is COMMANDS — `rune new` / `set` /
  * `tag` lines the caller wraps in one `compile_commit` batch. The import is
  * thereby a single undo frame, fully logged, and replayable forever without

@@ -11,6 +11,65 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q82 — the Antfarm redesign: twelve questions, one workbook.** (Opened
+  2026-09-22.) The author is about to lead the redesign and asked for the
+  documentation to study first. The questions are in
+  [the redesign workbook](/concepts/platform/antfarm/redesign.md) §3 rather than
+  here, because they only make sense together. Each has options and a lean:
+  **A1** payload types checked at the door (lean: a checked `plug` verb and a
+  host guard now, and an upstream ask); **A2** is wiring authoritative (lean:
+  yes, with the seed doing the wiring); **A3** a connections dashboard first
+  and the graph second; **A4** credentials as their own visible objects;
+  **A5** capabilities declared on node kinds; **A6** a readiness contract;
+  **A7** placeholders shown as *planned*; **A8** sync (this is Q78); **A9** a
+  separable layer, not a separate application; **A10** wrappers as face
+  properties; **A11** the phone gets the dashboard only; **A12** every effect
+  confirms with its consequence. **What settles it:** the author's reading of
+  the workbook. **B10**, the canvas's own misbehaviour, needs a short screen
+  recording, since nobody but the author has the failing cases.
+
+- **Q83 — the dispatcher accepts ill-typed Antfarm links. Fix it where?**
+  (Opened 2026-09-22.) **Lean: a Hormiga guard now, and ask Void Core and Void
+  Maiz who owns port semantics.** `link core site-pages --relation 1:1` wires
+  `records` into a `site` port and succeeds, and `--relation 9:1` names a port
+  that does not exist and also succeeds
+  ([CLI examples](/concepts/platform/antfarm/cli-examples.md) §8). The canvas
+  refuses both. Ground rule 3 says the dispatcher is the only door, so the type
+  is not really enforced. `hints.ports` is Void Maiz vocabulary that Void Core
+  carries without reading, which is why this is a question and not a patch.
+  **What settles it:** upstream's answer on whether ports, and port names in
+  relation labels, become part of the glyph contract. Asked in
+  `MESSAGE_FOR_VOIDCORE_hormiga-ports-at-the-door-2026-09-22.md`.
+
+- **Q84 — the phone: a member doing field work, as a third front-end?**
+  (Opened 2026-09-22.) **Lean: yes to both.** The author asked for a
+  *"significantly diminished"* Hormiga that puts UX first.
+  [Mobile](/concepts/sections/mobile.md) proposes four rooms (People, Calendar,
+  Map, Publications), the phone always joining and never hosting, the Builder
+  reduced to an outline with bilingual text edits (the documents follow the
+  data because blocks are query-backed), and `src/phone/` beside the desktop
+  and headless front-ends rather than `if (touch)` through `src/ui/`. **What
+  settles it:** whether the four jobs listed there are the right four for the
+  organization's field workers. The author knows them, and this page guessed.
+
+- **Q85 — when two members move the same Builder block at once, converge or
+  conflict?** (Opened 2026-09-22.) **Lean: converge `row`, `col` and `span`
+  (last one wins, as ruled for view state on 2026-09-20), and keep `page` as
+  content.** Today they are content fields, so a simultaneous move is a
+  conflict. A block's place is part of the published document, which is why
+  this is asked rather than assumed. One line in `NetOptions::joins` once
+  decided. See [Void Maiz uptake](/concepts/projects/void-maiz-uptake.md)
+  §"Builder layout under sync".
+
+- **Q86 — move to Void Maiz's update client?** (Opened 2026-09-22.) **Lean:
+  yes, with mobile stage M0 rather than before it.** Theirs is ours,
+  generalized, and **already reads our live feed correctly** (probed
+  2026-09-22: it offers 0.1.6 to 0.1.5 on both platforms and nothing to 0.1.6).
+  The gain is the Android apply path. The one hazard is a person's earlier
+  *Never*: our preference file must be read once and carried over, or the
+  migration performs a check nobody asked for. **What settles it:** when the
+  phone build starts.
+
 - **Q79 — the database needs a profile of its own, and today it is three
   config keys.** (Opened 2026-09-20.) **Lean: a dedicated structure, minted
   when a database is first shared, carrying a stable id, a name, a
@@ -62,23 +121,6 @@ fold into concepts and clear from here.
   person, and we answer them as graphs before dispatch. One of those two
   meanings should win upstream rather than each host inventing its own.
 
-- **Q73 — Does networking move into Void Maiz as an optional module?**
-  (Opened 2026-09-19, from the author's two-machine test.) **Lean: yes, staged.
-  Hormiga keeps its working LAN code and fixes bugs in it. We stop wiring
-  networking into more views one at a time. We migrate once Maiz answers.**
-
-  The author: *"void maiz should own networking. and void hormiga will
-  implement a specialized version of that networking … It should be possible
-  for someone to make a non-networking application with void maiz … if
-  networking with void maiz, void palabra will be a required library as
-  well."* The reason is consistency. Data rows had presence marks, the Map had
-  none, and the Antfarm did not sync, because each view decided for itself.
-  Asked upstream in
-  `MESSAGE_FOR_VOIDMAIZ_hormiga-networking-belongs-in-maiz-2026-09-19.md` and
-  `MESSAGE_FOR_VOIDPALABRA_…-2026-09-19.md`. **What settles it:** Maiz's answer
-  on where the line sits. Also open: whether a *profile* is a Maiz concept or a
-  host concept that Maiz reads through a callback.
-
 - **Q74 — Rune names collide across members. Is the name or the id the
   identity people work with?** (Opened 2026-09-19.) **Lean: the id is the
   identity everywhere the machine decides (presence, highlighting, sync).
@@ -95,13 +137,16 @@ fold into concepts and clear from here.
   username, because two people can pick the same username. **Still open:**
   names a person types (a contact called `tigger`) can still collide.
   Palabra is asked whether a duplicate name after a merge should be reported
-  as a conflict.
+  as a conflict. **2026-09-22:** Void Maiz's canvas mints names too, and
+  Hormiga had not given it the device tag, so the shared Builder's palette
+  minted `<glyph>-1` on every member. Fixed (`CanvasStyle::device_tag`). It is a
+  candidate cause for the undiagnosed Builder note from 2026-09-19.
 
 - **Q75 — Tag the application's own UI so presence and highlighting follow
   rules instead of hand-written code.** (Opened 2026-09-19.) **Lean: every
   surface that shows a rune (row, card, cell, marker, block) registers the
   rune's id and a presence tag (outline, badge, tint). Build it on Void Maiz's
-  widget-registry "tag awareness" once Q73 is answered.**
+  widget-registry "tag awareness". Q73 was answered by Void Maiz building networking (2026-09-19): surfaces are declared per view and one renderer marks them, so this is now a question about which surfaces to declare.**
 
   The author: *"we need to start tagging UI elements themselves (internal to
   the GUI, these tags are not really on the database …)"* and *"Please do NOT
@@ -124,7 +169,7 @@ fold into concepts and clear from here.
 
   Today only the state document syncs after a join, so a picture added later
   shows on the other device as a path to a missing file. Asset names are
-  already content-hashed, so this is well defined. It waits on Q73 for *where*
+  already content-hashed, so this is well defined. It waited on Q73 (answered 2026-09-19: Void Maiz and Palabra) for *where*
   it lives (Maiz, Palabra, or here).
 
 - **Q78 — Should the Antfarm sync between members, with private nodes?**
@@ -138,6 +183,11 @@ fold into concepts and clear from here.
   key file the other device does not have is a node that fails there. The
   author also floated an Antfarm overhaul, *"potentially isolate it in its own
   void based thing"*. That is bigger than this question and not led by it.
+  **2026-09-22:** [the Antfarm across devices](/concepts/platform/antfarm/collaboration.md)
+  refines the lean using what Void Maiz learned on Interaction Combinators:
+  description syncs, credentials never do, readiness is per device, and **one
+  device drives each node's automatic effects** (the physics-rule pattern).
+  Settle [Q82](/developer_questions.md)'s A2 (wiring authority) first.
 
 - **Q69 — Google Calendar WRITE needs an OAuth client secret, and this repo is
   public. Do we ship one?** (Opened 2026-09-10, by the calendar hub reframe.)
@@ -238,6 +288,9 @@ fold into concepts and clear from here.
   all. If they stay untested curiosities the interim is honest and cheap; the
   moment either is a platform an organization runs on, a package-manager
   dependency is not acceptable and the sources have to come in.
+  **2026-09-22: Android makes it urgent.** The LAN transport is sealed with
+  libsodium, so a phone that cannot build it cannot join a database at all. It
+  is the first item of mobile stage M0 ([mobile](/concepts/sections/mobile.md)).
 
 - **Q66 — should `link` carry `caption_en` / `caption_es`?** (Opened
   2026-09-08, Click LaFont's platform-set report §3.) **Lean: yes, and only
@@ -1595,7 +1648,7 @@ fold into concepts and clear from here.
   **deployer** (GitHub Pages) carries — a visible **pipeline**. Locality is
   badged; the default is local-only. `seed.hpp` (`register_antfarm_glyphs` +
   `seed_antfarm_transcript`), palette regrouped by payload, concept rewritten
-  ([antfarm.md](/concepts/platform/antfarm.md)). *Remaining polish (not blocking):* faces
+  ([antfarm.md](/concepts/platform/antfarm/index.md)). *Remaining polish (not blocking):* faces
   for the new `hol_github` deployer; store-vs-source could later split into
   distinct core ports; the `.miga` publish/deploy actions wire to the new nodes.
   Original critiques, all now addressed: (a) **Supabase and
@@ -1623,7 +1676,7 @@ fold into concepts and clear from here.
     — it earns its node-graph only when external services are wired.
   - **`core` exposes payload-typed ports** reflecting the data model, not four
     generic buckets. This is the interaction-net **I/O boundary** made precise
-    ([concepts/antfarm.md](/concepts/platform/antfarm.md);
+    ([concepts/antfarm.md](/concepts/platform/antfarm/index.md);
     [allomone/inputs.md](/concepts/allomone/inputs.md) §6). *Big build — needs
     the author's go-ahead on direction + scope before rebuilding the glyph/port
     model.*
@@ -1814,7 +1867,7 @@ fold into concepts and clear from here.
   actions + agent-legible commands are the required foundation: every
   builder gesture must be a `doc` verb the way every map gesture is a `map`
   verb. Folded into the Q20 plan.
-- **Q17 *(direction set by the author, 2026-07-22 — see [antfarm](/concepts/platform/antfarm.md)
+- **Q17 *(direction set by the author, 2026-07-22 — see [antfarm](/concepts/platform/antfarm/index.md)
   "the door, not the warehouse")* — the `.miga` v2 container: how much does it hold?** The credential
   vault shipped (2026-07-20) as a passphrase-locked secrets file. The author
   wants `.miga` to be the full **org bundle** (topology, roles, templates,
@@ -2091,7 +2144,7 @@ settled it named. They are not a place to think out loud forever.
 - **Q4 — Sheets and the cloud posture: v1 ships entirely local.** A 2-way
   Sheets holiday exists eventually as *some aspects* — never integral to the
   application. The deeper directive recorded here and in
-  [the Antfarm](/concepts/platform/antfarm.md): most of Hormiga's features must work
+  [the Antfarm](/concepts/platform/antfarm/index.md): most of Hormiga's features must work
   with NO internet connection; online holidays (image host, Sheets, email
   dispatch) are the exception, not the spine — and where they're needed, the
   strong preference is **self-hosted over third-party subscription services**
@@ -2101,7 +2154,7 @@ settled it named. They are not a place to think out loud forever.
   behavior ships configured: the user does not assemble nodes to get
   bilingual newsletters. Generalized into the Antfarm principle:
   **defaults, not assembly** — the Antfarm is where behavior is *seen and
-  reconfigured*, not where it must be *built* ([the Antfarm](/concepts/platform/antfarm.md)).
+  reconfigured*, not where it must be *built* ([the Antfarm](/concepts/platform/antfarm/index.md)).
 - **Q6 — encryption: confirmed as a headline feature.** E2EE, password-
   protected files, at-rest sealing — a big feature, not a checkbox
   ([security](/concepts/platform/security.md) stands as written; keychain → Q11).
@@ -2121,7 +2174,7 @@ settled it named. They are not a place to think out loud forever.
   Q10 supersession note; we are client #2).
 - **SQLite as the default Data holiday** (not MeshDB) — the native-host trade
   flips the old call; MeshDB stays the mesh growth path behind the same
-  interface ([Antfarm](/concepts/platform/antfarm.md)).
+  interface ([Antfarm](/concepts/platform/antfarm/index.md)).
 - **No cloud BaaS, no hosted image service** — removed by design; cloud is
   opt-in holidays only.
 - **E2EE as a pillar**; libsodium as the one crypto dependency; the old

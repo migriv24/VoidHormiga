@@ -543,7 +543,7 @@ inline void register_block_glyphs(maiz::Core& core) {
         R"__("theme_accent":"Theme accent (hex)","theme_bg":"Theme background (hex)"}}})__");
 }
 
-/* The Antfarm glyphs (okf/concepts/platform/antfarm.md, now a real canvas): one CORE
+/* The Antfarm glyphs (okf/concepts/platform/antfarm/index.md, now a real canvas): one CORE
  * hub whose out-sockets are the protocol interfaces — connector-shape-as-
  * type, a `data` plug only fits a `data` socket — and one glyph per holiday
  * provider with a single typed plug. Wiring IS configuration: the edge from

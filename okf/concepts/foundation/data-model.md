@@ -27,12 +27,12 @@ only way any of it changes.
 - **Assets** — `image` and `resource` (PDF/document) glyphs: metadata runes in
   the images/resources mantles, tagged at ingestion; the bytes live on the
   Asset holiday (local FS, content-hashed filenames — see
-  [Antfarm](/concepts/platform/antfarm.md)).
+  [Antfarm](/concepts/platform/antfarm/index.md)).
 - **Documents** — the things composed *from* the above: newsletter issues and
   website pages, each a mantle of block runes. Their whole story is
   [blocks & domains](/concepts/sections/blocks-and-domains.md).
 - **The organization itself** — its backends, credentials, collaborators, and
-  trust topology: the [Antfarm](/concepts/platform/antfarm.md) mantle.
+  trust topology: the [Antfarm](/concepts/platform/antfarm/index.md) mantle.
 
 Facets carry the six-facet story where natural (who = the contact's name,
 when = the event's date, …); a `note` glyph exists for the freeform rest.

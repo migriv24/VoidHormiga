@@ -375,6 +375,6 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
  * localhost preview server, and a local CSV import. NO cloud (Supabase, Google
  * Sheets, imgbb) is seeded — those are things a user ADDS when they connect a
  * cloud backend, never a default. (A deeper Antfarm redesign is open — see
- * developer_questions Q25 / okf/concepts/platform/antfarm.md.) */
+ * developer_questions Q25 / okf/concepts/platform/antfarm/index.md.) */
 
 } // namespace hormiga

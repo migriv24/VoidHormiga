@@ -243,7 +243,7 @@ configuration exercise** (author, 2026-07-16). The model: **parallel content
 fields per block** — `text.en` / `text.es`-shaped pairs — filled by a
 Translate-holiday call and hand-editable afterward, so translation is content
 you can fix, not a render side-effect you can't. The engine ships wired
-(defaults, not assembly — [the Antfarm](/concepts/platform/antfarm.md)): a language
+(defaults, not assembly — [the Antfarm](/concepts/platform/antfarm/index.md)): a language
 axis (`lang:`) on documents, a "translate what's missing" pass as a logged
 batch command, per-field provenance (machine vs hand-edited, so a re-translate
 never clobbers a human fix), and domain renderers that pick the field for the

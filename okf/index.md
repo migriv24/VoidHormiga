@@ -23,7 +23,7 @@ encrypted, and eventually collaborative.**
 > prefix is formal, "Hormiga" is what users see and say. Repo and stack-facing
 > artifacts stay `VoidHormiga`/`voidhormiga`. The ant metaphor is structural,
 > not decorative: the organization's backends form the
-> **[Antfarm](/concepts/platform/antfarm.md)**, and its colony of small tagged things
+> **[Antfarm](/concepts/platform/antfarm/index.md)**, and its colony of small tagged things
 > does the work.
 
 # The founding commitments
@@ -35,7 +35,7 @@ encrypted, and eventually collaborative.**
 2. **Local-first is the resting state, not a feature.** The default install
    works forever with no network: embedded SQLite, local filesystem assets, a
    JSON snapshot fallback so no failure mode is a dead app. The network is
-   something an admin *adds*, as [Antfarm](/concepts/platform/antfarm.md) holidays.
+   something an admin *adds*, as [Antfarm](/concepts/platform/antfarm/index.md) holidays.
 3. **End-to-end encryption is a pillar, not a feature.** One vendored crypto
    dependency (libsodium); a mandatory passphrase on the org registry; privacy
    enforced at seams, not by template convention; collaboration protocols are
@@ -110,6 +110,11 @@ with it.
   runes on a canvas over a swappable map source (not assumed to be Earth); the
   Neighborhood analysis and its clean mapping to runes/holidays/tags/Scry;
   reactive visuals as interaction-net-flavored projections.
+- [Hormiga on a phone](/concepts/sections/mobile.md) — **opened 2026-09-22**:
+  a significantly smaller Hormiga that puts UX first, as the author asked. The
+  phone is a member doing field work, never the host or the composer. On a
+  phone the Builder is the Data tab, because blocks are query-backed. A third
+  front-end, and what Void Maiz does and does not yet carry for it.
 
 ## platform — the machine underneath
 
@@ -117,9 +122,14 @@ with it.
   one portable, switchable, backup-able bundle: every mantle + assets +
   encrypted secrets; working-copy vs bundle (git-shaped); re-derivable vs
   irreplaceable; online/offline load. Resolves Q17 + Q19.
-- [The Antfarm](/concepts/platform/antfarm.md) — holidays as the visible
-  nervous system: one rune per backend, typed ports, live status faces; the
-  registry; the local-first storage defaults.
+- [The Antfarm](/concepts/platform/antfarm/index.md) — **a folder since
+  2026-09-22**, for the redesign the author is about to lead: holidays as the
+  visible nervous system (one rune per backend, payload-typed ports, gated
+  effects, capabilities instead of vendors). Seven pages: the graph as built,
+  holidays, capabilities, how outside APIs map on (research), across devices,
+  **CLI example usage** (real transcripts), and the redesign workbook. Writing
+  it found two things: the dispatcher accepts ill-typed links, and no code
+  reads the wiring.
 - [Security](/concepts/platform/security.md) — the E2EE posture: at-rest
   encryption, the render-seam privacy rule, the three collaboration modes,
   signed releases.
@@ -200,6 +210,9 @@ with it.
   Also where the "should Hormiga become five applications?" question is
   answered: four views over one model stay together, the dataset generator does
   not.
+- [Void Maiz, September 2026](/concepts/projects/void-maiz-uptake.md) — what
+  Void Maiz absorbed from Hormiga and built on Interaction Combinators, and what
+  we take up, piece by piece. Hormiga builds against it unchanged.
 - [The Cat Dataset](/concepts/projects/cat-dataset.md) — a public, synthetic
   test colony (50 tag-rich fictional cats + linked birthday events) built by a
   C++ generator through the real dispatcher; replaces testing Allomone on the
@@ -239,6 +252,16 @@ with it.
   reply 2026-07-21), not the message files.
 
 # Status
+
+**2026-09-22: the Antfarm, the phone, and Void Maiz's September.** No release.
+The Antfarm is a folder of its own, written for the author's redesign, with real
+CLI transcripts and a workbook of twelve questions. The phone has a concept:
+diminished on purpose, a member doing field work, and a gap list for Void Maiz
+(accented keys, a Back button, platform intents) plus our own libsodium
+blocker. Void Maiz's September work is mapped piece by piece. Two pieces are
+adopted (tag suggestions, and device-scoped names on the canvas, which was a
+live bug on the shared Builder), and the update client is proven to read our
+feed. See the [log](/log.md).
 
 **As of 2026-09-15.** **Void Hormiga 0.1.2 shipped on 2026-09-15**: the newsletter look of its own, Host it online through the Antfarm, ordering by tags, recurrence and `.ics` import. **0.1.1 shipped on 2026-09-10**, and an
 installed 0.1.0 found it and updated itself through the feed, which is the half

@@ -4644,3 +4644,102 @@ client reads it.
 
 **0.1.5 should not be used for sharing** — its members go quiet after the first
 link ends. The release notes say so in the first behaviour change.
+
+# The Antfarm gets a folder, the phone gets a concept, and Void Maiz's September is mapped (2026-09-22)
+
+The author asked for three things at once: integrate what Void Maiz grew (much
+of it carried over from Hormiga, demonstrated on Interaction Combinators); begin
+thinking about a phone Hormiga that is *"a significantly diminished version"*
+and puts UX first; and give the Antfarm the design it has been waiting for,
+starting with documentation to study: *"quite possibly one of the most
+important structures for hormiga, and i'm still leaving it without a proper
+design. This is actually because of the very fact of how important the antfarm
+is."* No release.
+
+## The Antfarm is a folder
+
+`okf/concepts/platform/antfarm.md` (342 lines, layered by date, partly
+superseded by itself) is now `okf/concepts/platform/antfarm/`: an index with
+the invariants any redesign must keep and a dated decision ledger, then
+[the graph as built](/concepts/platform/antfarm/model.md),
+[holidays](/concepts/platform/antfarm/holidays.md),
+[capabilities](/concepts/platform/antfarm/capabilities.md),
+[how the outside APIs map on](/concepts/platform/antfarm/mappings.md) (research),
+[across devices](/concepts/platform/antfarm/collaboration.md),
+[CLI example usage](/concepts/platform/antfarm/cli-examples.md) and
+[the redesign workbook](/concepts/platform/antfarm/redesign.md). Nothing was
+dropped. 31 inbound links moved, and `lint_okf_links` checks 706.
+
+**Writing it from the code, not the old page, found two things the old page
+said were true and are not:**
+
+- **The dispatcher accepts ill-typed links.** `link core site-pages
+  --relation 1:1` puts `records` into a `site` port, `--relation 9:1` names a
+  port that does not exist, and `validate` answers `valid` after both. Only the
+  canvas checks types. [Q83](/developer_questions.md), and
+  `MESSAGE_FOR_VOIDCORE_hormiga-ports-at-the-door-2026-09-22.md` asks who owns
+  port semantics.
+- **No code reads the wiring.** Every consumer finds its node by glyph, so an
+  unwired `hol_github` publishes as well as a wired one. "Wiring is
+  configuration" is a commitment the code does not keep. That is the
+  workbook's question A2.
+
+Also counted: of the 18 kinds a person can place, 11 have code reading their
+fields, two are live features with decorative nodes (`hol_csv`, `hol_html`), and
+five are placeholders. Two Antfarm effects (`import-rescue`, `serve-site`) have
+no CLI twin. The CLI examples were run against the shipped binary in a
+throwaway folder, and every output on that page is verbatim.
+
+The redesign's twelve questions are [Q82](/developer_questions.md), with
+leans, in the workbook. The one the session could not investigate is B10, the
+canvas's own misbehaviour, which needs the author at the canvas.
+
+## The phone
+
+[Hormiga on a phone](/concepts/sections/mobile.md): a member doing field work,
+never the host or the composer. Four rooms (People, Calendar, Map,
+Publications) and a third front-end (`src/phone/`) over the same core. The
+Builder is answered by the query-backed block: on a phone you edit the data,
+and the documents follow. What remains is an outline with bilingual text edits.
+The gap analysis, for the question *"does maiz have enough ability to carry
+that forward?"*: **for chrome and networking, mostly yes. For screens, it gives
+primitives by design. For the Builder, nothing would carry the grid, and
+nothing should.** The blockers are Void Maiz's accented keyboard, navigation
+and Back, and platform intents, plus our own libsodium ([Q67](/developer_questions.md),
+now urgent: a phone that cannot build it cannot join). [Q84](/developer_questions.md).
+The asks are sent in
+`MESSAGE_FOR_VOIDMAIZ_hormiga-phone-gaps-and-two-adoptions-2026-09-22.md`.
+
+## Void Maiz's September, piece by piece
+
+[Void Maiz uptake](/concepts/projects/void-maiz-uptake.md). **Hormiga builds
+against today's Void Maiz with no changes**: 48/49, the one failure being
+`reduce_conformance` at upstream's known 17/25. Two adoptions:
+
+- **Tag suggestions** are `maiz::suggest_tags` now. Consumed
+  `MESSAGE_FOR_VOIDHORMIGA_maiz-tag-suggestions-are-in-the-library-now-2026-09-22.md`
+  (deleted after this entry). `compute_tag_suggestions` is deleted and our cache
+  stays. Connective mode takes the best link, not the sum: their fix to our
+  bug, recorded in [the recommender page](/concepts/allomone/tag-recommender.md).
+- **`CanvasStyle::device_tag` is set every frame** from `device_tag()`. Void
+  Maiz's canvas mints names through it, and both our canvases place nodes
+  through its palette, so **the shared Builder had been minting `<glyph>-1` on
+  every member**. That is Interaction Combinators' two-device bug, live here.
+  It is a candidate cause for the undiagnosed Builder note of 2026-09-19.
+
+Measured, not adopted: **Void Maiz's update client reads our live feed**
+(`maiz_update_smoke --probe`: it offers 0.1.6 to 0.1.5 on both platforms and
+nothing to 0.1.6). Migration waits for the phone build, which is what it buys
+([Q86](/developer_questions.md)). Kept: our sealed LAN transport over their
+unencrypted `LanSession`, and our profile. Open: whether Builder `row`, `col`
+and `span` should converge like positions ([Q85](/developer_questions.md)).
+Q73 is cleared: networking moved, and we adopted it.
+
+## Verification
+
+- 48/49 on Windows. `reduce_conformance` (upstream, known) is the one failure.
+- `check_layering`, `find_long`, `lint_host_seams`, `lint_glyph_fields`,
+  `lint_nfc` and `lint_okf_links` (706 links) all pass.
+- The GUI was not run this session. The `device_tag` change affects which name
+  a newly placed node gets in a shared database (`<glyph>-<tag>-1` instead of
+  `<glyph>-1`), and nothing else.

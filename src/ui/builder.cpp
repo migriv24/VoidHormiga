@@ -1581,7 +1581,7 @@ void HormigaApp::draw_antfarm_section() {
     nested_dockspace("antfarm-dock", nullptr, nullptr, "Node graph##antfarm",
                      "Inspector##antfarm");
     ImGui::Begin("Node graph##antfarm", nullptr, ImGuiWindowFlags_NoScrollbar);
-    // the node graph IS the configuration surface (okf/concepts/platform/antfarm.md):
+    // the node graph IS the configuration surface (okf/concepts/platform/antfarm/index.md):
     // one core hub, typed sockets, providers plugged in; faces are live
     // describe() views; the Supabase node's button imports the real org
     ImGui::TextDisabled("the org's backends, by payload: records + assets flow "
