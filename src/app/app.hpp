@@ -471,8 +471,6 @@ private:
     int tag_rec_mode = 0; // config ui.tags.recommend_mode: 0 similar,1 dissimilar,2 comprehensive
     std::string tag_rec_key;               // cache key (target + tags + mode)
     std::vector<std::string> tag_rec_cache; // last computed suggestions
-    std::vector<std::string> compute_tag_suggestions(
-        const maiz::SceneNode& target, int mode, int k) const;
     void draw_builder_section(float avail_h);
     void draw_antfarm_section();
     void draw_map_section();  // Territory placeholder (concept: territory.md)

@@ -1845,7 +1845,7 @@ std::string HormigaApp::ingest_asset(const std::string& src, bool quiet) {
 }
 
 /* The MIRROR pipeline — publish's twin, cloud → local (the concept:
- * okf/concepts/platform/antfarm.md "publish & mirror"). Walk every rune field that
+ * okf/concepts/platform/antfarm/index.md "publish & mirror"). Walk every rune field that
  * references a remote URL; make the bytes local by the cheapest honest
  * route: mirror cache hit → skip; the rescue's media/ has it → copy;
  * else download. Results land in two tiers:
@@ -2578,6 +2578,12 @@ void HormigaApp::frame() {
      * moment a window closes on one device and not another). */
     surfaces.begin_frame();
     share_now = share_filter();  // read once a frame, not once a row
+    /* Void Maiz's canvas mints names too (its add palette, long-press on glass,
+     * paste) and scopes them by this tag. Its header: a host that shares its
+     * document MUST set it, or two devices mint one name and the wires touching
+     * it vanish on the other screen (their 2026-09-22 two-device bug). The same
+     * tag `mint_name` uses, so both minting paths agree; "" when not shared. */
+    canvas_style.device_tag = device_tag();
     tex_decodes_this_frame = 0; // reset the per-frame texture-decode budget
 
     /* A MERGED DOCUMENT LANDS HERE, not where it was computed (app.hpp,

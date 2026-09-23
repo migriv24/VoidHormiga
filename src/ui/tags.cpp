@@ -16,6 +16,7 @@
 #include "app/app_internal.hpp"
 #include "domain/tag_kinds.hpp"
 #include "domain/bestow.hpp" // tags given by another rune
+#include "voidmaiz/tags.hpp"   // suggest_tags: the recommender, upstream since 2026-09-22
 
 #include <algorithm>
 #include <cmath>
@@ -23,80 +24,14 @@
 #include <set>
 
 // ── the tag recommender ─────────────────────────────────────────────────────
-// Suggest tags to add to `target`, over the tag CO-OCCURRENCE GRAPH of its
-// same-glyph peers (the user's ask: "what tags do other events/scripts have?"),
-// ranked by one of three modes. This is a graph-structure read — the same
-// substrate Allomone styles from, run backwards (structure → suggested tags).
-//   • similarity (0):    tags held by things SIMILAR to the target (reinforce)
-//   • dissimilarity (1): tags from DISSIMILAR things, pivoted at the mean
-//                        similarity (diverge — make the target distinct)
-//   • comprehensive (2): tags that forge a NEW link to poorly-connected
-//                        (stranded) things (knit the whole graph together)
-// Similarity is Jaccard over MEANINGFUL tags (type:/icon:/color: excluded — the
-// first is the glyph itself, the others are render directives).
-std::vector<std::string> HormigaApp::compute_tag_suggestions(
-    const maiz::SceneNode& target, int mode, int k) const {
-    auto meaningful = [](const std::vector<std::string>& tags) {
-        std::set<std::string> m;
-        for (const auto& t : tags)
-            if (t.rfind("type:", 0) != 0 && t.rfind("icon:", 0) != 0 &&
-                t.rfind("color:", 0) != 0)
-                m.insert(t);
-        return m;
-    };
-    std::set<std::string> T = meaningful(target.tags);
-    struct Cand { std::set<std::string> tags; double sim = 0; int degree = 0; };
-    std::vector<Cand> cands;
-    for (const auto& n : scene.nodes) {
-        if (n.glyph != target.glyph || n.name == target.name) continue;
-        cands.push_back({meaningful(n.tags), 0, 0});
-    }
-    if (cands.empty()) return {};
-    auto jaccard = [](const std::set<std::string>& a,
-                      const std::set<std::string>& b) -> double {
-        if (a.empty() || b.empty()) return 0.0;
-        int inter = 0;
-        for (const auto& x : a) if (b.count(x)) ++inter;
-        int uni = (int)a.size() + (int)b.size() - inter;
-        return uni > 0 ? (double)inter / uni : 0.0;
-    };
-    double sim_sum = 0;
-    for (auto& c : cands) { c.sim = jaccard(T, c.tags); sim_sum += c.sim; }
-    double sim_mean = sim_sum / (double)cands.size();
-    if (mode == 2) // connectivity degree, for the comprehensive mode
-        for (size_t i = 0; i < cands.size(); ++i)
-            for (size_t j = i + 1; j < cands.size(); ++j)
-                if (jaccard(cands[i].tags, cands[j].tags) > 0) {
-                    ++cands[i].degree; ++cands[j].degree;
-                }
-    std::map<std::string, double> score;
-    std::map<std::string, int> freq;
-    for (const auto& c : cands)
-        for (const auto& t : c.tags) {
-            if (T.count(t)) continue; // already on the target
-            ++freq[t];
-            double s = 0;
-            if (mode == 0)      s = T.empty() ? 1.0 : c.sim;   // similarity / frequency
-            else if (mode == 1) s = sim_mean - c.sim;          // dissimilarity (pivot)
-            else if (c.sim == 0.0) s = 1.0 / (1.0 + c.degree); // comprehensive: new link, prefer stranded
-            score[t] += s;
-        }
-    std::vector<std::pair<std::string, double>> ranked;
-    for (auto& [t, s] : score) {
-        double v = s;
-        if (mode == 1 && sim_mean == 0.0) v = -(double)freq[t]; // no signal → rarest first
-        ranked.push_back({t, v});
-    }
-    std::sort(ranked.begin(), ranked.end(),
-              [](const auto& a, const auto& b) { return a.second > b.second; });
-    std::vector<std::string> out;
-    for (const auto& [t, s] : ranked) {
-        if ((mode == 0 || mode == 2) && s <= 0) continue; // require real signal
-        out.push_back(t);
-        if ((int)out.size() >= k) break;
-    }
-    return out;
-}
+// Lives in Void Maiz since 2026-09-22 (`maiz::suggest_tags`, voidmaiz/tags.hpp),
+// ported from the function that stood here, on the author's call that every Void
+// application should have it. The three modes are unchanged (similar, distinct,
+// connective) with one deliberate difference: connective now takes the BEST link
+// a tag would forge rather than the sum, because summing let two well-connected
+// peers outvote the one stranded node the mode exists to reach (their tags_smoke
+// pins it). The cache below stays ours: the library function is pure, and only
+// this host knows when its scene changed.
 
 /* ── WHAT CLICKING A TAG MEANS, NOW THAT TAGS ARE DIFFERENT THINGS (2026-09-15) ─
  *
@@ -304,7 +239,10 @@ void HormigaApp::draw_tag_editor(const maiz::SceneNode& n,
     for (const auto& t : n.tags) key += "," + t;
     if (key != tag_rec_key) {
         tag_rec_key = key;
-        tag_rec_cache = compute_tag_suggestions(n, tag_rec_mode, 6);
+        maiz::Suggest opt;
+        opt.mode = static_cast<maiz::SuggestMode>(tag_rec_mode % 3);
+        opt.limit = 6;
+        tag_rec_cache = maiz::suggest_tags(scene, n, opt);
     }
     if (!tag_rec_cache.empty()) {
         static const char* mode_name[] = {"similar", "distinct", "connective"};
