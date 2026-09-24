@@ -4743,3 +4743,306 @@ Q73 is cleared: networking moved, and we adopted it.
 - The GUI was not run this session. The `device_tag` change affects which name
   a newly placed node gets in a shared database (`<glyph>-<tag>-1` instead of
   `<glyph>-1`), and nothing else.
+
+# The phone front-end, scoped by the author and built (2026-09-23)
+
+Void Maiz's networking now works across Linux, Windows and Android (its only
+new commit since yesterday makes the Linux build start on somebody else's
+machine). The author wants to test that with Hormiga, and scoped the phone
+tightly: **no Builder, no Map, no Antfarm, no visible console, no windows**;
+screens under a navigation bar; the Data screen is what gets tested across
+devices, and the Calendar gets a phone overhaul. Also: Allomone must work
+across both forms, and **the navigation bar and UI identity belong to Void
+Maiz**. [Mobile](/concepts/sections/mobile.md) is rewritten around it, and Q84
+is answered and cleared.
+
+## Built
+
+- **`src/phone/`**: a bottom navigation bar (Data, Calendar, Together, Me),
+  app bars, Back, and a stack of screens per destination (`nav.hpp`, written
+  to be lifted into Void Maiz), plus the four screens (`phone.cpp`). Run on
+  any desktop with `voidhormiga --phone <database>`, and add `--touch` for the
+  drawn keyboard. The phone's own window does not write `imgui.ini`, so the
+  desktop's dock layout is untouched.
+- **`frame()` split**: `frame_prelude()` (merges, jobs, deferred commands) is
+  shared, and then the desktop draws its dockspace or the phone draws its
+  screens. The phone is a method on `HormigaApp`, not a separate object,
+  because the LAN runtime, replica and host seams hang off it. That is recorded
+  in the concept, together with why it is still a front-end and not a skin.
+- **Layering**: `phone/` may not include `ui/` (`check_layering.py`).
+  `LanRuntime::draw_discover` and `draw_profile` were split into bodies the
+  desktop windows and the phone screens both call. Their one-line dim hints now
+  wrap (`maiz::dim_wrapped`), which helps narrow desktop windows too.
+- **Presence stays consistent across forms**: the phone declares the desktop's
+  own surface ids (`table:data`, `calendar`). A surface's id is the concept,
+  never the form.
+
+## Measured
+
+On one machine, with two profiles (`HORMIGA_PROFILE_DIR`), against the
+synthetic Cat Colony in a scratch folder:
+
+- the CLI shared the database (`effect lan-share 300 approve`); the phone's
+  Together screen found it, asked to join, and received it sealed ("phone-cat
+  joined - 4 files sent, sealed"); the photos came across;
+- a name edited on the phone's detail screen reached the host through
+  `lan-stay`: `"display_name":"Bandit the Brave"` in the host's database. The
+  host's log reported one conflict mid-merge and `conflicts: 0` at the end;
+- a quick-added event was minted `food-drive-081f-1`, device-scoped.
+
+**Seen once, not reproduced:** the first phone edit was lost while "a member's
+changes arrived" in the same seconds, and the retry committed. If a merge
+landing mid-typing drops the field being edited, it is a bug for both
+front-ends. It needs a test that types while a merge lands.
+
+48/49 (`reduce_conformance` is upstream's known 17/25). `check_layering`,
+`find_long` (`app.hpp` 1242/1245), `lint_host_seams` and `lint_okf_links` pass.
+
+## Asked upstream
+
+`MESSAGE_FOR_VOIDMAIZ_hormiga-navigation-and-ui-identity-2026-09-23.md`: take
+the navigation bar (ours is ready to lift), and make a surface's *form*
+(window, screen, sheet) and the device's *form factor* readable by Allomone,
+the way `device "pen"` reads the input channel. Nothing is tagged "mobile"
+here until then.
+
+## What stands between this and an APK
+
+libsodium on Android ([Q67](/developer_questions.md): vendor the 1.0.20
+sources, the author's yes needed), then yesterday's Void Maiz gaps: accented
+keys, Back routed on a device, and the lifecycle hooks.
+
+# The phone's own keyboard, built in Void Maiz, taken up here (2026-09-23, second entry)
+
+The author gave this session permission to develop Void Maiz directly, and asked
+that the two stay distinguishable. The keyboard work is **Void Maiz's**, recorded
+in its OKF (`../VoidMaiz/okf/concepts/text-input.md` and its log). What is
+**Hormiga's** is below.
+
+The brief: Interaction Combinators' drawn keyboard "doesn't work at all"; the
+author does not want a drawn keyboard (*"Custom keyboard is too much of a hassle
+(and other apps already deal with that, in fact, we should focus on the
+integration of the keyboard)"*); Flutter and Dart were worth investigating, but
+complete control of the GUI is not negotiable; and *"the integration of a
+keyboard is very similar to a holiday is it not? An external domain that has to
+map onto our GUI mantle?"*
+
+It is, and that is how it was built upstream. The pivot is the field's editing
+state (text, selection, composing), which is the same value Flutter's
+`TextEditingValue` carries. A pure mapping turns it into the keystrokes every
+ImGui field already accepts. One Java class (`org.voidmaiz.MaizActivity`) is
+the Android crossing. The widget registry picks the keyboard from the field's
+key. The Flutter verdict: take its keyboard design, not its runtime, because
+Flutter also owns every pixel and still hands the keyboard to the platform
+across exactly this seam.
+
+**Hormiga's part:**
+- `enable_phone(touch, keyboard)`: the phone takes a `TextInputPlatform` when
+  its shell has one, runs `text_input_frame` first thing each frame, and keeps
+  the drawn keyboard only as the fallback.
+- The phone's own fields declare their kind: search → `Search`, quick add →
+  `Text` with a `Go` key. Detail fields come from the registry, so `phone`
+  gets a dial pad and `email` an @ row with no Hormiga code.
+- The screen ends where the keyboard begins, and an activated field scrolls
+  into view above it.
+- **Inherited from the Void Maiz change:** `IMGUI_USE_WCHAR32`. Every emoji
+  typed into any Hormiga field on the desktop had been turned into U+FFFD. It is
+  fixed for this application too, which needed a full rebuild, and the icons and
+  the phone still draw correctly (checked on screen).
+- `android_system_key` (Back) is in Void Maiz for the Android shell Hormiga does
+  not have yet. When it does, that shell calls it, and the phone's Back
+  navigation works on a device.
+
+**What still stands between Hormiga and an APK:** libsodium for Android
+([Q67](/developer_questions.md)), then an Android shell. Interaction Combinators'
+`main_android.cpp` is the template, and it now shows the keyboard hookup.
+
+50/51 (`reduce_conformance`, upstream's known gap). `check_layering`,
+`find_long` (`app.hpp` exactly at its 1245 budget) and `lint_host_seams` pass.
+
+# Cryptography leaves Hormiga (2026-09-23, third entry)
+
+The author asked what Q67 really involved, whether another library could stand
+beside libsodium, what "hand-rolling" means, and what Signal does. The answers
+are in the conversation, with sources. The findings that shaped the decision:
+- **libsodium is open source**: ISC-licensed, maintained by Frank Denis, and a
+  fork of NaCl.
+- **Android's platform crypto cannot speak Hormiga's protocol.** It is Java-only,
+  and it offers neither Argon2 nor XChaCha20.
+- **Monocypher** (two files, CC0/BSD-2) has every primitive Hormiga uses except
+  libsodium's streaming format, SHA-256 and an RNG.
+- **Signal bundles one crypto library for every platform** (libsignal, Rust,
+  AGPLv3).
+
+Then the author decided the larger thing: **a crypto protocol is not Hormiga's
+concern.** Hormiga needs it (for the vault, backups, the LAN seal) but it is
+not what Hormiga is about. It should live elsewhere and serve an ESP32, iOS and
+any transport (Reticulum was named). Platform-only crypto is out.
+
+Recorded as [Q87](/developer_questions.md): the move is decided, and the owner
+is open. The lean is a new sibling for identity and sealing, with Void Palabra
+keeping its 2026-09-19 hooks and the question of *who may*. Q67 is superseded
+by it. Nothing in the code changed.
+
+# Void Snape is founded; Q87 answered (2026-09-23, fourth entry)
+
+The author named the owner of cryptography: **a new sibling, Void Snape**, at
+`../VoidSnape`. Its primary goal is *"a cryptography library that owns the
+protocols and bind vetted primatives that ANY DEVICE can run"*, and it should be
+**compatible with Reticulum**. It is about compatibility and holidays, with
+security taken as given, and it is not built on Void Core (the Void Mago
+treatment). This session wrote Snape's founding OKF at the author's request:
+- boundaries with Void Palabra, Void Maiz, Void Core and applications;
+- four holidays: primitives, interfaces, custody, entropy;
+- Reticulum compatibility from its manual;
+- ten open questions;
+- a roadmap whose first two phases need no hardware.
+
+It also drafted messages to Void Palabra (the seam) and Void Core (the author's
+question whether Core should split into pure structures and the command layer).
+
+**The finding that shapes Snape:** no single vetted library covers Reticulum's
+authoritative suite. libsodium has no AES-CBC, mbedTLS has no Ed25519, and
+Monocypher has no AES and no SHA-256. So primitives are a holiday chosen per
+operation, composed across providers.
+
+**Hormiga's side:** [Void Snape](/concepts/projects/void-snape.md). The vault
+and backups move first, in their current formats. The LAN moves to Reticulum
+links later, as a wire change. The phone links Snape instead of a Windows
+libsodium. Q87 is answered and cleared, and Q67 points there. No Hormiga code
+changed.
+
+# Reticulum for all of Hormiga's peer networking (2026-09-23, fifth entry)
+
+The author: *"reticulum is just the way to go here"*, and asked whether Void
+Palabra can use it, whether that covers Hormiga and all of Void Maiz's
+networking, and whether it works on Android and iOS. The answers are recorded in
+Void Snape's log. For Hormiga:
+- **Member sharing and sync move onto Reticulum links.** This replaces the
+  sealed UDP beacon, the join code, the short authentication string and
+  `secretstream`.
+- **Who may join, the members registry, and what stays private remain
+  Hormiga's.**
+- **Publishing, object stores, image hosts and the update feed stay HTTPS.**
+- **On an iPhone**, the practical shape is a TCP link to the organization's
+  always-on node, because iOS allows no background peer-to-peer and gates LAN
+  multicast behind an Apple entitlement.
+
+No code changed.
+
+# Reticulum for everything; Void Snape archived (2026-09-23, sixth entry)
+
+The author: *"let's not use void snape at all! apologies, it can just be
+archived thing ... let's just use reticulum for everything! all our netoworking
+needs, with palabra as its void based translation! ... hormiga shouldn't need to
+actually ddeal with too much of ths, just re-implementing things."*
+
+- **Void Snape is archived**: a banner in its README, CLAUDE.md and index, and a
+  log entry. Its research is kept as history.
+- **Void Palabra** gains a Reticulum concept (`status:planned`,
+  `../VoidPalabra/okf/concepts/reticulum.md`) and a log entry. The core stays
+  zero-dependency, Reticulum lives in an optional `voidpalabra_reticulum`,
+  frames ride links, and a link's identity answers `sign` / `verify`. None of
+  Palabra's rulings are reversed, and its OKF checker passes.
+- **Void Maiz**'s LAN page now says its sockets become Reticulum interfaces.
+- **Measured in a scratch clone of microReticulum** (C++17, Apache 2.0,
+  `40fa628`): the host drives its I/O; Resources are built; there is no
+  AutoInterface; `Transport` is static; and **it builds on Windows with MinGW
+  after four small portability fixes**. These are candidates for upstream, with
+  the author's yes.
+- **Hormiga:** the [Snape page](/concepts/projects/void-snape.md) now says what
+  Hormiga re-implements and what stays its own. **Q88** opens: at-rest
+  encryption (the vault, backups) has no home in Reticulum. The lean is that it
+  stays in Hormiga, unchanged, and a phone that joins over Reticulum needs no
+  libsodium.
+- The author's Void Core question (split the pure structures from the command
+  layer?) is re-drafted from here:
+  `MESSAGE_FOR_VOIDCORE_hormiga-should-core-split-2026-09-23.md`.
+
+No code changed in any repository.
+
+# Reticulum built in Void Palabra; tests over a bad network (2026-09-24)
+
+The author: *"we probably can't talk to reticulum's author, so count that out
+entirely, and work around the bugs instead ... with netowkring and such, tests
+are going to be very important to be able to run ... the split of the void core
+is something for LATER"*.
+
+- **Void Palabra now has `voidpalabra_reticulum`** (the author allowed edits
+  there), and its Reticulum page is `status:current`. It vendors microReticulum,
+  pinned and patched in the open (`vendor/reticulum/VENDORED.md`). It is proven
+  against the official Python Reticulum: identical destination hashes, links,
+  packets and Resources both ways, and a Palabra replica converging over a link.
+- **Tests on one device.** A seeded UDP relay drops and reorders datagrams
+  between two processes. It found five defects a clean loopback never showed:
+  no link watchdog, a single-thread deadlock, silently dropped Resources, a lost
+  proof holding a link for 50 s, and a half-open handshake that only the sync
+  session can see. All ten defects found so far are worked around in Palabra.
+  No message goes upstream.
+- **Void Maiz has `RnsSession`** (the author allowed edits there too): its LAN
+  session's job over Reticulum, with the same join flow and a person's Allow,
+  and "allowed" kept by proven identity. Its test runs host and joiners as
+  separate processes. It compiles for Android inside Interaction Combinators'
+  APK build. No app uses it yet, and moving IC is Void Maiz's Q37.
+- **What it means here.** Hormiga's member sharing would re-implement on
+  `RnsSession` (or Palabra's `Node` directly, since Hormiga's sync is its own),
+  not on `LanSession`. Two limits bind that design.
+  One Reticulum node per process (Hormiga is one process, so that fits). A peer
+  must send Resources uncompressed (every peer is ours, so that fits).
+- The Void Core split stays parked (the drafted message is unchanged).
+
+No Hormiga code changed.
+
+# 0.1.7: the first Android build, and a release on three platforms (2026-09-24)
+
+The author: *"lets now work on publishing this new hormiga with the windows,
+linux, and android release."* Asked how, the author chose: **all three, with the
+APK labelled experimental**; **a new signing key for Hormiga**, kept beside the
+build script and gitignored; and (for Interaction Combinators) Reticulum only.
+
+**Hormiga had never been built for a phone.** Since this morning it has:
+
+- **libsodium for Android.** Built from the 1.0.20-stable tarball, after checking
+  its minisign signature against libsodium's published key. The build uses
+  libsodium's own `build.zig` defines, without autotools, less
+  `HAVE_PTHREAD_PRIO_INHERIT`, which API 26 lacks. Stripped, it is 678 KB. The
+  recipe is committed in `vendor/libsodium/android/`, and the hashes are in its
+  README. Q67 has the entry.
+- **One source list.** The desktop and the CLI each carried a copy of the app's
+  source list, and a copied list is how 0.1.3 broke. It is now
+  `HORMIGA_APP_SOURCES`, and each target adds only its entry point.
+- **The Android library.** `android/hormiga_android.cmake`, included when the root
+  is configured with the NDK. **All of Hormiga compiled for arm64 with one
+  change:** `publish/panel.cpp` passed a built string as a format, which the NDK
+  refuses (`-Werror=format-security`). It is now `"%s"`.
+- **The shell.** `android/src/main_android.cpp` (IC's shape) runs the phone
+  front-end. The fonts ship as APK assets and load from memory at the screen's
+  density. Without the Font Awesome merge, the navigation bar's icons would
+  draw blank.
+- **Density.** `apply_theme` rebuilds the style from scratch, so a scale applied
+  once at startup would be undone by the next theme change. The screen's
+  density is now a member (`app.hpp` 1245 → 1246, recorded in `find_long.py`),
+  and `apply_theme` calls `maiz::apply_touch_metrics(density)` on a phone. The
+  phone front-end's few fixed sizes scale with it.
+- **The APK.** `android/build_apk.ps1`: NDK CMake, strip (the NDK compiles
+  `-g` even in Release: 136 MB unstripped), aapt2 with the fonts as assets, Void
+  Maiz's `MaizActivity` dex, zipalign, apksigner. It is 4.4 MB.
+- **The release key** was minted by the script's first run. Its certificate
+  SHA-256 is `37d0ee2427d8e1714fc73c8494f90d3feaf7cbaed974a20dae63e205d35521f4`,
+  and `android/README.md` says what to back up and why. The first attempt died
+  halfway through minting: Windows PowerShell treats keytool's progress on
+  stderr as an error when output is redirected. No key had been written, so
+  its orphan password file was removed, and the script now judges native tools
+  by exit code.
+
+**What the APK is and is not.** It is the phone front-end: Data, Calendar,
+Together, Me. It joins a desktop's shared database through Hormiga's current
+sealed LAN, which is why it needs libsodium. **Nobody has run it on a phone:**
+no device was attached, so it is published as experimental. It is attached to
+the GitHub release but not offered by the in-app updater, which uses `curl`,
+and a phone has none. `void.json`'s `platforms` does not list it: that field
+records what a person has run.
+
+**Measured:** 51/52 (`reduce_conformance` is upstream's known red), layering
+ok, every file within budget, 720 OKF links resolve. The desktop and CLI build
+unchanged.

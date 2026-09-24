@@ -164,7 +164,7 @@ void HormigaApp::draw_publish_body() {
         const auto age = std::chrono::duration_cast<std::chrono::minutes>(
                              std::filesystem::file_time_type::clock::now() - ft)
                              .count();
-        ImGui::TextDisabled(age < 1 ? "site/ built just now"
+        ImGui::TextDisabled("%s", age < 1 ? "site/ built just now"
                                     : (age < 60
                                            ? ("site/ built " + std::to_string(age) +
                                               " min ago").c_str()

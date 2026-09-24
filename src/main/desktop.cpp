@@ -325,7 +325,20 @@ int main(int argc, char** argv) {
     glsl_version = "#version 130";
 #endif
 #endif
-    GLFWwindow* window = glfwCreateWindow(1360, 800, "Hormiga", nullptr, nullptr);
+    /* `--phone`: THE PHONE FRONT-END, ON A DESKTOP (2026-09-23). A phone-sized
+     * window with the navigation bar and screens of src/phone/, over the same
+     * core and sync, so the phone's UX and its networking can be tested on any
+     * Windows or Linux machine before there is an APK. `--touch` also draws the
+     * on-screen keyboard. The mouse is the finger. */
+    bool phone_mode = false, touch_mode = false;
+    for (int i = 1; i < argc; ++i) {
+        const std::string a = argv[i];
+        if (a == "--phone") phone_mode = true;
+        if (a == "--touch") phone_mode = touch_mode = true;
+    }
+    GLFWwindow* window = phone_mode
+                             ? glfwCreateWindow(412, 880, "Hormiga (phone)", nullptr, nullptr)
+                             : glfwCreateWindow(1360, 800, "Hormiga", nullptr, nullptr);
     if (!window) { glfwTerminate(); return 1; }
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
@@ -488,6 +501,11 @@ int main(int argc, char** argv) {
         return r;
     };
     app.on_load_texture = gl_load_texture;
+    if (phone_mode) {
+        app.enable_phone(touch_mode);
+        // the desktop's dock layout is not the phone's to rewrite
+        ImGui::GetIO().IniFilename = nullptr;
+    }
     app.on_shell_capture = shell_capture;
     app.init();
     lap("app.init");

@@ -23,6 +23,11 @@ itself.
   policy is defined by its delta. Also where "should Hormiga become five
   applications?" is answered: four views over one model stay together, the
   dataset generator does not.
+- [Void Snape (archived)](/concepts/projects/void-snape.md) — founded and
+  archived 2026-09-23. **All device-to-device networking runs over Reticulum,
+  with Void Palabra as its Void translation.** Hormiga re-implements its member
+  sharing on that. Who may join and what stays private remain Hormiga's, and
+  at-rest encryption is Q88.
 - [Void Maiz, September 2026 — what we take up](/concepts/projects/void-maiz-uptake.md)
   — **2026-09-22.** Void Maiz absorbed networking, updates and tag suggestions
   from Hormiga and proved a collaborative canvas and a mobile kit on

@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -215,31 +215,25 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.1.6",
-    "previous": "0.1.5",
+    "version": "0.1.7",
+    "previous": "0.1.6",
     "change": "compatible",
-    "date": "2026-09-20",
-    "summary": "members keep syncing for as long as they are both there, instead of only for the first few seconds, and the console is somewhere you can work",
+    "date": "2026-09-24",
+    "summary": "the first Hormiga for a phone (an experimental Android build), tag suggestions from Void Maiz, and a shared Builder that no longer gives two members the same names",
     "adds": [
-      "The console says which part of the system spoke - Void Core, Void Maiz, Void Palabra, Allomone or Hormiga - each in its own colour",
-      "Clear the console. It hides the lines, it does not delete them: Copy all still has the whole session",
-      "As text: one box you can select and copy from. Right-click any line to copy that line",
-      "Settings > Console: timestamps, who said it, and hiding view chatter. Useful to a person reading along, and to an agent reading the transcript, in different ways. It has an Apply button",
-      "ls lists the graphs in this database, cd goes into one, pwd says where you are",
-      "profile, profile username <name> and profile color #rrggbb, typed in the console"
+      "AN ANDROID BUILD (experimental, not yet run on a phone by anyone): Data, Calendar, Together and Me, under a navigation bar, with the phone's own keyboard. The phone joins a desktop's shared database as a member; it does not host one, publish, or draw maps. It is on the release page, not offered by the in-app updater",
+      "The same phone screens on a desktop: start Hormiga with --phone (or --touch)",
+      "Tag suggestions come from Void Maiz now (the recommender Hormiga gave them), and linking tags take the strongest connection rather than the sum of all of them"
     ],
     "behavior_changes": [
       {
-        "what": "SYNCING NO LONGER STOPS AFTER A FEW SECONDS. Two members connected, exchanged what they had, and then went quiet for the rest of the session: they stayed visible to each other, and no edit or new entry ever arrived. A connection that ended was recorded as still open, so it was never rebuilt. Connections now last as long as the two are on the network, and a connection that ends is rebuilt within seconds.",
-        "who_is_affected": "Everyone sharing a database. This is the whole reason for 0.1.6, and 0.1.5 should not be used for sharing."
-      },
-      {
-        "what": "SETTINGS > CONSOLE IS APPLIED WITH A BUTTON, not as you click. Every other setting still takes effect immediately.",
-        "who_is_affected": "Nobody has to do anything. It is the first of the settings that ask for a second step before they change under you."
+        "what": "NEW RUNES IN A SHARED BUILDER ARE NAMED PER DEVICE (contact-a3f-1 rather than contact-1). Two members adding a rune at the same moment used to mint the same name, and one of the two vanished on the other screen.",
+        "who_is_affected": "Everyone building together. Existing names are unchanged."
       }
     ],
     "read_more": [
-      "okf/concepts/platform/lan-sharing.md"
+      "okf/concepts/sections/mobile.md",
+      "android/README.md"
     ]
   },
   "update": {

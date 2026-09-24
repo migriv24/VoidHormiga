@@ -229,7 +229,11 @@ BUDGET = {
     # pending copy Settings edits until Apply, and four calls). The console
     # itself LEFT app.cpp for ui/console.cpp in the same change, so the pair
     # of files got smaller, not larger.
-    'src/app/app.hpp': 1245,
+    # -> 1246 (2026-09-24): `density`, the screen's pixel density, which
+    # apply_theme must re-apply each time it rebuilds the style. The first
+    # Android build: a style scaled once at startup is wiped by the next
+    # theme change, and a phone at 3x gets desktop-sized targets.
+    'src/app/app.hpp': 1246,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

@@ -11,6 +11,17 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q88 — where does at-rest encryption live, now that the network is
+  Reticulum?** (Opened 2026-09-23.) Reticulum seals what *travels*. It has no
+  format for a file that *rests*: the credential vault (Argon2id +
+  XChaCha20-Poly1305) and the encrypted backups. **Lean: it stays in Hormiga,
+  unchanged, for now.** It is Hormiga's own data, it works, and existing vaults
+  and backups must keep opening, so moving it buys no one anything today. The
+  phone does not need it: a member that never holds credentials has no vault.
+  **What would change the lean:** a second application wanting the same vault
+  format, which would make it a Palabra companion (or a small library) rather
+  than Hormiga's.
+
 - **Q82 — the Antfarm redesign: twelve questions, one workbook.** (Opened
   2026-09-22.) The author is about to lead the redesign and asked for the
   documentation to study first. The questions are in
@@ -40,17 +51,6 @@ fold into concepts and clear from here.
   **What settles it:** upstream's answer on whether ports, and port names in
   relation labels, become part of the glyph contract. Asked in
   `MESSAGE_FOR_VOIDCORE_hormiga-ports-at-the-door-2026-09-22.md`.
-
-- **Q84 — the phone: a member doing field work, as a third front-end?**
-  (Opened 2026-09-22.) **Lean: yes to both.** The author asked for a
-  *"significantly diminished"* Hormiga that puts UX first.
-  [Mobile](/concepts/sections/mobile.md) proposes four rooms (People, Calendar,
-  Map, Publications), the phone always joining and never hosting, the Builder
-  reduced to an outline with bilingual text edits (the documents follow the
-  data because blocks are query-backed), and `src/phone/` beside the desktop
-  and headless front-ends rather than `if (touch)` through `src/ui/`. **What
-  settles it:** whether the four jobs listed there are the right four for the
-  organization's field workers. The author knows them, and this page guessed.
 
 - **Q85 — when two members move the same Builder block at once, converge or
   conflict?** (Opened 2026-09-22.) **Lean: converge `row`, `col` and `span`
@@ -291,6 +291,26 @@ fold into concepts and clear from here.
   **2026-09-22: Android makes it urgent.** The LAN transport is sealed with
   libsodium, so a phone that cannot build it cannot join a database at all. It
   is the first item of mobile stage M0 ([mobile](/concepts/sections/mobile.md)).
+  **2026-09-23:** the phone front-end now exists and syncs on the desktop
+  (`--phone`), so this is the one thing standing between it and an APK that
+  can join. **What settles it now:** the author's yes to vendoring the
+  libsodium 1.0.20 sources (the tarball already named in
+  `vendor/libsodium/README.md`), built by CMake for every platform.
+  **2026-09-23, later: superseded.** The author moved cryptography out of
+  Hormiga. Network cryptography is now Reticulum, through Void Palabra
+  ([the Snape page](/concepts/projects/void-snape.md) says how), so a phone
+  that joins over Reticulum needs no libsodium. What remains is at-rest
+  encryption, [Q88](/developer_questions.md), and this question's hygiene half:
+  the vendored `.a` becomes source when Linux or macOS become supported.
+  **2026-09-24: Android has its libsodium, as a prebuilt.** The first APK needed
+  one today (the phone still joins through Hormiga's own sealed LAN until member
+  sharing moves to Reticulum), so `lib/android-arm64-v8a/libsodium.a` was built
+  from the 1.0.20-stable tarball after checking its minisign signature against
+  libsodium's key, by a CMake recipe that is now in `vendor/libsodium/android/`
+  (`vendor/libsodium/README.md` has the hashes). That is the README's own
+  "prebuilt per platform" path, with the recipe committed beside it, so the
+  hygiene half of this question is no worse and no better: still a binary,
+  now a reproducible one.
 
 - **Q66 — should `link` carry `caption_en` / `caption_es`?** (Opened
   2026-09-08, Click LaFont's platform-set report §3.) **Lean: yes, and only

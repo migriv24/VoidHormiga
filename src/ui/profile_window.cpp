@@ -12,6 +12,7 @@
  * replayed `set username` would rewrite the other member's profile. Whether
  * device-level settings get a journal of their own is a developer question.
  */
+#include "voidmaiz/mobile.hpp" // dim_wrapped: hints that wrap, on a phone and in a narrow window
 #include "app/app_internal.hpp"
 #include "app/lan_share.hpp"
 #include "IconsFontAwesome6.h"
@@ -19,13 +20,15 @@
 #include <cstring>
 
 void LanRuntime::draw_profile(HormigaApp& app) {
-    LanRuntime& rt = of(app);
     ImGui::SetNextWindowSize(ImVec2(470, 560), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Profile", &app.win_profile)) {
-        ImGui::End();
-        return;
-    }
-    ImGui::TextDisabled("You, on this computer. The same for every database you open.");
+    if (ImGui::Begin("Profile", &app.win_profile)) draw_profile_body(app);
+    ImGui::End();
+}
+
+/* The window's content, shared with the phone's Me screen (phone/phone.cpp). */
+void LanRuntime::draw_profile_body(HormigaApp& app) {
+    LanRuntime& rt = of(app);
+    maiz::dim_wrapped("You, on this computer. The same for every database you open.");
     ImGui::Spacing();
 
     // ── picture ──────────────────────────────────────────────────────────────
@@ -47,7 +50,7 @@ void LanRuntime::draw_profile(HormigaApp& app) {
         if (hormiga::profile::set_avatar(rt.me, {}, &err))
             app.log.push_back({"info", "profile", "picture reset to the default"});
     }
-    ImGui::TextDisabled("Without a picture, your initial\non your colour is shown.");
+    maiz::dim_wrapped("Without a picture, your initial\non your colour is shown.");
     ImGui::EndGroup();
 
     // ── username ─────────────────────────────────────────────────────────────
@@ -69,11 +72,11 @@ void LanRuntime::draw_profile(HormigaApp& app) {
             app.log.push_back({"info", "profile", "username set to " + rt.me.username});
         }
     }
-    ImGui::TextDisabled("No password yet. Your key below is what proves this computer is you.");
+    maiz::dim_wrapped("No password yet. Your key below is what proves this computer is you.");
 
     // ── colour ───────────────────────────────────────────────────────────────
     ImGui::SeparatorText("Colour");
-    ImGui::TextDisabled("What you are highlighted in when others see you working.");
+    maiz::dim_wrapped("What you are highlighted in when others see you working.");
     for (int i = 0; i < 12; ++i) {
         const std::string hex = hormiga::collab::kPalette[i];
         const unsigned v = hormiga::collab::rgb_of(hex);
@@ -133,5 +136,4 @@ void LanRuntime::draw_profile(HormigaApp& app) {
         app.on_open(hormiga::profile::dir().string());
     if (!rt.profile_error.empty())
         ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.35f, 1), "%s", rt.profile_error.c_str());
-    ImGui::End();
 }

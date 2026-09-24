@@ -16,6 +16,7 @@
 #include "app/lan_share.hpp"
 #include "app/paths.hpp"
 #include "IconsFontAwesome6.h"
+#include "voidmaiz/mobile.hpp" // dim_wrapped: hints that wrap, on a phone and in a narrow window
 
 #include <cstdlib>
 #include <cstring>
@@ -366,13 +367,16 @@ void LanRuntime::draw_share(HormigaApp& app) {
 /* ── Discover databases ─────────────────────────────────────────────────────── */
 
 void LanRuntime::draw_discover(HormigaApp& app) {
-    LanRuntime& rt = of(app);
-    rt.discovering = true;
+    of(app).discovering = true;
     ImGui::SetNextWindowSize(ImVec2(520, 520), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Discover databases", &app.win_discover)) {
-        ImGui::End();
-        return;
-    }
+    if (ImGui::Begin("Discover databases", &app.win_discover)) draw_discover_body(app);
+    ImGui::End();
+}
+
+/* The window's content, on its own so the phone's Together screen draws the
+ * same join flow (phone/phone.cpp): one way to join, whatever the screen. */
+void LanRuntime::draw_discover_body(HormigaApp& app) {
+    LanRuntime& rt = of(app);
     ImGui::TextWrapped("Databases someone is sharing on this network right now. Ask to join one; "
                        "the person sharing it has to allow you.");
     if (rt.me.username.empty()) {
@@ -389,12 +393,12 @@ void LanRuntime::draw_discover(HormigaApp& app) {
         const std::string picked = app.on_pick_folder();
         if (!picked.empty()) std::snprintf(rt.dest, sizeof rt.dest, "%s", picked.c_str());
     }
-    ImGui::TextDisabled("Each database gets its own folder inside this one. The one you have open is backed up first.");
+    maiz::dim_wrapped("Each database gets its own folder inside this one. The one you have open is backed up first.");
 
     ImGui::SeparatorText(ICON_FA_WIFI "  On this network");
     const auto found = offers(app);
     if (found.empty()) {
-        ImGui::TextDisabled("Looking... (the other device needs Share database > Share over local network)");
+        maiz::dim_wrapped("Looking... (the other device needs Share database > Share over local network)");
     }
     for (const auto& o : found) {
         ImGui::PushID(o.peer_id.c_str());
@@ -440,7 +444,6 @@ void LanRuntime::draw_discover(HormigaApp& app) {
         ImGui::TextWrapped("%s", status.c_str());
         if (!error.empty()) ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.35f, 1), "%s", error.c_str());
     }
-    ImGui::End();
 }
 
 /* ── keeping in sync (lan-sharing.md §3b) ───────────────────────────────────── */
@@ -455,11 +458,11 @@ void LanRuntime::draw_sync_section(HormigaApp& app) {
      * answered rather than asked again. A stale row is refused rather than
      * overwriting a value nobody saw, which is why the rows are re-read. */
     if (!rt.net) {
-        ImGui::TextDisabled("Starts once this database is shared or joined: members who are on the "
+        maiz::dim_wrapped("Starts once this database is shared or joined: members who are on the "
                             "same network then keep it in sync on their own.");
         return;
     }
-    ImGui::TextDisabled("Members who are here sync automatically. Private notes and the Antfarm "
+    maiz::dim_wrapped("Members who are here sync automatically. Private notes and the Antfarm "
                         "stay on this computer.");
     int open_links = 0;
     for (const auto& l : rt.net->links()) open_links += l.open ? 1 : 0;
@@ -475,11 +478,11 @@ void LanRuntime::draw_sync_section(HormigaApp& app) {
     return;
 #else
     if (!rt.replica) {
-        ImGui::TextDisabled("Starts once this database is shared or joined: members who are on the "
+        maiz::dim_wrapped("Starts once this database is shared or joined: members who are on the "
                             "same network then keep it in sync on their own.");
         return;
     }
-    ImGui::TextDisabled("Members who are here sync automatically. Private notes stay on this computer.");
+    maiz::dim_wrapped("Members who are here sync automatically. Private notes stay on this computer.");
     if (!rt.synced_note.empty()) ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.5f, 1), "%s", rt.synced_note.c_str());
 
     std::map<std::string, Progress> progress;
@@ -500,7 +503,7 @@ void LanRuntime::draw_sync_section(HormigaApp& app) {
     }
 
     if (rt.conflicts.empty()) {
-        ImGui::TextDisabled("No conflicts.");
+        maiz::dim_wrapped("No conflicts.");
         return;
     }
     ImGui::TextColored(ImVec4(0.95f, 0.7f, 0.3f, 1), "%d conflict(s) - nothing was decided for you",

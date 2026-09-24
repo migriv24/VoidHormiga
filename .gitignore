@@ -127,3 +127,14 @@ custom.css
 # removed from the index the same day (they stay on disk).
 MESSAGE_FOR_*.md
 REPORT_FROM_*.md
+
+# ── ANDROID SIGNING (2026-09-24) ────────────────────────────────────────────
+# The release key that signs every Hormiga APK, and its password. Android
+# accepts an update only when it is signed by the SAME key, so losing these
+# means every phone must uninstall to update; committing them means anyone can
+# ship an "update". They live beside android/build_apk.ps1, never in git, and
+# are backed up by the author. See android/README.md.
+android/*.keystore
+android/*.keystore.pass
+*.apk
+*.apk.idsig

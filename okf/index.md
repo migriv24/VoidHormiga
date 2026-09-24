@@ -210,6 +210,10 @@ with it.
   Also where the "should Hormiga become five applications?" question is
   answered: four views over one model stay together, the dataset generator does
   not.
+- [Networking is Reticulum](/concepts/projects/void-snape.md) — **decided
+  2026-09-23**: all device-to-device networking runs over Reticulum, with Void
+  Palabra as its Void translation (a short-lived sibling, Void Snape, was
+  archived). Hormiga re-implements its member sharing on it.
 - [Void Maiz, September 2026](/concepts/projects/void-maiz-uptake.md) — what
   Void Maiz absorbed from Hormiga and built on Interaction Combinators, and what
   we take up, piece by piece. Hormiga builds against it unchanged.
@@ -252,6 +256,13 @@ with it.
   reply 2026-07-21), not the message files.
 
 # Status
+
+**2026-09-23: the phone exists.** `voidhormiga --phone` is a phone-shaped
+Hormiga, scoped by the author: a bottom navigation bar over Data, Calendar,
+Together and Me, and no Builder, Map, Antfarm, console or windows. It joined a
+shared database and synced an edit back from the phone screen, between two
+profiles on one machine. An APK waits on libsodium building for Android
+([Q67](/developer_questions.md)). See [mobile](/concepts/sections/mobile.md).
 
 **2026-09-22: the Antfarm, the phone, and Void Maiz's September.** No release.
 The Antfarm is a folder of its own, written for the author's redesign, with real

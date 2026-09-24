@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20)
 # does not produce a missing answer, it produces a confident wrong one. It is
 # also what the running binary reports to the update client, which is the other
 # reason it cannot be a literal typed into a third place.
-project(voidhormiga VERSION 0.1.6 LANGUAGES CXX C)
+project(voidhormiga VERSION 0.1.7 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -149,7 +149,15 @@ target_compile_definitions(sqlite3 PRIVATE
 # now, on the platforms where the vendored artifact CANNOT work, the system
 # library is used and the deviation is stated rather than silent. See
 # okf/developer_questions.md.
-if(WIN32)
+if(ANDROID)
+  # built from the same signed 1.0.20-stable tarball with the NDK
+  # (vendor/libsodium/README.md, "Android"); one per ABI
+  add_library(sodium STATIC IMPORTED)
+  set_target_properties(sodium PROPERTIES
+    IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libsodium/lib/android-${ANDROID_ABI}/libsodium.a")
+  target_include_directories(sodium INTERFACE vendor/libsodium/include)
+  target_compile_definitions(sodium INTERFACE SODIUM_STATIC=1)
+elseif(WIN32)
   add_library(sodium STATIC IMPORTED)
   set_target_properties(sodium PROPERTIES
     IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libsodium/lib/libsodium.a")
@@ -229,7 +237,13 @@ add_custom_target(hormiga_web_assets
 # site had to ask an agent to run a command. Founding commitment 1 says the GUI,
 # the command bar and an agent are three callers of ONE set of verbs; a verb
 # that reaches one of them is a broken surface.
-add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
+# ── ONE SOURCE LIST FOR EVERY FRONT-END (2026-09-24) ────────────────────────
+#
+# The desktop, the CLI and (since 2026-09-24) the Android library compile the
+# same application. They used to carry three copies of this list, and a copied
+# list is how the 0.1.3 release broke (Palabra's, above: a file added, a copy
+# not updated). So it is written once; each target adds only its entry point.
+set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
@@ -242,11 +256,24 @@ add_executable(voidhormiga src/app/app.cpp src/app/app_shared.cpp src/app/paths.
   src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
   src/publish/github.cpp
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
-  src/platform/miga.cpp src/platform/preview_server.cpp src/main/desktop.cpp
+  src/platform/miga.cpp src/platform/preview_server.cpp
   src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
   src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
   src/app/lan_net.cpp
-  src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp)
+  src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp
+  src/phone/phone.cpp src/phone/nav.cpp)
+
+# ── ANDROID: the same application as a NativeActivity library (2026-09-24) ──
+# android/hormiga_android.cmake builds libvoidhormiga.so from HORMIGA_APP_SOURCES
+# and the Android shell; android/build_apk.ps1 packages it. Everything below
+# this point (the desktop and CLI executables, Void Core's DLL staging, the
+# tests) is desktop-only, so an Android configure stops here.
+if(ANDROID)
+  include(android/hormiga_android.cmake)
+  return()
+endif()
+
+add_executable(voidhormiga ${HORMIGA_APP_SOURCES} src/main/desktop.cpp)
 # Void Core's C ABI header, for the SPEC 6.1 command codec exported in 0.2.7
 # (vc_arg_quote / vc_argv_split_json / vc_transcript_split_json). The library
 # itself already arrives transitively through Void Maiz; only the header is new.
@@ -365,25 +392,7 @@ endif()
 # is one struct. The Output domain itself is view-free (section_web.cpp has zero
 # ImGui references), so nothing here ever needs a context — the cost is binary
 # size, and the alternative was a second renderer.
-add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp
-  src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
-  src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
-    src/render/index.cpp src/render/email.cpp
-  src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
-  src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
-  src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
-  src/ui/tags.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
-  src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
-  src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
-  src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
-  src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
-  src/publish/github.cpp
-  src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
-  src/platform/miga.cpp src/platform/preview_server.cpp
-  src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
-  src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
-  src/app/lan_net.cpp
-  src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp)
+add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp ${HORMIGA_APP_SOURCES})
 target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
 target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
   HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")

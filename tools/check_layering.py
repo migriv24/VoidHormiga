@@ -61,6 +61,14 @@ FORBIDDEN = {
                'the update client must stay runnable on a broken install: it '
                'is what a person reaches for when the application itself is '
                'the thing that is wrong'),
+    # src/phone/ IS A FRONT-END, NOT A SKIN (2026-09-23). The phone reaches the
+    # application through app.hpp like the desktop does, and draws its own
+    # screens. Reaching into ui/ would make every desktop panel a phone panel
+    # by accident -- the "responsive desktop" okf/concepts/sections/mobile.md
+    # rejects. What both need moves DOWN into domain/, where both can reach it.
+    'phone': ([r'"ui/', r'\.\./ui/'],
+              'the phone draws its own screens; a desktop panel that a phone '
+              'needs has something in it that belongs in domain/'),
     'sync': ([r'imgui', r'GLFW', r'glad', r'"app/', r'"ui/', r'"render/',
               r'"domain/', r'"platform/', r'"publish/', r'\.\./app/', r'\.\./ui/'],
              'the sync layer is a stand-in for Void Palabra Phase 4 and must '

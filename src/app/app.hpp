@@ -17,6 +17,7 @@
 #include "platform/storage.hpp" // the SQLite Data holiday (phase C)
 #include "platform/vault.hpp"   // the passphrase-locked credential store (.miga v2)
 
+#include "voidmaiz/textinput.hpp" // the platform keyboard, for the phone front-end
 #include "voidmaiz/action.hpp" // named canvas actions (Territory's vocabulary)
 #include "voidmaiz/canvas.hpp"
 #include "voidmaiz/code.hpp" // the from-scratch code editor that shipped with Allomone
@@ -202,6 +203,13 @@ struct HormigaApp {
     void init();     // build (or reload) the core, seed the demo org, read view config
     void frame();    // one ImGui frame (between NewFrame and Render)
     void shutdown(); // window closing: save the org (no silent data loss)
+    // THE PHONE (src/phone/, okf/concepts/sections/mobile.md): the same core and
+    // sync, a navigation bar and screens instead of the dockspace. Null = desktop.
+    struct PhoneUi;
+    std::shared_ptr<PhoneUi> phone;
+    void enable_phone(bool touch, std::unique_ptr<maiz::TextInputPlatform> keyboard = nullptr, float density = 1.0f);
+    void frame_prelude();           // merges, jobs, deferred commands: both front-ends
+    void phone_frame();
 
     bool light_mode = true; // shells read this for the clear color
 
@@ -740,6 +748,7 @@ private:
     // ── settings (config tier: logged, persisted with the org) ──────────────
     bool show_settings = true;   // the Settings dock window
     float ui_scale = 1.20f;      // config ui.scale
+    float density = 1.0f;        // the screen's (a phone's ~3): apply_theme scales the style by it
     bool map_show_prox = false;  // config ui.map_proximity — derived spatial
     float map_prox_m = 500.0f;   // config ui.map_proximity_m   links (hidden
     void draw_settings();        //                              by default)

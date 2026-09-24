@@ -493,6 +493,8 @@ void HormigaApp::apply_theme() {
         tint(ImGuiCol_TabHovered, 0.55f);
         tint(ImGuiCol_TextSelectedBg, 0.35f);
     }
+    // a phone: finger-sized metrics scaled to the screen, HERE because this rebuilds the style (fonts: the shell)
+    if (density > 1.0f) maiz::apply_touch_metrics(density); // its font scale is replaced on the next line
     ImGui::GetIO().FontGlobalScale = ui_scale; // Settings > UI scale
 }
 
@@ -2571,8 +2573,10 @@ void HormigaApp::draw_busy_overlay() {
     ImGui::End();
 }
 
-void HormigaApp::frame() {
-    ImGuiIO& io = ImGui::GetIO();
+/* THE HALF OF A FRAME BOTH FRONT-ENDS NEED: merged documents land, finished
+ * jobs report, deferred commands dispatch. Nothing here draws, which is why the
+ * phone (src/phone/) can run it and then draw something entirely different. */
+void HormigaApp::frame_prelude() {
     /* EVERY VIEW REDECLARES WHAT IT SHOWS, this frame (Void Maiz's Surfaces is
      * immediate mode on purpose: a registry with a lifecycle goes stale the
      * moment a window closes on one device and not another). */
@@ -2647,6 +2651,15 @@ void HormigaApp::frame() {
         render_site(preview_lang ? "es" : "en");
         render_preview(preview_lang ? "es" : "en");
         preview_srv.bump();
+    }
+}
+
+void HormigaApp::frame() {
+    ImGuiIO& io = ImGui::GetIO();
+    frame_prelude();
+    if (phone) { // a navigation bar and screens, never windows (phone/phone.cpp)
+        phone_frame();
+        return;
     }
 
     if (ImGui::BeginMainMenuBar()) {

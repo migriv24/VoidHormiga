@@ -240,6 +240,8 @@ struct LanRuntime {
     static void draw_profile(HormigaApp& app);
     static void draw_share(HormigaApp& app);
     static void draw_discover(HormigaApp& app);
+    static void draw_discover_body(HormigaApp& app);  // also the phone's Together screen
+    static void draw_profile_body(HormigaApp& app);   // also the phone's Me screen
     static void draw_request(HormigaApp& app);
     /* A person's picture or, without one, their initial on their colour. */
     static void draw_avatar(HormigaApp& app, const std::string& png_path, const std::string& name,
