@@ -5046,3 +5046,25 @@ records what a person has run.
 **Measured:** 51/52 (`reduce_conformance` is upstream's known red), layering
 ok, every file within budget, 720 OKF links resolve. The desktop and CLI build
 unchanged.
+
+## 0.1.7 shipped (2026-09-24)
+
+All three runner legs built on the first run: linux-x64, macos-arm64 and
+macos-x64, the Reticulum stack included (Void Maiz now turns it on by default).
+Installer 14,147,444 bytes; APK 4.39 MB, signed with the Hormiga key
+(certificate `37d0ee24…`). The feed was written after the Linux archive was on
+disk and checked by hand: every artifact hashes to what the feed says, and the
+Linux digest `c5b01b63…` equals the runner's own. The live feed says
+`latest 0.1.7`, and `voidhormiga-cli update --check` reads it. The APK is on the
+release page (and as the stable `VoidHormiga-android-arm64.apk`), not in the
+feed: Hormiga's updater uses `curl`, which a phone does not have.
+
+**CI is red, and not because of this release:** `hormiga_golden_render` fails
+on the Linux and macOS runners (it did on 2026-09-20 too), and the Windows CI
+leg builds with MSVC, which cannot link the MinGW-built libsodium. That was
+also the case before. On the way, Void Maiz's MSVC CI found that the vendored Crypto in
+Palabra's Reticulum companion is GCC/Clang only. Palabra now switches the
+companion off under MSVC.
+
+**Still owed:** a person running the APK on a phone, and an Android button on
+the download page (the stable APK URL is ready for it).
