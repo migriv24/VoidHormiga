@@ -5254,3 +5254,14 @@ two.
 `reduce_conformance` red (upstream's known red); layering ok; every file within
 budget. The Hormiga APK builds, with the new Java; so does Interaction
 Combinators'. **Not on a device yet, not committed, not published.**
+
+## 0.1.9 shipped (2026-09-26)
+
+The author asked for a release: 0.1.8 on the release page still could not
+scroll on a phone. Everything in the entry above is in it. All three runner
+legs built on the first run. Installer 14,385,747 bytes; APK 4.49 MB, signed
+with the Hormiga key (certificate `37d0ee24…`), so it installs over 0.1.8. The
+feed was written after the Linux archive was on disk; every artifact hashes to
+what the feed says, and the Linux digest `e51d2486…` equals the runner's own.
+The live feed says `latest 0.1.9`, and `voidhormiga-cli update --check` reads
+it. **Still owed:** the author's phone running 0.1.9.
