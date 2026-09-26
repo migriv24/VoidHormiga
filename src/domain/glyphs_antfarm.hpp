@@ -67,6 +67,57 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
     reg("hol_imgbb", "ImgBB - cloud image host", CLOUD, R"("key_file")",
         R"__("key_file":"Key file (gitignored)")__", 84, in("assets"));
 
+    /* ── THE DEVICE (2026-09-25): the Antfarm now syncs, so one graph runs on a
+     * desktop and on a phone, and a node has to be able to ask WHICH. The author:
+     * "maybe we have a 'device detection' node. and depending on which device is
+     * detected, different local configurations ... will be done", and "nodes that
+     * like are like 'get user local data paths'". Both read one source,
+     * platform/device_paths.hpp, the same answer the application itself uses,
+     * and each DEVICE shows its own: the rune is shared, the values are not.
+     *   hol_device        records in; a `desktop` and a `phone` records out, so a
+     *                     graph can say "on a phone, keep records here". Drawn and
+     *                     shared today; followed when wiring becomes read (the
+     *                     redesign's A2).
+     *   hol_device_paths  where this device keeps its profile and databases. */
+    const char* L_DEVICE = "#6b7a8f";
+    reg("hol_device", "This device", L_DEVICE, R"()", R"()", 72,
+        in("records") + R"(,{"name":"desktop","dir":"out","type":"records"},)" +
+        R"({"name":"phone","dir":"out","type":"records"})");
+    reg("hol_device_paths", "Device paths", L_DEVICE, R"()", R"()", 96, "");
+
+    /* ── TEST NODES (the author, 2026-09-25): "simple 'math' nodes and 'string'
+     * nodes ... these don't do much of anything, but they'll be useful for
+     * testing", and a polygon that "will kinda just act as a router node". They
+     * exist to stress the synced graph between devices: many small runes with
+     * fields, tags and typed ports, wired and rewired on two screens at once.
+     * They compute nothing, because no code follows Antfarm wiring yet. Two new
+     * payloads, `number` and `text`, so the canvas refuses a number into a text
+     * port exactly as it refuses records into a site. */
+    const char *T_MATH = "#5b8def", *T_TEXT = "#c0679a";
+    auto port = [](const char* name, const char* dir, const char* type) {
+        return std::string(R"({"name":")") + name + R"(","dir":")" + dir + R"(","type":")" + type + R"("})";
+    };
+    reg("math_number", "Number", T_MATH, R"("value")", R"("value":"Value")", 40, port("value", "out", "number"));
+    reg("math_add", "Add", T_MATH, R"()", R"()", 24,
+        port("a", "in", "number") + "," + port("b", "in", "number") + "," + port("sum", "out", "number"));
+    reg("math_multiply", "Multiply", T_MATH, R"()", R"()", 24,
+        port("a", "in", "number") + "," + port("b", "in", "number") + "," + port("product", "out", "number"));
+    reg("str_text", "Text", T_TEXT, R"("text")", R"("text":"Text")", 40, port("text", "out", "text"));
+    reg("str_join", "Join", T_TEXT, R"("separator")", R"("separator":"Between them")", 40,
+        port("a", "in", "text") + "," + port("b", "in", "text") + "," + port("joined", "out", "text"));
+    reg("str_upper", "Upper case", T_TEXT, R"()", R"()", 24,
+        port("text", "in", "text") + "," + port("upper", "out", "text"));
+    /* THE POLYGON: a router, drawn as a polygon body (Void Maiz's notation
+     * shapes), to test the limits of a node's shape and where its ports attach.
+     * Its ports have NO type, which the canvas treats as "fits anything", so it
+     * can sit in any wire to tidy the drawing. `sides` (3 to 24) overrides the
+     * glyph's 6 per rune (Void Maiz reads content.sides since 2026-09-25). */
+    core.register_glyph(
+        R"({"glyph":"poly_router","label":"Polygon router","fields":["sides"],)"
+        R"("hints":{"color":"#8a8f99","shape":{"kind":"polygon","sides":6},)"
+        R"__("labels":{"sides":"Sides (3-24)"},)__"
+        R"("ports":[{"name":"in","dir":"in"},{"name":"out","dir":"out"}]}})");
+
     // PUBLISHER — the pipeline head: consumes records + assets, emits a `site`
     reg("hol_html", "HTML site - publisher", L_PUB, R"()", R"()", 72,
         std::string(R"({"name":"records","dir":"in","type":"records"},)") +

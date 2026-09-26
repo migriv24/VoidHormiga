@@ -519,9 +519,12 @@ void HormigaApp::register_image_editors() {
     widgets.editors["image"] = [this, state_line](maiz::WidgetContext& ctx,
                                                   const maiz::SceneNode& n,
                                       const maiz::SceneField& f, std::string_view) {
-        bool committed = maiz::widget_field_path(
-            ctx, n, f.key.c_str(), browse_ingest,
-            f.label.empty() ? nullptr : f.label.c_str());
+        // a phone has no file dialog: the path box and its "..." are the
+        // desktop's; the gallery below is the way in on both
+        bool committed = false;
+        if (!phone)
+            committed = maiz::widget_field_path(ctx, n, f.key.c_str(), browse_ingest,
+                                                f.label.empty() ? nullptr : f.label.c_str());
         std::string p = f.value_json;
         if (f.is_string && p.size() >= 2) p = p.substr(1, p.size() - 2);
         if (p == "null") p.clear();
@@ -542,7 +545,7 @@ void HormigaApp::register_image_editors() {
             } else {
                 ImGui::TextDisabled("(image not found: %s)", p.c_str());
             }
-            if (n.glyph != "image") state_line(p);
+            if (n.glyph != "image" && !phone) state_line(p); // email hosting: the desktop's business
         }
         ImGui::PopID();
         return committed;

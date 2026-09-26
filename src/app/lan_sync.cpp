@@ -178,14 +178,16 @@ std::string LanRuntime::database_id(HormigaApp& app, bool create) {
     return id;
 }
 
-/* What a splice puts back from this device: its private runes, and its whole
- * Antfarm, which member sync never merges (lan-sharing.md §3a). */
+/* What a splice puts back from this device: its private runes, and its
+ * Antfarm nodes that name a credential file (collab::device_only). The rest of
+ * the Antfarm is merged like any mantle since 2026-09-25 (Q78). */
 std::set<std::pair<std::string, std::string>> LanRuntime::private_keys(HormigaApp& app) {
     std::set<std::pair<std::string, std::string>> keep;
     const auto share = hormiga::collab::share_settings(project(app.core, kAntfarmMantle));
     for (const auto& mt : mantles_of(app.core))
         for (const auto& n : project(app.core, mt.c_str()).nodes)
-            if (hormiga::collab::is_private(n, share) || mt == kAntfarmMantle) keep.insert({mt, n.id});
+            if (hormiga::collab::is_private(n, share) || (mt == kAntfarmMantle && hormiga::collab::device_only(n)))
+                keep.insert({mt, n.id});
     return keep;
 }
 

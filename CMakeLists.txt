@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20)
 # does not produce a missing answer, it produces a confident wrong one. It is
 # also what the running binary reports to the update client, which is the other
 # reason it cannot be a literal typed into a third place.
-project(voidhormiga VERSION 0.1.7 LANGUAGES CXX C)
+project(voidhormiga VERSION 0.1.8 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -247,17 +247,17 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
-  src/ui/builder.cpp src/ui/map.cpp src/ui/calendar.cpp
+  src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/calendar.cpp
   src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
   src/ui/tags.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
-  src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
+  src/app/database.cpp src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
   src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
   src/publish/github.cpp
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
   src/platform/miga.cpp src/platform/preview_server.cpp
-  src/platform/profile.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
+  src/platform/profile.cpp src/platform/device_paths.cpp src/platform/app_settings.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
   src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
   src/app/lan_net.cpp
   src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp
@@ -273,7 +273,7 @@ if(ANDROID)
   return()
 endif()
 
-add_executable(voidhormiga ${HORMIGA_APP_SOURCES} src/main/desktop.cpp)
+add_executable(voidhormiga ${HORMIGA_APP_SOURCES} src/main/desktop.cpp src/main/phone_harness.cpp)
 # Void Core's C ABI header, for the SPEC 6.1 command codec exported in 0.2.7
 # (vc_arg_quote / vc_argv_split_json / vc_transcript_split_json). The library
 # itself already arrives transitively through Void Maiz; only the header is new.

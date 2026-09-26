@@ -134,6 +134,23 @@ inline bool is_private(const maiz::SceneNode& n, const ShareSettings& s) {
     return false;
 }
 
+/* THE ANTFARM SYNCS NOW (the author, 2026-09-25: "for now we can have a design
+ * such that, all devices share the complete antfarm with each other"). Every
+ * member sees and edits one graph, positions and sizes converging the way
+ * Interaction Combinators' do. ONE kind of Antfarm node still stays with its
+ * device: a node that NAMES A CREDENTIAL FILE (a deploy token, a storage
+ * secret, a key). Two reasons, both older than this: the host decides whose
+ * keys publish (lan-sharing.md §3a), and a credential's path is different on
+ * every device, so syncing it would overwrite a desktop's key path with a
+ * phone's plain file name. */
+inline bool device_only(const maiz::SceneNode& n) {
+    for (const auto& f : n.fields) {
+        if (f.key != "token_file" && f.key != "secret_file" && f.key != "key_file") continue;
+        if (f.value_json.size() > 2 && f.value_json != "null") return true; // a non-empty string
+    }
+    return false;
+}
+
 /* The commands that give a database the default collaboration bones. Used by
  * the new-database seed and by "Allow LAN sharing" on a database that has none. */
 inline std::vector<std::string> default_nodes(bool with_share, bool with_members) {

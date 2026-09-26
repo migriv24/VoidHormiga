@@ -15,6 +15,7 @@
 #include "app/app_internal.hpp"
 #include "app/lan_share.hpp"
 #include "app/paths.hpp"
+#include "platform/device_paths.hpp" // the device's databases folder
 #include "IconsFontAwesome6.h"
 #include "voidmaiz/mobile.hpp" // dim_wrapped: hints that wrap, on a phone and in a narrow window
 
@@ -44,14 +45,10 @@ std::string human(long long b) {
     return buf;
 }
 
-std::string default_dest() {
-#ifdef _WIN32
-    const char* home = std::getenv("USERPROFILE");
-#else
-    const char* home = std::getenv("HOME");
-#endif
-    return home ? (fs::path(home) / "Documents" / "HormigaFiles").string() : std::string();
-}
+/* Where a joined database goes: the device's databases folder
+ * (platform/device_paths.hpp). This read HOME, which a phone does not have, so
+ * the first phone joined into "test/" under "/" and failed (2026-09-25). */
+std::string default_dest() { return hormiga::device::get().databases.string(); }
 
 std::string first_letter(const std::string& name) {
     if (name.empty()) return "?";
@@ -380,20 +377,24 @@ void LanRuntime::draw_discover_body(HormigaApp& app) {
     ImGui::TextWrapped("Databases someone is sharing on this network right now. Ask to join one; "
                        "the person sharing it has to allow you.");
     if (rt.me.username.empty()) {
-        ImGui::TextColored(ImVec4(0.95f, 0.55f, 0.35f, 1), "Set a username first - the host sees it when you ask.");
-        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.55f, 0.35f, 1));
+        ImGui::TextWrapped("Set a username first - the host sees it when you ask.");
+        ImGui::PopStyleColor();
+        // on a phone this switches to the Me screen (phone/phone.cpp reads it)
         if (ImGui::SmallButton("Open profile")) app.win_profile = true;
     }
     if (!rt.dest[0]) std::snprintf(rt.dest, sizeof rt.dest, "%s", default_dest().c_str());
-    ImGui::SeparatorText("Where a joined database goes");
-    ImGui::SetNextItemWidth(-130);
-    ImGui::InputText("##dest", rt.dest, sizeof rt.dest);
-    ImGui::SameLine();
-    if (ImGui::Button("Choose folder...") && app.on_pick_folder) {
-        const std::string picked = app.on_pick_folder();
-        if (!picked.empty()) std::snprintf(rt.dest, sizeof rt.dest, "%s", picked.c_str());
+    if (!app.phone) { // a phone keeps its databases where the device says (platform/device_paths.hpp)
+        ImGui::SeparatorText("Where a joined database goes");
+        ImGui::SetNextItemWidth(-130);
+        ImGui::InputText("##dest", rt.dest, sizeof rt.dest);
+        ImGui::SameLine();
+        if (ImGui::Button("Choose folder...") && app.on_pick_folder) {
+            const std::string picked = app.on_pick_folder();
+            if (!picked.empty()) std::snprintf(rt.dest, sizeof rt.dest, "%s", picked.c_str());
+        }
+        maiz::dim_wrapped("Each database gets its own folder inside this one. The one you have open is backed up first.");
     }
-    maiz::dim_wrapped("Each database gets its own folder inside this one. The one you have open is backed up first.");
 
     ImGui::SeparatorText(ICON_FA_WIFI "  On this network");
     const auto found = offers(app);

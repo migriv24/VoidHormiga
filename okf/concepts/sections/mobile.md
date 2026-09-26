@@ -26,6 +26,32 @@ Two instructions sit in that: **UX before parity**, and **less on purpose**.
 Every decision below applies them in that order. When a desktop feature cannot
 be made good on a phone, it is left out, not made small.
 
+# The first phone, and what it found (2026-09-25)
+
+The author ran 0.1.7 on their own phone, a modern all-screen Android with
+gesture navigation: *"the mobile app is very bad."* Every item had a cause, and
+each is fixed where it lives:
+
+| the author saw | the cause | the fix |
+|---|---|---|
+| everything very small, no icons | the APK stored its fonts as `assets/fonts\Lato-Regular.ttf` (aapt2 on Windows writes the host's separator), Android found nothing and fell back to ImGui's 13-pixel bitmap face | fonts added by name like the library; `build_apk.ps1` now refuses an APK whose entries Android cannot find; a missing font falls back at the screen's size |
+| the top and bottom unreachable, the navigation bar "barely" tappable | the surface runs under the status bar and the gesture strip, and nothing reserved them | Void Maiz's **safe area** (`voidmaiz/safearea.hpp`, `reserve_safe_area`): `MaizActivity.maizSafeInsets()` reports bars, cutout and the mandatory gesture strip, and the shell reserves them before any bar |
+| the add button does nothing | Void Maiz's `speed_dial` right-aligned its entries against its own auto-sized width, so they settled at a sliver | one width for the column (fixed in Void Maiz) |
+| "did not join. cannot write test/test.miga.part" | the joined-database folder and the profile were guessed from `HOME`/`APPDATA`, which a phone does not have | one owner of this device's folders, `platform/device_paths.hpp`, set by the shell before anything reads it; a phone keeps everything in its app folder |
+| list vs card, small rows | the Data screen was thin rows | **cards**, one layout, ~76 dp, tap opens, swipe deletes |
+
+**A phone is now tested on the desktop before it ships.** `voidhormiga --phone
+--phone-screen 412x915@2.625 --safe 24,24 --script s.txt <db>` gives the phone
+front-end a phone's screen, density and safe area, drives it with scripted taps
+through the same ImGui input queue a finger feeds, and writes screenshots
+(`main/phone_harness.hpp`). Every fix above was reproduced there first, and a
+real join (a host sharing from the CLI, the phone joining by taps) was run
+through it end to end. **Still owed:** the author's phone running 0.1.8.
+
+Also for the phone: a fresh install starts EMPTY (not the demo), the Together
+screen no longer offers a folder chooser, Me no longer shows desktop hardware,
+and a card's photo has no file-path box.
+
 # The author's scope (2026-09-23, decided), and what is built
 
 The author, the next day, after Void Maiz's networking worked across Linux,

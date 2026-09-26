@@ -32,6 +32,9 @@
 #include "stb_image.h" // vendored, public domain (vendor/stb/LICENSE.md)
 
 #include "IconsFontAwesome6.h" // vendored (vendor/fonts) — icon codepoints
+#include "main/phone_harness.hpp" // --phone-screen / --safe / --script
+#include "platform/device_paths.hpp" // a phone run keeps its own folders
+#include "voidmaiz/mobile.hpp"    // reserve_safe_area
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -335,10 +338,19 @@ int main(int argc, char** argv) {
         const std::string a = argv[i];
         if (a == "--phone") phone_mode = true;
         if (a == "--touch") phone_mode = touch_mode = true;
+        if (a == "--phone-screen" || a == "--safe") phone_mode = true; // --script alone drives the desktop
+    }
+    // a phone's screen, density and safe area, and a script of taps (main/phone_harness.hpp)
+    PhoneHarness sim;
+    sim.finger = phone_mode;
+    if (!sim.parse(argc, argv)) {
+        std::fprintf(stderr, "%s\n", sim.error.c_str());
+        return 2;
     }
     GLFWwindow* window = phone_mode
-                             ? glfwCreateWindow(412, 880, "Hormiga (phone)", nullptr, nullptr)
+                             ? glfwCreateWindow(sim.window_w(), sim.window_h(), "Hormiga (phone)", nullptr, nullptr)
                              : glfwCreateWindow(1360, 800, "Hormiga", nullptr, nullptr);
+    const float font_scale = phone_mode ? sim.density : 1.0f; // a phone's faces, at its density
     if (!window) { glfwTerminate(); return 1; }
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
@@ -379,17 +391,17 @@ int main(int argc, char** argv) {
         base.OversampleV = 2;
         base.PixelSnapH = true;
         if (std::filesystem::exists(lato))
-            fio.Fonts->AddFontFromFileTTF(lato.string().c_str(), 16.0f, &base);
+            fio.Fonts->AddFontFromFileTTF(lato.string().c_str(), 16.0f * font_scale, &base);
         else
             fio.Fonts->AddFontDefault(); // graceful fallback if the vendor drop is absent
         static const ImWchar fa_range[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
         ImFontConfig cfg;
         cfg.MergeMode = true;
         cfg.PixelSnapH = true;
-        cfg.GlyphMinAdvanceX = 15.0f;
+        cfg.GlyphMinAdvanceX = 15.0f * font_scale;
         auto fa = vf / "fa-solid-900.ttf";
         if (std::filesystem::exists(fa))
-            fio.Fonts->AddFontFromFileTTF(fa.string().c_str(), 15.0f, &cfg,
+            fio.Fonts->AddFontFromFileTTF(fa.string().c_str(), 15.0f * font_scale, &cfg,
                                           fa_range);
         // a MONOSPACE face for the Allomone Script IDE (vendored OFL JetBrains
         // Mono) — code wants a fixed-width font; also lets us grid-align
@@ -400,7 +412,7 @@ int main(int argc, char** argv) {
         mc.OversampleV = 2;
         if (std::filesystem::exists(mono))
             g_mono_font = fio.Fonts->AddFontFromFileTTF(mono.string().c_str(),
-                                                        15.0f, &mc);
+                                                        15.0f * font_scale, &mc);
     }
     // FL-Studio-style movable panels (Void Maiz enabled ImGui docking, but its
     // enable_docking()/begin_dockspace() are dead — an always-false
@@ -442,14 +454,17 @@ int main(int argc, char** argv) {
      * A path that does not exist is NOT refused — a first run has to start
      * somewhere — but it is said out loud, because a typo'd path is otherwise
      * indistinguishable from a new organization. */
+    bool named_database = false; // --state or a bare path: then Settings' default does not apply
     {
         std::string given;
         for (int i = 1; i < argc; ++i) {
             const std::string a = argv[i];
             if (a == "--state" && i + 1 < argc) { given = argv[++i]; continue; }
             if (a.rfind("--state=", 0) == 0) { given = a.substr(8); continue; }
+            if (a == "--phone-screen" || a == "--safe" || a == "--script") { ++i; continue; } // their values are not a database
             if (given.empty() && !a.empty() && a[0] != '-') given = a;
         }
+        named_database = !given.empty();
         if (!given.empty()) {
             std::error_code sec;
             std::filesystem::path p = std::filesystem::absolute(given, sec);
@@ -502,12 +517,20 @@ int main(int argc, char** argv) {
     };
     app.on_load_texture = gl_load_texture;
     if (phone_mode) {
-        app.enable_phone(touch_mode);
+        app.enable_phone(touch_mode, nullptr, sim.density);
+        // a phone keeps everything inside its app folder; here that is the folder
+        // this run was pointed at, so a phone tested on this desktop has its own
+        // profile and databases, as a second device would (platform/device_paths.hpp)
+        hormiga::device::set(hormiga::device::phone(app.base_dir));
         // the desktop's dock layout is not the phone's to rewrite
         ImGui::GetIO().IniFilename = nullptr;
     }
     app.on_shell_capture = shell_capture;
+    const bool first_run = !std::filesystem::exists(app.base_dir / app.state_name); // before init makes it
     app.init();
+    // Settings > Starting Hormiga: the default database, unless one was named
+    // (a phone reopens its last; see HormigaApp::open_default_database)
+    if (!named_database || phone_mode) app.open_default_database(phone_mode, first_run);
     lap("app.init");
 
     while (!glfwWindowShouldClose(window)) {
@@ -515,9 +538,14 @@ int main(int argc, char** argv) {
         if (glfwGetWindowAttrib(window, GLFW_ICONIFIED)) { glfwWaitEvents(); continue; }
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+        const bool scripted = !sim.script.empty();
+        if (phone_mode || scripted) sim.inject(ImGui::GetIO()); // after the backend's, so a script's finger wins
         ImGui::NewFrame();
+        if (phone_mode) // the system's edges first, as the Android shell does
+            maiz::reserve_safe_area({0, sim.safe_top * sim.density, 0, sim.safe_bottom * sim.density});
 
         app.frame();
+        if (phone_mode) sim.draw_system_bars();
 
         ImGui::Render();
         int w, h;
@@ -527,6 +555,7 @@ int main(int argc, char** argv) {
         else glClearColor(0.08f, 0.08f, 0.10f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        if ((phone_mode || scripted) && sim.after_render(w, h)) glfwSetWindowShouldClose(window, 1);
         glfwSwapBuffers(window);
         static bool first = true;
         if (first) { lap("first frame drawn"); first = false; }

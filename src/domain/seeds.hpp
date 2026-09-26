@@ -31,23 +31,23 @@ inline std::vector<std::string> seed_antfarm_transcript() {
         "mantle new antfarm",
         "rune new org_core core",
         R"(set core org_name "demo-org")",
-        "setjson core pos [430,220]",
+        "setjson core pos [60,200]"  /* flow runs left to right (2026-09-25) */,
         // record agents (left): a local store + a local CSV source
         "rune new hol_sqlite data-sqlite",
         R"(set data-sqlite file "demo-org.db")",
-        "setjson data-sqlite pos [80,60]",
+        "setjson data-sqlite pos [390,40]",
         "rune new hol_csv import-csv",
-        "setjson import-csv pos [80,200]",
+        "setjson import-csv pos [390,170]",
         // asset agent: a local files folder
         "rune new hol_fs_assets assets-fs",
         R"(set assets-fs dir "assets")",
-        "setjson assets-fs pos [80,320]",
+        "setjson assets-fs pos [390,300]",
         // the PUBLISH PIPELINE: core (records+assets) → HTML publisher → local server
         "rune new hol_html out-html",
-        "setjson out-html pos [790,120]",
+        "setjson out-html pos [390,430]",
         "rune new hol_localhost out-localhost",
         R"(set out-localhost port "8780")",
-        "setjson out-localhost pos [1120,120]",
+        "setjson out-localhost pos [720,430]",
         // wiring: records/assets ports fan out to their agents; the publisher's
         // `site` out feeds the server (a real chain, not siblings on "output")
         "link core data-sqlite --relation 1:1", // records → SQLite store
@@ -56,6 +56,12 @@ inline std::vector<std::string> seed_antfarm_transcript() {
         "link core out-html --relation 1:1",     // records → publisher.records
         "link core out-html --relation 2:2",     // assets  → publisher.assets
         "link out-html out-localhost --relation 3:1", // publisher.site → server
+        // the device (2026-09-25): which one this is, and where it keeps things
+        "rune new hol_device this-device",
+        "setjson this-device pos [390,600]",
+        "rune new hol_device_paths device-paths",
+        "setjson device-paths pos [60,380]",
+        "link core this-device --relation 1:1", // records reach every device through it
     };
     // collaboration (lan-sharing.md §5): shareable over the LAN by default, with
     // the members kept in their own small database beside the .miga

@@ -81,10 +81,12 @@ bool LanRuntime::net_open(HormigaApp& app) {
         fs::create_directories(replica_file.parent_path(), ec);
         write_atomic(replica_file, b);
     };
-    o.share = app.share_filter();
-    // THE ANTFARM DOES NOT TRAVEL (lan-sharing.md §3a): wiring and keys come
-    // from the host. The author's Q78 may reverse this; one line, here.
-    o.share_mantle = [](const std::string& mantle) { return mantle != kAntfarmMantle; };
+    // THE ANTFARM TRAVELS (Q78, answered 2026-09-25): every mantle is shared,
+    // and a node naming a credential file stays home (collab::device_only)
+    o.share = [base = app.share_filter()](const maiz::SceneNode& n) {
+        return base(n) && !hormiga::collab::device_only(n);
+    };
+    o.share_mantle = [](const std::string&) { return true; };
 
     /* The fields that name files. `path` is an image's and a resource's; a
      * contact's picture is `photo`. Anything else stays a string nobody fetches. */

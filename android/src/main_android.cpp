@@ -26,6 +26,8 @@
 #include "imgui_impl_opengl3.h"
 #include "stb_image.h"
 
+#include "platform/device_paths.hpp" // where this device keeps its files
+#include "voidmaiz/mobile.hpp"        // the safe area
 #include "voidmaiz/textinputview.hpp" // maiz::android_text_input
 
 #include <android/asset_manager.h>
@@ -51,6 +53,12 @@ struct Shell {
     bool backends_ready = false; // window + EGL + imgui backends live
     bool app_ready = false;      // HormigaApp::init ran (once per process)
     HormigaApp app;
+    /* THE SAFE AREA: the status bar, the cutout, the gesture strip. The surface
+     * runs under all of them; 0.1.7 put its navigation bar there, where a
+     * gesture phone takes every touch as "go home". Re-read twice a second:
+     * rotation and a change of navigation mode move it. */
+    maiz::SafeArea safe;
+    int safe_age = 1 << 20;
 };
 
 bool egl_init(Shell& s) {
@@ -111,7 +119,9 @@ void load_fonts(AAssetManager* am, float density, HormigaApp& app) {
         io.Fonts->AddFontFromMemoryTTF(lato, n, 16.0f * density, &base);
     else {
         LOGE("fonts/Lato-Regular.ttf missing from the APK: the default face, and NO icons");
-        io.Fonts->AddFontDefault();
+        ImFontConfig fallback;
+        fallback.SizePixels = 13.0f * density; // at least at the screen's size, not 13 px
+        io.Fonts->AddFontDefault(&fallback);
         return;
     }
     static const ImWchar fa_range[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
@@ -170,11 +180,18 @@ void backends_up(Shell& s) {
         app.base_dir = s.aapp->activity->internalDataPath ? std::filesystem::path(s.aapp->activity->internalDataPath)
                                                           : std::filesystem::path("/data/local/tmp");
         app.ship_dir = app.base_dir; // nothing ships beside a .so: the guide and OKF are desktop-only
+        // where this device keeps its files, said ONCE, before anything reads it:
+        // the profile and joined databases inside the app's folder, never HOME
+        // (a phone has none: 0.1.7 joined into "test/" under "/", 2026-09-25)
+        hormiga::device::set(hormiga::device::phone(app.base_dir));
         android_app* aapp = s.aapp;
         app.on_quit = [aapp] { ANativeActivity_finish(aapp->activity); };
         app.on_load_texture = gl_load_texture;
         app.enable_phone(true, maiz::android_text_input(s.aapp->activity), density);
+        const bool first_run = !std::filesystem::exists(app.base_dir / app.state_name); // before init makes it
         app.init();
+        // a phone reopens the database it had; a new install starts EMPTY, not the demo
+        app.open_default_database(true, first_run);
         s.app_ready = true;
     }
     s.backends_ready = true;
@@ -215,6 +232,11 @@ void render_frame(Shell& s) {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplAndroid_NewFrame();
     ImGui::NewFrame();
+    if (++s.safe_age > 30) {
+        s.safe = maiz::android_safe_area(s.aapp->activity);
+        s.safe_age = 0;
+    }
+    maiz::reserve_safe_area(s.safe); // before the phone's own bars, which then sit inside it
     s.app.frame(); // the phone front-end: it runs the platform keyboard itself
     ImGui::Render();
     EGLint w = 0, h = 0;

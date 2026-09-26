@@ -14,6 +14,8 @@
 
 #include "app/app_internal.hpp" // the shared includes, helpers and structs
 #include "app/lan_share.hpp"     // LanRuntime: sharing, joining, presence
+#include "platform/app_settings.hpp" // recent databases, the default one
+#include "platform/device_paths.hpp"  // the Antfarm's device nodes
 #include "app/paths.hpp"        // find_key_file
 
 // Heavy headers only the SHELL needs, kept out of app_internal.hpp so the six
@@ -908,165 +910,6 @@ void HormigaApp::do_save() {
         toast("saved " + org_file().filename().string());
 }
 
-// ── the .miga v3 database bundle: Save / Save As / Open (miga-format.md) ─────
-
-/* Clear the working copy's local files so two databases never bleed together
- * (author 2026-07-24: "different databases... have their own local storage").
- * Always drops the re-derivable caches (they rebuild from protocols); on a
- * database SWITCH also drops assets/ (each bundle carries its own). */
-void HormigaApp::reset_working_copy(bool clear_assets) {
-    std::error_code ec;
-    tex_cache.clear(); // freed image paths must not return stale textures
-    fs::remove_all(data_dir("tiles"), ec);
-    fs::remove_all(data_dir("site"), ec);
-    fs::remove_all(data_dir("exports"), ec);
-    for (auto& e : fs::directory_iterator(base_dir, ec)) {
-        std::string fn = e.path().filename().string();
-        if (fn.rfind("preview-", 0) == 0 && e.path().extension() == ".html")
-            fs::remove(e.path(), ec);
-    }
-    if (clear_assets) fs::remove_all(data_dir("assets"), ec);
-}
-
-
-/* Pack the working copy into the current bundle (backing up the old one), or
- * fall through to Save As when there's no bundle yet. Save ≈ commit. */
-void HormigaApp::save_database() {
-    if (cur_miga.empty()) { // no bundle yet → behave as Save As (author #1)
-        if (on_save_file) {
-            std::string p = on_save_file("my-database.miga");
-            if (!p.empty()) save_database_as(p);
-        } else {
-            toast("no save dialog available", true);
-        }
-        return;
-    }
-    do_save(); // flush the live state into the working .db first
-    std::error_code ec;
-    // back up the existing bundle before overwriting (author #5: backups)
-    if (fs::exists(cur_miga)) {
-        fs::create_directories(data_dir("backups"), ec);
-        char stamp[32];
-        std::time_t t = std::time(nullptr);
-        std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", std::localtime(&t));
-        std::string stem = fs::path(cur_miga).stem().string();
-        fs::copy_file(cur_miga, data_dir("backups") / (stem + "-" + stamp + ".miga"),
-                      fs::copy_options::overwrite_existing, ec);
-        // retention: keep the newest ~10 backups for this database
-        std::vector<fs::path> mine;
-        for (auto& e : fs::directory_iterator(data_dir("backups"), ec))
-            if (e.path().filename().string().rfind(stem + "-", 0) == 0)
-                mine.push_back(e.path());
-        std::sort(mine.begin(), mine.end());
-        for (size_t i = 0; i + 10 < mine.size(); ++i) fs::remove(mine[i], ec);
-    }
-    auto r = hormiga::miga::pack(core.export_state(), base_dir, cur_miga,
-                                 fs::path(cur_miga).stem().string(), assets_dir(),
-                                 referenced_files(core.export_state()));
-    if (r.ok)
-        toast("saved database " + fs::path(cur_miga).filename().string() + " (" +
-              std::to_string(r.assets) + " assets, " +
-              std::to_string(r.bytes / 1024) + " KB)");
-    else
-        toast("save database failed: " + r.error, true);
-}
-
-/* Save the working copy as a NEW .miga at a user-CHOSEN path (author
- * 2026-07-24: "choose where we are saving"). The path comes from the OS save
- * dialog; .miga is ensured. This bundle becomes the current database. */
-void HormigaApp::save_database_as(const std::string& path) {
-    if (path.empty()) return;
-    fs::path out = path;
-    if (out.extension() != ".miga") out += ".miga";
-    do_save(); // flush live state into the working .db first
-    auto r = hormiga::miga::pack(core.export_state(), base_dir, out,
-                                 out.stem().string(), assets_dir(),
-                                 referenced_files(core.export_state()));
-    if (r.ok) {
-        cur_miga = out.string();
-        remember_bundle(cur_miga);
-        toast("saved database to " + out.string() + " (" +
-              std::to_string(r.assets) + " assets, " +
-              std::to_string(r.bytes / 1024) + " KB)");
-    } else {
-        toast("save database failed: " + r.error, true);
-    }
-}
-
-/* Start a COMPLETELY NEW, empty database (author 2026-07-24): a fresh working
- * copy — empty data, one blank newsletter document, the Antfarm topology (the
- * protocol layer) — and NO bundle yet (Save database as... names & places its
- * .miga). This is the multi-database "new project" entry the app was missing. */
-void HormigaApp::new_database() {
-    reset_working_copy(true); // a fresh db owns nothing from the old working copy
-    core = maiz::Core(); // a fresh, empty state (no demo data)
-    install_host();
-    channel_fields.clear();
-    hormiga::register_glyphs(core);
-    hormiga::register_block_glyphs(core);
-    hormiga::register_antfarm_glyphs(core);
-    core.dispatch("config set actor human:hormiga");
-    // minimal structure so every section has a home to open into
-    core.dispatch(std::string("mantle new ") + kDataMantle);   // empty org data
-    core.dispatch("mantle new issue-demo");                    // one blank document
-    core.dispatch(std::string("mantle new ") + kAlloMantle);   // Allomone rules
-    core.dispatch("rune new hero masthead");
-    core.dispatch("set masthead title_en \"New Newsletter\"");
-    core.dispatch("set masthead row \"0\"");
-    for (const auto& c : hormiga::seed_antfarm_transcript()) core.dispatch(c);
-    core.dispatch(std::string("use ") + kDataMantle);
-    reproject();
-    read_view_config();
-    apply_theme();
-    cur_miga.clear();      // unsaved: a new database has no file until Save As
-    remember_bundle("");
-    cur_doc = "issue-demo";
-    cur_page.clear();
-    ed.selection.clear();
-    do_save();             // flush the fresh structure into the working .db
-    toast("new database (empty) - use 'Save database as...' to name & place it");
-}
-
-/* Replace the running core with a freshly-loaded state, re-establishing the
- * host seams and glyphs (the same setup init() does after a state load), and
- * persist it into the working .db so the app runs off local storage. */
-void HormigaApp::reload_from_state(const std::string& state) {
-    core = maiz::Core(state);
-    install_host();
-    channel_fields.clear();
-    hormiga::register_glyphs(core);
-    hormiga::register_block_glyphs(core);
-    hormiga::register_antfarm_glyphs(core);
-    core.dispatch("config set actor human:hormiga");
-    reproject();
-    read_view_config();
-    apply_theme();
-    do_save(); // write the opened database into the working .db
-    cur_page.clear();
-    cur_doc = "issue-demo";
-    ed.selection.clear();
-}
-
-void HormigaApp::open_database(const std::string& path) {
-    // isolate: drop the current working copy's assets + caches BEFORE the
-    // bundle extracts its own into base_dir/assets/ (databases don't bleed)
-    reset_working_copy(true);
-    auto r = hormiga::miga::open(path, base_dir, assets_dir());
-    if (!r.ok) {
-        toast(r.version == 2 ? "that's a legacy secrets-only .miga (v2), not a "
-                               "full database"
-                             : "open failed: " + r.error,
-              true);
-        return;
-    }
-    reload_from_state(r.state);
-    cur_miga = path;
-    remember_bundle(path);
-    load_secrets(); // an imgbb.key beside THIS bundle
-    toast("opened database " + fs::path(path).filename().string() + " (" +
-          std::to_string(r.assets) + " assets restored)");
-}
-
 void HormigaApp::toast(std::string msg, bool error) {
     toasts.push_back({std::move(msg), 4.0f, error});
     if (toasts.size() > 4) toasts.erase(toasts.begin());
@@ -1197,6 +1040,20 @@ void HormigaApp::init() {
         if (maiz::project_scene(core, po).nodes.empty())
             for (const auto& cmd : hormiga::seed_antfarm_transcript())
                 core.dispatch(cmd);
+    }
+    { // migration (2026-09-25): every Antfarm gets the device nodes once
+        maiz::ProjectOptions po;
+        po.mantle = kAntfarmMantle;
+        const maiz::Scene farm = maiz::project_scene(core, po);
+        const bool has = std::any_of(farm.nodes.begin(), farm.nodes.end(),
+                                     [](const maiz::SceneNode& n) { return n.glyph == "hol_device"; });
+        if (!farm.nodes.empty() && !has) {
+            core.dispatch(std::string("use ") + kAntfarmMantle);
+            for (const char* c : {"rune new hol_device this-device", "setjson this-device pos [430,420]",
+                                  "rune new hol_device_paths device-paths", "setjson device-paths pos [430,560]",
+                                  "link core this-device --relation 1:1"})
+                core.dispatch(c);
+        }
     }
     { // the Allomone rules mantle (created for every org that predates it)
         if (core.dispatch("mantles --json").data.find("\"" + std::string(kAlloMantle) +
@@ -1434,12 +1291,28 @@ void HormigaApp::init() {
     // first frame); otherwise the plaintext imgbb.key beside the app is used
     // (encryption is off by default, loudly offered — security.md §2). The
     // key never enters the command log or exported state either way.
+    /* CREDENTIALS ARE ALWAYS ENCRYPTED (2026-09-25): sealed with this profile's
+     * own key (profile::credentials_key), with no option to turn on and no
+     * passphrase to manage. A vault made earlier under a passphrase still asks
+     * for it (File > Unlock credentials); everything else opens by itself. */
     hormiga::Vault::global_init();
+    const std::string auto_key = hormiga::profile::credentials_key(hormiga::profile::load_or_create());
     if (hormiga::Vault::exists(vault_path().string())) {
-        secrets_locked = true;
-        vault_modal = VaultModal::Unlock; // ImgBB dormant until unlocked
+        if (!auto_key.empty() && vault.unlock(vault_path().string(), auto_key)) {
+            load_secrets();
+        } else {
+            secrets_locked = true;
+            vault_modal = VaultModal::Unlock; // a passphrase vault, or another profile's
+        }
     } else {
-        load_secrets();
+        load_secrets(); // any plaintext key left beside the database, one last time
+        if (!auto_key.empty() && vault.create(auto_key)) {
+            if (!imgbb_key.empty()) vault.set("imgbb_key", imgbb_key);
+            if (vault.save(vault_path().string())) {
+                std::error_code ec;
+                fs::remove(base_dir / "imgbb.key", ec); // sealed now: retire the plaintext
+            }
+        }
     }
 
     // Territory's action vocabulary — the command bar's `map …` verbs today,
@@ -1496,6 +1369,16 @@ void HormigaApp::init() {
                                {"hol_lan_peer", "LAN peer - another device", "Records"},
                                {"hol_lan_share", "Share over LAN", "Records"},
                                {"hol_membership", "Members", "Records"},
+                               {"hol_device", "This device", "Device"},
+                               {"hol_device_paths", "Device paths", "Device"},
+                               // test nodes (2026-09-25): stress the synced graph between devices
+                               {"math_number", "Number", "Test"},
+                               {"math_add", "Add", "Test"},
+                               {"math_multiply", "Multiply", "Test"},
+                               {"str_text", "Text", "Test"},
+                               {"str_join", "Join", "Test"},
+                               {"str_upper", "Upper case", "Test"},
+                               {"poly_router", "Polygon router", "Test"},
                                {"hol_auth", "Sign-in - identity provider", "Visitors"},
                                {"hol_accounts", "Accounts + submissions", "Visitors"}};
     palette_allomone.entries = {{"allo_when", "When (a rule)", "Allomone"},
@@ -1578,6 +1461,17 @@ void HormigaApp::init() {
     };
     faces.by_glyph["org_core"] = [face_status](maiz::FaceContext& ctx) {
         face_status(ctx, "wiring IS configuration");
+    };
+    // the device nodes: the rune is shared, and every device shows ITS answer
+    faces.by_glyph["hol_device"] = [face_status](maiz::FaceContext& ctx) {
+        const auto& d = hormiga::device::get();
+        face_status(ctx, std::string("this is a ") + hormiga::device::kind_name(d.kind) + " (" + d.platform + ")",
+                    d.kind == hormiga::device::Kind::Phone ? "records flow out of `phone`"
+                                                           : "records flow out of `desktop`");
+    };
+    faces.by_glyph["hol_device_paths"] = [face_status](maiz::FaceContext& ctx) {
+        const auto& d = hormiga::device::get();
+        face_status(ctx, "profile: " + d.profile.string(), "databases: " + d.databases.string());
     };
     faces.by_glyph["hol_sqlite"] = [this, face_status](maiz::FaceContext& ctx) {
         if (storage && storage->ok()) {
@@ -2678,7 +2572,31 @@ void HormigaApp::frame() {
                 run_busy("Creating new database…", [this] { new_database(); });
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("start a fresh, empty database (a new\n"
-                                  "working copy); Save database as... names it");
+                                  "working copy); Save database as... names it.\n"
+                                  "If this one is shared, you leave it: reopen it\n"
+                                  "from Recent databases to be back in.");
+            if (ImGui::MenuItem("Open database...")) {
+                if (on_pick_file) {
+                    std::string p = on_pick_file(""); // OS open dialog (.miga)
+                    if (!p.empty())
+                        run_busy("Opening database…",
+                                 [this, p] { open_database(p); });
+                } else {
+                    toast("no file picker available", true);
+                }
+            }
+            // RECENT DATABASES (the author, 2026-09-25): on this device, newest first
+            if (ImGui::BeginMenu("Recent databases")) {
+                const auto recent = hormiga::app_settings::load().recent;
+                if (recent.empty()) ImGui::MenuItem("(none yet)", nullptr, false, false);
+                for (const auto& r : recent) {
+                    const bool here = r == cur_miga;
+                    if (ImGui::MenuItem(fs::path(r).filename().string().c_str(), here ? "open" : nullptr, false, !here))
+                        run_busy("Opening database…", [this, r] { open_database(r); });
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", r.c_str());
+                }
+                ImGui::EndMenu();
+            }
             if (ImGui::MenuItem("Save database", "Ctrl+Shift+S")) {
                 // Save As if there's no file yet (author #1); the dialog must
                 // run NOW (not deferred) so the path is chosen before the pack
@@ -2704,30 +2622,20 @@ void HormigaApp::frame() {
                     toast("no save dialog available", true);
                 }
             }
-            if (ImGui::MenuItem("Open database...")) {
-                if (on_pick_file) {
-                    std::string p = on_pick_file(""); // OS open dialog (.miga)
-                    if (!p.empty())
-                        run_busy("Opening database…",
-                                 [this, p] { open_database(p); });
-                } else {
-                    toast("no file picker available", true);
-                }
-            }
+            // ── networking, set apart (the author, 2026-09-25) ────────────────
+            ImGui::SeparatorText("Networking");
             if (ImGui::MenuItem("Share database...")) win_share = true;
             if (ImGui::MenuItem("Discover databases...")) win_discover = true;
-            if (ImGui::MenuItem("Profile...")) win_profile = true;
+            ImGui::Separator();
+            if (ImGui::MenuItem("Preferences...")) win_preferences = true; // this database's
+            if (ImGui::MenuItem("Settings...")) show_settings = true;      // the application's
+            if (ImGui::MenuItem("Profile...")) win_profile = true;          // you
             ImGui::Separator();
             // credential vault (security.md §2: off by default, loudly offered)
-            if (secrets_locked) {
-                if (ImGui::MenuItem("Unlock credentials..."))
-                    vault_modal = VaultModal::Unlock;
-            } else if (vault.unlocked()) {
-                ImGui::MenuItem("Credentials encrypted", nullptr, false, false);
-            } else if (ImGui::MenuItem("Encrypt credentials...")) {
-                vault_msg.clear();
-                vault_modal = VaultModal::Create;
-            }
+            // no "Encrypt credentials": they always are (profile::credentials_key);
+            // only a vault sealed under an older passphrase still needs a person
+            if (secrets_locked && ImGui::MenuItem("Unlock credentials..."))
+                vault_modal = VaultModal::Unlock;
             ImGui::Separator();
             if (ImGui::MenuItem("Quit") && on_quit) on_quit();
             ImGui::EndMenu();
@@ -2756,6 +2664,8 @@ void HormigaApp::frame() {
             ImGui::MenuItem("Data Tools", nullptr, &win_data_tools);
             ImGui::MenuItem("Niche Tools", nullptr, &win_niche_tools);
             ImGui::MenuItem("Settings", nullptr, &show_settings);
+            ImGui::MenuItem("Preferences", nullptr, &win_preferences);
+            ImGui::MenuItem("Profile", nullptr, &win_profile);
             ImGui::MenuItem("Style", nullptr, &win_style);
             ImGui::MenuItem("Console", nullptr, &win_console);
             ImGui::EndMenu();
@@ -2925,6 +2835,7 @@ void HormigaApp::frame() {
     }
 #endif
     draw_settings();
+    draw_preferences();
     draw_style_tab();
     draw_share_window();
     draw_data_tools_window();

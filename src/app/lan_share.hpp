@@ -168,6 +168,13 @@ struct LanRuntime {
     static hormiga::lan::Plan build_plan(HormigaApp& app, std::string* state_out);
     static bool start_sharing(HormigaApp& app, std::string& error);
     static void stop_sharing(HormigaApp& app);
+    /* Leave the database this device is in, on this device: stop sharing it,
+     * close every link, forget who was present and the replica. What "New
+     * database" and "Open" do first (the author, 2026-09-25: making a new one
+     * "should boot you out of the old one, and you will need to rejoin"). The
+     * old database's files and membership stay where they are; opening it again
+     * (File > Recent) is how you are back in. */
+    static void leave_database(HormigaApp& app);
     static void answer(HormigaApp& app, bool allow);
 
     static std::vector<hormiga::lan::Offer> offers(HormigaApp& app);

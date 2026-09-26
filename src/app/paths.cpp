@@ -27,6 +27,7 @@
  * in both. Cached because the answer cannot change within a run — the CLI is
  * one process per command, so `config set` is always visible to the next one.
  */
+#include "platform/app_settings.hpp" // the recent databases
 #include "app/app_internal.hpp"
 #include "app/paths.hpp"
 
@@ -354,6 +355,7 @@ void HormigaApp::remember_bundle(const std::string& miga) {
     bundle_file = miga.empty() ? std::filesystem::path()
                                : std::filesystem::absolute(miga, ec);
     write_local_note(local_note(), bundle_file, priority_dir);
+    hormiga::app_settings::note_recent(miga); // File > Recent databases, on this device
 }
 
 void HormigaApp::set_priority_dir(const std::string& dir) {

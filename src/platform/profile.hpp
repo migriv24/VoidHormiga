@@ -47,6 +47,13 @@ std::filesystem::path dir();
 Profile load_or_create(std::string* error = nullptr);
 bool save(const Profile& p, std::string* error = nullptr);
 
+/* LOG OUT: delete this device's profile (its keys, its picture). The next
+ * load_or_create makes a new one. Every credential sealed with the old key
+ * (credentials_key) can no longer be opened, which is what logging out means
+ * here: there is no account to log back into (the author, 2026-09-25: no
+ * server, "we'll fix the loggin issue later"). */
+bool erase(std::string* error = nullptr);
+
 /* Copy a picked picture into dir() as the avatar. "" = reset to the default. */
 bool set_avatar(Profile& p, const std::filesystem::path& picked, std::string* error = nullptr);
 std::filesystem::path avatar_path(const Profile& p);  // "" when default
@@ -54,6 +61,19 @@ std::filesystem::path avatar_path(const Profile& p);  // "" when default
 /* A small square PNG of the avatar (centre-cropped, box-filtered), for sending
  * to other members. "" when there is no picture or it cannot be decoded. */
 std::string avatar_png(const Profile& p, int size = 64);
+
+/* THE KEY THAT SEALS THIS PERSON'S CREDENTIALS (2026-09-25). The author: an
+ * "Encrypt credentials" option "would imply to a user that they aren't
+ * automatically encrypted ... they shouldn't need to [manage encryption]". So
+ * the credential vault is sealed with a key this profile already holds:
+ * derived from the profile's secret key by libsodium's KDF under its own
+ * context ("hrmgcred"), never stored, and returned hex so it opens the vault
+ * as its passphrase would. Whoever can read this profile's folder can open the
+ * vault: the threat model of saved logins in most applications, recorded in
+ * okf/concepts/platform/security.md. Deleting the profile (log out) makes the
+ * credentials unrecoverable, which is what logging out promises.
+ * "" when the profile has no secret key. */
+std::string credentials_key(const Profile& p);
 
 /* The name a person sees when no username is set yet. */
 std::string display_name(const Profile& p);

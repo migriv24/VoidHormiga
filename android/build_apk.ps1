@@ -69,18 +69,23 @@ foreach ($f in "Lato-Regular.ttf", "fa-solid-900.ttf", "JetBrainsMono.ttf") {
     Copy-Item "$repo\vendor\fonts\$f" "$stage\assets\fonts\" -Force -ErrorAction Stop
 }
 
-# 3. manifest + assets -> base apk
+# 3. manifest -> base apk. NOT `-A assets`: on Windows aapt2 stores the host's
+#    separator, and the 0.1.7 APK carried "assets/fonts\Lato-Regular.ttf". Android
+#    looks up "fonts/Lato-Regular.ttf", found nothing, and the phone fell back to
+#    ImGui's 13-pixel bitmap face with no icons: "everything is very small" (the
+#    author, 2026-09-25). The fonts go in below, by name, like the library.
 $unaligned = "$build\unaligned.apk"
 & "$($bt.FullName)\aapt2.exe" link -o $unaligned `
-    --manifest "$here\AndroidManifest.xml" -A "$stage\assets" `
+    --manifest "$here\AndroidManifest.xml" `
     -I "$($platform.FullName)\android.jar" `
     --min-sdk-version 26 --target-sdk-version 34 `
     --version-code $versionCode --version-name $version
 if ($LASTEXITCODE) { throw "aapt2 link failed" }
 
-# 4. the library (a relative path with forward slashes is the in-APK path)
+# 4. the library and the fonts (a relative path with forward slashes IS the in-APK path)
 Push-Location $stage
-& "$($bt.FullName)\aapt.exe" add $unaligned "lib/$Abi/libvoidhormiga.so"
+& "$($bt.FullName)\aapt.exe" add $unaligned "lib/$Abi/libvoidhormiga.so" `
+    "assets/fonts/Lato-Regular.ttf" "assets/fonts/fa-solid-900.ttf" "assets/fonts/JetBrainsMono.ttf"
 $aaptExit = $LASTEXITCODE
 Pop-Location
 if ($aaptExit) { throw "aapt add failed" }
@@ -133,6 +138,16 @@ if ($LASTEXITCODE) { throw "apksigner failed" }
 $certs = & "$($bt.FullName)\apksigner.bat" verify --print-certs $out
 if ($LASTEXITCODE) { throw "the signed APK does not verify" }
 $certs | Select-Object -First 3
+# what Android will look up, by exact name: a path stored with the wrong separator
+# is a file Android cannot find, and the 0.1.7 APK shipped exactly that
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [IO.Compression.ZipFile]::OpenRead($out)
+$names = $zip.Entries | ForEach-Object { $_.FullName }
+$zip.Dispose()
+foreach ($want in "lib/$Abi/libvoidhormiga.so", "classes.dex", "assets/fonts/Lato-Regular.ttf",
+                  "assets/fonts/fa-solid-900.ttf", "assets/fonts/JetBrainsMono.ttf") {
+    if ($names -notcontains $want) { throw "the APK has no '$want' (entries: $($names -join ', '))" }
+}
 Write-Host "APK: $out ($([math]::Round((Get-Item $out).Length / 1MB, 2)) MB)"
 
 # 8. optional: install to a connected device

@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -215,25 +215,46 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.1.7",
-    "previous": "0.1.6",
+    "version": "0.1.8",
+    "previous": "0.1.7",
     "change": "compatible",
-    "date": "2026-09-24",
-    "summary": "the first Hormiga for a phone (an experimental Android build), tag suggestions from Void Maiz, and a shared Builder that no longer gives two members the same names",
+    "date": "2026-09-25",
+    "summary": "the phone works: readable, clear of the system bars, joins databases and adds things; a Settings / Preferences / Profile split, recent databases, and the Antfarm syncs between members",
     "adds": [
-      "AN ANDROID BUILD (experimental, not yet run on a phone by anyone): Data, Calendar, Together and Me, under a navigation bar, with the phone's own keyboard. The phone joins a desktop's shared database as a member; it does not host one, publish, or draw maps. It is on the release page, not offered by the in-app updater",
-      "The same phone screens on a desktop: start Hormiga with --phone (or --touch)",
-      "Tag suggestions come from Void Maiz now (the recommender Hormiga gave them), and linking tags take the strongest connection rather than the sum of all of them"
+      "On a phone, the app keeps clear of the status bar, the camera cutout and the gesture strip at the bottom",
+      "On a phone, the Data screen is cards: a face or the kind's icon, the name, one line, the kind. Tap opens, swipe deletes",
+      "File > Recent databases",
+      "File groups its networking (Share, Discover) apart from the database's own actions",
+      "Settings (this application, on this device: appearance, updates, and which database opens at start) is apart from Preferences (this database: where its files are, and what everyone in it shares)",
+      "Profile, with Log out (typed to confirm, because there is no way back in yet)",
+      "The Antfarm is shared by everyone in a database, laid out left to right by the Arrange button, and has \"This device\" and \"Device paths\" nodes that show each device its own answer",
+      "Test nodes in the Antfarm (Number, Add, Multiply, Text, Join, Upper case, and a Polygon router whose sides you set): they do nothing yet, and exist to stress the shared graph between devices"
     ],
     "behavior_changes": [
       {
-        "what": "NEW RUNES IN A SHARED BUILDER ARE NAMED PER DEVICE (contact-a3f-1 rather than contact-1). Two members adding a rune at the same moment used to mint the same name, and one of the two vanished on the other screen.",
-        "who_is_affected": "Everyone building together. Existing names are unchanged."
+        "what": "ON A PHONE, JOINING WORKS. 0.1.7 could not write a joined database or keep a profile: it looked for them in folders a phone does not have (\"cannot write test/test.miga.part\"). Everything a phone keeps is now inside the app's own folder. The phone was also unreadably small: its fonts were stored under a name Android could not find.",
+        "who_is_affected": "Everyone who tried 0.1.7 on a phone."
+      },
+      {
+        "what": "CREDENTIALS ARE ALWAYS ENCRYPTED, with no option to turn on: sealed with a key your profile holds. \"Encrypt credentials\" is gone. A vault made earlier under a passphrase still asks for it.",
+        "who_is_affected": "Anyone who saves a deploy token or an image-host key."
+      },
+      {
+        "what": "NEW DATABASE AND OPEN LEAVE A SHARED DATABASE on this device; opening it again (Recent) is how you are back in.",
+        "who_is_affected": "Everyone who shares a database."
+      },
+      {
+        "what": "WHICH DATABASE OPENS AT START is a setting. Updating keeps the one you use; a new install starts with an empty database instead of the demo. Before anything replaces your working copy at start, it is kept in backups.",
+        "who_is_affected": "Everyone."
+      },
+      {
+        "what": "THE ANTFARM IS SHARED between members, except nodes that name a credential file, which stay on their device.",
+        "who_is_affected": "Everyone who shares a database and edits its Antfarm."
       }
     ],
     "read_more": [
       "okf/concepts/sections/mobile.md",
-      "android/README.md"
+      "okf/concepts/platform/antfarm/collaboration.md"
     ]
   },
   "update": {

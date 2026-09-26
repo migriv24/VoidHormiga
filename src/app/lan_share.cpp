@@ -155,7 +155,10 @@ std::string LanRuntime::strip_private(HormigaApp& app, const std::string& state_
     for (const auto& mt : mantles_of(probe)) {
         std::vector<std::string> names;
         for (const auto& node : project(probe, mt.c_str()).nodes)
-            if (hormiga::collab::is_private(node, s) || (antfarm_too && mt == kAntfarmMantle))
+            // `antfarm_too` (member sync): since 2026-09-25 only the Antfarm's
+            // credential-naming nodes stay behind, not the whole graph (Q78)
+            if (hormiga::collab::is_private(node, s) ||
+                (antfarm_too && mt == kAntfarmMantle && hormiga::collab::device_only(node)))
                 names.push_back(node.name);
         if (names.empty()) continue;
         probe.dispatch("use " + mt);
@@ -386,6 +389,36 @@ void LanRuntime::stop_sharing(HormigaApp& app) {
     rt.host_status = "not sharing";
     if (rt.pending) rt.pending->answer = (int)Answer::Deny;
     rt.pending.reset();
+}
+
+void LanRuntime::leave_database(HormigaApp& app) {
+    if (!app.lan) return;
+    LanRuntime& rt = *app.lan;
+    const bool was_in = rt.sharing || !rt.present.empty() || rt.replica
+#ifdef HORMIGA_HAVE_NET
+                        || rt.net
+#endif
+        ;
+    stop_sharing(app);
+#ifdef HORMIGA_HAVE_NET
+    net_close(rt);
+#endif
+    rt.replica.reset();
+    rt.replica_for.clear();
+    rt.room_for.clear();
+    rt.present.clear();
+    rt.member_rows.clear();
+    rt.members_read_at = -100.0;
+    rt.conflicts.clear();
+    rt.synced_note.clear();
+    {
+        std::lock_guard<std::mutex> lk(rt.mu);
+        rt.member_fps.clear();
+        rt.incoming.clear();
+        rt.progress.clear();
+        rt.outgoing_doc.clear();
+    }
+    if (was_in) app.log.push_back({"info", "lan", "left the shared database on this device; open it again to rejoin"});
 }
 
 void LanRuntime::answer(HormigaApp& app, bool allow) {

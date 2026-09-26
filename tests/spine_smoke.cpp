@@ -290,8 +290,10 @@ int main() {
     maiz::Scene farm = project(a, "antfarm");
     // core + 5 LOCAL holidays (no cloud default) + Share over LAN and Members
     // (2026-09-16, lan-sharing.md §5: every new database is shareable by default)
-    CHECK(farm.nodes.size() == 8);
-    CHECK(farm.wires.size() == 6);  // records×3, assets×1, publisher.site→server
+    // + This device and Device paths (2026-09-25: the Antfarm syncs, and a node
+    // must be able to ask which device it is on)
+    CHECK(farm.nodes.size() == 10);
+    CHECK(farm.wires.size() == 7);  // records×3, assets×1, publisher.site→server, core→this-device
 
     // ── 5: map actions (one definition → batch → located rune; declines) ───
     a.dispatch("use demo-org");

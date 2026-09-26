@@ -94,6 +94,37 @@ std::string subtitle_of(const maiz::SceneNode& n) {
     return n.label;
 }
 
+/* A kind's colour on the phone's cards: stable (from the name), soft enough for
+ * white text on it, and different for the kinds an organization has most. */
+ImU32 kind_colour(const std::string& glyph) {
+    static const ImU32 k[] = {IM_COL32(74, 134, 217, 255), IM_COL32(64, 160, 120, 255), IM_COL32(214, 128, 52, 255),
+                              IM_COL32(150, 102, 204, 255), IM_COL32(200, 80, 110, 255), IM_COL32(60, 150, 170, 255),
+                              IM_COL32(170, 140, 50, 255),  IM_COL32(110, 120, 140, 255)};
+    if (glyph == "contact") return k[0];
+    if (glyph == "organization") return k[1];
+    if (glyph == "event") return k[2];
+    unsigned h = 2166136261u;
+    for (char c : glyph) h = (h ^ (unsigned char)c) * 16777619u;
+    return k[3 + h % 5];
+}
+
+const char* kind_icon(const std::string& glyph) {
+    if (glyph == "contact") return ICON_FA_USER;
+    if (glyph == "organization") return ICON_FA_BUILDING;
+    if (glyph == "event") return ICON_FA_CALENDAR_DAYS;
+    if (glyph == "incident") return ICON_FA_TRIANGLE_EXCLAMATION;
+    if (glyph == "job") return ICON_FA_BRIEFCASE;
+    return ICON_FA_TAG;
+}
+
+std::string kind_label(const std::string& glyph) {
+    std::string s = glyph;
+    if (!s.empty()) s[0] = (char)std::toupper((unsigned char)s[0]);
+    for (char& c : s)
+        if (c == '_' || c == '-') c = ' ';
+    return s;
+}
+
 /* Fields a phone never shows: canvas geometry, map coordinates (there is no map
  * here), and anything the glyph itself marks hidden. */
 bool phone_skips(const maiz::SceneField& f) {
@@ -157,6 +188,10 @@ void HormigaApp::phone_frame() {
      * window it can meet is a request to join THIS device, which it never
      * offers; draw_request is kept for the day it does. */
     LanRuntime& rt = LanRuntime::of(*this);
+    if (win_profile) { // the shared bodies' "Open profile": on a phone, the Me screen
+        win_profile = false;
+        ph.tab = kMe;
+    }
     rt.discovering = (ph.tab == kTogether);
     LanRuntime::tick(*this, ImGui::GetTime());
     if (lan) LanRuntime::draw_request(*this);
@@ -284,6 +319,7 @@ void HormigaApp::phone_frame() {
         std::map<std::string, int> counts;
         for (const auto& n : scene.nodes) counts[n.glyph]++;
         // kinds as a row of chips that scrolls sideways rather than wrapping
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 3.0f * ph.dp); // a hint that it scrolls, not a desktop bar
         ImGui::BeginChild("##kinds", ImVec2(0, ImGui::GetFrameHeightWithSpacing() + 6 * ph.dp),
                           ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
         auto chip = [&](const char* label, const std::string& kind) {
@@ -297,6 +333,7 @@ void HormigaApp::phone_frame() {
         for (const auto& e : palette.entries)
             if (counts[e.glyph] > 0) chip((e.label + " " + std::to_string(counts[e.glyph])).c_str(), e.glyph);
         ImGui::EndChild();
+        ImGui::PopStyleVar();
 
         const std::string q = lower(ph.search);
         std::vector<const maiz::SceneNode*> rows;
@@ -317,29 +354,55 @@ void HormigaApp::phone_frame() {
                                   ? "Nothing here yet. Join a shared database under Together, or add "
                                     "something with +."
                                   : "Nothing matches.");
-        const float row_h = ImGui::GetFontSize() * 3.4f;
+        /* CARDS, ONE LAYOUT (the author, 2026-09-25: "list view vs card view
+         * should just not exist, and card view should be the default"). A card
+         * is a finger-sized target (~76 dp) with the person's face or the kind's
+         * icon, the name at a size you can read at arm's length, one line of
+         * context, and the kind in the corner. Tap opens it; swipe left deletes.
+         * Drawn over the swipe row's own button, so the gestures are unchanged. */
+        const float card_h = 76.0f * dp, pad = 12.0f * dp;
         for (const maiz::SceneNode* n : rows) {
-            const int act = maiz::begin_swipe_row(ph.swipe, n->name.c_str(), {"Delete"}, row_h);
+            const int act = maiz::begin_swipe_row(ph.swipe, n->name.c_str(), {"Delete"}, card_h);
             // a TAP, not a swipe: released, and never dragged past a few pixels
-            const bool tapped = ImGui::IsItemDeactivated() && ImGui::GetIO().MouseDragMaxDistanceSqr[0] < 36.0f * ph.dp * ph.dp;
+            const bool tapped = ImGui::IsItemDeactivated() && ImGui::GetIO().MouseDragMaxDistanceSqr[0] < 36.0f * dp * dp;
+            const bool held = ImGui::IsItemActive();
+            // the card IS the row's button: read its rectangle before anything else
+            // submits an item (presence_item does, and was measured by mistake)
+            const ImVec2 r0 = ImGui::GetItemRectMin(), r1 = ImGui::GetItemRectMax();
             maiz::presence_item(surfaces, roster, net_settings.show, "table:data", n->id, maiz::Mark::Badge,
                                 share_now && !share_now(*n));
-            const ImVec2 at = ImGui::GetCursorScreenPos();
-            float text_x = at.x;
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            const float round = 12.0f * dp;
+            dl->AddRectFilled(r0, r1, ImGui::GetColorU32(held ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg), round);
+            dl->AddRectFilled(ImVec2(r0.x, r0.y), ImVec2(r0.x + 4.0f * dp, r1.y), kind_colour(n->glyph), round,
+                              ImDrawFlags_RoundCornersLeft); // the kind, at a glance
+            const float r = 22.0f * dp, cy = (r0.y + r1.y) * 0.5f;
+            const ImVec2 face(r0.x + pad + r, cy);
             if (n->glyph == "contact" || n->glyph == "organization") {
-                const float r = row_h * 0.3f;
-                draw_avatar(*n, ImVec2(at.x + r, at.y + ImGui::GetTextLineHeight() * 0.5f), r);
-                text_x += 2 * r + 12;
+                draw_avatar(*n, face, r);
+            } else {
+                dl->AddCircleFilled(face, r, kind_colour(n->glyph));
+                const char* icon = kind_icon(n->glyph);
+                const ImVec2 is = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize() * 1.1f, FLT_MAX, 0, icon);
+                dl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 1.1f, ImVec2(face.x - is.x * 0.5f, face.y - is.y * 0.5f),
+                            IM_COL32(255, 255, 255, 235), icon);
             }
-            ImGui::SetCursorScreenPos(ImVec2(text_x, at.y - ImGui::GetTextLineHeight() * 0.55f));
-            ImGui::TextUnformatted(title_of(*n).c_str());
-            ImGui::SetCursorScreenPos(ImVec2(text_x, ImGui::GetCursorScreenPos().y - 6));
-            ImGui::TextDisabled("%s", subtitle_of(*n).c_str());
-            // the next row starts at THIS row's bottom edge, not where the text ended
-            const float row_top = at.y - (row_h - ImGui::GetTextLineHeight()) * 0.5f;
-            ImGui::SetCursorScreenPos(
-                ImVec2(ImGui::GetWindowPos().x + ImGui::GetStyle().WindowPadding.x, row_top + row_h));
-            maiz::end_swipe_row(ph.swipe);
+            const float tx = face.x + r + pad;
+            const float title_px = ImGui::GetFontSize() * 1.12f, sub_px = ImGui::GetFontSize() * 0.92f;
+            const std::string kind = kind_label(n->glyph);
+            const float kind_w = ImGui::GetFont()->CalcTextSizeA(sub_px, FLT_MAX, 0, kind.c_str()).x;
+            dl->PushClipRect(ImVec2(tx, r0.y), ImVec2(r1.x - pad - kind_w - pad, r1.y), true);
+            dl->AddText(ImGui::GetFont(), title_px, ImVec2(tx, cy - title_px - 1.0f * dp), ImGui::GetColorU32(ImGuiCol_Text),
+                        title_of(*n).c_str());
+            dl->AddText(ImGui::GetFont(), sub_px, ImVec2(tx, cy + 3.0f * dp), ImGui::GetColorU32(ImGuiCol_TextDisabled),
+                        subtitle_of(*n).c_str());
+            dl->PopClipRect();
+            dl->AddText(ImGui::GetFont(), sub_px, ImVec2(r1.x - pad - kind_w, r0.y + pad * 0.8f),
+                        ImGui::GetColorU32(ImGuiCol_TextDisabled), kind.c_str());
+            // begin_swipe_row leaves the cursor mid-row, for widget content; the card
+            // is drawn, not laid out, so the next one starts at this one's bottom edge
+            ImGui::SetCursorScreenPos(ImVec2(ImGui::GetWindowPos().x + ImGui::GetStyle().WindowPadding.x, r1.y));
+            maiz::end_swipe_row(ph.swipe); // its spacing is the gap between cards
             if (act == 0) {
                 out.push_back("rm " + n->name);
                 maiz::show_snackbar(ph.snack, "Deleted " + title_of(*n), "UNDO");
@@ -347,7 +410,7 @@ void HormigaApp::phone_frame() {
                 stack.push("detail:" + n->name);
             }
         }
-        ImGui::Dummy(ImVec2(0, row_h)); // room under the last row for the add button
+        ImGui::Dummy(ImVec2(0, card_h)); // room under the last card for the add button
     } else if (ph.tab == kCalendar) {
         /* ── CALENDAR: a week you can step through, the day, what is coming ──
          * The phone's calendar is an AGENDA, not a grid: a month of cells at

@@ -5068,3 +5068,81 @@ companion off under MSVC.
 
 **Still owed:** a person running the APK on a phone, and an Android button on
 the download page (the stable APK URL is ready for it).
+
+# 0.1.8 prepared: the phone works, Settings / Preferences / Profile, the Antfarm syncs (2026-09-25)
+
+The author ran 0.1.7 on their phone and wrote nine points: *"the mobile app is
+very bad."* They also said more about the desktop and the Antfarm. What was
+done, by the author's numbering:
+
+**1-4, 9: the phone.** Every point had a cause, recorded in
+[mobile](/concepts/sections/mobile.md) §"The first phone":
+- the fonts were stored under a Windows path Android could not find, which is
+  why everything was tiny and icon-less;
+- nothing reserved the status bar and the gesture strip, so Void Maiz gained a
+  safe area and both shells use it;
+- Void Maiz's speed dial drew its entries as slivers;
+- the Data screen is cards now.
+
+**A phone harness came first**: the desktop takes a phone's screen, density,
+safe area and a script of taps, and writes screenshots. It found its own first
+bug (the desktop's real cursor dragging the "finger" away mid-tap) before
+finding the app's.
+
+**5: files and the database.** One owner for this device's folders,
+`platform/device_paths.hpp`: the profile and joined databases had been guessed
+from `HOME` and `APPDATA`. A real join ran through the harness end to end (the
+CLI hosting, the phone joining by taps, "received 4 files from host"). The
+Antfarm's local nodes were already portable (relative paths); what was not
+portable was the application around them.
+
+**6: File.** Recent databases; a "Networking" group; New and Open leave a shared
+database (`LanRuntime::leave_database`); no "Encrypt credentials", because
+credentials now always are: the vault is sealed with a key derived from the
+profile's secret key ([security](/concepts/platform/security.md) §2, with the
+changed threat model stated).
+
+**7: Settings, Preferences, Profile.** The old Settings window split: Settings
+is the application's, on this device (appearance, effects, console,
+networking, updates, and "Starting Hormiga": the default database, empty unless
+chosen). Preferences is a database's (local: where its files are; global:
+what everyone in it shares). Q89 asks whether appearance's STORAGE should move
+to the device too. The Profile window is on the File menu, with log out typed
+to confirm and the warning the author wrote. Profile sync is shown as not built.
+**Starting**: the first start keeps the database a person already uses as the
+default, and nothing replaces a working copy at start without packing it into
+backups first. `cur_miga` is now restored at start, which nothing did: a saved
+database had said "unsaved working copy" after every restart.
+
+**8: the Antfarm.** Q78 answered and built: the whole Antfarm syncs, except
+nodes that name a credential file. New "This device" and "Device paths" nodes
+show each device its own answer. Arrange lays the graph out left to right, and
+the default colony is seeded that way; the old one put every consumer to the
+core's left, so every wire looped. See
+[across devices](/concepts/platform/antfarm/collaboration.md). Not measured
+across two machines.
+
+**Files moved to stay within budget, not budgets raised:** the database's life
+to `app/database.cpp`, and the Antfarm tab to `ui/antfarm.cpp`. `app.hpp` grew
+by two lines (1246 to 1248: Preferences, and `open_default_database`).
+
+**Measured:** 51/52 (`reduce_conformance`, upstream's known red); layering ok;
+every file within budget; OKF links resolve. The 0.1.8 APK is built and signed
+with the Hormiga key, and its entries are checked by name. Interaction
+Combinators' APK builds with the safe area. **Not published, not committed**:
+that is the author's call.
+
+**Later the same day: test nodes.** The author: *"simple 'math' nodes and
+'string' nodes ... useful for testing"*, and a polygon node *"mostly to test the
+limits of the shape of a node, and how its ports connect ... kinda just act as
+a router node"*. Added to the Antfarm's palette under "Test":
+- Number, Add and Multiply on a new `number` payload;
+- Text, Join and Upper case on a new `text` payload;
+- `poly_router`, a polygon body with untyped ports (the canvas fits them to
+  anything), 6 sides by default and a per-rune `sides` field (3 to 24; Void
+  Maiz reads `content.sides` now).
+
+None computes anything, because wiring is not read yet. They exist to stress
+the synced graph between devices. Placed and wired from the CLI and seen
+arranged on the canvas: the triangle and the octagon draw, and their ports
+take wires.

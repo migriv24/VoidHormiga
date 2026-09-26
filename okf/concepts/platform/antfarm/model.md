@@ -114,6 +114,19 @@ Five are placeholders for planned work (`hol_sheets`, `hol_lan_peer`,
 person meets in the palette, and the [redesign](/concepts/platform/antfarm/redesign.md)
 has to decide how placeholders present themselves.
 
+## Device nodes and test nodes (2026-09-25)
+
+| kind | ports | what it is for |
+|---|---|---|
+| `hol_device` "This device" | records in; `desktop` and `phone` records out | a graph that runs on every member can say what differs by device; its face shows each device its own kind and platform |
+| `hol_device_paths` "Device paths" | none | where this device keeps its profile and databases (`platform/device_paths.hpp`) |
+| `math_number`, `math_add`, `math_multiply` | `number` payload | **test nodes**: they compute nothing yet, and exist to stress the synced graph |
+| `str_text`, `str_join`, `str_upper` | `text` payload | test nodes, as above |
+| `poly_router` "Polygon router" | one untyped in, one untyped out | a polygon body (6 sides, or its own `sides` from 3 to 24) that fits any wire: a router for tidying, and a test of node shape and perimeter ports |
+
+The two payloads the test nodes add, `number` and `text`, are refused into
+other payloads' ports exactly as `records` is refused into `site`.
+
 # The default colony
 
 Every fresh database is wired by `seed_antfarm_transcript()`, which is plain

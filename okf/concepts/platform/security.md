@@ -20,9 +20,21 @@ agreement).
 
 # 2. At rest (v1)
 
-- The `.miga` v2 registry ([Antfarm](/concepts/platform/antfarm/index.md)) lives under a
-  **passphrase**; credentials are encrypted. No hardcoded fallback secret
-  exists, ever.
+- **Credentials are always encrypted, with nothing to turn on (2026-09-25).**
+  The author: an "Encrypt credentials" option *"would imply to a user that they
+  aren't automatically encrypted ... they shouldn't need to [manage
+  encryption]."* The vault is sealed with a key the PROFILE holds: derived from
+  the profile's X25519 secret key by libsodium's KDF (`crypto_kdf_derive_from_key`,
+  subkey 1, context `hrmgcred`), never stored, used as the vault's passphrase
+  (`profile::credentials_key`). A database opens its vault by itself; a vault
+  made earlier under a typed passphrase still asks for it (File > Unlock
+  credentials). **The threat model changed, and this is it:** whoever can read
+  this person's profile folder can open the vault, which is the model of saved
+  logins in most applications, and weaker than a passphrase only a person
+  knows. **Log out** (the Profile window, typed to confirm) deletes the profile,
+  so every credential sealed with it becomes unrecoverable, which is what the
+  author asked logging out to mean. No hardcoded fallback secret exists, ever:
+  the key is random per profile.
 - The data store is encryptable at the app level — content columns sealed
   with a master key derived at unlock — with **"encrypt everything" as an
   org-level switch** (loudly offered at org creation; the perf cost is honest

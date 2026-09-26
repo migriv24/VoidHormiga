@@ -30,16 +30,13 @@
 #include <unistd.h>
 #endif
 
+#include "platform/device_paths.hpp"
+
 namespace fs = std::filesystem;
 
 namespace hormiga::profile {
 
 namespace {
-
-std::string env(const char* k) {
-    const char* v = std::getenv(k);
-    return v ? std::string(v) : std::string();
-}
 
 std::string iso_today() {
     const std::time_t t = std::time(nullptr);
@@ -85,20 +82,10 @@ std::string human_bytes(unsigned long long b) {
 }  // namespace
 
 fs::path dir() {
-    fs::path d;
-    if (const std::string o = env("HORMIGA_PROFILE_DIR"); !o.empty()) {
-        d = fs::path(o);
-    } else {
-#ifdef _WIN32
-        d = fs::path(env("APPDATA")) / "VoidHormiga" / "profile";
-#elif defined(__APPLE__)
-        d = fs::path(env("HOME")) / "Library" / "Application Support" / "VoidHormiga" / "profile";
-#else
-        const std::string xdg = env("XDG_CONFIG_HOME");
-        d = (xdg.empty() ? fs::path(env("HOME")) / ".config" : fs::path(xdg)) / "voidhormiga" /
-            "profile";
-#endif
-    }
+    // the device says where (platform/device_paths.hpp): on a desktop the same
+    // per-user folder as always; on a phone, inside the app's own folder, where
+    // HOME-based guessing had put it at "/.config/..." (2026-09-25)
+    fs::path d = hormiga::device::get().profile;
     std::error_code ec;
     fs::create_directories(d, ec);
     return d;
@@ -246,6 +233,29 @@ std::string avatar_png(const Profile& p, int size) {
         },
         &png, size, size, 4, out.data(), size * 4);
     return png;
+}
+
+bool erase(std::string* error) {
+    std::error_code ec;
+    const fs::path d = dir();
+    for (const auto& e : fs::directory_iterator(d, ec)) fs::remove_all(e.path(), ec);
+    if (ec && error) *error = "could not remove the profile at " + u8(d) + ": " + ec.message();
+    return !ec;
+}
+
+std::string credentials_key(const Profile& p) {
+    if (p.secret_key.size() != crypto_kdf_KEYBYTES || sodium_init() < 0) return {};
+    unsigned char sub[32];
+    // subkey 1 of context "hrmgcred": only this use, never the key exchange's own key
+    if (crypto_kdf_derive_from_key(sub, sizeof sub, 1, "hrmgcred",
+                                   reinterpret_cast<const unsigned char*>(p.secret_key.data())) != 0)
+        return {};
+    char hex[sizeof sub * 2 + 1];
+    sodium_bin2hex(hex, sizeof hex, sub, sizeof sub);
+    sodium_memzero(sub, sizeof sub);
+    std::string out(hex);
+    sodium_memzero(hex, sizeof hex);
+    return out;
 }
 
 std::string display_name(const Profile& p) {

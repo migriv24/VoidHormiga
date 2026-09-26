@@ -233,7 +233,11 @@ BUDGET = {
     # apply_theme must re-apply each time it rebuilds the style. The first
     # Android build: a style scaled once at startup is wiped by the next
     # theme change, and a phone at 3x gets desktop-sized targets.
-    'src/app/app.hpp': 1246,
+    # -> 1248 (2026-09-25): the Preferences window (the author split a
+    # database's preferences from the application's own Settings; one line
+    # holds its flag and draw call) and open_default_database (Settings >
+    # Starting Hormiga, called by a shell that was given no database).
+    'src/app/app.hpp': 1248,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

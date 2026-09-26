@@ -172,22 +172,14 @@ fold into concepts and clear from here.
   already content-hashed, so this is well defined. It waited on Q73 (answered 2026-09-19: Void Maiz and Palabra) for *where*
   it lives (Maiz, Palabra, or here).
 
-- **Q78 — Should the Antfarm sync between members, with private nodes?**
-  (Opened 2026-09-19.) **Lean: yes for wiring, no for secrets. Nodes sync like
-  any other rune, a `private` tag keeps a node on its device, and key files
-  and vault secrets keep travelling only at join time (§3a).**
-
-  This reverses §3a (*"the host's Antfarm wins"*). The author, after testing:
-  *"if i add a node on one antfarm, it should do stuff on the other. maybe
-  private nodes can exist?"* The hard part is keys. A synced node that names a
-  key file the other device does not have is a node that fails there. The
-  author also floated an Antfarm overhaul, *"potentially isolate it in its own
-  void based thing"*. That is bigger than this question and not led by it.
-  **2026-09-22:** [the Antfarm across devices](/concepts/platform/antfarm/collaboration.md)
-  refines the lean using what Void Maiz learned on Interaction Combinators:
-  description syncs, credentials never do, readiness is per device, and **one
-  device drives each node's automatic effects** (the physics-rule pattern).
-  Settle [Q82](/developer_questions.md)'s A2 (wiring authority) first.
+- **Q89 — should appearance move from the database to the device?** (Opened
+  2026-09-25, by the Settings / Preferences split.) **Lean: yes.** Light or
+  dark, the UI scale and the visual effects are a person's taste on a device,
+  and they sit in Settings now, but they are still STORED in the database's
+  config (`ui.scale`, `ui.fx.*`), so they travel with the database and a member
+  who turns effects off turns them off for everyone. Moving them is a migration
+  (read the database's value once, then keep it in `platform/app_settings`),
+  which is why it was not slipped into the split.
 
 - **Q69 — Google Calendar WRITE needs an OAuth client secret, and this repo is
   public. Do we ship one?** (Opened 2026-09-10, by the calendar hub reframe.)
@@ -2073,6 +2065,22 @@ settled it named. They are not a place to think out loud forever.
   structure does not depend on the words.
 
 # Decided
+
+## By the author, 2026-09-25
+
+- **Q78 (should the Antfarm sync between members?): yes, all of it, for now.**
+  The author: *"for now we can have a design such that, all devices share the
+  complete antfarm with each other, maybe we have a 'device detection' node ...
+  i still need to give you a better design, but i kinda feel like we need
+  SOMETHING to look good right now."* Built the same day: every mantle syncs,
+  including the Antfarm; one kind of node stays home, a node that NAMES A
+  CREDENTIAL FILE (`collab::device_only`: the host decides whose keys publish,
+  and a key's path differs on every device). New `hol_device` and
+  `hol_device_paths` nodes show each device its own answer. Wiring is still not
+  READ ([redesign](/concepts/platform/antfarm/redesign.md) A2), so a device
+  branch is drawn and shared, not yet followed. The bigger Antfarm overhaul is
+  the author's to give. [Across devices](/concepts/platform/antfarm/collaboration.md).
+
 
 - **Q64 — three kinds of rune** and **Q65 — may an edge weight BE a value?**
   ANSWERED 2026-09-03/04, upstream, and cleared from Open. Void Core 0.2.14

@@ -15,7 +15,13 @@ const ImGuiWindowFlags kBarFlags = ImGuiWindowFlags_NoScrollbar |
                                    ImGuiWindowFlags_NoSavedSettings |
                                    ImGuiWindowFlags_NoCollapse;
 
-float app_bar_height() { return ImGui::GetFrameHeight() + ImGui::GetStyle().WindowPadding.y * 2.0f; }
+// the title is set larger than body text (a phone's top bar reads at arm's length)
+constexpr float kTitleScale = 1.3f;
+float app_bar_height() {
+    const ImGuiStyle& s = ImGui::GetStyle();
+    return std::max(ImGui::GetFrameHeight(), ImGui::GetFontSize() * kTitleScale + s.FramePadding.y * 2.0f) +
+           s.WindowPadding.y * 2.0f;
+}
 
 } // namespace
 
@@ -92,7 +98,10 @@ bool begin_app_bar(const char* title, bool can_back) {
         ImGui::PopStyleColor();
         ImGui::SameLine();
     }
+    ImGui::PushFont(nullptr, ImGui::GetFontSize() * kTitleScale);
+    ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(title);
+    ImGui::PopFont();
     return back;
 }
 

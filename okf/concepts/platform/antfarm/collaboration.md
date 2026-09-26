@@ -1,12 +1,42 @@
 ---
 type: Concept
 title: The Antfarm across devices
-description: "Why the Antfarm does not sync today (the host's wins, keys go stale, and the absolute-to-relative rewrite would flow back), what the author asked for instead (Q78: sync the wiring, private nodes), and what Void Maiz's September collaborative-canvas work changes about doing it safely: wires as runes, device-scoped names, claims, presentational joins, and the physics rule's 'one device drives' pattern, which answers the question nobody had asked yet: which device performs a synced node's effects?"
+description: "Since 2026-09-25 the whole Antfarm syncs between members (Q78, answered), except nodes that name a credential file; This device and Device paths nodes show each device its own answer; Arrange lays it out by flow. Below that, why it did not sync before, and what Void Maiz's September collaborative-canvas work (wires as runes, device-scoped names, claims, presentational joins, one device drives) says about doing it safely."
 tags: [status:current, audience:dev, confidence:asserted]
 timestamp: 2026-09-22T00:00:00Z
 ---
 
-# Today: the Antfarm stays home
+# Since 2026-09-25: the Antfarm is shared
+
+The author answered Q78: *"for now we can have a design such that, all devices
+share the complete antfarm with each other"*. Built the same day:
+
+- **Every mantle syncs**, the Antfarm included (`share_mantle` in
+  `app/lan_net.cpp` says yes to all). Positions and sizes converge by
+  Lamport-latest, exactly as Interaction Combinators' do (§4 below), and names
+  are device-scoped (§1).
+- **One kind of node stays home**: one that names a credential file
+  (`token_file`, `secret_file`, `key_file`; `collab::device_only` in
+  `domain/collab.hpp`). The same filter keeps it out of the join splice and the
+  replica. So §3a's first two reasons still hold for keys, and the third (a
+  path rewrite flowing back) cannot happen, because the nodes that carry such
+  paths do not travel.
+- **The device nodes**, `hol_device` ("This device": records in, a `desktop`
+  and a `phone` records out) and `hol_device_paths` ("Device paths"). The rune
+  is shared; each device's face shows ITS answer, read from
+  `platform/device_paths.hpp`, the same source the application uses. A new
+  database has both in its default colony, and an existing one gets them once
+  at start.
+- **Arrange** lays the graph out left to right by flow, as one undo frame of
+  position commands, so it arranges it on every member's screen.
+
+**What this is not yet:** wiring is still not READ by any code
+([model](/concepts/platform/antfarm/model.md) §"What an edge is"), so a
+`phone` branch is a statement the graph makes and shares, not one the
+application follows. That is the redesign's A2, and the author's bigger
+overhaul. **Not measured:** two members editing one Antfarm across two machines.
+
+# Before 2026-09-25: the Antfarm stayed home
 
 Members sync their databases automatically since 0.1.5, through Void Maiz's
 `voidmaiz_net` over Void Palabra's session ([LAN sharing](/concepts/platform/lan-sharing.md)

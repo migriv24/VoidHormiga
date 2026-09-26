@@ -28,7 +28,9 @@ void LanRuntime::draw_profile(HormigaApp& app) {
 /* The window's content, shared with the phone's Me screen (phone/phone.cpp). */
 void LanRuntime::draw_profile_body(HormigaApp& app) {
     LanRuntime& rt = of(app);
-    maiz::dim_wrapped("You, on this computer. The same for every database you open.");
+    const bool phone = app.phone != nullptr;
+    maiz::dim_wrapped(phone ? "You, on this phone. The same for every database you open."
+                            : "You, on this computer. The same for every database you open.");
     ImGui::Spacing();
 
     // ── picture ──────────────────────────────────────────────────────────────
@@ -38,7 +40,7 @@ void LanRuntime::draw_profile_body(HormigaApp& app) {
     ImGui::Dummy(ImVec2(76, 76));
     ImGui::SameLine();
     ImGui::BeginGroup();
-    if (ImGui::Button("Choose a picture...") && app.on_pick_file) {
+    if (app.on_pick_file && ImGui::Button("Choose a picture...")) { // only where there is a file dialog
         const std::string picked = app.on_pick_file("");
         std::string err;
         if (!picked.empty() && !hormiga::profile::set_avatar(rt.me, picked, &err)) app.toast(err, true);
@@ -102,7 +104,8 @@ void LanRuntime::draw_profile_body(HormigaApp& app) {
                            "to yours, and no two people are shown in the same colour.",
                            shown.c_str());
 
-    // ── this computer ────────────────────────────────────────────────────────
+    // ── this computer (a desktop's diagnostics; a phone's person does not need them)
+    if (!phone) {
     ImGui::SeparatorText("This computer");
     static std::vector<hormiga::profile::Fact> facts;
     if (facts.empty() || ImGui::IsWindowAppearing()) {
@@ -127,13 +130,75 @@ void LanRuntime::draw_profile_body(HormigaApp& app) {
         for (const auto& f : facts) all += f.label + ": " + f.value + "\n";
         ImGui::SetClipboardText(all.c_str());
     }
+    } // !phone
 
     // ── key ──────────────────────────────────────────────────────────────────
     ImGui::SeparatorText(ICON_FA_LOCK "  Key");
     ImGui::Text("Fingerprint %s", fingerprint(rt).c_str());
-    ImGui::TextDisabled("Made on %s. The private half never leaves this computer.", rt.me.created.c_str());
-    if (ImGui::SmallButton("Show the profile folder") && app.on_open)
+    maiz::dim_wrapped(("Made on " + rt.me.created + ". The private half never leaves this " +
+                       (phone ? "phone." : "computer.")).c_str());
+    if (app.on_open && ImGui::SmallButton("Show the profile folder")) // only where there is a file browser
         app.on_open(hormiga::profile::dir().string());
     if (!rt.profile_error.empty())
         ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.35f, 1), "%s", rt.profile_error.c_str());
+
+    // ── on another device (planned) ──────────────────────────────────────────
+    ImGui::SeparatorText(ICON_FA_ARROWS_ROTATE "  On your other devices");
+    maiz::dim_wrapped("Not yet: each device has its own profile for now. Later you will be able to "
+                      "carry this one to another device (your key travels encrypted), so the same "
+                      "you is on your phone and your computer.");
+
+    // ── log out: deliberate, because there is no way back in yet ─────────────
+    ImGui::SeparatorText(ICON_FA_RIGHT_FROM_BRACKET "  Log out");
+    maiz::dim_wrapped("Removes you from this device: your key, your picture, and every saved credential "
+                      "sealed with your key. Your databases stay.");
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.72f, 0.22f, 0.20f, 1.0f));
+    if (ImGui::Button("Log out...")) ImGui::OpenPopup("Log out?");
+    ImGui::PopStyleColor();
+    static char typed[32] = {};
+    if (ImGui::BeginPopupModal("Log out?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 26.0f);
+        ImGui::TextColored(ImVec4(0.95f, 0.55f, 0.35f, 1), "There is currently no way to log back in.");
+        ImGui::TextWrapped("You will lose your credentials for every database on this device, and this "
+                           "profile's key. A new profile is made. To be in a shared database again, "
+                           "ask for it to be shared with your new profile.");
+        ImGui::PopTextWrapPos();
+        ImGui::TextUnformatted("Type  log out  to continue:");
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::InputText("##typed", typed, sizeof typed);
+        const bool sure = std::string(typed) == "log out";
+        ImGui::BeginDisabled(!sure);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.72f, 0.22f, 0.20f, 1.0f));
+        if (ImGui::Button("Log out")) {
+            leave_database(app); // this identity is no longer who the members let in
+            std::string err;
+            if (hormiga::profile::erase(&err)) {
+                // the credentials sealed with the old key: this database's vault goes too
+                app.vault.lock();
+                std::error_code ec;
+                std::filesystem::remove(app.vault_path(), ec);
+                app.imgbb_key.clear();
+                app.secrets_locked = false;
+                rt.me = hormiga::profile::load_or_create(&rt.profile_error);
+                const std::string k = hormiga::profile::credentials_key(rt.me);
+                if (!k.empty() && app.vault.create(k)) app.vault.save(app.vault_path().string());
+                refresh_self(app);
+                rt.members_read_at = -100.0;
+                app.toast("logged out: this device has a new profile");
+                app.log.push_back({"info", "profile", "logged out; a new profile was made"});
+            } else {
+                app.toast(err, true);
+            }
+            typed[0] = 0;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::PopStyleColor();
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            typed[0] = 0;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }

@@ -100,8 +100,10 @@ a graph drawn on it.
 - **No program-callable holiday seam exists** for Allomone. That is on
   purpose. It is co-developed with Allomone's I/O phase (see
   [the three DSLs](/concepts/foundation/dsls.md)).
-- **The Antfarm does not sync between members.** Sync strips it and the host's
-  wins (lan-sharing §3a). The author wants that changed: [Q78](/developer_questions.md).
+- **The Antfarm syncs between members (since 2026-09-25, Q78).** Nodes that
+  name a credential file stay on their device. New device nodes, and an
+  Arrange button that lays the graph out by flow. See
+  [across devices](/concepts/platform/antfarm/collaboration.md).
 
 # The decision ledger
 
@@ -129,6 +131,7 @@ without losing why.
 | 2026-09-16 | **The host's Antfarm wins** on credentials and wiring; keys are meant to go stale. | [across devices](/concepts/platform/antfarm/collaboration.md) |
 | 2026-09-19 | The author wants the Antfarm to sync, with private nodes (Q78), and floated isolating it *"in its own void based thing"*. | [redesign](/concepts/platform/antfarm/redesign.md) |
 | 2026-09-22 | A folder. The CLI found to accept ill-typed links, and no code found to read wiring. | this page |
+| 2026-09-25 | **The Antfarm syncs** (Q78: "all devices share the complete antfarm"), except credential-naming nodes. `hol_device` and `hol_device_paths`; Arrange; the tab's code moves to `ui/antfarm.cpp`. | [across devices](/concepts/platform/antfarm/collaboration.md) |
 
 # Where the Antfarm meets the rest
 

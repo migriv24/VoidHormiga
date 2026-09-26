@@ -209,6 +209,7 @@ struct HormigaApp {
     std::shared_ptr<PhoneUi> phone;
     void enable_phone(bool touch, std::unique_ptr<maiz::TextInputPlatform> keyboard = nullptr, float density = 1.0f);
     void frame_prelude();           // merges, jobs, deferred commands: both front-ends
+    void open_default_database(bool reopen_last, bool first_run); // a shell given no database, after init (app/database.cpp)
     void phone_frame();
 
     bool light_mode = true; // shells read this for the clear color
@@ -746,7 +747,8 @@ private:
     void draw_physics_view(float body_h);
 
     // ── settings (config tier: logged, persisted with the org) ──────────────
-    bool show_settings = true;   // the Settings dock window
+    bool show_settings = true;   // the Settings dock window (the application's, on this device)
+    bool win_preferences = false; void draw_preferences(); // a database's: local + global (ui/settings.cpp)
     float ui_scale = 1.20f;      // config ui.scale
     float density = 1.0f;        // the screen's (a phone's ~3): apply_theme scales the style by it
     bool map_show_prox = false;  // config ui.map_proximity — derived spatial
