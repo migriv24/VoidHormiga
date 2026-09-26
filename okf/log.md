@@ -5146,3 +5146,13 @@ None computes anything, because wiring is not read yet. They exist to stress
 the synced graph between devices. Placed and wired from the CLI and seen
 arranged on the canvas: the triangle and the octagon draw, and their ports
 take wires.
+
+## 0.1.8 shipped (2026-09-25)
+
+All three runner legs built on the first run. Installer 14,241,207 bytes; APK
+4.42 MB, signed with the Hormiga key (certificate `37d0ee24…`), its entries
+checked by name. The feed was written after the Linux archive was on disk:
+every artifact hashes to what the feed says, and the Linux digest `\078e9ae…`
+equals the runner's own. The live feed says `latest 0.1.8`, and
+`voidhormiga-cli update --check` reads it. **Still owed:** the author's phone
+running 0.1.8.
