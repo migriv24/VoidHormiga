@@ -29,12 +29,26 @@
         android:windowSoftInputMode="adjustNothing"
         android:exported="true"
         android:screenOrientation="portrait"
+        android:launchMode="singleTask"
         android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|density|uiMode">
       <meta-data android:name="android.app.lib_name"
                  android:value="voidhormiga" />
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+      <!-- "Open with Void Hormiga" on a .miga (a file manager, a chat, a mail).
+           Android cannot match an extension on a content:// link, and a .miga
+           arrives as a generic binary, so the filter is broad and the app checks
+           the name: anything that is not a .miga is refused with a message.
+           No storage permission: the link grants read access to that one file. -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="content" android:mimeType="application/octet-stream" />
+        <data android:scheme="content" android:mimeType="application/zip" />
+        <data android:scheme="content" android:mimeType="application/x-miga" />
       </intent-filter>
     </activity>
   </application>

@@ -155,6 +155,21 @@ struct LanRuntime {
     std::set<std::string> member_fps;                // who may connect to sync
     std::vector<std::pair<std::string, std::string>> incoming;  // (user, document)
     std::map<std::string, Progress> progress;        // fingerprint -> transfer
+    /* ONE FRAME IN FLIGHT PER LINK, when it is big enough to watch (2026-09-25:
+     * the author wanted pictures to arrive "gradually" with a bar, not look
+     * instant or not at all). `total` is 0 while receiving, because the sealed
+     * stream does not say how long a message is until it has ended. */
+    struct Transfer {
+        std::string what;     // "a picture", "the database", ...
+        long long done = 0, total = 0;
+        bool sending = false;
+        double started = 0.0, finished = -1.0; // finished: kept a moment to show it landed
+    };
+    std::map<std::string, Transfer> transfers;       // link (a fingerprint) -> the latest
+    std::map<std::string, double> link_ms;           // link -> the sealed handshake's round trip
+    // GUI thread: each member's beacon count a while ago, for connection strength
+    std::map<std::string, std::pair<double, std::uint32_t>> heard_mark;
+    std::map<std::string, float> strength;           // fingerprint -> 0..1, beacons arriving
 
     ~LanRuntime();
 

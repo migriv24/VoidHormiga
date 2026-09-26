@@ -269,7 +269,7 @@ void LanRuntime::sync_tick(HormigaApp& app, double now, bool presence) {
         const auto mine_share = hormiga::collab::share_settings(project(app.core, kAntfarmMantle));
         std::thread(net_listen, app.lan,
                     hormiga::sync::KeyPair{rt.me.public_key, rt.me.secret_key},
-                    mine_share.port + 1)
+                    lan_detail::member_sync_port(mine_share.port))
             .detach();
     }
     net_links(app, now);

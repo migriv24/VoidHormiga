@@ -172,6 +172,33 @@ fold into concepts and clear from here.
   already content-hashed, so this is well defined. It waited on Q73 (answered 2026-09-19: Void Maiz and Palabra) for *where*
   it lives (Maiz, Palabra, or here).
 
+  **Built as leaned (2026-09-25), for the author to confirm and clear:** a
+  present member pulls missing files by content hash (it had silently skipped
+  contacts' pictures, and large ones broke the link;
+  [LAN sharing](/concepts/platform/lan-sharing.md) §3b), each large transfer
+  has a bar on the phone's Migos screen, and "Ask before downloading pictures"
+  is the cautious mode, in the phone's Settings and the desktop's Networking
+  settings.
+
+- **Q90 — a phone's photos: the system picker (no prompt), or the "allow access
+  to photos" permission?** (Opened 2026-09-25.) The author expected the
+  permission prompt to appear. **Lean: the picker, as built.** Android 13+'s
+  photo picker needs no permission: the person chooses the photos, and the
+  choice is the consent. Asking for all photos (`READ_MEDIA_IMAGES`) is what
+  Android now tells apps not to do when they only need what a person picks,
+  and an app that asks for every photo to attach one is a worse neighbour on
+  someone's phone. The prompt would only be needed for a feature that browses
+  the whole library without asking, which nothing here does.
+
+- **Q91 — the names Migos and Migas, and the Hormiga button's face.** (Opened
+  2026-09-25.) The author left the network screen's name to us, with a lean
+  toward "Migos" (friends). Chosen: **Migos** for the network (the people you
+  share with), **Migas** for the database manager (a miga is a crumb, what an
+  ant carries home). The centre button is an **ant drawn from shapes** on the
+  accent colour, because no icon font has one; the author said they may
+  supply an icon and assets. **Lean: keep the names; replace the drawn ant
+  with the author's icon when it exists** (one function, `draw_ant_button`).
+
 - **Q89 — should appearance move from the database to the device?** (Opened
   2026-09-25, by the Settings / Preferences split.) **Lean: yes.** Light or
   dark, the UI scale and the visual effects are a person's taste on a device,

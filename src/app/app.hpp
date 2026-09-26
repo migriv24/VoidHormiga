@@ -156,6 +156,12 @@ struct HormigaApp {
     // OS SAVE dialog for a .miga (pick where to write) — (suggested name) →
     // chosen path, "" = cancelled. "Choose where to save" (author 2026-07-24).
     std::function<std::string(std::string_view suggested)> on_save_file;
+    /* A phone's pick and save answer LATER (voidmaiz/documents.hpp): these start
+     * one (false = no system picker here), and the shell hands every answer to
+     * document_arrived (phone/documents.cpp). Requests: see kDoc* there. */
+    std::function<bool(int request, const std::string& mime)> on_pick_document;
+    std::function<bool(int request, const std::string& src, const std::string& name)> on_save_document;
+    void document_arrived(int request, const std::string& status, const std::string& path, const std::string& name);
     // decode + upload an image file to the GPU; id 0 = failed
     struct HostTexture {
         unsigned long long id = 0;
@@ -211,6 +217,8 @@ struct HormigaApp {
     void frame_prelude();           // merges, jobs, deferred commands: both front-ends
     void open_default_database(bool reopen_last, bool first_run); // a shell given no database, after init (app/database.cpp)
     void phone_frame();
+    void phone_pick_photo(const std::string& rune, const std::string& field); // the image editor's "Choose a photo"
+    void gl_context_lost() { tex_cache.clear(); } // a phone went to the background: every texture id is gone
 
     bool light_mode = true; // shells read this for the clear color
 
@@ -749,6 +757,7 @@ private:
     // ── settings (config tier: logged, persisted with the org) ──────────────
     bool show_settings = true;   // the Settings dock window (the application's, on this device)
     bool win_preferences = false; void draw_preferences(); // a database's: local + global (ui/settings.cpp)
+    bool win_databases = false; void draw_databases(); // the database manager (ui/databases.cpp)
     float ui_scale = 1.20f;      // config ui.scale
     float density = 1.0f;        // the screen's (a phone's ~3): apply_theme scales the style by it
     bool map_show_prox = false;  // config ui.map_proximity — derived spatial

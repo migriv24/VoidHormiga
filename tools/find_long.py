@@ -237,7 +237,14 @@ BUDGET = {
     # database's preferences from the application's own Settings; one line
     # holds its flag and draw call) and open_default_database (Settings >
     # Starting Hormiga, called by a shell that was given no database).
-    'src/app/app.hpp': 1248,
+    # -> 1256 (2026-09-25): a phone's document seams (the system picker and
+    # save dialog answer later, so a start hook, a save hook and the one door
+    # every answer comes back through), the photo button's entry point, and
+    # the database manager's flag and draw call, and gl_context_lost (Android
+    # destroys the GL context in the background, and the photo picker sends
+    # the app there: every cached picture was a dead texture on return). The
+    # phone's own state went into PhoneUi, which is phone/'s, not here.
+    'src/app/app.hpp': 1257,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

@@ -228,6 +228,8 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
             inet_ntop(AF_INET, &from.sin_addr, ip, sizeof ip);
             peer.address = ip;
             std::lock_guard<std::mutex> lk(p_->mu);
+            auto was = p_->seen.find(peer.peer_id);
+            peer.heard = was == p_->seen.end() ? 1 : was->second.heard + 1;
             p_->seen[peer.peer_id] = peer;
         }
     });
@@ -641,7 +643,7 @@ bool Session::accept_one(std::uint16_t port, const KeyPair& self, std::string& p
     return true;
 }
 
-bool Session::send(const std::string& payload, std::string* error) {
+bool Session::send(const std::string& payload, std::string* error, const Progress* progress) {
     if (!open()) {
         if (error) *error = "session is not open";
         return false;
@@ -660,6 +662,7 @@ bool Session::send(const std::string& payload, std::string* error) {
             return false;
         }
         off += n;
+        if (progress && *progress) (*progress)(off, payload.size());
     } while (off < payload.size());
     return true;
 }
@@ -675,19 +678,25 @@ void Session::set_timeout_ms(int ms) {
     setsockopt(p_->sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
 }
 
-bool Session::receive(std::string& payload, std::string* error, std::size_t max_bytes) {
+bool Session::receive(std::string& payload, std::string* error, std::size_t max_bytes, const Progress* progress) {
     if (!open()) {
         if (error) *error = "session is not open";
         return false;
     }
     payload.clear();
     std::vector<unsigned char> pt(kChunk + crypto_secretstream_xchacha20poly1305_ABYTES);
-    for (;;) {
+    for (int chunks = 0;; ++chunks) {
         std::string frame;
         bool timed_out = false;
         if (!recv_frame(p_->sock, frame, &timed_out)) {
-            if (error) *error = timed_out ? "the receive timed out with nothing to read"
-                                          : "the connection dropped mid-receive";
+            /* A timeout BETWEEN messages is a quiet socket, and the caller may
+             * simply ask again. A timeout in the MIDDLE of one is not: its first
+             * chunks are already pulled through the stream state, so the next
+             * receive could never authenticate. Said as a failure, so the
+             * caller rebuilds the link instead (2026-09-25). */
+            if (error) *error = timed_out && chunks == 0 ? "the receive timed out with nothing to read"
+                                : timed_out           ? "the connection stalled in the middle of a message"
+                                                      : "the connection dropped mid-receive";
             return false;
         }
         unsigned long long mlen = 0;
@@ -704,6 +713,7 @@ bool Session::receive(std::string& payload, std::string* error, std::size_t max_
             return false;
         }
         if (tag == crypto_secretstream_xchacha20poly1305_TAG_FINAL) return true;
+        if (progress && *progress) (*progress)(payload.size(), 0);
     }
 }
 

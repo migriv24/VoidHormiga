@@ -529,7 +529,11 @@ void HormigaApp::register_image_editors() {
         if (f.is_string && p.size() >= 2) p = p.substr(1, p.size() - 2);
         if (p == "null") p.clear();
         ImGui::PushID(f.key.c_str());
-        if (ImGui::SmallButton(ICON_FA_IMAGES "  Choose from the gallery"))
+        // a phone's own photos, through the system's photo picker (the author,
+        // 2026-09-25: "images can't be shared or uploaded" from the phone)
+        if (phone && ImGui::Button(ICON_FA_CAMERA "  Choose a photo")) phone_pick_photo(n.name, f.key);
+        if (phone ? ImGui::Button(ICON_FA_IMAGES "  One this database has")
+                  : ImGui::SmallButton(ICON_FA_IMAGES "  Choose from the gallery"))
             ImGui::OpenPopup("##gallery");
         const std::string chosen = org_image_picker("##gallery", "this organization's images");
         if (!chosen.empty()) {

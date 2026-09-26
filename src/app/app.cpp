@@ -2597,6 +2597,7 @@ void HormigaApp::frame() {
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::MenuItem("Databases...")) win_databases = true; // every .miga here (ui/databases.cpp)
             if (ImGui::MenuItem("Save database", "Ctrl+Shift+S")) {
                 // Save As if there's no file yet (author #1); the dialog must
                 // run NOW (not deferred) so the path is chosen before the pack
@@ -2836,6 +2837,7 @@ void HormigaApp::frame() {
 #endif
     draw_settings();
     draw_preferences();
+    draw_databases();
     draw_style_tab();
     draw_share_window();
     draw_data_tools_window();

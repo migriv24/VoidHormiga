@@ -27,6 +27,7 @@
 #include "stb_image.h"
 
 #include "platform/device_paths.hpp" // where this device keeps its files
+#include "voidmaiz/documents.hpp" // the system picker and save dialog
 #include "voidmaiz/mobile.hpp"        // the safe area
 #include "voidmaiz/textinputview.hpp" // maiz::android_text_input
 
@@ -38,6 +39,7 @@
 #include <GLES3/gl3.h>
 
 #include <algorithm>
+#include <cstdlib> // setenv
 #include <filesystem>
 #include <memory>
 
@@ -46,6 +48,8 @@
 namespace {
 
 struct Shell {
+    maiz::TouchScrollState scroll;
+    float density = 1.0f; // px per dp, for the scroll's slop
     android_app* aapp = nullptr;
     EGLDisplay display = EGL_NO_DISPLAY;
     EGLSurface surface = EGL_NO_SURFACE;
@@ -176,6 +180,7 @@ void backends_up(Shell& s) {
         const float dpi = (float)AConfiguration_getDensity(s.aapp->config);
         const float density = std::clamp(dpi > 0 ? dpi / 160.0f : 2.0f, 1.0f, 5.0f);
         load_fonts(s.aapp->activity->assetManager, density, s.app);
+        s.density = density;
         HormigaApp& app = s.app;
         app.base_dir = s.aapp->activity->internalDataPath ? std::filesystem::path(s.aapp->activity->internalDataPath)
                                                           : std::filesystem::path("/data/local/tmp");
@@ -184,7 +189,25 @@ void backends_up(Shell& s) {
         // the profile and joined databases inside the app's folder, never HOME
         // (a phone has none: 0.1.7 joined into "test/" under "/", 2026-09-25)
         hormiga::device::set(hormiga::device::phone(app.base_dir));
+        // Android has no /tmp, and std::filesystem::temp_directory_path falls
+        // back to it: the share bundle could not be written. TMPDIR is what it
+        // reads first, so every temp file lands inside the app's own folder.
+        {
+            std::error_code ec;
+            const auto tmp = app.base_dir / "tmp";
+            std::filesystem::create_directories(tmp, ec);
+            setenv("TMPDIR", tmp.c_str(), 1);
+        }
         android_app* aapp = s.aapp;
+        // the system's picker and save dialog (voidmaiz/documents.hpp): asked
+        // here, answered in render_frame, a frame or a minute later
+        const std::string incoming = (app.base_dir / "incoming").string();
+        app.on_pick_document = [aapp, incoming](int request, const std::string& mime) {
+            return maiz::android_pick_document(aapp->activity, request, mime, incoming);
+        };
+        app.on_save_document = [aapp](int request, const std::string& src, const std::string& name) {
+            return maiz::android_save_document(aapp->activity, request, src, name, "application/octet-stream");
+        };
         app.on_quit = [aapp] { ANativeActivity_finish(aapp->activity); };
         app.on_load_texture = gl_load_texture;
         app.enable_phone(true, maiz::android_text_input(s.aapp->activity), density);
@@ -193,6 +216,8 @@ void backends_up(Shell& s) {
         // a phone reopens the database it had; a new install starts EMPTY, not the demo
         app.open_default_database(true, first_run);
         s.app_ready = true;
+        // started by "Open with Void Hormiga" on a .miga: it arrives like a pick
+        maiz::android_opened_document(s.aapp->activity, (app.base_dir / "incoming").string());
     }
     s.backends_ready = true;
 }
@@ -202,6 +227,9 @@ void backends_down(Shell& s) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplAndroid_Shutdown();
     egl_term(s);
+    // the context is gone, and every picture's texture id with it: they reload
+    // on return (the photo picker sends the app here every time)
+    if (s.app_ready) s.app.gl_context_lost();
     s.backends_ready = false; // the app (and ImGui context) survive backgrounding
 }
 
@@ -214,6 +242,9 @@ void on_cmd(android_app* a, int32_t cmd) {
     // without another word (the desktop saves on close; a phone never closes).
     // shutdown() also releases the Human floor claim, which an agent would wait
     // on; no agent runs on a phone, so the floor has nobody to hold it from.
+    case APP_CMD_RESUME: // "Open with" on a .miga while Hormiga was already running
+        if (s.app_ready) maiz::android_opened_document(a->activity, (s.app.base_dir / "incoming").string());
+        break;
     case APP_CMD_PAUSE:
     case APP_CMD_SAVE_STATE:
         if (s.app_ready) s.app.shutdown();
@@ -229,6 +260,10 @@ int32_t on_input(android_app* a, AInputEvent* ev) {
 }
 
 void render_frame(Shell& s) {
+    // what the system's picker or save dialog answered, between frames (never
+    // mid-frame: an arriving .miga replaces the whole database)
+    for (maiz::DocumentResult r; maiz::android_take_document(s.aapp->activity, r);)
+        s.app.document_arrived(r.request, r.status, r.path, r.name);
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplAndroid_NewFrame();
     ImGui::NewFrame();
@@ -237,6 +272,7 @@ void render_frame(Shell& s) {
         s.safe_age = 0;
     }
     maiz::reserve_safe_area(s.safe); // before the phone's own bars, which then sit inside it
+    maiz::touch_scroll(s.scroll, s.density); // a finger has no wheel
     s.app.frame(); // the phone front-end: it runs the platform keyboard itself
     ImGui::Render();
     EGLint w = 0, h = 0;

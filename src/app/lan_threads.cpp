@@ -117,6 +117,14 @@ void host_loop(HostJob job) {
             std::lock_guard<std::mutex> lk(rt.mu);
             rt.host_status = "sending to " + req.user + ": " + std::to_string(sent / 1024) +
                              " of " + std::to_string(total / 1024) + " KB";
+            auto& t = rt.transfers["join:" + req.user]; // the Migos screen's bar
+            if (t.started == 0.0) t = {"the database, to " + req.user, 0, total, true, now_seconds(), -1.0};
+            t.done = sent;
+        }
+        {
+            std::lock_guard<std::mutex> lk(rt.mu);
+            auto t = rt.transfers.find("join:" + req.user);
+            if (t != rt.transfers.end()) t->second.finished = now_seconds();
         }
         if (ok) ok = s.send(dump({{"t", "done"}}), &err);
         std::string reply;
@@ -223,6 +231,10 @@ void join_loop(JoinJob job) {
             got += (long long)chunk.size();
             if ((got & 0xFFFFF) < (long long)chunk.size())
                 status("receiving: " + std::to_string(got / 1024) + " of " + std::to_string(total / 1024) + " KB");
+            std::lock_guard<std::mutex> lk(rt.mu); // the Migos screen's bar
+            auto& t = rt.transfers["join"];
+            if (t.started == 0.0) t = {"the database, from " + job.offer.user, 0, total, false, now_seconds(), -1.0};
+            t.done = got;
         }
         o.close();
         fs::remove(out, ec);
@@ -242,6 +254,7 @@ void join_loop(JoinJob job) {
         for (auto it = welcome["vault"].begin(); it != welcome["vault"].end(); ++it)
             if (it.value().is_string()) rt.joined_vault[it.key()] = it.value().get<std::string>();
     rt.join_status = "received " + std::to_string(files.size()) + " files from " + job.offer.user;
+    if (auto t = rt.transfers.find("join"); t != rt.transfers.end()) t->second.finished = now_seconds();
     rt.thread_log.push_back({"info", "join: " + rt.join_status + " into " + u8(job.dest)});
     rt.joining = false;
 }

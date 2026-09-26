@@ -129,7 +129,7 @@ void HormigaApp::new_database() {
     cur_page.clear();
     ed.selection.clear();
     do_save();             // flush the fresh structure into the working .db
-    toast("new database (empty) - use 'Save database as...' to name & place it");
+    if (!phone) toast("new database (empty) - use 'Save database as...' to name & place it"); // a phone names it first
 }
 
 /* SETTINGS > STARTING HORMIGA (the author, 2026-09-25): "default database ...

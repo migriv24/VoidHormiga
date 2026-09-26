@@ -30,11 +30,6 @@ using namespace lan_detail;
 
 namespace {
 
-double now_seconds() {
-    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch())
-        .count();
-}
-
 fs::path maiz_replica_path(const std::string& database) {
     return hormiga::profile::dir() / "replicas" / (database + ".maiz");
 }
@@ -88,9 +83,14 @@ bool LanRuntime::net_open(HormigaApp& app) {
     };
     o.share_mantle = [](const std::string&) { return true; };
 
-    /* The fields that name files. `path` is an image's and a resource's; a
-     * contact's picture is `photo`. Anything else stays a string nobody fetches. */
-    for (const char* field : {"content.path", "content.photo"})
+    /* The fields that name files: every field the glyphs give the "image"
+     * editor, plus a resource's `path`. A contact's and an organization's
+     * picture is `avatar`, which was missing until 2026-09-25, so no picture
+     * on a contact ever crossed between members (the author: "images can't be
+     * shared"); `photo` stays for databases that used it. Anything else stays a
+     * string nobody fetches. */
+    for (const char* field : {"content.path", "content.photo", "content.avatar", "content.image", "content.cover",
+                              "content.portrait", "content.poster"})
         o.files.references.fields[field] = voidpalabra::sha256_hex_anywhere();
     HormigaApp* ap = &app;
     const fs::path assets = app.assets_dir();   // the database's folder, resolved once
@@ -125,6 +125,9 @@ bool LanRuntime::net_open(HormigaApp& app) {
 void LanRuntime::net_close(LanRuntime& rt) {
     {
         std::lock_guard<std::mutex> lk(rt.mu);
+        if (std::getenv("HORMIGA_SYNC_TRACE") && !rt.link_io.empty())
+            rt.thread_log.push_back({"info", "sync: the network closed with " + std::to_string(rt.link_io.size()) +
+                                                 " link(s) open"});
         rt.link_io.clear();
     }
     rt.net.reset();
@@ -178,8 +181,11 @@ void LanRuntime::net_tick(HormigaApp& app, double now) {
     if (dropped)
         app.log.push_back({"info", "sync",
                            std::to_string(dropped) + " frame(s) had no link; it will be rebuilt"});
-    for (const auto& n : rt.net->take_notes())
+    static const bool trace = std::getenv("HORMIGA_SYNC_TRACE") != nullptr; // a harness reads it
+    for (const auto& n : rt.net->take_notes()) {
         app.log.push_back({n.level, "sync", n.link.empty() ? n.text : n.text + " (" + n.link + ")"});
+        if (trace) std::fprintf(stderr, "[%s] sync: %s (%s)\n", n.level.c_str(), n.text.c_str(), n.link.c_str());
+    }
     if (rt.net->take_spliced()) {
         /* A MERGE CHANGED THE DOCUMENT. Void Maiz splices `mantles` and
          * `glyphs` into the core we handed it, so there is no state to swap --
@@ -200,34 +206,128 @@ void LanRuntime::net_tick(HormigaApp& app, double now) {
 
 /* ── one link, one thread: bytes in, bytes out ──────────────────────────────── */
 
+namespace {
+
+/* What a sync frame carries, read from Void Palabra's header ("VPS1", a u32
+ * length, JSON), which comes before the payload and so is in the first chunk. */
+std::string frame_what(const std::string& bytes) {
+    if (bytes.size() < 8 || bytes.compare(0, 4, "VPS1") != 0) return "data";
+    const std::uint32_t n = (std::uint32_t)(unsigned char)bytes[4] | (std::uint32_t)(unsigned char)bytes[5] << 8 |
+                            (std::uint32_t)(unsigned char)bytes[6] << 16 | (std::uint32_t)(unsigned char)bytes[7] << 24;
+    if (bytes.size() < 8 + (std::size_t)n) return "data";
+    const std::string_view h(bytes.data() + 8, n);
+    if (h.find("\"kind\":\"content\"") != std::string_view::npos) return "a file";
+    if (h.find("\"kind\":\"doc\"") != std::string_view::npos) return "the database";
+    return "data";
+}
+
+/* Frames smaller than this come and go faster than a bar could be read. */
+constexpr std::size_t kWatchBytes = 128 * 1024;
+
+} // namespace
+
 void LanRuntime::net_pump(std::shared_ptr<LanRuntime> rt, hormiga::sync::Session* session,
                           const std::string& link, double until) {
-    session->set_timeout_ms(700);
+    /* FULL DUPLEX (2026-09-25). This used to be one loop: send everything
+     * queued, then read. Two members that each had a large frame to send (a
+     * document, a picture) both sat in send() with nobody reading, both socket
+     * buffers filled, and both sends timed out: "the connection dropped
+     * mid-send", on both sides, on every rebuilt link, because Palabra resends
+     * what was not acknowledged. A phone's photo guaranteed it, so pictures
+     * from a phone never arrived. Now a reader thread always drains the socket
+     * while this thread sends. The two halves of the stream are independent
+     * (Session keeps separate send and receive states), and the reader ends
+     * before the session is closed, because close() is not safe under a read. */
+    session->set_timeout_ms(3000); // per chunk; a phone on weak Wi-Fi needs the air
+    std::atomic<bool> done{false};
+    std::string rx_err;
+    std::thread reader([&] {
+        while (!done && session->open()) {
+            std::string in, err;
+            bool watching = false;
+            const hormiga::sync::Session::Progress progress = [&](std::size_t got, std::size_t) {
+                if (got < kWatchBytes) return;
+                std::lock_guard<std::mutex> lk(rt->mu);
+                auto& t = rt->transfers[link];
+                if (!watching) { // the header came in the first chunk: say what it is
+                    t = {frame_what(in), 0, 0, false, now_seconds(), -1.0};
+                    watching = true;
+                }
+                t.done = (long long)got;
+            };
+            if (session->receive(in, &err, hormiga::lan::kMaxSyncFrame, &progress)) {
+                std::lock_guard<std::mutex> lk(rt->mu);
+                if (watching) {
+                    auto& t = rt->transfers[link];
+                    t.done = t.total = (long long)in.size();
+                    t.finished = now_seconds();
+                }
+                auto it = rt->link_io.find(link);
+                if (it == rt->link_io.end()) break;
+                it->second.in.push_back(std::move(in));
+            } else if (err.find("timed out") == std::string::npos) {
+                rx_err = err; // a real failure; a quiet socket is not one (peer.cpp)
+                break;
+            }
+        }
+        done = true;
+    });
+
     std::string err;
-    while (session->open() && now_seconds() < until) {
+    while (!done && now_seconds() < until) {
         std::vector<std::string> send_now;
         {
             std::lock_guard<std::mutex> lk(rt->mu);
             auto it = rt->link_io.find(link);
-            if (it == rt->link_io.end()) break;         // the frame thread dropped it
+            if (it == rt->link_io.end()) break; // the frame thread dropped it
             send_now.swap(it->second.out);
         }
-        bool broken = false;
-        for (const auto& frame : send_now)
-            if (!session->send(frame, &err)) { broken = true; break; }
-        if (broken) break;
-        std::string in;
-        if (session->receive(in, &err, hormiga::lan::kFileChunk * 4)) {
-            std::lock_guard<std::mutex> lk(rt->mu);
-            auto it = rt->link_io.find(link);
-            if (it == rt->link_io.end()) break;
-            it->second.in.push_back(std::move(in));
-        } else if (err.find("timed out") == std::string::npos) {
-            break;  // a real failure; a quiet socket is not one (peer.cpp)
+        if (send_now.empty()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
+            continue;
         }
+        bool broken = false;
+        for (const auto& frame : send_now) {
+            if (frame.size() < kWatchBytes) {
+                if (!session->send(frame, &err)) { broken = true; break; }
+                continue;
+            }
+            // a big one: the Migos screen shows it moving, chunk by chunk
+            {
+                std::lock_guard<std::mutex> lk(rt->mu);
+                rt->transfers[link] = {frame_what(frame), 0, (long long)frame.size(), true, now_seconds(), -1.0};
+            }
+            const hormiga::sync::Session::Progress progress = [&](std::size_t sent, std::size_t total) {
+                std::lock_guard<std::mutex> lk(rt->mu);
+                auto& t = rt->transfers[link];
+                t.done = (long long)sent;
+                t.total = (long long)total;
+            };
+            const bool sent = session->send(frame, &err, &progress);
+            {
+                std::lock_guard<std::mutex> lk(rt->mu);
+                auto& t = rt->transfers[link];
+                t.finished = now_seconds();
+                if (!sent) t.what += " (interrupted)";
+            }
+            if (!sent) { broken = true; break; }
+        }
+        if (broken) break;
     }
+    done = true;
+    reader.join(); // within one receive timeout
     session->close();
+    if (err.empty()) err = rx_err;
     std::lock_guard<std::mutex> lk(rt->mu);
+    /* SAY WHY A LINK ENDED (2026-09-25): a link that closed in silence looked
+     * exactly like one that was never needed, and a picture that never arrived
+     * had nothing in any log to explain it. */
+    if (!err.empty() && err.find("timed out") == std::string::npos)
+        rt->thread_log.push_back({"warn", "sync: a link ended: " + err});
+    else if (now_seconds() >= until)
+        rt->thread_log.push_back({"info", "sync: a link reached its time limit; it will be rebuilt"});
+    else if (std::getenv("HORMIGA_SYNC_TRACE"))
+        rt->thread_log.push_back({"info", "sync: a link was closed from this side (" + link.substr(0, 8) + ")"});
     rt->link_io.erase(link);
 }
 
@@ -298,8 +398,11 @@ void LanRuntime::net_dial(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPair
     /* PATIENTLY: the listener rebinds between accepts, so a dial that lands in
      * that window is refused and means nothing. Six tries over three seconds. */
     bool ok = false;
+    double handshake_ms = 0.0;
     for (int i = 0; i < 6 && !ok; ++i) {
+        const double t0 = now_seconds();
         ok = s.connect(peer.address, (std::uint16_t)port, keys, pk, sas, &err);
+        handshake_ms = (now_seconds() - t0) * 1000.0;
         if (!ok) std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     const std::string link = peer.fingerprint;
@@ -314,6 +417,9 @@ void LanRuntime::net_dial(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPair
     {
         std::lock_guard<std::mutex> lk(rt->mu);
         rt->thread_log.push_back({"info", "sync: reached " + peer.user + ", carrying frames"});
+        /* The sealed handshake is two round trips (keys out, keys back, then the
+         * proof), so half of it is this link's ping, near enough to show. */
+        rt->link_ms[link] = handshake_ms * 0.5;
     }
     net_pump(rt, &s, link, now_seconds() + 600.0);
 }

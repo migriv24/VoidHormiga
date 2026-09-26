@@ -463,8 +463,9 @@ void LanRuntime::draw_sync_section(HormigaApp& app) {
                             "same network then keep it in sync on their own.");
         return;
     }
-    maiz::dim_wrapped("Members who are here sync automatically. Private notes and the Antfarm "
-                        "stay on this computer.");
+    // the Antfarm has synced since 0.1.8, except nodes naming a credential file
+    maiz::dim_wrapped("Members who are here sync automatically, pictures included. Private notes, and "
+                        "Antfarm nodes that name a credential file, stay on this device.");
     int open_links = 0;
     for (const auto& l : rt.net->links()) open_links += l.open ? 1 : 0;
     if (open_links)

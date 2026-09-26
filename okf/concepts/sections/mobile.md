@@ -1,7 +1,7 @@
 ---
 type: Concept
 title: Hormiga on a phone
-description: "Opened 2026-09-22; scoped by the author 2026-09-23: no Builder, no Map, no Antfarm, no visible console, no windows. Screens under a bottom navigation bar (Data, Calendar, Together, Me), BUILT in src/phone/ and runnable on any desktop with --phone; joining and syncing were measured from the phone screen. The phone is a member doing field work, never the host. Also: why a surface's identity is the concept and not the form, how Allomone should read the form (a Void Maiz predicate, like device \"pen\"), and what still stands between this and an APK (libsodium first)."
+description: "Opened 2026-09-22; scoped by the author 2026-09-23: no Builder, no Map, no visible console, no windows. Since 2026-09-25: eight screens (Data, Calendar, Notes, Migos, Migas, Profile, Settings, Antfarm), any four on a bar the person arranges around a locked centre Hormiga button that opens a gallery of all of them; touch scrolling; photos through the system picker; pictures that sync with a progress bar; .miga files on and off the phone; a phone that may host. BUILT in src/phone/, runnable on any desktop with --phone. The phone is a member doing field work first. Also: why a surface's identity is the concept and not the form, how Allomone should read the form (a Void Maiz predicate, like device \"pen\"), and what still stands between this and an APK (libsodium first)."
 tags: [status:current, audience:all, confidence:asserted]
 timestamp: 2026-09-23T00:00:00Z
 ---
@@ -51,6 +51,43 @@ through it end to end. **Still owed:** the author's phone running 0.1.8.
 Also for the phone: a fresh install starts EMPTY (not the demo), the Together
 screen no longer offers a folder chooser, Me no longer shows desktop hardware,
 and a card's photo has no file-path box.
+
+# The second pass (2026-09-25, later)
+
+The author, after 0.1.8: *"the mobile app is ALMOST really good!"*, and six
+points. Each is built and was measured in the harness unless it says otherwise:
+
+| the author asked | what it is now |
+|---|---|
+| "scrolling doesn't work ... this is huge" | Void Maiz's `touch_scroll`: drag to scroll, let go and it glides; a scroll never taps the card it started on. Swipe-to-delete, which had never worked in a list (a shared offset every row reset), works too |
+| "images can't be shared or uploaded", with loading bars, and the "allow access to photos" prompt | a photo field has **Choose a photo**: the system's photo picker (Void Maiz's documents holiday). **No permission prompt**, deliberately: the picker needs none, and the pick is the consent ([Q90](/developer_questions.md)). Pictures now sync (four sync bugs, [LAN sharing](/concepts/platform/lan-sharing.md) §3b), and each large transfer has a bar on Migos |
+| "networking should be its own tab", with ping and connection strength | **Migos**: who is here, with signal (beacons arriving) and ping (the last handshake); transfers; the sync; sharing from this phone; joining |
+| notes on the phone, shareable | **Notes**: the desktop's `note` rune, shared or private by the Antfarm's private tag, first line as title |
+| a customizable bar, set in the phone's Settings; one locked centre "Hormiga button" opening a gallery of everything | any four of the eight screens, in the order chosen, saved on this device (`app_settings.phone_nav`); the centre is an ant drawn from shapes (the author may replace it with an icon); it opens **Everything**, a gallery with a pin on what is on the bar |
+| "network" instead of "Together"; a database manager on phone and desktop; `.miga` files on mobile | **Migos** is the network ("friends"); **Migas** manages databases: new, open, import, save a copy out, default, remove. Switching saves first. A `.miga` arrives by Import or by "Open with Void Hormiga". The desktop has **File > Databases** |
+| a default database of the phone's contacts, later | recorded below under Horizons; not built |
+
+**The screens now:**
+
+| screen | what it does |
+|---|---|
+| **Data** | as before: search, kind chips, cards, swipe to delete, + |
+| **Calendar** | as before |
+| **Notes** | cards (title, first lines, a lock or a people mark); tap to write; Shared/Private; tags; + |
+| **Migos** | the network (above) |
+| **Migas** | the databases (above) |
+| **Profile** | the desktop's own profile body |
+| **Settings** | the bar (pin, order, defaults), light/dark, "ask before downloading pictures", version and folders, Save now |
+| **Antfarm** | its nodes as cards (a lock on those that stay on this device), a node's fields and wires, or the graph on a canvas a finger pans, with zoom buttons |
+
+**The phone may host (explored, and it works in code).** "Share from this phone"
+is on Migos. The share code had nothing desktop-only in it except a temp folder
+Android does not have; the shell now points `TMPDIR` inside the app. What it
+costs is said on the button: the room key lives on the phone. **Not yet run as
+a host on a real phone.**
+
+**Still owed:** the author's phone running this. The harness has played every
+flow above; a real device has not.
 
 # The author's scope (2026-09-23, decided), and what is built
 
@@ -131,14 +168,19 @@ writing rules, importing a spreadsheet, theming, backups, hosting a share. All
 of those stay on the desktop, and the phone says so instead of offering a
 cramped version of them.
 
-# The phone is a member, never the host
+# The phone is a member first
+
+*(Written as "never the host" on 2026-09-22. On 2026-09-25 the author asked to
+"figure out how to possibly make the mobile device host a network", and it can
+now; see "The second pass". What follows still describes the default.)*
 
 This one rule removes most of the hard problems:
 
 - **The data arrives by joining.** A phone joins a database a desktop shares
   on the LAN ([LAN sharing](/concepts/platform/lan-sharing.md)) and keeps a
-  Palabra replica, exactly as a second laptop does. It never opens a `.miga`
-  from a file, so it needs no file picker to start.
+  Palabra replica, exactly as a second laptop does. It needs no file picker
+  to start. (Since 2026-09-25 it can also take a `.miga` from a file, on
+  Migas or by "Open with", for the person who was sent one.)
 - **Credentials mostly do not need to reach it.** A phone does not publish
   with its own keys unless the organization chooses that. The Antfarm's
   proposed "one device drives" rule ([Antfarm across devices](/concepts/platform/antfarm/collaboration.md)
@@ -168,7 +210,8 @@ This one rule removes most of the hard problems:
 | **Niche Tools, Style, Data Tools** | **no** | |
 | **Share / members** | **join and leave** | join by code on a digit keypad (the code is `maiz::lan::encode_join_code`, and the keypad is Interaction Combinators', an easy lift); the member list (`draw_member_list`); never host |
 
-**Navigation (built 2026-09-23).** A **bottom navigation bar**, not a segmented
+**Navigation (built 2026-09-23; superseded by the arranged bar above on
+2026-09-25, which keeps everything below except the fixed four).** A **bottom navigation bar**, not a segmented
 control and not a menu: **Data**, **Calendar**, **Together** (with a badge
 counting who is here) and **Me**. Each destination keeps its own stack of
 screens (list → detail), so switching away and back keeps your place. A second
@@ -341,11 +384,11 @@ than carried.
 | piece | why the phone needs it |
 |---|---|
 | wheel / drum **date and time pickers** | Calendar quick-add; every date field |
-| **safe-area insets** | notches and gesture bars cover content on current phones |
+| ~~**safe-area insets**~~ | **built 2026-09-25** (`reserve_safe_area`) |
 | action sheet | "Call · Email · Copy" on a contact |
 | pull-to-refresh | "sync now", which in a log-first system is a real gesture |
 | the stepper as a registry field editor | so a glyph's `hints.editors` can ask for one |
-| fling / momentum consumed by the canvas | the map should coast |
+| fling / momentum consumed by the canvas | the map should coast. Lists glide since 2026-09-25 (`touch_scroll`) |
 
 ## Missing from Void Maiz (to ask for)
 
@@ -357,7 +400,7 @@ than carried.
 | **app lifecycle**: pause, resume, low memory | a backgrounded phone must save its replica and drop links cleanly, then come back. `idle_ms` already makes a silent link honest, and saving on pause is the other half | high |
 | **a general HTTP seam** | `update.hpp` has `android_http` (`HttpURLConnection` through JNI) *inside* the update client. Hormiga's HTTP shells out to `curl`, which a phone does not have. Publishing, tiles and `.ics` feeds need the seam, not the updater | high, for publish and the map |
 | text selection and copy | copying a phone number out of a note | medium; the touch page says "not planned without a client", and Hormiga is that client |
-| the Storage Access Framework (open or save a file) | not needed while the phone only joins; needed the day it exports | low |
+| ~~the Storage Access Framework (open or save a file)~~ | **built 2026-09-25**: `voidmaiz/documents.hpp` (the photo picker, open a document, save a copy to, "Open with"), which is how `.miga` files and photos get on and off a phone | resolved |
 
 ## Hormiga's own blockers (not Void Maiz's)
 
@@ -409,6 +452,21 @@ intents.
 - **A phone that hosts.** Joining through a hotspot needs no code
   ([Void Maiz's LAN transport](../../../../VoidMaiz/okf/concepts/lan-transport.md)).
   A phone *hosting* a database is a different trust decision (keys on a
-  device that gets lost), and it is not the author's "diminished" brief.
+  device that gets lost). **Explored and built as an option on 2026-09-25**
+  at the author's request ("Share from this phone" on Migos); what is still
+  open is running it on a real phone, and whether a hotspot the phone itself
+  makes carries the beacon.
+- **The phone's contacts as a database** (the author, 2026-09-25: *"a default
+  database be one of your contacts on your phone"*, a future plan). What it
+  would take: Android's `READ_CONTACTS`, a real runtime permission prompt
+  (unlike the photo picker there is no permission-free contact picker for a
+  whole address book), read through the documents holiday's Java side. The
+  shape it should have: a **read-only projection** of the address book as
+  `contact` runes, in a database of its own that is **never shared** unless
+  the person copies a contact into a shared one. Otherwise a phone joining an
+  organization's database would carry its owner's whole address book to every
+  member. The "database of databases" the author mentioned in the same breath
+  (a database that lists and links others) is the natural home for it, and is
+  also later.
 - **Wi-Fi Direct** between two phones with no router. Void Maiz's call, later,
   and only with two Android devices in hand to test.

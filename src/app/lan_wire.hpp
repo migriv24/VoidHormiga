@@ -23,6 +23,11 @@ namespace hormiga::lan {
 
 inline constexpr int kProtocol = 1;
 inline constexpr std::size_t kFileChunk = 1 << 20;     // one file message on the wire
+/* The largest sync frame a member link accepts: Void Palabra's own max_frame.
+ * It was kFileChunk * 4 until 2026-09-25, and a phone's photo is often larger
+ * than 4 MB: the link broke on it, Palabra resent it on the next link, and it
+ * broke again, so pictures from a phone never arrived anywhere. */
+inline constexpr std::size_t kMaxSyncFrame = 64u << 20;
 inline constexpr std::size_t kMaxHeader = 4u << 20;    // a join or welcome message
 inline constexpr long long kMaxTotal = 16LL << 30;     // refuse a transfer larger than this
 inline constexpr int kMaxFiles = 50000;
@@ -57,6 +62,7 @@ struct Activity {
     std::string version;   // what this member's replica shows (lan-sharing.md §3b)
     std::string address;   // filled in by the receiver, from the datagram
     std::int64_t seen = 0;
+    std::uint32_t heard = 0; // the receiver's count of this member's beacons (never sent)
 };
 
 /* 16 random bytes as hex after a prefix: a replica id (unique per device and per

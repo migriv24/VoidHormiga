@@ -64,6 +64,10 @@ struct PeerInfo {
     std::uint16_t port = kStreamPortDefault;
     std::string address;      // filled in by the receiver, never by the sender
     std::int64_t last_seen = 0;
+    /* How many of its datagrams this device has received (2026-09-25). A peer
+     * announces every 3 seconds, so how fast this grows is how much of what it
+     * sends arrives: the Migos screen's connection strength. */
+    std::uint32_t heard = 0;
     /* OPAQUE TO THIS LAYER (2026-09-16). The application's own announcement --
      * a share offer, or presence sealed to a room key -- as printable text
      * (base64). This file carries it and never reads it, which is what keeps
@@ -160,11 +164,17 @@ public:
     bool accept_one(std::uint16_t port, const KeyPair& self, std::string& peer_public_key,
                     std::string& sas, int timeout_ms, std::string* error = nullptr);
 
-    bool send(const std::string& payload, std::string* error = nullptr);
+    /* Called after each sealed chunk with the bytes moved so far and the whole
+     * message's size (0 while receiving: the stream does not say how long a
+     * message is until it ends). A large picture is many chunks, so this is
+     * what a loading bar reads (2026-09-25). */
+    using Progress = std::function<void(std::size_t done, std::size_t total)>;
+    bool send(const std::string& payload, std::string* error = nullptr, const Progress* progress = nullptr);
     /* `max_bytes` (0 = no limit) refuses a message larger than the caller
      * expects -- a peer decides how much it sends, so a receiver that holds a
      * whole message in memory needs its own ceiling (2026-09-16). */
-    bool receive(std::string& payload, std::string* error = nullptr, std::size_t max_bytes = 0);
+    bool receive(std::string& payload, std::string* error = nullptr, std::size_t max_bytes = 0,
+                 const Progress* progress = nullptr);
 
     /* Receive and send give up after `ms` of silence; 0 = wait forever (the
      * default). A join waits on a person to click Allow, and a thread that can

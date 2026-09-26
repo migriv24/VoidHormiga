@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cstdlib>
 #include <cstdio>
 #include <ctime>
 #include <fstream>
@@ -29,6 +30,21 @@
 namespace lan_detail {
 
 namespace fs = std::filesystem;
+
+/* Where this device listens for member sync: the share port's neighbour, or
+ * HORMIGA_SYNC_PORT, which lets two "devices" run on one machine (a phone
+ * played by the harness beside a CLI host). Without it, the second dialled its
+ * own listener: same address, same port. */
+inline int member_sync_port(int share_port) {
+    if (const char* e = std::getenv("HORMIGA_SYNC_PORT"))
+        if (const int p = std::atoi(e); p > 0 && p < 65536) return p;
+    return share_port + 1;
+}
+
+/* One clock for the link threads and the screens that show their transfers. */
+inline double now_seconds() {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
 using hormiga::lan::Offer;
 using hormiga::lan::Plan;
 using hormiga::lan::PlanItem;

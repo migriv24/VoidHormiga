@@ -254,6 +254,36 @@ exchanged, so a lost delta cannot go unnoticed.
 
 Still to build: **credential refresh from the host** (§3a), on the same meeting.
 
+**Pictures, and links that carry big frames (2026-09-25).** The author: *"images
+can't be shared or uploaded"*. Measured with a phone and a host, three things
+stood between a picture and the other member, and all three are fixed:
+
+1. **Which fields name files.** Only fields listed as references are fetched,
+   and the list had `path` and `photo`. A contact's picture is `avatar`, so no
+   contact's picture had ever crossed. Now every field the glyphs give the
+   image editor is listed (`avatar`, `image`, `cover`, `portrait`, `poster`,
+   and `path`, `photo`).
+2. **One link, both directions at once.** A link's thread sent everything
+   queued and then read. Two members each with a large frame to send (a
+   document, a picture) both blocked in `send` with nobody reading, both timed
+   out, and Palabra resent on the next link, forever. A reader thread now
+   always drains the socket while the link thread sends. A timeout in the
+   middle of a message ends the link instead of leaving a stream that can no
+   longer authenticate.
+3. **The ceiling.** A member link refused frames over 4 MiB; a phone's photo is
+   often more. It is Palabra's own `max_frame` now, 64 MiB.
+
+**The bars.** Every sync frame of 128 KB or more, and every join's files, is a
+transfer the Migos screen shows (`LanRuntime::transfers`). Sending is a
+fraction; receiving is bytes so far, because a sealed message says its length
+only when it ends. **Signal** is the share of a member's beacons (one every
+3 s) that arrived over ~30 s. **Ping** is half of the last sealed handshake
+this device made with them. A link that ends now says why in the log.
+
+**Two devices on one machine.** `HORMIGA_SYNC_PORT` moves this device's
+member-sync listener, which is what let a phone played by the harness and a CLI
+host run side by side. Without it, the second device dialled its own listener.
+
 # 4. The members registry is its own small database
 
 > After that, a new mini database will also begin to form … for the cat

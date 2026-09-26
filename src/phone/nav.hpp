@@ -48,6 +48,19 @@ float nav_bar_height();
  * is the platform's "back to the top of this destination"). */
 bool nav_bar(const std::vector<NavItem>& items, int& current);
 
+/* The same bar with a LOCKED CENTRE BUTTON between its two halves (the author,
+ * 2026-09-25: the bar is the person's to arrange, except one button in the
+ * middle that always opens everything). `items` are the slots, left to right;
+ * the centre sits after the first half. `current` is a slot index, or -1 when
+ * the screen on show is not on the bar. Returns the slot tapped, kCentreTapped,
+ * or -1. `centre_on` draws the centre as the current destination. */
+inline constexpr int kCentreTapped = -2;
+int nav_bar_centred(const std::vector<NavItem>& items, int current, bool centre_on);
+
+/* The centre button's face: an ant, drawn (no icon font has one), in `col` on
+ * a disc of `bg`. Also the gallery's header, so the two read as one thing. */
+void draw_ant_button(ImDrawList* dl, ImVec2 centre, float radius, ImU32 bg, ImU32 col);
+
 /* ── the app bar ────────────────────────────────────────────────────────────
  * A back chevron when `can_back`, then a title. Returns true when back is
  * tapped. Between begin and end the caller may draw trailing items on the same

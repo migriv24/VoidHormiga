@@ -5156,3 +5156,101 @@ every artifact hashes to what the feed says, and the Linux digest `\078e9ae…`
 equals the runner's own. The live feed says `latest 0.1.8`, and
 `voidhormiga-cli update --check` reads it. **Still owed:** the author's phone
 running 0.1.8.
+
+# The phone, second pass: scrolling, pictures that travel, eight screens, Migos and Migas (2026-09-25, later)
+
+The author, after 0.1.8: *"the mobile app is ALMOST really good!"*, and six
+points. By their numbering:
+
+**1. Scrolling did nothing.** ImGui scrolls with a wheel, and a finger has none.
+Void Maiz now has `touch_scroll` (drag, then glide; the press under the finger is
+cancelled, so a scroll never taps the card it started on), and both shells call
+it. The harness found a second, older bug on the way: **swipe-to-delete had
+never worked in a list**. Every row eased the one shared offset toward its own
+rest, so the rows below the dragged one reset it each frame. Fixed in Void Maiz
+(one row owns the offset). Both measured in the harness.
+
+**2. Pictures could not be shared or uploaded.** Four causes, all fixed:
+- a phone had no way in: the photo field offered only pictures already in the
+  database. Void Maiz's new documents holiday (`voidmaiz/documents.hpp`, Java in
+  `MaizActivity`) opens the system's photo picker; the file is copied into the
+  app and ingested like a desktop pick. **No "allow access to photos" prompt**,
+  on purpose: Android 13+'s picker needs no permission (the pick is the
+  consent), and asking for all photos is what the platform now tells apps not
+  to do. That differs from what the author expected, so it is Q90.
+- **a contact's picture never synced, from any device.** Member sync fetches
+  files only for fields listed as naming files, and the list had `path` and
+  `photo`; a contact's picture is `avatar`. Now every field the glyphs give the
+  image editor is listed.
+- **a link deadlocked on large frames.** One thread per link sent everything
+  queued, then read. Two members each sending a big frame (a document, a
+  picture) both blocked in send with nobody reading, both timed out ("the
+  connection dropped mid-send"), and Palabra resent on the rebuilt link. The
+  link is full duplex now: a reader thread always drains the socket. A timeout
+  in the middle of a message now ends the link instead of desynchronising it.
+- a sync frame over 4 MiB broke the link (a phone photo often is). The ceiling
+  is Palabra's own, 64 MiB.
+
+**Measured end to end**: a CLI host shared; the phone harness joined by taps,
+set a 5.8 MB photo on a contact through a played picker, and the host received
+it (5,817,146 bytes, the same SHA-256), while the phone's Migos screen showed
+the bar filling ("360 KB of 5.5 MB", then done). To run two devices on one
+machine, `HORMIGA_SYNC_PORT` moves one member-sync listener. Before it existed,
+the second device dialled its own listener.
+
+**Transfers, ping, signal.** Every sync frame of 128 KB or more, and every
+join's files, is a transfer with a bar (`LanRuntime::transfers`). Sending shows
+a fraction. Receiving shows bytes so far, because the sealed stream does not
+say a message's length until it ends. Signal is the share of a member's beacons
+that arrived over ~30 s; ping is half the last sealed handshake. Both are said
+on the screen for what they are.
+
+**3. Notes on the phone.** The desktop's own `note` rune, shared or private by
+the Antfarm's private tag as on the desktop. The first line is its title. A note
+being typed is committed when its editor stops being drawn: Back acts before
+the screen draws, so the text box never sees itself lose focus.
+
+**4. A navigation bar the person arranges.** Eight screens (Data, Calendar,
+Notes, Migos, Migas, Profile, Settings, Antfarm). Any four go on the bar, set in
+the phone's Settings and kept in this device's settings, around **one locked
+centre button**, the Hormiga button. It is an ant drawn from shapes, since no
+icon font has one, and the author can replace it. It opens a gallery of every
+screen.
+
+**5. Network, and databases.** The network screen is **Migos** (the author's
+lean: "migos" is also "friends"). The database manager is **Migas**, a miga
+being a crumb, which is what an ant carries home. Migas creates, opens, imports,
+exports ("Save a copy to...", through the system's save dialog), marks the
+default and removes databases. Switching saves the open database first; one
+never saved gets a dated name instead of vanishing. `open_database` alone had
+never saved what it replaced. **`.miga` onto a phone**: Import, and "Open with
+Void Hormiga" from a chat or a file manager (a VIEW intent). The desktop has the
+same list as File > Databases. **The phone can host**: Migos has "Share from
+this phone". The share code had no desktop in it, only a temp folder: Android
+has no /tmp, so the shell points TMPDIR inside the app.
+
+**6. A default database of the phone's contacts.** Recorded as a plan in
+[mobile](/concepts/sections/mobile.md), not built.
+
+**Also fixed on the way:**
+- Android destroys the GL context in the background, and the picker sends the
+  app there: every cached picture was a dead texture on return. The cache is
+  dropped with the context.
+- A phone whose database lacked the data mantle retried `use` every frame and
+  queued a toast each time.
+- The sync panel said the Antfarm stays on this computer; it has synced since
+  0.1.8.
+- Void Maiz's canvas: on glass a drag on empty canvas pans, since a phone has no
+  middle button, Alt or wheel. The phone's Antfarm shows it with zoom buttons.
+- A link that ends now says why, in the log.
+
+**Budget:** `app.hpp` 1248 → 1257. The document seams need a start hook, a save
+hook and one door for answers; also the photo entry point, the database
+manager's flag and draw call, and `gl_context_lost`. The phone's own state went
+into `PhoneUi` (`phone/phone_ui.hpp`), and the phone is now six files instead of
+two.
+
+**Measured:** Hormiga 51/52 and Void Maiz's suite, each with only
+`reduce_conformance` red (upstream's known red); layering ok; every file within
+budget. The Hormiga APK builds, with the new Java; so does Interaction
+Combinators'. **Not on a device yet, not committed, not published.**

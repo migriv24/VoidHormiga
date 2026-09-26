@@ -516,12 +516,25 @@ int main(int argc, char** argv) {
         return r;
     };
     app.on_load_texture = gl_load_texture;
+    /* A SYSTEM PICKER, PLAYED (phone mode only): HORMIGA_SIM_PICK names the file
+     * a script's "pick" gets, and it arrives on the NEXT frame, the way Android
+     * answers after its picker closes. Unset, there is no system picker and the
+     * phone front-end falls back to the ordinary dialog. */
+    static std::vector<std::pair<int, std::string>> sim_picks;
     if (phone_mode) {
-        app.enable_phone(touch_mode, nullptr, sim.density);
         // a phone keeps everything inside its app folder; here that is the folder
         // this run was pointed at, so a phone tested on this desktop has its own
-        // profile and databases, as a second device would (platform/device_paths.hpp)
+        // profile and databases, as a second device would (platform/device_paths.hpp).
+        // Before enable_phone: it reads this device's settings (the bar).
         hormiga::device::set(hormiga::device::phone(app.base_dir));
+        app.enable_phone(touch_mode, nullptr, sim.density);
+        if (const char* pick = std::getenv("HORMIGA_SIM_PICK")) {
+            const std::string picked = pick;
+            app.on_pick_document = [picked](int request, const std::string&) {
+                sim_picks.push_back({request, picked});
+                return true;
+            };
+        }
         // the desktop's dock layout is not the phone's to rewrite
         ImGui::GetIO().IniFilename = nullptr;
     }
@@ -541,11 +554,23 @@ int main(int argc, char** argv) {
         const bool scripted = !sim.script.empty();
         if (phone_mode || scripted) sim.inject(ImGui::GetIO()); // after the backend's, so a script's finger wins
         ImGui::NewFrame();
-        if (phone_mode) // the system's edges first, as the Android shell does
+        if (phone_mode) { // the system's edges first, as the Android shell does
             maiz::reserve_safe_area({0, sim.safe_top * sim.density, 0, sim.safe_bottom * sim.density});
+            static maiz::TouchScrollState scroll; // a finger has no wheel
+            maiz::touch_scroll(scroll, sim.density);
+        }
 
         app.frame();
         if (phone_mode) sim.draw_system_bars();
+        for (const auto& [request, path] : sim_picks) { // a played picker answers between frames
+            std::error_code ec;
+            const auto in = app.base_dir / "incoming";
+            std::filesystem::create_directories(in, ec);
+            const auto copy = in / std::filesystem::path(path).filename();
+            std::filesystem::copy_file(path, copy, std::filesystem::copy_options::overwrite_existing, ec);
+            app.document_arrived(request, ec ? "error" : "ok", copy.string(), copy.filename().string());
+        }
+        sim_picks.clear();
 
         ImGui::Render();
         int w, h;

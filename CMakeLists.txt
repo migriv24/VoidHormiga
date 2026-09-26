@@ -261,7 +261,9 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
   src/app/lan_net.cpp
   src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp
-  src/phone/phone.cpp src/phone/nav.cpp)
+  src/ui/databases.cpp
+  src/phone/phone.cpp src/phone/nav.cpp src/phone/phone_data.cpp src/phone/phone_more.cpp
+  src/phone/phone_migos.cpp src/phone/phone_migas.cpp)
 
 # ── ANDROID: the same application as a NativeActivity library (2026-09-24) ──
 # android/hormiga_android.cmake builds libvoidhormiga.so from HORMIGA_APP_SOURCES

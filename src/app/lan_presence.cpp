@@ -43,7 +43,11 @@ void LanRuntime::tick(HormigaApp& app, double now) {
     // thread results into the log strip
     {
         std::lock_guard<std::mutex> lk(rt.mu);
-        for (const auto& [lvl, msg] : rt.thread_log) app.log.push_back({lvl, "share", msg});
+        static const bool trace = std::getenv("HORMIGA_SYNC_TRACE") != nullptr; // a harness reads it
+        for (const auto& [lvl, msg] : rt.thread_log) {
+            app.log.push_back({lvl, "share", msg});
+            if (trace) std::fprintf(stderr, "[%s] share: %s\n", lvl.c_str(), msg.c_str());
+        }
         rt.thread_log.clear();
         if (!rt.joined_miga.empty() && !rt.joining && !rt.finishing) {
             rt.finishing = true;
@@ -91,7 +95,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
         static const char* kSections[] = {"Data", "Builder", "Antfarm", "Map"};
         me.section = app.section >= 0 && app.section < 4 ? kSections[app.section] : "";
         me.mantle = app.scene.mantle;
-        me.sync_port = share.port + 1;   // where this device listens for member sync
+        me.sync_port = lan_detail::member_sync_port(share.port);   // where this device listens for member sync
         me.selection = app.ed.selection;
         for (const auto& s : me.selection) {
             const auto* n = app.scene.find(s);
@@ -143,7 +147,21 @@ void LanRuntime::tick(HormigaApp& app, double now) {
             if (!hormiga::lan::open_activity(parts.sealed, rt.room_key, a) || a.fingerprint == fp) continue;
             a.seen = peer.last_seen;
             a.address = peer.address;
+            a.heard = peer.heard;
             rt.present[a.fingerprint] = a;
+            /* CONNECTION STRENGTH (2026-09-25): a member announces every 3 s, so
+             * over the last ~30 s ten beacons should have arrived. How many did
+             * is how much of this link works; a phone at the edge of the Wi-Fi
+             * loses datagrams long before it loses the member. */
+            auto mark = rt.heard_mark.find(a.fingerprint);
+            if (mark == rt.heard_mark.end()) {
+                rt.heard_mark[a.fingerprint] = {now, a.heard};
+            } else if (now - mark->second.first >= 30.0) {
+                const float expected = (float)((now - mark->second.first) / 3.0);
+                rt.strength[a.fingerprint] =
+                    std::clamp((float)(a.heard - mark->second.second) / std::max(1.0f, expected), 0.0f, 1.0f);
+                mark->second = {now, a.heard};
+            }
         }
     }
     const std::int64_t cut = (std::int64_t)std::time(nullptr) - 12;
