@@ -319,6 +319,32 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         if (ImGui::GetIO().KeyCtrl) ed.toggle(nm);
         else ed.selection = {nm};
     };
+    /* RIGHT-CLICK A CARD OR A ROW (the author, 2026-09-27: "i would like to be
+     * able to right click the things on the data window, and delete them or
+     * something"). On what was clicked, or on the whole selection when the
+     * click was inside it. Commands land next frame (pending_cmds): this runs
+     * inside the loop over `rows`, which a dispatch would rebuild under it. */
+    auto row_menu = [&](const maiz::SceneNode& n) {
+        if (!ImGui::BeginPopupContextItem("##row-menu")) return;
+        const bool many = ed.selection.size() > 1 && ed.selected(n.name);
+        const std::vector<std::string> targets = many ? ed.selection : std::vector<std::string>{n.name};
+        ImGui::TextDisabled("%s", many ? (std::to_string(targets.size()) + " selected").c_str() : n.name.c_str());
+        ImGui::Separator();
+        if (!many && ImGui::MenuItem(ICON_FA_PEN_TO_SQUARE "  Open")) ed.selection = {n.name};
+        if (ImGui::MenuItem(ICON_FA_COPY "  Copy name")) {
+            std::string names;
+            for (const auto& t : targets) names += (names.empty() ? "" : "\n") + t;
+            ImGui::SetClipboardText(names.c_str());
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem(many ? ICON_FA_TRASH "  Delete all selected" : ICON_FA_TRASH "  Delete")) {
+            for (const auto& t : targets) pending_cmds.push_back("rm " + t);
+            ed.selection.clear();
+            toast(many ? "deleted " + std::to_string(targets.size()) + " - undo brings them back"
+                       : "deleted " + n.name + " - undo brings it back");
+        }
+        ImGui::EndPopup();
+    };
     if (rows.empty()) {
         ImGui::TextDisabled(scene.nodes.empty() ? "nothing here yet"
                                                 : "nothing matches");
@@ -340,6 +366,7 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
             ImGui::PushID((int)i);
             ImVec2 p0 = ImGui::GetCursorScreenPos();
             ImGui::InvisibleButton("card", ImVec2(cw, ch));
+            row_menu(n);
             // only DRAW visible cards — the manual ImDrawList geometry bypasses
             // ImGui's off-screen culling, so drawing all N would overflow the
             // 16-bit index buffer (the InvisibleButton above still lays out).
@@ -450,6 +477,9 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
             }
             if (ImGui::Selectable(n.name.c_str(), ed.selected(n.name)) || row_clicked)
                 pick(n.name);
+            ImGui::PushID(n.name.c_str());
+            row_menu(n);
+            ImGui::PopID();
             // declares "table:data shows this rune" AND draws the marks, in one
             // call (Void Maiz's netview: a view cannot do half of it)
             maiz::presence_item(surfaces, roster, net_settings.show, "table:data", n.id,

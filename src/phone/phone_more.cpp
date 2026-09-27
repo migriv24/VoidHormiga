@@ -221,7 +221,21 @@ void HormigaApp::PhoneUi::antfarm(HormigaApp& app, PhoneUi& ph, Frame& f) {
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_MAGNIFYING_GLASS_PLUS)) zoom(1.25f);
         ImGui::SameLine();
-        maiz::dim_wrapped("Drag to move around. Hold on a node for its menu.");
+        maiz::dim_wrapped("Pinch to zoom, drag to move around. Hold on a node for its menu.");
+        /* PINCH (2026-09-27; the author: the graph "doesn't have the same zoom in
+         * and out controls that the node graph should have"). Two fingers are
+         * the touch gate's; the point between them stays under them while the
+         * view scales, and moving both pans. */
+        const maiz::TouchGate& gate = maiz::default_touch_gate();
+        if (gate.pinch.active) {
+            const ImVec2 origin = ImGui::GetCursorScreenPos(); // where the canvas draws from
+            maiz::Camera& cam = app.ed.cam;
+            const float wx = cam.x + (gate.pinch.cx - origin.x) / cam.zoom;
+            const float wy = cam.y + (gate.pinch.cy - origin.y) / cam.zoom;
+            cam.zoom = std::clamp(cam.zoom * gate.pinch.scale, ph.farm_style.min_zoom, ph.farm_style.max_zoom);
+            cam.x = wx - (gate.pinch.cx - origin.x) / cam.zoom - gate.pinch.dx / cam.zoom;
+            cam.y = wy - (gate.pinch.cy - origin.y) / cam.zoom - gate.pinch.dy / cam.zoom;
+        }
         maiz::CanvasNet anet;
         anet.surfaces = &app.surfaces;
         anet.roster = &app.roster;

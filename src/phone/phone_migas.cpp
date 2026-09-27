@@ -63,17 +63,63 @@ std::string slug_name(const char* s) {
 
 /* Save what is open before anything replaces it (see the header). */
 void HormigaApp::PhoneUi::keep_current(HormigaApp& app) {
+    /* UNCHANGED SINCE IT WAS PACKED OR OPENED: nothing to write. Packing is the
+     * whole database with every picture in it, and doing it on every switch
+     * held a phone's only thread for seconds at a time (2026-09-27). */
+    const std::size_t now = std::hash<std::string>{}(app.core.export_state());
+    std::error_code ec;
+    if (app.phone && !app.cur_miga.empty() && app.phone->packed_for == app.cur_miga &&
+        app.phone->packed_hash == now && fs::exists(app.cur_miga, ec))
+        return;
     if (!app.cur_miga.empty()) {
         app.save_database();
+        if (app.phone) {
+            app.phone->packed_for = app.cur_miga;
+            app.phone->packed_hash = now;
+        }
         return;
     }
-    std::error_code ec;
     const fs::path dir = hormiga::device::get().databases;
     fs::create_directories(dir, ec);
     char stamp[32];
     const std::time_t t = std::time(nullptr);
     std::strftime(stamp, sizeof stamp, "unsaved-%Y%m%d-%H%M", std::localtime(&t));
     app.save_database_as(free_path(dir, stamp).string());
+}
+
+/* EVERY SWITCH, ONE WAY (2026-09-27). The author: switching between databases
+ * "causes errors, and the app stops responding correctly". The switch ran in
+ * the middle of drawing a screen: the database was replaced under the rest of
+ * that frame, which then applied the old screen's commands, and a note still
+ * being typed, to the new database. Now it is deferred to the start of the next
+ * frame (run_busy: "Opening..." shows meanwhile), the open one is kept first,
+ * and the phone forgets everything that belonged to the old database. */
+void HormigaApp::PhoneUi::switch_database(HormigaApp& app, const std::string& label, std::function<void()> act) {
+    if (app.phone) flush_note(app, *app.phone); // a note being typed belongs to the database it was typed in
+    app.run_busy(label, [&app, act] {
+        PhoneUi::keep_current(app);
+        act();
+        if (!app.phone) return;
+        PhoneUi& ph = *app.phone;
+        for (auto& st : ph.stacks) st.reset();
+        ph.scroll_at.clear();
+        ph.note_for.clear();
+        ph.note_dirty = false;
+        ph.photo_rune.clear();
+        ph.photo_field.clear();
+        ph.swipe = maiz::SwipeListState{};
+        ph.kind.clear();
+        ph.search[0] = 0;
+        ph.note_search[0] = 0;
+        ph.dial_open = false;
+        ph.confirm_remove.clear();
+        ph.listed_at = -100.0;
+        ph.use_failed_at = -100.0;
+        app.ed.selection.clear();
+        ph.packed_for = app.cur_miga; // as opened: nothing to pack until it changes
+        ph.packed_hash = std::hash<std::string>{}(app.core.export_state());
+        ph.screen = kData;
+    });
 }
 
 void HormigaApp::PhoneUi::migas(HormigaApp& app, PhoneUi& ph, Frame&) {
@@ -114,13 +160,12 @@ void HormigaApp::PhoneUi::migas(HormigaApp& app, PhoneUi& ph, Frame&) {
         if (stem.empty()) {
             maiz::show_snackbar(ph.snack, "Give it a name with a letter or a digit in it");
         } else {
-            PhoneUi::keep_current(app);
-            app.new_database(); // leaves a shared database: a new one is nobody's yet
-            fs::create_directories(dir, ec);
-            app.save_database_as(free_path(dir, stem).string());
+            const std::string path = (fs::create_directories(dir, ec), free_path(dir, stem).string());
+            switch_database(app, "Making " + stem, [&app, path] {
+                app.new_database(); // leaves a shared database: a new one is nobody's yet
+                app.save_database_as(path);
+            });
             ph.new_name[0] = 0;
-            ph.listed_at = -100.0;
-            ph.screen = kData;
         }
     }
     maiz::dim_wrapped("Empty, and yours alone until you share it on Migos. Making it leaves any database you "
@@ -145,11 +190,11 @@ void HormigaApp::PhoneUi::migas(HormigaApp& app, PhoneUi& ph, Frame&) {
         ImGui::TextDisabled("%s", meta.c_str());
         if (!is_open) {
             if (ImGui::Button(ICON_FA_FOLDER_OPEN "  Open")) {
-                PhoneUi::keep_current(app);
-                app.open_database(k.path);
-                hormiga::app_settings::note_recent(k.path);
-                ph.listed_at = -100.0;
-                ph.screen = kData;
+                const std::string path = k.path;
+                switch_database(app, "Opening " + k.name, [&app, path] {
+                    app.open_database(path);
+                    hormiga::app_settings::note_recent(path);
+                });
             }
             ImGui::SameLine();
         }
@@ -250,13 +295,11 @@ void HormigaApp::document_arrived(int request, const std::string& status, const 
             toast("could not keep that database: " + ec.message(), true);
             return;
         }
-        PhoneUi::keep_current(*this);
-        open_database(dest.string());
-        hormiga::app_settings::note_recent(dest.string());
-        if (phone) {
-            phone->listed_at = -100.0;
-            phone->screen = kData;
-        }
+        const std::string path = dest.string();
+        PhoneUi::switch_database(*this, "Opening " + dest.stem().string(), [this, path] {
+            open_database(path);
+            hormiga::app_settings::note_recent(path);
+        });
     }
 }
 

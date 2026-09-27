@@ -89,6 +89,13 @@ a host on a real phone.**
 **Still owed:** the author's phone running this. The harness has played every
 flow above; a real device has not.
 
+**On the author's phone (0.1.9), and what changed (2026-09-27):** scrolling
+worked but a scrolling finger still pressed and lit what it started on. Void
+Maiz's touch gate now decides tap, press, scroll or pinch before ImGui hears of
+a finger. The Antfarm graph pinches. Switching databases is deferred to the
+next frame and packs only what changed. Each place keeps its own scroll. See
+the log, 2026-09-27.
+
 # The author's scope (2026-09-23, decided), and what is built
 
 The author, the next day, after Void Maiz's networking worked across Linux,

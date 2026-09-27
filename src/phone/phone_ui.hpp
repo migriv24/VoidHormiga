@@ -20,6 +20,8 @@
 #include "voidmaiz/mobile.hpp"
 #include "voidmaiz/textinputview.hpp"
 
+#include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -80,6 +82,8 @@ struct HormigaApp::PhoneUi {
     char quick[160] = {};             // the calendar's one-line add
     float dp = 1.0f;                  // pixels per design pixel: the screen's density
     double use_failed_at = -100.0;    // the last time switching to a screen's mantle was refused
+    std::string scroll_key;           // the place on show (screen and route), and where each was left
+    std::map<std::string, float> scroll_at;
 
     // Notes
     char note_search[96] = {};
@@ -96,6 +100,8 @@ struct HormigaApp::PhoneUi {
     std::string confirm_remove;       // a path waiting for "Remove" to be pressed again
     double listed_at = -100.0;
     std::vector<hormiga::app_settings::KnownDatabase> known;
+    std::string packed_for;           // the .miga last packed or opened, and its state's hash:
+    std::size_t packed_hash = 0;      // an unchanged database is not packed again on a switch
 
     // Antfarm
     bool farm_graph = false;          // the node graph, rather than the list
@@ -129,4 +135,7 @@ struct HormigaApp::PhoneUi {
     /* Save the database open now before anything replaces it; one never saved
      * gets a dated name in this device's databases folder (phone_migas.cpp). */
     static void keep_current(HormigaApp& app);
+    /* Replace the open database (open, new, import), deferred to the start of
+     * the next frame, keeping the open one first (phone_migas.cpp). */
+    static void switch_database(HormigaApp& app, const std::string& label, std::function<void()> act);
 };

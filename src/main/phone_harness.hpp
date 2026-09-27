@@ -54,6 +54,7 @@ struct PhoneHarness {
     int wait_ = 0;
     int release_in_ = -1;        // frames until a held tap is released
     std::vector<ImVec2> drag_;   // positions still to visit, one a frame
+    std::vector<std::pair<ImVec2, ImVec2>> pinch_; // two fingers' positions still to visit
     std::string pending_shot_;
     ImVec2 finger_{-1, -1};      // where the script's finger last touched
     bool quit_ = false;

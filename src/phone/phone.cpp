@@ -255,6 +255,20 @@ void HormigaApp::phone_frame() {
     // can always be scrolled into view
     const float covered = std::max(0.0f, ph.text_session.covered_px - hormiga::phone::nav_bar_height());
     ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x, std::max(120.0f, vp->WorkSize.y - covered)));
+    /* EACH PLACE KEEPS ITS OWN SCROLL (2026-09-27). All screens are one
+     * window, so a card opened from halfway down a list opened halfway down its
+     * own detail. Leaving a place remembers where it was; arriving starts at
+     * the top, or where it was left. */
+    {
+        const std::string key = std::to_string(ph.screen) + ":" + f.route;
+        if (key != ph.scroll_key) {
+            if (ImGuiWindow* w = ImGui::FindWindowByName("##phone-screen"))
+                if (!ph.scroll_key.empty()) ph.scroll_at[ph.scroll_key] = w->Scroll.y;
+            auto was = ph.scroll_at.find(key);
+            ImGui::SetNextWindowScroll(ImVec2(0.0f, was == ph.scroll_at.end() ? 0.0f : was->second));
+            ph.scroll_key = key;
+        }
+    }
     // the Antfarm's graph is a canvas that pans itself: its screen must not scroll
     const bool canvas = ph.screen == kAntfarm && ph.farm_graph && !is_detail;
     ImGui::Begin("##phone-screen", nullptr,

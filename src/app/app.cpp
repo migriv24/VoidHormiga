@@ -926,8 +926,15 @@ void HormigaApp::draw_toasts() {
             it = toasts.erase(it);
             continue;
         }
+        // a phone shows the newest two, wrapped to the screen (they stacked
+        // off its edge and over the buttons, 2026-09-27)
+        if (phone && (int)toasts.size() - i > 2) {
+            ++it;
+            continue;
+        }
         float alpha = std::min(1.0f, it->ttl);
         ImGui::SetNextWindowBgAlpha(0.85f * alpha);
+        if (phone) ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(vp->WorkSize.x - 24.0f, FLT_MAX));
         ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x - 12.0f, y),
                                 ImGuiCond_Always, ImVec2(1, 1));
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
@@ -936,10 +943,12 @@ void HormigaApp::draw_toasts() {
                          ImGuiWindowFlags_AlwaysAutoResize |
                          ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
+        if (phone) ImGui::PushTextWrapPos(vp->WorkSize.x - 40.0f);
         if (it->error)
             ImGui::TextColored(ImVec4(0.90f, 0.35f, 0.30f, 1.0f), "%s", it->msg.c_str());
         else
             ImGui::TextUnformatted(it->msg.c_str());
+        if (phone) ImGui::PopTextWrapPos();
         y -= ImGui::GetWindowSize().y + 6.0f;
         ImGui::End();
         ImGui::PopStyleVar();

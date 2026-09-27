@@ -48,8 +48,7 @@
 namespace {
 
 struct Shell {
-    maiz::TouchScrollState scroll;
-    float density = 1.0f; // px per dp, for the scroll's slop
+    float density = 1.0f; // px per dp, for the touch gate's slop
     android_app* aapp = nullptr;
     EGLDisplay display = EGL_NO_DISPLAY;
     EGLSurface surface = EGL_NO_SURFACE;
@@ -253,9 +252,52 @@ void on_cmd(android_app* a, int32_t cmd) {
     }
 }
 
+/* FINGERS GO THROUGH VOID MAIZ'S TOUCH GATE (2026-09-27): it decides whether a
+ * touch is a tap, a press, a scroll or a pinch, and tells ImGui only that, so a
+ * scrolling finger lights nothing up. Every sample Android batched into one
+ * move event (the historical ones) goes in with its own time, which is what
+ * makes a fling's speed right. A mouse or a stylus goes to ImGui as before. */
+bool gate_motion(AInputEvent* ev) {
+    if (AInputEvent_getType(ev) != AINPUT_EVENT_TYPE_MOTION) return false;
+    if (AMotionEvent_getToolType(ev, 0) != AMOTION_EVENT_TOOL_TYPE_FINGER) return false;
+    maiz::TouchGate& g = maiz::default_touch_gate();
+    const int32_t action = AMotionEvent_getAction(ev);
+    const int32_t kind = action & AMOTION_EVENT_ACTION_MASK;
+    const size_t index =
+        (size_t)((action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
+    const double t = (double)AMotionEvent_getEventTime(ev) * 1e-9;
+    auto id = [&](size_t i) { return (int)AMotionEvent_getPointerId(ev, i); };
+    switch (kind) {
+    case AMOTION_EVENT_ACTION_DOWN:
+    case AMOTION_EVENT_ACTION_POINTER_DOWN:
+        maiz::touch_gate_down(g, id(index), AMotionEvent_getX(ev, index), AMotionEvent_getY(ev, index), t);
+        break;
+    case AMOTION_EVENT_ACTION_MOVE: {
+        const size_t n = AMotionEvent_getPointerCount(ev);
+        const size_t hist = AMotionEvent_getHistorySize(ev);
+        for (size_t h = 0; h < hist; ++h)
+            for (size_t i = 0; i < n; ++i)
+                maiz::touch_gate_move(g, id(i), AMotionEvent_getHistoricalX(ev, i, h),
+                                      AMotionEvent_getHistoricalY(ev, i, h),
+                                      (double)AMotionEvent_getHistoricalEventTime(ev, h) * 1e-9);
+        for (size_t i = 0; i < n; ++i)
+            maiz::touch_gate_move(g, id(i), AMotionEvent_getX(ev, i), AMotionEvent_getY(ev, i), t);
+        break;
+    }
+    case AMOTION_EVENT_ACTION_UP:
+    case AMOTION_EVENT_ACTION_POINTER_UP:
+        maiz::touch_gate_up(g, id(index), AMotionEvent_getX(ev, index), AMotionEvent_getY(ev, index), t);
+        break;
+    case AMOTION_EVENT_ACTION_CANCEL: maiz::touch_gate_cancel(g); break;
+    default: break;
+    }
+    return true;
+}
+
 int32_t on_input(android_app* a, AInputEvent* ev) {
     Shell& s = *(Shell*)a->userData;
     if (!s.backends_ready) return 0;
+    if (s.app_ready && gate_motion(ev)) return 1;
     return ImGui_ImplAndroid_HandleInputEvent(ev);
 }
 
@@ -272,7 +314,7 @@ void render_frame(Shell& s) {
         s.safe_age = 0;
     }
     maiz::reserve_safe_area(s.safe); // before the phone's own bars, which then sit inside it
-    maiz::touch_scroll(s.scroll, s.density); // a finger has no wheel
+    maiz::touch_gate_frame(maiz::default_touch_gate(), s.density); // taps, presses, scrolls, pinches
     s.app.frame(); // the phone front-end: it runs the platform keyboard itself
     ImGui::Render();
     EGLint w = 0, h = 0;

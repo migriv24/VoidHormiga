@@ -5265,3 +5265,62 @@ feed was written after the Linux archive was on disk; every artifact hashes to
 what the feed says, and the Linux digest `e51d2486…` equals the runner's own.
 The live feed says `latest 0.1.9`, and `voidhormiga-cli update --check` reads
 it. **Still owed:** the author's phone running 0.1.9.
+
+# The phone, third pass: a tap is not a scroll, pinch, safe switching; right-click in Data (2026-09-27)
+
+The author, on 0.1.9 on their phone: scrolling works *"but it feels weird ...
+i still highlight things i hover over when scrolling ... i don't think there's
+a difference between the 'tap' and 'scroll'"*; the Antfarm graph had no zoom a
+finger could use; switching databases *"causes errors, and the app stops
+responding correctly and has to be closed"*; and on the desktop, right-click to
+delete in Data.
+
+**A tap is not a scroll.** 0.1.9's `touch_scroll` read a finger ImGui had
+already been told about, so whatever was under a scrolling finger was pressed,
+and lit, and stayed hovered after it lifted. Void Maiz's new **touch gate** sits
+between Android's touch events and ImGui and tells ImGui only what a finger
+turned out to be:
+- a tap, if it lifted without moving;
+- a press, after 0.11 s still;
+- a scroll, which ImGui never hears of, so nothing lights up;
+- a pinch, for two fingers.
+
+The scroll follows the finger exactly. A fling's speed comes from Android's own
+timestamped samples (including the historical ones a move event batches) over
+the last 100 ms, and it slows the way iOS lists do. After a lift the pointer is
+withdrawn, so nothing stays hovered. Touching a list that is still flying stops
+it without tapping.
+
+**Each place keeps its own scroll.** All phone screens are one window, so a card
+opened from halfway down a list opened halfway down its own detail. Now a place
+starts at the top, and Back returns to where the list was.
+
+**Pinch** zooms the Antfarm's graph about the point between the fingers, and
+moving both pans; the zoom buttons stay.
+
+**Switching databases** ran in the middle of drawing a screen. The database was
+replaced under the rest of that frame, which then applied the old screen's
+commands, and a note still being typed, to the new one. Each switch also packed
+the whole open database, every picture in it, on the phone's only thread. Now a
+switch:
+- is deferred to the start of the next frame, behind "Opening...";
+- saves the open database only if its state changed since it was last packed
+  or opened;
+- makes the phone forget everything that belonged to the old database (screen
+  stacks, scroll positions, a half-typed note, filters, the photo target).
+
+The author's hang was not reproduced in the harness, so what it was is still
+open; these were the ways the code could produce it.
+
+**Toasts on a phone**: the newest two, wrapped to the screen (they had stacked
+off its edge and over the buttons).
+
+**Desktop: right-click in Data.** A card or a row has Open, Copy name and
+Delete. With several selected, Delete removes the selection. Undo brings them
+back.
+
+**The harness** drives its finger through the same gate, and has `hold`,
+`pinch` and `rclick`.
+
+**Measured:** Hormiga 51/52 and Void Maiz 24/25 (`reduce_conformance`,
+upstream's known red); layering ok; every file within budget.

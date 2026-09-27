@@ -556,8 +556,13 @@ int main(int argc, char** argv) {
         ImGui::NewFrame();
         if (phone_mode) { // the system's edges first, as the Android shell does
             maiz::reserve_safe_area({0, sim.safe_top * sim.density, 0, sim.safe_bottom * sim.density});
-            static maiz::TouchScrollState scroll; // a finger has no wheel
-            maiz::touch_scroll(scroll, sim.density);
+            // a scripted finger goes through the touch gate (phone_harness.cpp);
+            // the desktop's own mouse, playing a finger by hand, scrolls by drag
+            if (scripted) maiz::touch_gate_frame(maiz::default_touch_gate(), sim.density);
+            else {
+                static maiz::TouchScrollState scroll; // a finger has no wheel
+                maiz::touch_scroll(scroll, sim.density);
+            }
         }
 
         app.frame();

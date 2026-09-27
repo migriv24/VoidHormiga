@@ -1,6 +1,8 @@
 /* main/phone_harness.cpp — see phone_harness.hpp. */
 #include "main/phone_harness.hpp"
 
+#include "voidmaiz/mobile.hpp" // the touch gate a scripted finger goes through
+
 #include "stb_image_write.h" // decls only: the one implementation lives in app.cpp
 
 #include <GLFW/glfw3.h> // brings the system GL header: glReadPixels is GL 1.0
@@ -48,17 +50,46 @@ void PhoneHarness::inject(ImGuiIO& io) {
     if (std::getenv("HORMIGA_SIM_TRACE"))
         std::fprintf(stderr, "sim: pos %.0f,%.0f down %d capture %d\n", io.MousePos.x, io.MousePos.y,
                      (int)io.MouseDown[0], (int)io.WantCaptureMouse);
-    io.AddMouseSourceEvent(finger ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
-    // THE FINGER STAYS WHERE IT TOUCHED. The GLFW backend feeds the desktop's
-    // real cursor every frame; left alone it moved the pointer away between a
-    // tap's press and release, and no tap ever clicked (found tracing, 2026-09-25).
-    if (finger_.x >= 0) io.AddMousePosEvent(finger_.x, finger_.y);
-    if (release_in_ >= 0 && release_in_-- == 0) io.AddMouseButtonEvent(0, false);
+    /* A SCRIPTED FINGER GOES THROUGH VOID MAIZ'S TOUCH GATE (2026-09-27), as a
+     * phone's does: the gate decides tap, press, scroll or pinch and tells
+     * ImGui only that. ImGui's pointer is re-asserted to what the gate last
+     * said, over the desktop's real cursor, which the GLFW backend feeds every
+     * frame (it once dragged the finger away mid-tap, 2026-09-25). */
+    maiz::TouchGate& gate = maiz::default_touch_gate();
+    const bool gated = finger && !script.empty();
+    const double t = ImGui::GetTime();
+    if (gated) {
+        io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+        io.AddMousePosEvent(gate.px, gate.py);
+    } else {
+        io.AddMouseSourceEvent(finger ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
+        if (finger_.x >= 0) io.AddMousePosEvent(finger_.x, finger_.y);
+    }
+    if (release_in_ >= 0 && release_in_-- == 0) {
+        if (gated) maiz::touch_gate_up(gate, 0, finger_.x, finger_.y, t);
+        else io.AddMouseButtonEvent(0, false);
+    }
+    if (!pinch_.empty()) { // two fingers, one step a frame
+        const auto [a, b] = pinch_.front();
+        pinch_.erase(pinch_.begin());
+        maiz::touch_gate_move(gate, 0, a.x, a.y, t);
+        maiz::touch_gate_move(gate, 1, b.x, b.y, t);
+        if (pinch_.empty()) {
+            maiz::touch_gate_up(gate, 1, b.x, b.y, t);
+            maiz::touch_gate_up(gate, 0, a.x, a.y, t);
+        }
+        return;
+    }
     if (!drag_.empty()) {
         finger_ = drag_.front();
-        io.AddMousePosEvent(finger_.x, finger_.y);
         drag_.erase(drag_.begin());
-        if (drag_.empty()) io.AddMouseButtonEvent(0, false);
+        if (gated) {
+            maiz::touch_gate_move(gate, 0, finger_.x, finger_.y, t);
+            if (drag_.empty()) maiz::touch_gate_up(gate, 0, finger_.x, finger_.y, t);
+        } else {
+            io.AddMousePosEvent(finger_.x, finger_.y);
+            if (drag_.empty()) io.AddMouseButtonEvent(0, false);
+        }
         return;
     }
     if (release_in_ >= 0 || wait_-- > 0) return;
@@ -71,8 +102,12 @@ void PhoneHarness::inject(ImGuiIO& io) {
             float x = 0, y = 0;
             in >> x >> y;
             finger_ = ImVec2(x * d, y * d);
-            io.AddMousePosEvent(finger_.x, finger_.y);
-            io.AddMouseButtonEvent(0, true);
+            if (gated) {
+                maiz::touch_gate_down(gate, 0, finger_.x, finger_.y, t);
+            } else {
+                io.AddMousePosEvent(finger_.x, finger_.y);
+                io.AddMouseButtonEvent(0, true);
+            }
             release_in_ = 1; // held for one whole frame, as a real tap is
             return;
         }
@@ -93,10 +128,48 @@ void PhoneHarness::inject(ImGuiIO& io) {
             float x0, y0, x1, y1;
             in >> x0 >> y0 >> x1 >> y1;
             finger_ = ImVec2(x0 * d, y0 * d);
-            io.AddMousePosEvent(finger_.x, finger_.y);
-            io.AddMouseButtonEvent(0, true);
+            if (gated) {
+                maiz::touch_gate_down(gate, 0, finger_.x, finger_.y, t);
+            } else {
+                io.AddMousePosEvent(finger_.x, finger_.y);
+                io.AddMouseButtonEvent(0, true);
+            }
             for (int k = 1; k <= 12; ++k)
                 drag_.push_back(ImVec2((x0 + (x1 - x0) * k / 12.0f) * d, (y0 + (y1 - y0) * k / 12.0f) * d));
+            return;
+        }
+        if (op == "rclick") { // a mouse's right button: context menus (desktop scripts)
+            float x = 0, y = 0;
+            in >> x >> y;
+            finger_ = ImVec2(x * d, y * d);
+            io.AddMousePosEvent(finger_.x, finger_.y);
+            io.AddMouseButtonEvent(1, true);
+            io.AddMouseButtonEvent(1, false);
+            return;
+        }
+        if (op == "hold") { // a finger that stays: a press, after the gate's delay
+            float x = 0, y = 0;
+            int frames = 30;
+            in >> x >> y >> frames;
+            finger_ = ImVec2(x * d, y * d);
+            if (gated) maiz::touch_gate_down(gate, 0, finger_.x, finger_.y, t);
+            else {
+                io.AddMousePosEvent(finger_.x, finger_.y);
+                io.AddMouseButtonEvent(0, true);
+            }
+            release_in_ = frames;
+            return;
+        }
+        if (op == "pinch") { // two fingers about a centre, from one spread to another
+            float cx = 0, cy = 0, d0 = 0, d1 = 0;
+            in >> cx >> cy >> d0 >> d1;
+            const ImVec2 a0((cx - d0 / 2) * d, cy * d), b0((cx + d0 / 2) * d, cy * d);
+            maiz::touch_gate_down(gate, 0, a0.x, a0.y, t);
+            maiz::touch_gate_down(gate, 1, b0.x, b0.y, t);
+            for (int k = 1; k <= 12; ++k) {
+                const float s = d0 + (d1 - d0) * k / 12.0f;
+                pinch_.push_back({ImVec2((cx - s / 2) * d, cy * d), ImVec2((cx + s / 2) * d, cy * d)});
+            }
             return;
         }
         if (op == "type") {
