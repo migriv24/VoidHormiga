@@ -5324,3 +5324,13 @@ back.
 
 **Measured:** Hormiga 51/52 and Void Maiz 24/25 (`reduce_conformance`,
 upstream's known red); layering ok; every file within budget.
+
+## 0.1.10 shipped (2026-09-27)
+
+All three runner legs built. Installer 14,404,207 bytes; APK 4.5 MB, signed with
+the Hormiga key (certificate `37d0ee24…`). Every artifact hashes to what the
+feed says; the Linux digest `5160ad89…` equals the runner's own. The live feed
+says `latest 0.1.10`, and an install on 0.1.9 or 0.1.8 is offered it: the first
+two-digit patch number, and the updater compares versions as numbers, not text.
+**Still owed:** the author's phone running 0.1.10, and the database-switch hang
+seen on 0.1.9, which the harness never reproduced.
