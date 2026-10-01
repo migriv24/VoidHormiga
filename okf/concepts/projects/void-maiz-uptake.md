@@ -54,6 +54,18 @@ row below is a choice.
 | `Network::resync` | `net.hpp` | none | a **Sync again** button in the Share window: every link restarts and the whole document is exchanged | small, not done |
 | the console | (not taken) | our `ui/console.cpp`, offered upstream 09-20 | keep ours ([Q81](/developer_questions.md)) | no upstream answer yet |
 
+## Since the table (checked 2026-09-29)
+
+Four rows have moved and one piece was never on the table:
+
+| piece | what changed | state (2026-09-29) |
+|---|---|---|
+| the LAN transport | **2026-09-23, the author: all device-to-device networking runs over Reticulum, through Void Palabra** ([Void Snape](/concepts/projects/void-snape.md)). "Keep ours" is overtaken: `sync/peer.cpp` and `app/lan_wire.cpp` are to be replaced by `voidpalabra_reticulum`, which is built and proven against the Python reference | **not started here.** Our sealed LAN session still carries every frame |
+| the update client | Q86's trigger was "when the phone build starts", and the first Android build shipped as 0.1.7 (2026-09-24) | **still not migrated**; two clients now exist ([Q86](/developer_questions.md)) |
+| wires as runes | the Antfarm redesign answered A2 (wiring is read), but v2 took **named relations through `WireWriter`**, not `wires.hpp` | decided by building, never written down; [Q99](/developer_questions.md) |
+| rules of a mantle | v2's **placement** (`farm place <node> on <profile>\|each\|any`) answers "which device performs a synced node's effects" without mantle rules | overtaken by placement |
+| the navigation bar (not in the table) | offered to Void Maiz on 2026-09-23 as `src/phone/nav.*`, "written to be lifted"; the author placed it with Maiz in so many words | **still ours**: `voidmaiz/mobile.hpp` has no navigation bar, and the message is not in Maiz's repository |
+
 # Updates: proven compatible, migration staged
 
 Void Maiz's client is ours, generalized. What changed in the move:

@@ -16,6 +16,11 @@ templates/
 documents/
 databases/
 backups/
+# Antfarm v2 runs write beside a database too: the showcase's CSV of new
+# arrivals, and a store reservoir's copied files (a database at the repo root
+# during development puts them here)
+imports/
+mirror/
 
 # holiday credentials — NEVER committed. imgbb.key is plaintext (dev only);
 # org.miga is the encrypted vault (still never committed — it's org data)

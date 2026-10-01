@@ -123,6 +123,7 @@ struct HormigaApp::PhoneUi {
     static void calendar(HormigaApp& app, PhoneUi& ph, Frame& f);
     static void notes(HormigaApp& app, PhoneUi& ph, Frame& f);     // phone_more.cpp
     static void antfarm(HormigaApp& app, PhoneUi& ph, Frame& f);
+    static void farm(HormigaApp& app, PhoneUi& ph, Frame& f);     // phone_farm.cpp: Antfarm v2
     static void settings(HormigaApp& app, PhoneUi& ph, Frame& f);
     static void profile(HormigaApp& app, PhoneUi& ph, Frame& f);
     static void migos(HormigaApp& app, PhoneUi& ph, Frame& f);     // phone_migos.cpp: the network

@@ -45,6 +45,7 @@
 #include "domain/date_query.hpp"           // the date-aware block grammar
 #include "domain/flier_read.hpp"           // proposing tags from a flier
 #include "domain/seed.hpp"                 // register_glyphs: data + block + antfarm
+#include "main/farm_cli.hpp"                 // `voidhormiga-cli farm …` (Antfarm v2)
 #include "update/cli.hpp"                     // `voidhormiga-cli update`
 #include "voidmaiz/headless.hpp"
 
@@ -157,6 +158,8 @@ void wire(HormigaApp& app) {
         hormiga::register_glyphs(c);
         hormiga::register_block_glyphs(c);
         hormiga::register_antfarm_glyphs(c);
+        farm::register_glyphs(c);
+        hormiga::chambers::register_glyphs(c);
     };
 }
 
@@ -281,9 +284,12 @@ maiz::HostApp build_app() {
         hormiga::register_glyphs(core);
         hormiga::register_block_glyphs(core);
         hormiga::register_antfarm_glyphs(core);
+        farm::register_glyphs(core);
+        hormiga::chambers::register_glyphs(core);
     };
 
     h.effects = [](std::string_view op, std::string_view args) -> std::string {
+        if (op.rfind("farm-", 0) == 0 && g_core) { HormigaApp app; wire(app); return hormiga::farm_effect_headless(app, *g_core, op, effect_args(args)); } // Antfarm v2
         if (op == "save") {
             /* The SQLite mirror. Void Maiz's `Session::save()` writes the JSON
              * state document and deliberately does NOT dispatch this verb, so
@@ -1197,6 +1203,7 @@ maiz::HostApp build_app() {
          "before, immediately, for everyone. It does not touch your database - "
          "only what the host is serving"},
     };
+    for (auto& op : hormiga::farm_effect_ops()) h.effect_ops.push_back(op); // Antfarm v2's four
     return h;
 }
 
@@ -1231,6 +1238,8 @@ std::string HormigaApp::render_from_state(const std::string& state_json,
     hormiga::register_glyphs(core);
     hormiga::register_block_glyphs(core);
     hormiga::register_antfarm_glyphs(core);
+    farm::register_glyphs(core);
+    hormiga::chambers::register_glyphs(core);
     scene = maiz::project_scene(core);
     refresh_allo_rules();
     /* `cur_doc` is Builder VIEW state, absent from the state document, so a
@@ -1284,6 +1293,7 @@ std::string HormigaApp::render_from_state(const std::string& state_json,
             std::cerr << "  [" << e.level << "] " << e.op << ": " << e.msg << "\n";
     return path;
 }
+
 
 
 /* THE STATE FILE MUST BE THE ONE THE GUI OPENS, and this is the whole of the
@@ -1367,6 +1377,8 @@ int main(int argc, char** argv) {
         if (std::string_view(argv[i]) == "update")
             return hormiga::update::run_cli(argc - i, argv + i, shell_capture);
 
+    if (const int rc = hormiga::farm_cli_main(build_app(), argc, argv, given_state, g_base_dir, g_state_name, g_ship_dir); rc >= 0)
+        return rc; // `farm` (Antfarm v2): a subcommand of the process, with its own session
     static std::string flag = "--state";
     static std::string path = (g_base_dir / "demo-org.json").string();
     if (given_state.empty()) {

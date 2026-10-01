@@ -216,6 +216,8 @@ void HormigaApp::install_host() {
         hormiga::register_glyphs(c);
         hormiga::register_block_glyphs(c);
         hormiga::register_antfarm_glyphs(c);
+        farm::register_glyphs(c);
+        hormiga::chambers::register_glyphs(c);
     };
     // the effect seam: world-facing ops the core can't do itself. `save`
     // writes the exported state; `render` walks the issue chain into HTML
@@ -237,6 +239,7 @@ void HormigaApp::install_host() {
             }
             return json_str(db_ok ? db_file().string() : org_file().string());
         }
+        if (op.rfind("farm-", 0) == 0) return farm_effect_gui(op, args); // Antfarm v2 (app/farm_effects.cpp)
         if (op == "render") {
             std::string lang = args.find("es") != std::string_view::npos ? "es" : "en";
             std::string path = render_preview(lang);
@@ -585,6 +588,14 @@ void HormigaApp::reproject() {
                      ? 0
                      : (int)h.lines.size();
     refresh_allo_rules(); // Allomone: cache the rule set (its own mantle)
+    /* ANTFARM V2 (okf/concepts/platform/antfarm/v2/): its wires are stored
+     * with port NAMES, which Void Maiz projects as loose links; resolve them so
+     * they draw between sockets, then recompute every face. */
+    fv2.here = hormiga::farmhost::farm_exists(core);
+    if (scene.mantle == farm::kMantle) {
+        farm::resolve_named_wires(scene);
+        refresh_farm();
+    }
 }
 
 // Attach the mantle's wires to the projected runes (both directions), so
@@ -961,7 +972,7 @@ void HormigaApp::switch_section(int s) {
     ed.selection.clear();
     // Map overlays the org's data, so it rides the data mantle for now
     std::string mantle = (s == Builder)   ? cur_doc
-                         : (s == Antfarm) ? std::string(kAntfarmMantle)
+                         : (s == Antfarm) ? antfarm_mantle()
                                           : std::string(kDataMantle);
     if (scene.mantle != mantle)
         dispatch_and_reproject(std::string("use ") + mantle);
@@ -1024,6 +1035,8 @@ void HormigaApp::init() {
     hormiga::register_glyphs(core); // host config, per-session, never exported
     hormiga::register_block_glyphs(core);
     hormiga::register_antfarm_glyphs(core);
+    farm::register_glyphs(core);
+    hormiga::chambers::register_glyphs(core);
     core.dispatch("config set actor human:hormiga");
     if (state.empty()) { // truly fresh: seed the shipped default (the Cat Colony)
         for (const auto& cmd : hormiga::seed_cat_transcript()) core.dispatch(cmd);
@@ -1042,6 +1055,7 @@ void HormigaApp::init() {
         // document — see the note on the transcript.
         for (const auto& cmd : hormiga::seed_civic_transcript()) core.dispatch(cmd);
         core.dispatch("use demo-org"); // the civic seed leaves the mantle alone
+        pending_cmds.push_back("farm showcase"); // Antfarm v2, over the cats (after the chambers exist)
     }
     { // migration: orgs saved before the Antfarm became a mantle get one now
         maiz::ProjectOptions po;
@@ -1390,6 +1404,7 @@ void HormigaApp::init() {
                                {"poly_router", "Polygon router", "Test"},
                                {"hol_auth", "Sign-in - identity provider", "Visitors"},
                                {"hol_accounts", "Accounts + submissions", "Visitors"}};
+    register_farm_faces(); // Antfarm v2: palette + faces, from farm::kinds()
     palette_allomone.entries = {{"allo_when", "When (a rule)", "Allomone"},
                                 {"allo_hastag", "has tag", "Allomone"},
                                 {"allo_setcolor", "set card color", "Allomone"}};
@@ -1746,6 +1761,7 @@ std::string HormigaApp::ingest_asset(const std::string& src, bool quiet) {
     } else if (!quiet) {
         toast("already in assets/ (same content) - reused");
     }
+    fv2.chambers_dirty = true; // the Assets chamber registers it next frame
     return "assets/" + dest.filename().string();
 }
 
@@ -2390,7 +2406,7 @@ void HormigaApp::section_window(const char* title, int which) {
         if (section != which) { // this visible window becomes the active context
             section = which;
             std::string mantle = (which == Builder)   ? cur_doc
-                                 : (which == Antfarm) ? std::string(kAntfarmMantle)
+                                 : (which == Antfarm) ? antfarm_mantle()
                                                       : std::string(kDataMantle);
             if (scene.mantle != mantle)
                 dispatch_and_reproject(std::string("use ") + mantle);
@@ -2533,11 +2549,12 @@ void HormigaApp::frame_prelude() {
     // — each entry is dispatched as-is; batching happened where it was built.
     // `map …` verbs route through the action registry here too, so agents
     // driving HORMIGA_BOOT_CMD get the same vocabulary as the command bar.
+    if (fv2.chambers_dirty) reconcile_chambers(); // Antfarm v2: writes only what is out of step
     if (!pending_cmds.empty()) {
         std::vector<std::string> cmds;
         cmds.swap(pending_cmds);
         for (const auto& c : cmds)
-            if (!try_map_verb(c) && !try_doc_verb(c)) dispatch_and_reproject(c);
+            if (!try_map_verb(c) && !try_doc_verb(c) && !try_farm_verb(c)) dispatch_and_reproject(c);
     }
     // a date-tag temper pass runs once the import's commands have all landed
     if (run_temper_next && pending_cmds.empty()) {

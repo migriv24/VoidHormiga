@@ -5334,3 +5334,186 @@ says `latest 0.1.10`, and an install on 0.1.9 or 0.1.8 is offered it: the first
 two-digit patch number, and the updater compares versions as numbers, not text.
 **Still owed:** the author's phone running 0.1.10, and the database-switch hang
 seen on 0.1.9, which the harness never reproduced.
+
+# Antfarm v2 designed (2026-09-28)
+
+No code. The author opened the Antfarm redesign with an outside proposal (a
+"Blender Geometry Nodes" socket taxonomy: Mantle, Path, Document, API Key,
+Domain, Device Context) and asked for robust criticism first. The critique
+found it restated the workbook's leans as resolved, mixed three kinds of thing
+on one wire (payloads, dependencies, placement), made location the thing that
+flows (undoing content addressing), used "document" for the compiled output,
+and proposed a silent fallback. The author answered in depth, and delegated
+what was still open to the leans. The result is
+[Antfarm v2](/concepts/platform/antfarm/v2/index.md), ten pages. The decisions
+that came from the author:
+
+- **A new version, internally too**, not compatible with v1, with
+  documentation for agents on migrating. Reached by `farm migrate`: a backup,
+  then one logged batch. v1 glyphs stay registered so old logs replay. A v2
+  member refuses to sync a migrated database with a v1 member.
+- **Everything controlled is on a mantle.** The `.miga` is a set of chambers:
+  Data, **Assets** (new: one `asset` rune per file, the bytes' identity),
+  **Network** (profiles and devices) and **Documents**. The Antfarm configures
+  how they speak to each other and to the world.
+- **Mantles are filtered like geometry** (the author's "index feature"):
+  Separate chambers, Filter with a diamond Query input, Join, Count, Measure.
+  Mantles have sizes, and growth is read from the log.
+- **Path became river**, the author's word: a named place data goes into and
+  comes out of, mapped closely onto an S3 bucket, local first, over
+  reservoirs (folder, peer, bucket, image host, website-as-host) whose
+  abilities are declared. Management nodes emerged: Gauge, Check, Store,
+  Distributary, Dam. Reticulum peer reservoirs are researched, not designed.
+- **Keys are shared between members** (reversing 2026-09-16 and 2026-09-25 on
+  credentials): the rune syncs, the value travels only over a sealed session
+  into each vault, is never shown raw, and is attributed to the profile and
+  device that added it. Keys declare the documents they serve. Monitor nodes
+  for usage (from our own log first), vendor usage, budget and expiry.
+- **Profiles and devices are one thing** (lean): a `profile` rune per device
+  with a device facet. Links between profiles take both sides; a shared
+  username only suggests one.
+- **Calendars and maps are documents**, several per database, still in their
+  own tabs. Every document has `preview` and `publish`; a domain is where they
+  go; local domains need no key; no domain means nowhere to go, said plainly.
+  **The Antfarm grants, the document chooses, the seam removes**, so the two
+  places to filter cannot conflict.
+- **Many strands per wire** as the author asked, drawn as a real quantity on a
+  log scale, never an invented one. The one-wire rule for keys moved to the
+  input: a node uses one key, and a key serves many nodes.
+- **No widget without a verb**: every live face has a `farm` twin.
+
+The leans the author delegated, to confirm: named ports; socket shapes rather
+than three wire grammars; placement as a ring, not a wire; **tunnel** for
+mappings between chambers, so that "holiday" still means an effect (Q95); the
+canvas as an ant farm's cross-section with gates on the surface line (Q96);
+wires never write by themselves; v2 built in `src/antfarm/` as a separable
+layer (Q92). New questions Q92–Q97. The workbook's twelve questions are folded
+into v2 and Q82 now waits on the author's feedback. Deferred by the author: the
+network itself and the router as a device (Q97), and live data on hosted
+websites.
+
+# Antfarm v2, the prototype (2026-09-28, later)
+
+The author: *"lets begin building. I'll be able to give better feedback after
+messing around with a prototype. Be sure to also build the mobile version as
+well"*, with desktop first and the phone sharing it. Built beside v1, which is
+untouched and still runs every publish; the Antfarm tab now opens on v2 with
+*Antfarm v1* one button away. What exists, where, and what is still design is
+in [v2's index](/concepts/platform/antfarm/v2/index.md) §"What is built".
+
+- **`src/antfarm/`, the separable core (Q92's lean, enforced).** Types, 38 node
+  kinds (7 *planned*), the named-port graph, the door (`check_plug`), the
+  audit, a live evaluator and readiness faces, and the `farm` verbs. It knows
+  Void Maiz and nothing of Hormiga's; `check_layering.py` has a rule for it,
+  and `tests/farm_smoke.cpp` tests it with a hand-made host.
+- **No Void Maiz change was needed for V0.** Named wires are resolved in the
+  projected scene by the host; the canvas's existing `WireWriter` hook writes
+  them by name and runs the type check and the one-wire rule on a drag; socket
+  shapes and colours are its existing `port_types`. Strands, gates and
+  placement rings do need Void Maiz and are not built.
+- **`voidhormiga-cli farm …` is a subcommand of the process**, like `update`,
+  because Void Maiz's headless session has no host-verb hook. It opens its own
+  session on the same document, with the same lock and journal.
+- **A key's value is sealed into this device's vault** (`farm key set` from
+  standard input in the CLI; a password box in the desktop Inspector). The
+  phone never takes one. Sharing between members is V3.
+- **The phone shows why readiness is per device.** On a phone the website and
+  the map say *nowhere to go from this device*, because a phone cannot serve
+  the local preview; on the desktop the same nodes are ready. The harness's
+  second profile also cannot open a vault sealed to the desktop profile, and
+  its key nodes say *the vault is locked*: the problem V3 exists to solve, seen
+  in the prototype.
+- **Found while building:** `list_documents()` treats every mantle except the
+  data and `antfarm` mantles as a Builder document, so the `farm` mantle would
+  have appeared in the Builder's document list. It is excluded.
+- **Measured:** `hormiga_farm_smoke` ok; 52 of 53 tests, the red one
+  `reduce_conformance`, Void Maiz's known red; layering ok; `app.hpp`'s budget
+  raised by ten lines for the v2 declarations (its state is one member), and
+  the farm CLI split out of `headless.cpp` to keep that file in budget.
+
+# Antfarm v2, the second pass: real chambers, real effects, the Cat Colony (2026-09-28, later still)
+
+The author tried the prototype and refused its central shortcut: *"i don't see
+how we can even have a prototype yet when the assets, network, and documents
+dont even exist as mantles yet ... Do not underestimate the amount of
+structural change that might need to be done due to this antfarm overhaul."*
+And four GUI problems, one of them an old Void Maiz bug. What changed:
+
+- **The chambers are real mantles** (`domain/chambers.hpp`): `assets` (one
+  rune per file, named from its content address), `network` (one profile per
+  device, written by that device about itself), `documents` (one entry per
+  Builder document, calendar view and map view). Every database gets them at
+  boot. A reconcile keeps them in step and writes nothing when nothing changed.
+  **Two decisions the design pages had not made:**
+  - references in Data stay paths, because every path already carries its
+    file's sha256 and every file goes through `resolve_file`;
+  - the Documents chamber owns a document's identity and deployment, while its
+    content stays where its tab edits it, so no tab broke.
+  A removed document is marked `gone`, never deleted.
+- **v2 nodes do things**, each as `effect farm-…` under the same gate as
+  `deploy-site`:
+  - import a CSV as one batch;
+  - store files into folder reservoirs, or online through v1's `host_online`;
+  - check a folder, domain, bucket or key;
+  - preview or publish every document mounted on a domain as one site: a
+    calendar as a real `.ics`, a map as a GeoJSON layer.
+  **There is no second deploy path**: publishing hands v1's `deploy_site` a
+  v1-shaped host built from the v2 web domain and its key.
+- **The Cat Colony showcase** (`farm showcase`, and every fresh database). It
+  includes:
+  - a website document and a birthdays calendar view, made for it;
+  - a CSV of six newly arrived cats to import;
+  - filters and a join;
+  - a photo river over a folder, a USB-stick folder and a CDN bucket held behind
+    a dam;
+  - keys that honestly need values, one expiring in twelve days;
+  - a GitHub Pages domain with three documents mounted;
+  - planned nodes where the future goes.
+  Everything that can run locally does.
+- **The four GUI problems, fixed, the last three in Void Maiz** (the author's
+  permission; logged in its OKF):
+  - the add box has categories and one more click, as a list for Shift+A and as
+    submenus on right-click;
+  - a wire dropped on empty canvas offers only kinds with a port that fits, and
+    wires the new node by that port;
+  - `"max":"many"` inputs take several wires, drawn as a pill with a count;
+  - a released move keeps its position one more frame, so the node no longer
+    flashes back.
+  Strands are drawn too.
+- **A mistake made and caught**: the CLI's farm effects first ran in a
+  throwaway app pointed at the process's folder, not the database's. One store
+  run wrote the demo photos into the repository root. Nothing was committed, and
+  both folders (only this run's files, checked before deleting) were removed. The
+  CLI now updates its database folder before any effect runs.
+- **Measured:** 53 of 54 tests, the red one `reduce_conformance`, Void Maiz's
+  known red; `hormiga_chambers_smoke` and `hormiga_farm_smoke` new; layering,
+  host seams and file budgets ok; screenshots of the desktop and the phone on the
+  showcase. The move flicker is a one-frame effect a screenshot cannot catch; the
+  fix is argued from the frame order.
+
+# Two sibling applications founded: Void Verguenza and Void Chisme (2026-10-01)
+
+No code. The author founded two applications separate from Hormiga and gave them
+to this session *"because there's a lot we can take from hormiga, or plan with
+hormiga in mind"*. OKF only for now; desktop first.
+
+- **Void Verguenza** (`../VoidVerguenza`): secrets several people share. Each
+  value is sealed separately to every device allowed to open it; devices enrol in
+  person with a code compared on two screens; actions can need several devices to
+  approve (labelled as enforced by the app or by encryption); every use is signed
+  and logged; sync is Void Palabra over Reticulum. **Hormiga is its first client**:
+  the Antfarm's Key node will name a Verguenza secret and ask for the value at the
+  moment of use, carrying the effect's consequence sentence to whoever approves.
+  So Antfarm v2's key sharing (V3) waits for Verguenza, and **Q88's condition is
+  met** (a second application wanting the vault format).
+- **Void Chisme** (`../VoidChisme`): seeing and managing a network one owns, as a
+  graph, for the store the author is about to run. It starts with a networking
+  primer, because the author is learning. It would measure a Hormiga database's
+  members through an **observer** role (Q99).
+- **A privacy finding, from reading Void Maiz while designing Chisme**: Void
+  Maiz's Reticulum announces carry the person's name, colour and the database's
+  name in the clear (`VoidMaiz/src/net/rnslink.cpp`). Hormiga's LAN path seals
+  presence for this reason, so the Reticulum move should not undo that (Q98).
+- Hormiga's view of each seam: [Void Verguenza](/concepts/projects/void-verguenza.md),
+  [Void Chisme](/concepts/projects/void-chisme.md). The Key node page (`keys.md`)
+  points at Verguenza.

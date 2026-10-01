@@ -153,9 +153,12 @@ thing.
 > **The gaps the proposal correctly identified are real and stay open:** there is
 > no `colony info` (size, asset count, last sync, known peers) and no
 > `colony prune`. They should be built under those names.
-- `holiday add|rm|enable|disable <kind> [config]` — Antfarm surgery, secrets
-  field-encrypted at write.
-- `holiday status [name]` — surface `describe()`; what the node faces show.
+- ~~`holiday add|rm|enable|disable <kind> [config]`~~ and ~~`holiday status
+  [name]`~~ — **superseded 2026-09-28 by the `farm` family** of Antfarm v2
+  (`farm`, `show`, `kinds`, `ports`, `mantles`, `eval`, `status`, `add`, `set`,
+  `rm`, `plug`, `unplug`, `place`, `key`, `check`, `run`, `preview`, `publish`,
+  `migrate`). See [the v2 CLI](/concepts/platform/antfarm/v2/cli.md). One noun,
+  because a second vocabulary for the same nouns is how a CLI becomes two.
 - `snapshot` — force the JSON mirror the fallback story rides on.
 
 # Not verbs

@@ -69,6 +69,18 @@ FORBIDDEN = {
     'phone': ([r'"ui/', r'\.\./ui/'],
               'the phone draws its own screens; a desktop panel that a phone '
               'needs has something in it that belongs in domain/'),
+    # src/antfarm/ IS ANTFARM V2'S CORE, AND IT IS SEPARABLE ON PURPOSE (Q92,
+    # 2026-09-28). The author: "other applications may eventually want to use
+    # some functionality that the antfarm provides." It may reach Void Maiz (the
+    # scene it reads, the tag grammar) and the vendored JSON, and NOTHING of
+    # Hormiga's: what the application knows reaches it through a Context the host
+    # fills (app/farm_host.cpp). The day a second application wants it, this
+    # folder leaves the repository as it is.
+    'antfarm': ([r'imgui', r'GLFW', r'glad', r'"app/', r'"ui/', r'"render/',
+                 r'"domain/', r'"platform/', r'"publish/', r'"sync/', r'"phone/',
+                 r'\.\./app/', r'\.\./ui/'],
+                'Antfarm v2 is a separable layer: it knows Void Maiz and nothing of '
+                'Hormiga, which is what lets another application take it'),
     'sync': ([r'imgui', r'GLFW', r'glad', r'"app/', r'"ui/', r'"render/',
               r'"domain/', r'"platform/', r'"publish/', r'\.\./app/', r'\.\./ui/'],
              'the sync layer is a stand-in for Void Palabra Phase 4 and must '
@@ -86,16 +98,17 @@ ALLOWED = {
     'sync': {'sync'},
     # update depends on ITSELF ONLY -- see FORBIDDEN above.
     'update': {'update'},
+    'antfarm': {'antfarm'},
     'domain': {'domain', 'gis'},
     'render': {'render', 'domain', 'app', 'gis'},
     'platform': {'platform', 'domain', 'gis'},
     'publish': {'publish', 'render', 'domain', 'app', 'gis'},
-    'ui': {'ui', 'render', 'domain', 'app', 'platform', 'gis', 'sync', 'update'},
-    'app': {'app', 'domain', 'render', 'platform', 'ui', 'gis', 'sync', 'update'},
+    'ui': {'ui', 'render', 'domain', 'app', 'platform', 'gis', 'sync', 'update', 'antfarm'},
+    'app': {'app', 'domain', 'render', 'platform', 'ui', 'gis', 'sync', 'update', 'antfarm'},
     # the two front-ends: adapters, so they may reach anything. There are
     # exactly two and they are peers — founding commitment 1, in the tree.
     'main': {'main', 'app', 'domain', 'render', 'platform', 'publish', 'ui',
-             'gis', 'sync', 'update'},
+             'gis', 'sync', 'update', 'antfarm'},
 }
 
 

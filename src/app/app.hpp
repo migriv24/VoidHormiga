@@ -16,6 +16,7 @@
 #include "domain/templates.hpp"       // starter templates for the Builder
 #include "platform/storage.hpp" // the SQLite Data holiday (phase C)
 #include "platform/vault.hpp"   // the passphrase-locked credential store (.miga v2)
+#include "app/farm_host.hpp"     // Antfarm v2: the host half (the core half is src/antfarm/)
 
 #include "voidmaiz/textinput.hpp" // the platform keyboard, for the phone front-end
 #include "voidmaiz/action.hpp" // named canvas actions (Territory's vocabulary)
@@ -98,6 +99,7 @@ struct HormigaApp {
      * `config set paths.<name> <path>` (absolute, or relative to the
      * database). Resolved on first use and cached; see src/app/paths.cpp. */
     std::filesystem::path data_dir(const std::string& name) const;
+    using FarmFx = hormiga::farmhost::Effect; FarmFx farm_effect(const std::string& op, const std::vector<std::string>& args); void load_throwaway(const std::string& state); // app/farm_effects.cpp
     mutable std::map<std::string, std::filesystem::path> data_dir_cache;
     /* ── WHICH DOCUMENT IS THIS APPLICATION EDITING (2026-08-21) ────────────
      *
@@ -514,6 +516,14 @@ private:
     bool try_map_verb(const std::string& cmd); // `map <action> …` → ONE batch
     maiz::ActionRegistry doc_actions;         // the Builder's verbs (B1)
     bool try_doc_verb(const std::string& cmd); // `doc <action> …` → ONE batch
+
+    // ── Antfarm v2, the prototype (okf/concepts/platform/antfarm/v2/; app/farm_app.cpp)
+    hormiga::farmhost::UiState fv2;
+    std::string antfarm_mantle() const; bool try_farm_verb(const std::string& cmd); // the tab's mantle; `farm …`
+    void refresh_farm(); void reconcile_chambers(); void register_farm_faces(); void draw_farm_face(maiz::FaceContext& ctx);
+    farm::Context farm_context(); maiz::CanvasStyle farm_canvas_style(const maiz::CanvasStyle& base);
+    void draw_farm_section(); void draw_farm_inspector(); void draw_farm_key_box(const std::string& node);
+    std::string farm_effect_gui(std::string_view op, std::string_view args);
     // ── the THEME socket (builder.md QE: the Style tab grows into this) ─────
     bool win_style = true;              // the Style tab (theme editor)
     // the THEME (builder.md QE): a first-class style set the render packs read.

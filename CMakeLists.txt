@@ -263,7 +263,10 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp
   src/ui/databases.cpp
   src/phone/phone.cpp src/phone/nav.cpp src/phone/phone_data.cpp src/phone/phone_more.cpp
-  src/phone/phone_migos.cpp src/phone/phone_migas.cpp)
+  src/phone/phone_migos.cpp src/phone/phone_migas.cpp src/phone/phone_farm.cpp
+  src/antfarm/farm_kinds.cpp src/antfarm/farm_graph.cpp src/antfarm/farm_eval.cpp
+  src/antfarm/farm_face.cpp src/antfarm/farm_verbs.cpp
+  src/app/farm_host.cpp src/app/farm_app.cpp src/app/farm_effects.cpp src/ui/farm.cpp)
 
 # ── ANDROID: the same application as a NativeActivity library (2026-09-24) ──
 # android/hormiga_android.cmake builds libvoidhormiga.so from HORMIGA_APP_SOURCES
@@ -394,7 +397,7 @@ endif()
 # is one struct. The Output domain itself is view-free (section_web.cpp has zero
 # ImGui references), so nothing here ever needs a context — the cost is binary
 # size, and the alternative was a second renderer.
-add_executable(voidhormiga-cli src/main/headless.cpp src/platform/stb_impl.cpp ${HORMIGA_APP_SOURCES})
+add_executable(voidhormiga-cli src/main/headless.cpp src/main/farm_cli.cpp src/platform/stb_impl.cpp ${HORMIGA_APP_SOURCES})
 target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
 target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
   HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
@@ -776,6 +779,21 @@ add_executable(hormiga_dates_smoke tests/dates_smoke.cpp)
 target_link_libraries(hormiga_dates_smoke PRIVATE voidmaiz)
 target_include_directories(hormiga_dates_smoke PRIVATE src vendor/json)
 add_test(NAME hormiga_dates_smoke COMMAND hormiga_dates_smoke)
+
+# Antfarm v2's core, ALONE (okf/concepts/platform/antfarm/v2/): src/antfarm/ plus
+# Void Maiz and nothing of Hormiga's, which is the test that the layer is
+# separable (Q92) as well as correct.
+add_executable(hormiga_farm_smoke tests/farm_smoke.cpp src/antfarm/farm_kinds.cpp
+  src/antfarm/farm_graph.cpp src/antfarm/farm_eval.cpp src/antfarm/farm_face.cpp src/antfarm/farm_verbs.cpp)
+target_link_libraries(hormiga_farm_smoke PRIVATE voidmaiz)
+target_include_directories(hormiga_farm_smoke PRIVATE src vendor/json)
+add_test(NAME hormiga_farm_smoke COMMAND hormiga_farm_smoke)
+
+# The chambers (Antfarm v2): Assets, Network and Documents as real mantles.
+add_executable(hormiga_chambers_smoke tests/chambers_smoke.cpp)
+target_link_libraries(hormiga_chambers_smoke PRIVATE voidmaiz)
+target_include_directories(hormiga_chambers_smoke PRIVATE src vendor/json)
+add_test(NAME hormiga_chambers_smoke COMMAND hormiga_chambers_smoke)
 
 # The Cat Dataset generator (tools/catgen.cpp): a synthetic, PUBLIC test colony
 # built through the real dispatcher, saved as a loadable state snapshot. Not a

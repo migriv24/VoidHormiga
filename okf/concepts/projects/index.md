@@ -34,6 +34,17 @@ itself.
   Interaction Combinators. Piece by piece: adopted, proven compatible, waiting,
   or declined, with why. Hormiga builds against it unchanged, and Void Maiz's
   update client already reads Hormiga's live feed.
+- [Void Verguenza](/concepts/projects/void-verguenza.md) — **a sibling
+  application founded 2026-10-01 at `../VoidVerguenza`, design only.** Secrets
+  several people share, sealed per device, with actions several devices must
+  approve. Hormiga's Antfarm Key node will name a Verguenza secret instead of
+  holding a value; this answers Q88's condition (a second application wanting
+  the vault format).
+- [Void Chisme](/concepts/projects/void-chisme.md) — **a sibling application
+  founded 2026-10-01 at `../VoidChisme`, design only.** Seeing and managing a
+  network one owns, as a graph. It would measure a Hormiga database's members
+  through an observer role (Q99), and it found that Void Maiz's Reticulum
+  announces carry names in the clear (Q98).
 - [The Cat Dataset](/concepts/projects/cat-dataset.md) — a public, synthetic
   test colony: 50 tag-rich fictional cats and linked birthday events, built by
   a C++ generator through the real dispatcher. **This is what the pipeline is

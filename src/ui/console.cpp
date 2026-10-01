@@ -278,6 +278,7 @@ void HormigaApp::console_command_bar() {
 
         if (try_map_verb(c)) continue;  // `map …` verb macros (one batch)
         if (try_doc_verb(c)) continue;  // `doc …` — the Builder's verbs
+        if (try_farm_verb(c)) continue; // `farm …` — Antfarm v2
         maiz::Result r = dispatch_and_reproject(c);
         log.push_back({">", c, r.text().empty() ? (r.ok ? "ok" : "failed") : r.text()});
     }

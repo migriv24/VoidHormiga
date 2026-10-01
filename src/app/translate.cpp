@@ -163,7 +163,8 @@ int HormigaApp::translation_report(const std::string& state_json,
         if (auto p = line.find(" ("); p != std::string::npos) line.resize(p);
         while (!line.empty() && line.back() == ' ') line.pop_back();
         if (line.empty() || line == "(no mantles)" || line == kDataMantle ||
-            line == kAntfarmMantle || line == kAlloMantle || line == kCivicMantle)
+            line == kAntfarmMantle || line == kAlloMantle || line == kCivicMantle ||
+            line == farm::kMantle || hormiga::chambers::is_chamber(line))
             continue;
         mantles.push_back(line);
     }

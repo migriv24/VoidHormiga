@@ -21,8 +21,115 @@ fold into concepts and clear from here.
   **What would change the lean:** a second application wanting the same vault
   format, which would make it a Palabra companion (or a small library) rather
   than Hormiga's.
+  **Update 2026-10-01: the condition is met.** Void Verguenza
+  (`../VoidVerguenza`) is a second application wanting a sealed-secret format, and
+  its envelope library is designed to have no UI. The lean becomes: **keep
+  Hormiga's vault working, and move its format onto Verguenza's library when that
+  library exists**. ([Void Verguenza](/concepts/projects/void-verguenza.md))
 
-- **Q82 — the Antfarm redesign: twelve questions, one workbook.** (Opened
+- **Q98 — Void Maiz's Reticulum announces carry names in the clear.** (Opened
+  2026-10-01, found while designing Void Chisme.) `RnsSession::about_json` puts
+  the person's display name, colour and the database's name in every announce,
+  and Reticulum announces are public. Hormiga's LAN path seals presence to the
+  room key for exactly this reason. **Lean: before Hormiga moves its sharing to
+  Reticulum, ask Void Maiz for announces that carry only the application and an
+  opaque id, with names inside sealed presence.** (The author allows direct Void
+  Maiz edits; this one changes what every Maiz application tells strangers, so it
+  is the author's call.) ([Void Chisme](/concepts/projects/void-chisme.md))
+
+- **Q99 — An observer member, for Void Chisme?** (Opened 2026-10-01.) Chisme
+  would measure a Hormiga database's activity (who is present, sync volume per
+  member, conflicts) as a member that receives presence and sync statistics and
+  never the database. **Lean: yes, when Chisme reaches its Reticulum phase**; it
+  reuses the join approval, and Hormiga's members registry gains a role.
+  ([Void Chisme](/concepts/projects/void-chisme.md))
+
+- **Q92 — Antfarm v2 as a package: when does it leave, and what is it
+  called?** (Opened 2026-09-28.) The author: *"other applications may eventually
+  want to use some functionality that the antfarm provides."* **Lean: a
+  separable layer in `src/antfarm/` from V0, held to it by the layering
+  checker, and a package the day a second application (Portfolio Manager or
+  Void Reyna) asks, not before.** Reyna already owns the holiday-as-Lens theory,
+  so the two must not define "holiday" twice. Offering the protocol core to Void
+  Core, which names a holiday registry as planned, stays open. **What settles
+  it:** a second caller, and a name from the author.
+  ([v2](/concepts/platform/antfarm/v2/index.md))
+
+- **Q93 — which members receive shared key values?** (Opened 2026-09-28.) The
+  author decided keys are shared between devices and placed the risk with the
+  network. **Lean: members whose role is `admin`**, which is every member today,
+  so the rule costs nothing now and becomes "viewers don't receive keys" when
+  roles are enforced. ([keys](/concepts/platform/antfarm/v2/keys.md) §2)
+
+- **Q94 — the Network chamber's door.** (Opened 2026-09-28.) `members.json` was
+  kept out of the data on 2026-09-16 so that an admin-only rule could be
+  enforced at its own door. v2 moves members into the `.miga` as the Network
+  chamber. **Lean: a host-side guard refuses Network writes from non-admins, in
+  the CLI and GUI alike, until signatures let every member verify it.**
+  ([network](/concepts/platform/antfarm/v2/network.md) §5)
+
+- **Q95 — "tunnel" for the mappings between chambers.** (Opened 2026-09-28.)
+  The author called the Data↔Assets mapping a holiday. v2 calls it a **tunnel**,
+  because both ends are inside the `.miga` and only holidays pass the effect
+  gate. **Lean: keep the two words apart.** **What settles it:** the author
+  confirming the word, or choosing another.
+  ([v2 index](/concepts/platform/antfarm/v2/index.md) §"The four words")
+
+- **Q96 — the canvas as an ant farm's cross-section.** (Opened 2026-09-28.) The
+  author delegated how to show the effect boundary. **Lean: three strata
+  (Chambers, Ground, Surface) with gates on the surface line**, a node's stratum
+  following from what it touches rather than where it is dragged.
+  ([canvas](/concepts/platform/antfarm/v2/canvas.md) §1)
+
+- **Q97 — stations: the router, the NAS, the small server.** (Opened
+  2026-09-28, deferred by the author.) Is a Wi-Fi router a reservoir, a domain
+  (the address the network reaches a preview at), a reach (the LAN itself), or
+  all three? v2 reserves `device: station` on the profile facet and decides
+  nothing. ([network](/concepts/platform/antfarm/v2/network.md) §6)
+
+- **Q98 — should the chambers reach a database that has no v2 Antfarm?**
+  (Opened 2026-09-29.) `UiState::chambers_dirty` starts `true`, so the desktop
+  application's first frame adds the `assets`, `network` and `documents`
+  mantles to **every** database it opens, v1 included. That writes to an
+  organization's database before V7, makes a dev build and an installed 0.1.x
+  hold different things in one document, and syncs the new mantles to members
+  whose builds do not know them. The CLI already waits for `farm init`.
+  **Lean: reconcile only when a `farm` mantle exists** (and on `farm init`,
+  `farm chambers`, `farm showcase`), so a database becomes v2 by one logged
+  act, which is what the migration page promises. **What settles it:** the
+  author, since the second pass made "every database gets them at boot" a
+  deliberate line. ([v2](/concepts/platform/antfarm/v2/index.md) §"Found on a
+  copy of a real database")
+
+- **Q99 — the stand-ins whose trigger has fired.** (Opened 2026-09-29.) Five
+  pieces were written to be replaced "when X lands", and X has landed:
+
+  | stand-in | written to leave when | that happened | what it costs to keep |
+  |---|---|---|---|
+  | `sync/peer.cpp`, `app/lan_wire.cpp` (our sealed LAN session) | Palabra's device-to-device layer exists | `voidpalabra_reticulum`, and the 2026-09-23 ruling | a second transport to secure and test |
+  | `src/update/` (≈1,100 lines) | Q86: the phone build starts | 0.1.7, the first APK, 2026-09-24 | two update clients; the phone cannot apply an update with ours |
+  | `src/phone/nav.*` | Maiz's `mobile.hpp` has a bar | never offered in a form Maiz received | Interaction Combinators has no bar |
+  | the 0.1.4 whole-document exchange in `app/lan_sync.cpp` | every peer speaks `voidmaiz_net` | 0.1.5 on | a second sync path, compiled in every build |
+  | `domain/allomone_legacy.hpp` (882 lines) | the last legacy `script` rune is migrated | **never, by construction**: `seed_cat_scripts_transcript()` seeds twelve into every new Cat database | a frozen interpreter kept alive by our own fixture |
+
+  And one decision made by building, never written down: v2 wires are **named
+  relations written through `WireWriter`**, not Void Maiz's `wires.hpp` (wires
+  as runes), which the uptake page left waiting on A2. **Lean: order them by
+  risk, not size:** the transport first (security surface), then the update
+  client (the phone), then rewriting the Cat scripts as `allo-script` so the
+  legacy file can go; record the wires decision in
+  [v2 types](/concepts/platform/antfarm/v2/types.md). **What settles it:** the
+  author's order. ([Void Maiz uptake](/concepts/projects/void-maiz-uptake.md)
+  §"Since the table")
+
+- **Q82 — the Antfarm redesign: twelve questions, one workbook.** **Updated
+  2026-09-28: the author led the redesign in conversation and delegated the
+  unsettled points to the leans, which are now written as
+  [Antfarm v2](/concepts/platform/antfarm/v2/index.md).** A1, A2, A3, A4, A5,
+  A6, A7, A11 and A12 went in as leaned. A8 (sync) stays yes and now carries
+  keys. A9 became Q92. A10 (wrappers) is partly overtaken: fallback and mirroring are
+  now river policy. **What remains open is the author's feedback on v2 as a
+  whole.** The original entry follows. (Opened
   2026-09-22.) The author is about to lead the redesign and asked for the
   documentation to study first. The questions are in
   [the redesign workbook](/concepts/platform/antfarm/redesign.md) §3 rather than
@@ -51,6 +158,10 @@ fold into concepts and clear from here.
   **What settles it:** upstream's answer on whether ports, and port names in
   relation labels, become part of the glyph contract. Asked in
   `MESSAGE_FOR_VOIDCORE_hormiga-ports-at-the-door-2026-09-22.md`.
+  **Updated 2026-09-29:** the Hormiga half is built (v2's `farm plug` refuses
+  ill-typed wires; `farm status` audits raw `link`s in the `farm` mantle). The
+  upstream half cannot settle: **the message was never relayed**, and is not in
+  Void Core's repository.
 
 - **Q85 — when two members move the same Builder block at once, converge or
   conflict?** (Opened 2026-09-22.) **Lean: converge `row`, `col` and `span`
@@ -68,7 +179,8 @@ fold into concepts and clear from here.
   The gain is the Android apply path. The one hazard is a person's earlier
   *Never*: our preference file must be read once and carried over, or the
   migration performs a check nobody asked for. **What settles it:** when the
-  phone build starts.
+  phone build starts. **It has** (0.1.7, 2026-09-24), and ours is still the
+  one that ships; see [Q99](/developer_questions.md).
 
 - **Q79 — the database needs a profile of its own, and today it is three
   config keys.** (Opened 2026-09-20.) **Lean: a dedicated structure, minted

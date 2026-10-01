@@ -244,7 +244,11 @@ BUDGET = {
     # destroys the GL context in the background, and the photo picker sends
     # the app there: every cached picture was a dead texture on return). The
     # phone's own state went into PhoneUi, which is phone/'s, not here.
-    'src/app/app.hpp': 1257,
+    # 1257 -> 1267 (2026-09-28): Antfarm v2's prototype. Its state is ONE member
+    # (farmhost::UiState) and its code lives in app/farm_app.cpp, ui/farm.cpp and
+    # phone/phone_farm.cpp; what is here is the eight methods three front-ends
+    # call. Splitting HormigaApp is still the right next move for this file.
+    'src/app/app.hpp': 1267,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

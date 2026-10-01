@@ -215,8 +215,10 @@ void HormigaApp::phone_frame() {
 
     // Data, Calendar and Notes read the organization's mantle; the Antfarm its own
     const char* want = ph.screen == kData || ph.screen == kCalendar || ph.screen == kNotes ? kDataMantle
-                       : ph.screen == kAntfarm                                             ? kAntfarmMantle
+                       : ph.screen == kAntfarm                                             ? nullptr
                                                                                            : nullptr;
+    const std::string farm_mantle = antfarm_mantle(); // v2 when this database has one
+    if (ph.screen == kAntfarm) want = farm_mantle.c_str();
     /* A database without that mantle (an empty one a tool wrote) refuses the
      * switch; asking again every frame queued a toast every frame. Once every
      * few seconds is enough to notice a mantle that arrives with a sync. */

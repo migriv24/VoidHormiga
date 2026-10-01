@@ -110,6 +110,8 @@ void HormigaApp::new_database() {
     hormiga::register_glyphs(core);
     hormiga::register_block_glyphs(core);
     hormiga::register_antfarm_glyphs(core);
+    farm::register_glyphs(core);
+    hormiga::chambers::register_glyphs(core);
     core.dispatch("config set actor human:hormiga");
     // minimal structure so every section has a home to open into
     core.dispatch(std::string("mantle new ") + kDataMantle);   // empty org data
@@ -194,6 +196,8 @@ void HormigaApp::reload_from_state(const std::string& state) {
     hormiga::register_glyphs(core);
     hormiga::register_block_glyphs(core);
     hormiga::register_antfarm_glyphs(core);
+    farm::register_glyphs(core);
+    hormiga::chambers::register_glyphs(core);
     core.dispatch("config set actor human:hormiga");
     reproject();
     read_view_config();

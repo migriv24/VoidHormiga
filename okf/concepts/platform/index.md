@@ -26,7 +26,9 @@ Read in this order the first time:
   holds the graph as built, holidays, capabilities, research on how outside APIs
   map on, the Antfarm across devices, **real CLI transcripts**, and the redesign
   workbook. The Antfarm topology *is* the protocol layer the bundle stores,
-  which is why a database can be reconstructed from it.
+  which is why a database can be reconstructed from it. **[v2/](/concepts/platform/antfarm/v2/index.md)**
+  (2026-09-28) is the redesign: chambers, rivers, shared keys, documents and
+  domains, and a migration from v1. Designed, not built.
 - [Security](/concepts/platform/security.md) — the E2EE posture: libsodium as
   the one crypto dependency, at-rest encryption, the render-seam privacy rule
   (subtractive for things, **additive for people**), the collaboration modes,

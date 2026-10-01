@@ -166,6 +166,10 @@ void HormigaApp::PhoneUi::notes(HormigaApp& app, PhoneUi& ph, Frame& f) {
 
 /* ── THE ANTFARM: its nodes, one node, or the graph ────────────────────── */
 void HormigaApp::PhoneUi::antfarm(HormigaApp& app, PhoneUi& ph, Frame& f) {
+    if (app.fv2.v2) { // Antfarm v2, the prototype (phone_farm.cpp)
+        farm(app, ph, f);
+        return;
+    }
     const float dp = ph.dp;
     if (f.route.rfind("detail:", 0) == 0) {
         const maiz::SceneNode* n = app.scene.find(f.route.substr(7));
@@ -197,6 +201,7 @@ void HormigaApp::PhoneUi::antfarm(HormigaApp& app, PhoneUi& ph, Frame& f) {
         return;
     }
 
+    if (ImGui::SmallButton(ICON_FA_FLASK "  Try Antfarm v2")) app.fv2.v2 = true;
     int mode = ph.farm_graph ? 1 : 0;
     if (maiz::segmented("##farm-mode", {"Nodes", "Graph"}, mode)) ph.farm_graph = mode == 1;
     if (ph.farm_graph) {

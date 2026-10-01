@@ -34,6 +34,20 @@ reasoning behind it, the research, and the open questions, each in its own
 place. Nothing was dropped in the split. The history that no longer describes
 the code is in the [ledger](#the-decision-ledger) below with its date.
 
+## Antfarm v2 (2026-09-28)
+
+**The redesign is written, in [v2/](/concepts/platform/antfarm/v2/index.md),
+and a prototype runs** (desktop and phone, the `farm` verbs in the CLI and the
+command bar; see v2's index §"What is built").
+It is a new version, not compatible with the graph described on this folder's
+other pages, and reached by a logged migration. **The prototype is built; the
+migration is not** (phase V7). The pages below keep describing v1, which is
+what every organization's graph runs, until v2's
+[migration](/concepts/platform/antfarm/v2/migration.md) ships. One piece of v2
+already reaches v1 databases: the desktop application adds the three chamber
+mantles to every database it opens (v2's index §"Found on a copy of a real
+database").
+
 # Reading order
 
 | page | what it answers |
@@ -132,6 +146,7 @@ without losing why.
 | 2026-09-19 | The author wants the Antfarm to sync, with private nodes (Q78), and floated isolating it *"in its own void based thing"*. | [redesign](/concepts/platform/antfarm/redesign.md) |
 | 2026-09-22 | A folder. The CLI found to accept ill-typed links, and no code found to read wiring. | this page |
 | 2026-09-25 | **The Antfarm syncs** (Q78: "all devices share the complete antfarm"), except credential-naming nodes. `hol_device` and `hol_device_paths`; Arrange; the tab's code moves to `ui/antfarm.cpp`. | [across devices](/concepts/platform/antfarm/collaboration.md) |
+| 2026-09-28 | **Antfarm v2 designed**: the `.miga` as chambers (Data, Assets, Network, Documents), mantles that flow and are filtered, tunnels, rivers, shared keys (reversing 09-16 and 09-25 on keys), documents with preview and publish to domains, the canvas as strata with gates. A new version with a migration. | [v2](/concepts/platform/antfarm/v2/index.md) |
 
 # Where the Antfarm meets the rest
 

@@ -129,7 +129,16 @@ with it.
   holidays, capabilities, how outside APIs map on (research), across devices,
   **CLI example usage** (real transcripts), and the redesign workbook. Writing
   it found two things: the dispatcher accepts ill-typed links, and no code
-  reads the wiring.
+  reads the wiring. **Antfarm v2 was designed 2026-09-28** in
+  [v2/](/concepts/platform/antfarm/v2/index.md): the `.miga` as chambers
+  (Data, Assets, Network, Documents) whose mantles flow and are filtered like
+  Blender geometry, tunnels between them, rivers where data rests, shared keys,
+  documents (calendars and maps included) that render to domains, and a canvas
+  drawn as an ant farm's cross-section with the effect boundary as its surface.
+  A new version with a migration. **Built the same day, in two passes**: the
+  chambers are real mantles, v2 nodes run gated effects (import, store, check,
+  preview, publish), and the Cat Dataset ships with a showcase Antfarm. v1 runs
+  beside it until the migration.
 - [Security](/concepts/platform/security.md) — the E2EE posture: at-rest
   encryption, the render-seam privacy rule, the three collaboration modes,
   signed releases.
@@ -217,6 +226,11 @@ with it.
 - [Void Maiz, September 2026](/concepts/projects/void-maiz-uptake.md) — what
   Void Maiz absorbed from Hormiga and built on Interaction Combinators, and what
   we take up, piece by piece. Hormiga builds against it unchanged.
+- [Void Verguenza](/concepts/projects/void-verguenza.md) and
+  [Void Chisme](/concepts/projects/void-chisme.md) — **sibling applications
+  founded 2026-10-01, design only**, each with its own OKF: shared secrets (which
+  the Antfarm's Key node will reference instead of holding values) and seeing a
+  network one owns as a graph (which will measure Hormiga's LAN collaboration).
 - [The Cat Dataset](/concepts/projects/cat-dataset.md) — a public, synthetic
   test colony (50 tag-rich fictional cats + linked birthday events) built by a
   C++ generator through the real dispatcher; replaces testing Allomone on the
@@ -256,6 +270,19 @@ with it.
   reply 2026-07-21), not the message files.
 
 # Status
+
+**2026-09-29: 0.1.10 is current, and Antfarm v2 is a prototype.** Five
+releases since the phone opened: **0.1.7** (09-24) the first Android build,
+**0.1.8** Settings, Preferences and Profile and an Antfarm that syncs,
+**0.1.9** photos from the phone and pictures that sync, **0.1.10** (09-27) a tap
+that is not a scroll, pinch, and safe database switching. **Antfarm v2** was
+designed and prototyped on 09-28 ([v2](/concepts/platform/antfarm/v2/index.md)).
+Its migration is not built, and a trial on a copy of a real database found a
+privacy-seam gap in the map rendition and the chambers reaching v1 databases
+([Q98](/developer_questions.md)). A consistency review on 09-29 found five
+stand-ins whose replacement has landed in a sibling ([Q99](/developer_questions.md))
+and two messages to Void Core that were drafted and never relayed
+([log](/log.md)).
 
 **2026-09-23: the phone exists.** `voidhormiga --phone` is a phone-shaped
 Hormiga, scoped by the author: a bottom navigation bar over Data, Calendar,

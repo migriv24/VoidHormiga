@@ -258,7 +258,8 @@ std::vector<std::string> HormigaApp::list_documents() {
         if (auto p = line.find(" ("); p != std::string::npos) line.resize(p);
         while (!line.empty() && line.back() == ' ') line.pop_back();
         if (line.empty() || line == "(no mantles)" || line == kDataMantle ||
-            line == "antfarm")
+            line == "antfarm" || line == farm::kMantle || // v2's graph is not a document,
+            hormiga::chambers::is_chamber(line))         // and neither are the chambers
             continue;
         out.push_back(line);
     }

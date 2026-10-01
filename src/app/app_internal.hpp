@@ -79,6 +79,8 @@
 #include <set>
 #include <sstream>
 
+#include "domain/chambers.hpp" // the Assets, Network and Documents mantles (Antfarm v2)
+
 namespace fs = std::filesystem;
 
 inline const char* kDataMantle = "demo-org";

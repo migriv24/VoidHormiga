@@ -10,6 +10,16 @@
 // ── the Antfarm section: placeholder cards until the registry exists ────────
 
 void HormigaApp::draw_antfarm_section() {
+    if (fv2.v2) { // Antfarm v2, the prototype (ui/farm.cpp)
+        draw_farm_section();
+        return;
+    }
+    if (ImGui::SmallButton(ICON_FA_FLASK "  Try Antfarm v2")) {
+        fv2.v2 = true;
+        if (fv2.here) dispatch_and_reproject(std::string("use ") + farm::kMantle);
+        return;
+    }
+    ImGui::SameLine();
     /* ── SAID ON THE SCREEN: NOT READY FOR PEOPLE YET (2026-09-15) ───────────
      *
      * The author: *"antfarm in general should have like a little warning in the

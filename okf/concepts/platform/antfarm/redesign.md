@@ -6,6 +6,15 @@ tags: [status:current, audience:author, confidence:asserted]
 timestamp: 2026-09-22T00:00:00Z
 ---
 
+> **2026-09-28: the redesign is written as [Antfarm v2](/concepts/platform/antfarm/v2/index.md).**
+> The author led it in conversation, starting from an outside proposal
+> (Geometry-Nodes-style sockets) and a critique of it, and delegated the
+> unsettled points to the leans below. Where v2 takes a lean: A1 (`farm plug`,
+> checked), A2 (wiring is read), A3 (Connections first), A4 (keys, now shared),
+> A5, A6, A7, A11 and A12, as leaned. A9 is [Q92](/developer_questions.md). A10
+> is partly overtaken: fallback and mirroring became river policy. This page
+> stays as the record of the questions. v2 is where the answers are.
+
 **Nothing on this page is decided.** It gathers what the redesign has to settle
 so the author can settle it. Each question has options and a **lean**, a
 default so that silence has a sensible answer, per ground rule 8. When the
