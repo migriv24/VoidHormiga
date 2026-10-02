@@ -56,6 +56,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
     dio.mantle = kDataMantle;
     maiz::Scene issue = maiz::project_scene(core, io);
     maiz::Scene data = maiz::project_scene(core, dio);
+    hormiga::farmhost::apply_grant(data, fv2.grant.get()); // Antfarm v2: only what this document is granted
 
     const std::string suf = std::string("_") + std::string(lang);
     const std::string alt = (lang == "en") ? "_es" : "_en";

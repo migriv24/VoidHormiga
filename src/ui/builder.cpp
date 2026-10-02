@@ -981,6 +981,22 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
             }
         ImGui::EndCombo();
     }
+    /* THE ANTFARM'S GRANT (v2, documents.md §5): what a publish of this document
+     * may contain, whatever a block below asks for. Recomputed every 2 s. */
+    if (fv2.here) {
+        if (fv2.grant_doc != cur_doc || ImGui::GetTime() - fv2.grant_at > 2.0) {
+            fv2.grant_doc = cur_doc;
+            fv2.grant_at = ImGui::GetTime();
+            fv2.grant_text = hormiga::farmhost::grant_line(core, farm_context(), cur_doc);
+        }
+        if (!fv2.grant_text.empty()) {
+            ImGui::TextDisabled(ICON_FA_SHIELD_HALVED "  %s", fv2.grant_text.c_str());
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Antfarm v2 decides what a publish may contain; the filters here choose\n"
+                                  "within that, and private fields are removed after both. A block that asks\n"
+                                  "for something the Antfarm left out finds nothing when published.");
+        }
+    }
     flow_button(ICON_FA_SQUARE_PLUS " New##doc");
     if (ImGui::SmallButton(ICON_FA_SQUARE_PLUS " New##doc")) ImGui::OpenPopup("##newdoc");
     if (ImGui::BeginPopup("##newdoc")) {

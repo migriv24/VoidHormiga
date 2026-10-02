@@ -11,6 +11,8 @@
 #include "json.hpp"
 
 #include <cstdlib>
+#include <fstream>
+#include <iterator>
 #include <iostream>
 
 namespace hormiga {
@@ -133,6 +135,42 @@ int run_farm_cli(const maiz::HostApp& app, const std::filesystem::path& state, c
                                          hormiga::farmhost::seed_info(core, "", me.username.empty() ? opts.actor : me.username));
     if (r.needs_host) {
         const std::string v = tok[0];
+        if (v == "migrate") {
+            const bool apply = tok.size() > 1 && tok[1] == "apply";
+            if (!reconcile()) return 1; // the chambers first: documents become document nodes
+            const hormiga::farmhost::MigratePlan plan = hormiga::farmhost::migrate_plan(core);
+            if (!plan.refused.empty() || !apply) {
+                std::cout << hormiga::farmhost::migrate_report(plan, false);
+                session.close();
+                return plan.refused.empty() ? 0 : 1;
+            }
+            std::vector<std::string> cmds = plan.commands;
+            if (!active.empty()) cmds.push_back("use " + active);
+            if (!session.batch(cmds).ok) {
+                std::cerr << "error: the migration batch was refused; nothing changed\n";
+                return 1;
+            }
+            // key files: sealed into this device's vault (the files stay where they are)
+            if (!plan.key_files.empty()) {
+                if (!vault.unlocked() && !hormiga::Vault::exists(vault_file.string()))
+                    vault.create(hormiga::profile::credentials_key(me));
+                for (const auto& kf : plan.key_files) {
+                    std::ifstream in(base / kf.file, std::ios::binary);
+                    std::string value((std::istreambuf_iterator<char>(in)), {});
+                    while (!value.empty() && (value.back() == '\n' || value.back() == '\r' || value.back() == ' '))
+                        value.pop_back();
+                    std::cout << kf.file << ": "
+                              << (value.empty() ? std::string("not found here; set it with `farm key set`")
+                                                : hormiga::farmhost::key_set(vault, vault_file, kf.entry, value))
+                              << "\n";
+                }
+            }
+            const auto arrange = farm::arrange_commands(farm::read(hormiga::farmhost::project_farm(core)));
+            if (!arrange.empty()) session.batch(farm::in_farm(arrange, active));
+            std::cout << hormiga::farmhost::migrate_report(plan, true);
+            session.close();
+            return 0;
+        }
         if (v == "showcase") {
             std::string note;
             const auto cmds = hormiga::farmhost::showcase_commands(core, base, active, note);

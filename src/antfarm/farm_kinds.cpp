@@ -71,7 +71,7 @@ std::vector<Kind> build() {
     // ── the chambers: the .miga and its mantles (mantles.md) ──────────────
     add({"miga", "farm_miga", "Miga (this database)", "Chambers", Stratum::Chambers, false,
          "this database: every chamber as one mantle, where it rests, what it imports",
-         CH, 118, {},
+         CH, 118, {{"version", "Antfarm version", ""}, {"migrated_from", "Migrated from", ""}},
          {in("rests-in", "river"), in("backups", "river", true, true),
           in("import", "mantle", true, true, true), out("all", "mantle")}});
     add({"separate", "farm_separate", "Separate chambers", "Chambers", Stratum::Chambers, false,

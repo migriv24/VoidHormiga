@@ -359,9 +359,23 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
     std::vector<std::string> built;
     const std::string keep_doc = cur_doc;
     const maiz::Scene keep_scene = scene;
+    /* THE GRANT, ENFORCED (documents.md §5). Each document renders against only
+     * the data runes its `data` input carries, so a Builder block that names a
+     * rune the Antfarm filtered out finds nothing. An unwired input grants
+     * nothing, and that document is refused rather than published empty. */
+    for (const farm::Node* d : docs)
+        if (g.into(d->name, "data").empty())
+            return fail(d->name + " is not connected: an unwired document can see nothing, so it was not built");
     for (const farm::Node* d : docs) {
         const DocTarget t = doc_target(core, *d);
         const std::string dk = d->kind->id;
+        {
+            auto granted = std::make_shared<std::set<std::string>>();
+            const auto dw = g.into(d->name, "data");
+            for (const auto& r : ev.eval(dw[0]->from, dw[0]->out).runes)
+                if (r.chamber == "data") granted->insert(r.node.name);
+            fv2.grant = granted;
+        }
         if (dk == "website") {
             cur_doc = t.of;
             render_site("en");
@@ -371,7 +385,12 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
             maiz::ProjectOptions dio;
             dio.mantle = kDataMantle;
             scene = maiz::project_scene(core, dio);
-            if (const maiz::SceneNode* v = scene.find(t.of)) cal_apply_view(*v);
+            const maiz::Scene views = scene; // the calendar view itself is not a granted rune
+            hormiga::farmhost::apply_grant(scene, fv2.grant.get());
+            if (const maiz::SceneNode* v = views.find(t.of)) {
+                if (!scene.find(t.of)) scene.nodes.push_back(*v); // the view, not granted data
+                cal_apply_view(*v);
+            }
             const std::string ics = export_calendar_ics();
             std::string err;
             const fs::path dir = site / t.mount.substr(1);
@@ -412,6 +431,9 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
                 maiz::ProjectOptions dio;
                 dio.mantle = kDataMantle;
                 scene = maiz::project_scene(core, dio);
+                const maiz::Scene views = scene;
+                hormiga::farmhost::apply_grant(scene, fv2.grant.get());
+                if (const maiz::SceneNode* v = views.find(t.of)) scene.nodes.push_back(*v); // the view, not granted data
                 const std::string png = export_map_png(t.of, false);
                 std::string err;
                 picture = !png.empty() && copy_into(png, dir, "map.png", err);
@@ -431,6 +453,7 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
                 built.push_back(d->name + " -> " + t.mount);
         }
     }
+    fv2.grant.reset(); // the tabs' own previews see everything again
     cur_doc = keep_doc;
     scene = keep_scene;
     fx.text = "built into " + site.string() + ":";

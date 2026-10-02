@@ -5517,3 +5517,27 @@ hormiga in mind"*. OKF only for now; desktop first.
 - Hormiga's view of each seam: [Void Verguenza](/concepts/projects/void-verguenza.md),
   [Void Chisme](/concepts/projects/void-chisme.md). The Key node page (`keys.md`)
   points at Verguenza.
+
+# Antfarm v2: the grant enforced, and the migration (2026-10-01, later)
+
+The author: *"continue with development"* (Verguenza and Chisme stay OKF-only).
+
+- **A promise the code did not keep, found by checking it.** documents.md said
+  the Antfarm's grant bounds what a document may publish, *"where the Builder
+  cannot undo it"*. A v2 preview or publish called the ordinary renderers, which
+  project the whole data mantle, so a rune the Antfarm filtered out still reached
+  the page if a block asked for it. Now the renderers narrow their projection to
+  the document's grant (`farmhost::apply_grant`) during a v2 build, and an
+  unwired document is refused. Measured both ways on the showcase (Garfield,
+  tagged `staff-only`, in the Builder's build and not in the v2 preview). The
+  test needed three attempts: `private` is already dropped by the renderer, and a
+  directory block publishes only `clearance:public` contacts, so the first two
+  controls proved nothing. The Builder now shows the grant under its document
+  picker.
+- **`farm migrate`** (V7): rehearse, then apply, building the v2 graph from v1's
+  in one batch, with key files sealed into the vault. The v1 mantle stays in
+  force, because LAN sharing and the Publish tab still read it, and once a
+  database records `migrated_from`, v2 members stop sharing the v1 mantle. A hard
+  refusal of v1 peers needs a version in Void Maiz's handshake.
+- **Measured:** 53 of 54 tests (`reduce_conformance`, the known red), layering,
+  host seams and budgets ok.

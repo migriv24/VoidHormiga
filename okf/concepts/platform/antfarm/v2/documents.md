@@ -134,6 +134,9 @@ today, with the document, the rendition's manifest id and the domain.
 
 # 5. Two places to filter, and why they cannot conflict
 
+> **Enforced since 2026-10-01**: the renderers narrow their data to the grant
+> during a v2 preview or publish (see the v2 index §"The grant, enforced").
+
 The author:
 
 > in the document builder right now, you can filter with tags on what is

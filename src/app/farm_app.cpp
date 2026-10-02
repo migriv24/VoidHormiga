@@ -7,6 +7,8 @@
 
 #include "voidmaiz/gesture.hpp"
 
+#include <iterator>
+
 
 void HormigaApp::reconcile_chambers() {
     fv2.chambers_dirty = false;
@@ -72,7 +74,27 @@ bool HormigaApp::try_farm_verb(const std::string& cmd) {
                                          hormiga::farmhost::seed_info(core, cur_doc, me));
     if (r.needs_host) {
         const std::string v = tok.empty() ? "" : tok[0];
-        if (v == "showcase") {
+        if (v == "migrate") {
+            reconcile_chambers();
+            const hormiga::farmhost::MigratePlan plan = hormiga::farmhost::migrate_plan(core);
+            const bool apply = tok.size() > 1 && tok[1] == "apply" && plan.refused.empty();
+            if (apply) {
+                std::vector<std::string> cmds = plan.commands;
+                cmds.push_back("use " + scene.mantle);
+                dispatch_and_reproject(maiz::compile_commit(cmds));
+                for (const auto& kf : plan.key_files) {
+                    std::ifstream in(base_dir / kf.file, std::ios::binary);
+                    std::string value((std::istreambuf_iterator<char>(in)), {});
+                    while (!value.empty() && (value.back() == '\n' || value.back() == '\r' || value.back() == ' '))
+                        value.pop_back();
+                    if (!value.empty()) toast(kf.file + ": " + hormiga::farmhost::key_set(vault, vault_path(), kf.entry, value));
+                }
+                const auto arrange = farm::arrange_commands(farm::read(hormiga::farmhost::project_farm(core)));
+                if (!arrange.empty()) dispatch_and_reproject(maiz::compile_commit(farm::in_farm(arrange, scene.mantle)));
+                fv2.fit = true;
+            }
+            log.push_back({plan.refused.empty() ? "info" : "error", "farm", hormiga::farmhost::migrate_report(plan, apply)});
+        } else if (v == "showcase") {
             std::string note;
             const auto cmds = hormiga::farmhost::showcase_commands(core, base_dir, scene.mantle, note);
             if (!cmds.empty()) dispatch_and_reproject(maiz::compile_commit(cmds));

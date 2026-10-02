@@ -81,7 +81,13 @@ bool LanRuntime::net_open(HormigaApp& app) {
     o.share = [base = app.share_filter()](const maiz::SceneNode& n) {
         return base(n) && !hormiga::collab::device_only(n);
     };
-    o.share_mantle = [](const std::string&) { return true; };
+    /* ANTFARM V2 (migration.md §6): once this database has moved to v2, the v1
+     * `antfarm` mantle stops travelling, so a member still on v1 cannot change
+     * what v2 members run on, and v1's graph cannot overwrite theirs. A hard
+     * refusal of a v1 peer needs a version in the handshake; not built. */
+    o.share_mantle = [ap = &app](const std::string& m) {
+        return m != kAntfarmMantle || !hormiga::farmhost::migrated(ap->core);
+    };
 
     /* The fields that name files: every field the glyphs give the "image"
      * editor, plus a resource's `path`. A contact's and an organization's

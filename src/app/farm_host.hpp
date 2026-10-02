@@ -13,6 +13,8 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -63,6 +65,24 @@ std::vector<std::string> chamber_commands(maiz::Core& core, const std::filesyste
 std::vector<std::string> showcase_commands(maiz::Core& core, const std::filesystem::path& base,
                                            const std::string& back, std::string& note);
 
+/* v1 -> v2 (migration.md). `commands` build the `farm` mantle in one batch;
+ * the lists say what mapped where, what stays in v1 and why, what was left
+ * out. Key FILES cannot travel as commands: the caller seals each into this
+ * device's vault under `entry` when it applies. */
+struct MigratePlan {
+    std::string refused;
+    std::vector<std::string> commands, mapped, kept, skipped, notes;
+    struct KeyFile { std::string file, entry, node; };
+    std::vector<KeyFile> key_files;
+};
+MigratePlan migrate_plan(maiz::Core& core);
+std::string migrate_report(const MigratePlan& p, bool applied);
+
+/* Has this database MOVED to v2 (its Miga node records `migrated_from`)? Once it
+ * has, v2 members stop sharing the v1 `antfarm` mantle, so a member still on
+ * v1 cannot change what the others run on. */
+bool migrated(maiz::Core& core);
+
 farm::Context make_context(maiz::Core& core, const std::filesystem::path& base, const hormiga::Vault* vault,
                            const Device& dev,
                            std::function<std::string(const std::string&)> presence = {});
@@ -93,7 +113,22 @@ struct UiState {
     std::vector<Row> rows;
     std::string key_node;                    // the key whose value is being typed
     char key_buf[256] = {};
+    /* THE GRANT, while a v2 preview or publish renders one document
+     * (documents.md §5: the Antfarm grants, the document chooses, the seam
+     * removes). Null = no grant in force (the tabs' own previews). Set: the
+     * renderers see ONLY these data runes, whatever a block asks for. */
+    std::shared_ptr<const std::set<std::string>> grant;
+    std::string grant_doc, grant_text; double grant_at = -100.0; // the Builder's grant line, cached
 };
+
+/* The Builder's line for a document: what the Antfarm grants it, and who
+ * narrows it ("colony-site may publish 107 of 114 data runes, narrowed by
+ * public"). Empty when no v2 document node names this document. */
+std::string grant_line(maiz::Core& core, const farm::Context& ctx, const std::string& document);
+
+/* Narrow a projected data scene to a grant: runes outside it, and every wire
+ * touching one, are removed. A null grant leaves the scene alone. */
+void apply_grant(maiz::Scene& data, const std::set<std::string>* grant);
 
 /* Socket colours and shapes for the canvas (types.md §1). */
 std::map<std::string, maiz::PortStyle> port_styles();

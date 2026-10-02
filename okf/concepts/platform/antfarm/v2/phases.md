@@ -148,6 +148,10 @@ do before pressing it. **This exit test is the author's to pass.**
 
 ## V7 — Migration
 
+**Built 2026-10-01**, except `retire-v1` and the version check in the sync
+handshake (see the migration page for why each waits). The exit test's
+byte-for-byte publish comparison has not been run against a real database.
+
 - `farm migrate` as [the migration guide](/concepts/platform/antfarm/v2/migration.md)
   specifies; `retire-v1`; the version check in the sync handshake.
 - The agent guide gets real transcripts.

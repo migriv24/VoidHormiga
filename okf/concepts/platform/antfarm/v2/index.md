@@ -215,6 +215,27 @@ built from the v2 web domain or bucket and its key.
   deploys it, then writes the `deployment` rune and each document's
   `last_published`.
 
+## The grant, enforced (2026-10-01)
+
+Each document in a v2 preview or publish renders against **only the data runes
+its `data` input carries**. The renderers themselves narrow their projection
+(`farmhost::apply_grant`, in `render/site.cpp`, `render/email.cpp`,
+`render/index.cpp`, the calendar and the map), so a Builder block that names an
+excluded rune by name finds nothing. An unwired document is refused, not
+published empty. Measured on the showcase: Garfield tagged `staff-only` and named
+by a directory block appears in the Builder's own build and not in the v2
+preview, whose grant says `NOT staff-only`. The Builder shows the grant under
+its document picker (*"cat-news may publish 107 of 108 data runes, narrowed by
+public"*).
+
+## The migration, built (2026-10-01)
+
+`farm migrate` rehearses and `farm migrate apply` builds the v2 graph from the
+v1 one, as [the migration page](/concepts/platform/antfarm/v2/migration.md)
+specifies, with two departures recorded there: the v1 mantle is not marked or
+removed (LAN sharing and the Publish tab still read it), and a v1 peer is not yet
+refused by version (v2 members stop sharing the v1 mantle instead).
+
 ## Still not built
 
 Key sharing between members (V3); rings showing where a node runs; gates drawn

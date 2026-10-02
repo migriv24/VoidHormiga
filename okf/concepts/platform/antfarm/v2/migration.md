@@ -6,8 +6,27 @@ tags: [status:direction, audience:agent, audience:dev, confidence:asserted]
 timestamp: 2026-09-28T00:00:00Z
 ---
 
-**Written before the migration exists, so that it is built to this page.**
-When `farm migrate` ships, each section gets a real transcript.
+**Built 2026-10-01** (`farmhost::migrate_plan`; `farm migrate`, `farm migrate
+apply`, in the CLI and the command bar), with these departures from the plan
+below, each for a reason:
+
+- **The v1 `antfarm` mantle is neither tagged `superseded` nor removed, and
+  `retire-v1` is not built.** LAN sharing (`hol_lan_share`, `hol_membership`) and
+  the Publish tab still read it, so it must stay in force until they read v2. The
+  rehearsal lists those nodes under *STAYS IN V1*.
+- **The Assets, Network and Documents chambers come from the reconcile** that
+  every database runs (the chambers page), not from the migration, so step 3 to 5
+  below are already true before it runs.
+- **A v1 peer is not refused by version.** The handshake carries no version yet.
+  Instead, once the Miga node records `migrated_from`, v2 members stop sharing the
+  v1 mantle (`lan_net.cpp`), so a member still on v1 cannot change what v2 members
+  run on. The hard refusal needs a version token in Void Maiz's handshake.
+- **The rescue import (`hol_supabase`) is not migrated**: v2 has no kind for it
+  yet. It is listed under *NOT MIGRATED*.
+
+Measured on a replay of v1's default colony plus a GitHub host with a key file:
+34 commands, every node mapped, the key file sealed into the vault and its
+key node *ready*. The rest of this page is the plan as written.
 
 # 1. Why this is a new version
 

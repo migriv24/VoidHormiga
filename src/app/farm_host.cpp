@@ -371,6 +371,202 @@ std::vector<std::string> showcase_commands(maiz::Core& core, const std::filesyst
     return c;
 }
 
+/* ── v1 -> v2: the migration (okf/concepts/platform/antfarm/v2/migration.md) ──
+ *
+ * Reads the v1 `antfarm` mantle and writes a v2 `farm` mantle that does the same
+ * work, as ONE list of ordinary commands (so it is logged, undoable, replayable).
+ * The v1 mantle is not edited: it keeps running the Publish tab and LAN sharing,
+ * which still read it, and it is what a person compares the result against.
+ * Key FILES are the one thing commands cannot carry: they are listed, and the
+ * caller seals them into this device's vault when it applies. */
+namespace {
+std::string mq(const std::string& node, const std::string& field, const std::string& value) {
+    return "set " + node + " " + field + " " + farm::json_quote(value);
+}
+std::string ml(const std::string& a, const std::string& out, const std::string& b, const std::string& in) {
+    return "link " + a + " " + b + " --relation " + out + ":" + in;
+}
+std::string safe_name(std::string s) {
+    for (char& c : s)
+        if (!(std::isalnum((unsigned char)c) || c == '-' || c == '_')) c = '-';
+    return s.empty() ? std::string("node") : s;
+}
+} // namespace
+
+MigratePlan migrate_plan(maiz::Core& core) {
+    MigratePlan p;
+    if (farm_exists(core)) {
+        p.refused = "this database already has a v2 Antfarm (the `farm` mantle). The migration builds one from "
+                    "v1 and will not write over an existing graph.";
+        return p;
+    }
+    const maiz::Scene v1 = project(core, kAntfarmMantle);
+    if (v1.nodes.empty()) {
+        p.refused = "there is no v1 Antfarm to migrate; `farm init` creates a v2 one";
+        return p;
+    }
+    auto& c = p.commands;
+    auto add = [&](const char* glyph, const std::string& name) { c.push_back(std::string("rune new ") + glyph + " " + name); };
+    auto f = [](const maiz::SceneNode& n, const char* k) { return field_value(n, k); };
+    c.push_back(std::string("mantle new ") + farm::kMantle);
+    add("farm_miga", "this-db");
+    c.push_back(mq("this-db", "version", "2"));
+    c.push_back(mq("this-db", "migrated_from", kAntfarmMantle));
+    add("farm_separate", "chambers");
+    c.push_back(ml("this-db", "all", "chambers", "mantle"));
+    add("farm_tunnel_assets", "pictures");
+    c.push_back(ml("chambers", "data", "pictures", "data"));
+    c.push_back(ml("chambers", "assets", "pictures", "assets"));
+
+    // where the database rests: v1's SQLite store and asset folder become one home river
+    std::string assets_dir = "assets";
+    for (const auto& n : v1.nodes)
+        if (n.glyph == "hol_fs_assets" && !f(n, "dir").empty()) assets_dir = f(n, "dir");
+    add("farm_folder", "here");
+    c.push_back(mq("here", "path", assets_dir));
+    c.push_back(mq("here", "placement", "each"));
+    add("farm_river", "home");
+    c.push_back(ml("here", "river", "home", "reservoirs"));
+    c.push_back(ml("home", "river", "this-db", "rests-in"));
+    p.mapped.push_back("hol_sqlite + hol_fs_assets -> the home river (folder `" + assets_dir + "`)");
+
+    // keys: one per distinct credential a v1 node names
+    std::map<std::string, std::string> key_for; // vault entry or file -> key node
+    auto key = [&](const std::string& provider, const std::string& entry, const std::string& file,
+                   const std::string& owner) -> std::string {
+        const std::string id = !entry.empty() ? entry : file;
+        if (id.empty()) return "";
+        if (auto it = key_for.find(id); it != key_for.end()) return it->second;
+        const std::string name = safe_name(provider + "-key");
+        std::string unique = name;
+        for (int i = 2; std::any_of(key_for.begin(), key_for.end(), [&](auto& kv) { return kv.second == unique; }); ++i)
+            unique = name + "-" + std::to_string(i);
+        add("farm_key", unique);
+        c.push_back(mq(unique, "provider", provider));
+        const std::string vault_entry = !entry.empty() ? entry : "farm-key:" + unique;
+        c.push_back(mq(unique, "vault_entry", vault_entry));
+        if (entry.empty()) p.key_files.push_back({file, vault_entry, owner});
+        key_for[id] = unique;
+        return unique;
+    };
+
+    std::string local_domain, website_domain;
+    std::vector<std::string> web_domains;
+    std::string dns_name;
+    for (const auto& n : v1.nodes)
+        if (n.glyph == "hol_dns" && !f(n, "domain").empty()) dns_name = f(n, "domain");
+    for (const auto& n : v1.nodes) {
+        const std::string g = n.glyph;
+        if (g == "org_core" || g == "hol_sqlite" || g == "hol_fs_assets" || g == "hol_dns" || g == "deployment" ||
+            g == "member" || g == "peer")
+            continue;
+        if (g == "hol_csv") {
+            const std::string name = safe_name(n.name);
+            add("farm_import_csv", name);
+            c.push_back(mq(name, "glyph", "contact"));
+            c.push_back(ml(name, "rows", "this-db", "import"));
+            p.mapped.push_back(n.name + " (CSV) -> Import CSV `" + name + "` (name its file)");
+        } else if (g == "hol_imgbb") {
+            const std::string k = key("imgbb", "imgbb_key", f(n, "key_file"), n.name);
+            add("farm_image_host", safe_name(n.name));
+            c.push_back(mq(safe_name(n.name), "provider", "imgbb"));
+            if (!k.empty()) c.push_back(ml(k, "key", safe_name(n.name), "key"));
+            add("farm_river", "photos-online");
+            c.push_back(ml(safe_name(n.name), "river", "photos-online", "reservoirs"));
+            p.mapped.push_back(n.name + " (ImgBB) -> an image host in the river `photos-online`");
+        } else if (g == "hol_object_store") {
+            const std::string b = safe_name(n.name);
+            add("farm_bucket", b);
+            for (const char* fld : {"bucket", "region", "endpoint", "access_key_id", "prefix", "public_url"})
+                if (!f(n, fld).empty()) c.push_back(mq(b, fld, f(n, fld)));
+            const std::string k = key("aws", f(n, "secret_key"), f(n, "secret_file"), n.name);
+            if (!k.empty()) c.push_back(ml(k, "key", b, "key"));
+            p.mapped.push_back(n.name + " (object store) -> Bucket `" + b + "`");
+        } else if (g == "hol_localhost") {
+            local_domain = safe_name(n.name);
+            add("farm_local_domain", local_domain);
+            c.push_back(mq(local_domain, "port", f(n, "port").empty() ? "8780" : f(n, "port")));
+            c.push_back(mq(local_domain, "placement", "each"));
+            p.mapped.push_back(n.name + " (localhost) -> Local domain `" + local_domain + "`");
+        } else if (g == "hol_github" || g == "hol_static_host") {
+            const std::string d = safe_name(n.name);
+            add("farm_web_domain", d);
+            const bool gh = g == "hol_github";
+            c.push_back(mq(d, "host", gh ? "github" : (f(n, "provider").empty() ? "cloudflare" : f(n, "provider"))));
+            c.push_back(mq(d, "target", f(n, gh ? "repo" : "project")));
+            if (gh && !f(n, "branch").empty()) c.push_back(mq(d, "branch", f(n, "branch")));
+            if (!gh && !f(n, "account_id").empty()) c.push_back(mq(d, "account", f(n, "account_id")));
+            if (!dns_name.empty()) c.push_back(mq(d, "name", dns_name));
+            const std::string k = key(gh ? "github" : "cloudflare", f(n, "token_key"), f(n, "token_file"), n.name);
+            if (!k.empty()) c.push_back(ml(k, "key", d, "key"));
+            web_domains.push_back(d);
+            if (website_domain.empty()) website_domain = d;
+            p.mapped.push_back(n.name + (gh ? " (GitHub Pages)" : " (static host)") + " -> Web domain `" + d + "`" +
+                               (dns_name.empty() ? "" : ", named " + dns_name));
+            if (!f(n, "deploy_cmd").empty())
+                p.notes.push_back(n.name + " has a custom deploy_cmd: v2 publishes through the same v1 code, which "
+                                           "still reads it from the v1 node");
+        } else if (g == "hol_sheets") {
+            add("farm_import_sheets", safe_name(n.name));
+            p.mapped.push_back(n.name + " (Sheets) -> Import Google Sheets (planned)");
+        } else if (g == "hol_html") {
+            p.mapped.push_back(n.name + " (HTML publisher) -> one document node per Builder document (below)");
+        } else if (g == "hol_lan_share" || g == "hol_membership") {
+            p.kept.push_back(n.name + " (" + g + "): LAN sharing still reads it from v1, so it stays there");
+        } else {
+            p.skipped.push_back(n.name + " (" + g + ")");
+        }
+    }
+
+    // one document node per Builder document, granted the Data chamber, previewed and published
+    for (const auto& m : mantle_names(core)) {
+        if (!is_document_mantle(m)) continue;
+        std::string kind = "newsletter";
+        for (const auto& n : project(core, m).nodes)
+            if (n.glyph == "document" && !field_value(n, "kind").empty()) kind = field_value(n, "kind");
+        const std::string d = safe_name("doc-" + m);
+        add(kind == "website" ? "farm_website" : "farm_newsletter", d);
+        c.push_back(mq(d, "document", m));
+        c.push_back(ml("chambers", "data", d, "data"));
+        if (!local_domain.empty()) c.push_back(ml(d, "preview", local_domain, "renditions"));
+        if (kind == "website" && !website_domain.empty()) c.push_back(ml(d, "publish", website_domain, "renditions"));
+        p.mapped.push_back("document `" + m + "` -> a " + kind + " node");
+    }
+    if (web_domains.size() > 1)
+        p.notes.push_back("v1 had " + std::to_string(web_domains.size()) + " publish hosts; the website publishes to `" +
+                          website_domain + "`. Wire the others where you want them.");
+    add("farm_profile", "me");
+    return p;
+}
+
+std::string migrate_report(const MigratePlan& p, bool applied) {
+    if (!p.refused.empty()) return "refused: " + p.refused + "\n";
+    std::string o = applied ? "migrated to Antfarm v2 (one batch; `undo` reverses it in this session)\n"
+                            : "rehearsal: what `farm migrate apply` would do\n";
+    auto list = [&](const char* title, const std::vector<std::string>& v) {
+        if (v.empty()) return;
+        o += std::string(title) + "\n";
+        for (const auto& s : v) o += "  " + s + "\n";
+    };
+    list("MAPPED", p.mapped);
+    list("STAYS IN V1 (still read there)", p.kept);
+    list("NOT MIGRATED", p.skipped);
+    if (!p.key_files.empty()) {
+        o += "KEY FILES, sealed into this device's vault on apply (the files are not deleted)\n";
+        for (const auto& k : p.key_files) o += "  " + k.file + " -> " + k.entry + " (from " + k.node + ")\n";
+    }
+    list("NOTES", p.notes);
+    o += std::to_string(p.commands.size()) + " commands\n";
+    return o;
+}
+
+bool migrated(maiz::Core& core) {
+    if (!farm_exists(core)) return false;
+    for (const auto& n : project(core, farm::kMantle).nodes)
+        if (n.glyph == "farm_miga" && !field_value(n, "migrated_from").empty()) return true; // init alone is not a move
+    return false;
+}
+
 farm::Context make_context(maiz::Core& core, const std::filesystem::path& base, const hormiga::Vault* vault,
                            const Device& dev, std::function<std::string(const std::string&)> presence) {
     namespace fs = std::filesystem;
@@ -454,6 +650,40 @@ farm::Context make_context(maiz::Core& core, const std::filesystem::path& base, 
         return out;
     };
     return c;
+}
+
+std::string grant_line(maiz::Core& core, const farm::Context& ctx, const std::string& document) {
+    if (!farm_exists(core)) return "";
+    const maiz::Scene s = project_farm(core);
+    const farm::Graph g = farm::read(s);
+    farm::Evaluator ev(g, ctx);
+    std::string out;
+    for (const auto& n : g.nodes) {
+        if (!n.kind || (n.kind->id != "website" && n.kind->id != "newsletter")) continue;
+        const std::string want = n.field("document");
+        if (want != document && want != "doc-" + document) continue;
+        const auto dw = g.into(n.name, "data");
+        const std::size_t all = ev.chamber("data").size();
+        if (dw.empty()) {
+            out += (out.empty() ? "" : "  ·  ") + n.name + " is not connected in the Antfarm, so it may publish nothing";
+            continue;
+        }
+        std::size_t seen = 0;
+        for (const auto& r : ev.eval(dw[0]->from, dw[0]->out).runes) seen += r.chamber == "data";
+        out += (out.empty() ? "" : "  ·  ") + n.name + " may publish " + std::to_string(seen) + " of " +
+               std::to_string(all) + " data runes" + (seen < all ? ", narrowed by " + dw[0]->from : "");
+    }
+    return out;
+}
+
+void apply_grant(maiz::Scene& data, const std::set<std::string>* grant) {
+    if (!grant) return;
+    data.nodes.erase(std::remove_if(data.nodes.begin(), data.nodes.end(),
+                                    [&](const maiz::SceneNode& n) { return !grant->count(n.name); }),
+                     data.nodes.end());
+    data.wires.erase(std::remove_if(data.wires.begin(), data.wires.end(),
+                                    [&](const maiz::SceneWire& w) { return !grant->count(w.from) || !grant->count(w.to); }),
+                     data.wires.end());
 }
 
 bool farm_exists(maiz::Core& core) {

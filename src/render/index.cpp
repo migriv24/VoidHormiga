@@ -58,7 +58,8 @@
 std::string HormigaApp::publish_index() {
     maiz::ProjectOptions dio;
     dio.mantle = kDataMantle;
-    const maiz::Scene data = maiz::project_scene(core, dio);
+    maiz::Scene data = maiz::project_scene(core, dio);
+    hormiga::farmhost::apply_grant(data, fv2.grant.get()); // Antfarm v2: only what this document is granted
 
     /* NO QUERY. The index is "everything this organization publishes", and the
      * blocks or clients that read it apply their own narrowing. Filtering here

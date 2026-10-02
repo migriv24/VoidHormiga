@@ -125,6 +125,7 @@ std::string help() {
            "farm arrange                  lay the graph out by stratum and flow\n"
            "farm chambers                 bring the Assets, Network and Documents mantles in step\n"
            "farm showcase                 the Cat Colony: a v2 Antfarm that uses every kind of node\n"
+           "farm migrate [apply]          build the v2 Antfarm from this database's v1 one (rehearses unless apply)\n"
            "farm run <node> [apply]       run a source, a store or a tunnel (rehearses unless apply)\n"
            "farm check <node>             the smallest real test of a folder, a domain or a key\n"
            "farm preview <document>       build it, and serve it on its local domain\n"
@@ -137,7 +138,7 @@ std::string help() {
 
 std::vector<std::string> seed_commands(const SeedInfo& s) {
     std::vector<std::string> c = {
-        "rune new farm_miga this-db",
+        "rune new farm_miga this-db", "set this-db version " + json_quote("2"),
         "rune new farm_folder here", "set here path " + json_quote("assets"),
         "set here placement " + json_quote("each"),
         "rune new farm_river home",
@@ -314,7 +315,7 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
               << (p.writes ? "  writes when run" : "") << "\n";
         return r.text = o.str(), r;
     }
-    if (verb == "chambers" || verb == "showcase" || verb == "run" || verb == "check" || verb == "preview" || verb == "publish") {
+    if (verb == "chambers" || verb == "showcase" || verb == "migrate" || verb == "run" || verb == "check" || verb == "preview" || verb == "publish") {
         r.needs_host = true; // the chambers and every effect are the host's (farm_verbs.hpp)
         return r;
     }
