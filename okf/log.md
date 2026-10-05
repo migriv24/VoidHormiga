@@ -5654,3 +5654,18 @@ D&D map). Then publish 0.1.11 for desktop and phone.
 - **A credential note**: the token pasted into the session was rejected by
   GitHub (401); this machine's existing GitHub sign-in did the work. No token was
   written to any file.
+
+## 0.1.11 shipped (2026-10-05)
+
+All three runner legs built (linux-x64, macos-arm64, macos-x64), from Void Maiz
+`778511a` and Void Palabra `b0128bf`. Installer 15,165,602 bytes; the staged NSIS
+script is identical to 0.1.10's with versions and dates masked. APK 5.1 MB,
+version code 111, signed with the Hormiga key (certificate `37d0ee24…`), and its
+manifest carries ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION. The Linux
+archive was downloaded into the release folder before `mago feed --artifacts`
+ran; checked by hand, both feed artifacts hash to what the feed says and match
+its `bytes`, and the Linux digest `364c45f7…` equals the runner's own. The live
+feed says `latest 0.1.11`, and the stable `VoidHormiga-android-arm64.apk` URL
+serves the new APK. Release page: https://github.com/migriv24/VoidHormiga/releases/tag/v0.1.11
+**Still owed:** the author's phone running 0.1.11 (the map, the location
+prompt, tiles over Android's HTTP), and the macOS archives remain unrun.
