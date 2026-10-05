@@ -31,6 +31,7 @@
 #include "phone/phone_ui.hpp"
 
 #include "domain/date_query.hpp" // today_days
+#include "voidmaiz/location.hpp"   // the map's "where am I", stopped off the map
 
 #include <cfloat>
 
@@ -41,6 +42,7 @@ namespace {
 const ScreenInfo kInfo[kScreens] = {
     {"data", ICON_FA_ADDRESS_BOOK, "Data", "People, organizations and events, as cards"},
     {"calendar", ICON_FA_CALENDAR_DAYS, "Calendar", "The week, the day, and what is coming"},
+    {"map", ICON_FA_MAP_LOCATION_DOT, "Map", "Where things are: places, pins, notes, and you"},
     {"notes", ICON_FA_NOTE_STICKY, "Notes", "Notes, shared with the database or kept private"},
     {"migos", ICON_FA_USERS, "Migos", "Your network: who is here, transfers, joining, sharing"},
     {"migas", ICON_FA_DATABASE, "Migas", "The databases on this phone: open, new, import, export"},
@@ -59,7 +61,11 @@ int screen_by_key(const std::string& key) {
     return -1;
 }
 
-std::vector<int> default_bar() { return {kData, kCalendar, kNotes, kMigos}; }
+/* Map joined the default bar on 2026-10-04 (the clients' ask: a map on the
+ * phone), in the place Notes had; Notes is a tap away in the gallery, and its
+ * notes that are about a place show on the map. A bar someone arranged keeps
+ * what they chose. */
+std::vector<int> default_bar() { return {kData, kMap, kCalendar, kMigos}; }
 
 std::vector<int> load_bar() {
     std::vector<int> bar;
@@ -177,6 +183,9 @@ void HormigaApp::phone_frame() {
         ph.screen = kProfile;
     }
     rt.discovering = (ph.screen == kMigos);
+    // the GPS follows only while the map is on screen: a battery nobody asked to spend
+    if (ph.screen != kMap)
+        if (maiz::LocationPlatform* loc = maiz::location(); loc && loc->following()) loc->stop();
     LanRuntime::tick(*this, ImGui::GetTime());
     if (lan) LanRuntime::draw_request(*this);
 
@@ -202,7 +211,7 @@ void HormigaApp::phone_frame() {
             ph.screen = ph.bar[t];
         }
     }
-    if (hormiga::phone::back_pressed()) {
+    if (hormiga::phone::back_pressed() && !PhoneUi::map_back(ph)) {
         if (ph.screen == kHome) ph.screen = ph.before_home;
         else if (!ph.stacks[ph.screen].pop() && ph.screen != kData) ph.screen = kData; // Back at a root goes home
     }
@@ -214,7 +223,8 @@ void HormigaApp::phone_frame() {
     const std::string rune = is_detail ? f.route.substr(7) : std::string();
 
     // Data, Calendar and Notes read the organization's mantle; the Antfarm its own
-    const char* want = ph.screen == kData || ph.screen == kCalendar || ph.screen == kNotes ? kDataMantle
+    const char* want = ph.screen == kData || ph.screen == kCalendar || ph.screen == kNotes || ph.screen == kMap
+                           ? kDataMantle
                        : ph.screen == kAntfarm                                             ? nullptr
                                                                                            : nullptr;
     const std::string farm_mantle = antfarm_mantle(); // v2 when this database has one
@@ -225,7 +235,7 @@ void HormigaApp::phone_frame() {
     if (want && scene.mantle != want && ImGui::GetTime() - ph.use_failed_at > 5.0)
         if (!dispatch_and_reproject(std::string("use ") + want).ok) ph.use_failed_at = ImGui::GetTime();
     section = ph.screen == kAntfarm ? Antfarm : Data; // what the 0.1.4 presence fields say
-    if (ph.screen != kAntfarm && ph.screen != kNotes) { // those two keep their own selection
+    if (ph.screen != kAntfarm && ph.screen != kNotes && (ph.screen != kMap || is_detail)) { // these keep their own
         if (!is_detail) ed.selection.clear();
         else ed.selection = {rune}; // presence: the rune on MY screen is what I am on
     }
@@ -234,12 +244,17 @@ void HormigaApp::phone_frame() {
     const maiz::SceneNode* open_node = is_detail ? scene.find(rune) : nullptr;
     const std::string title = home_screen ? std::string("Everything")
                               : is_detail ? (open_node ? title_of(*open_node) : std::string("Removed"))
+                              : f.route == "search" ? std::string("Search the map")
+                              : f.route == "layers" ? std::string("Views and base map")
+                              : f.route == "existing" ? std::string("Put something here")
+                              : f.route.rfind("note:", 0) == 0 ? std::string("Note")
                                           : std::string(screen_info(ph.screen).label);
     if (hormiga::phone::begin_app_bar(title.c_str(), home_screen || (f.stack && f.stack->can_pop()))) {
         if (home_screen) ph.screen = ph.before_home;
         else f.stack->pop();
     }
-    if (!is_detail && (ph.screen == kData || ph.screen == kCalendar || ph.screen == kNotes))
+    if (!is_detail && (ph.screen == kData || ph.screen == kCalendar || ph.screen == kNotes ||
+                       (ph.screen == kMap && f.route == "list")))
         LanRuntime::draw_presence_strip(*this); // who else is here
     if (ph.screen == kCalendar && !is_detail) {
         ImGui::SameLine(std::max(ImGui::GetCursorPosX(), ImGui::GetWindowContentRegionMax().x -
@@ -271,13 +286,16 @@ void HormigaApp::phone_frame() {
             ph.scroll_key = key;
         }
     }
-    // the Antfarm's graph is a canvas that pans itself: its screen must not scroll
-    const bool canvas = ph.screen == kAntfarm && ph.farm_graph && !is_detail;
+    // the Antfarm's graph and the map are canvases that pan themselves: their screen must not scroll
+    const bool map_canvas = ph.screen == kMap && f.route == "list";
+    const bool canvas = (ph.screen == kAntfarm && ph.farm_graph && !is_detail) || map_canvas;
+    if (map_canvas) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0)); // the map runs edge to edge
     ImGui::Begin("##phone-screen", nullptr,
                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus |
                      ImGuiWindowFlags_NoSavedSettings |
                      (canvas ? ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse : 0));
+    if (map_canvas) ImGui::PopStyleVar();
 
     if (home_screen) {
         PhoneUi::home(*this, ph, f);
@@ -293,6 +311,7 @@ void HormigaApp::phone_frame() {
         switch (ph.screen) {
         case kData: PhoneUi::data(*this, ph, f); break;
         case kCalendar: PhoneUi::calendar(*this, ph, f); break;
+        case kMap: PhoneUi::map(*this, ph, f); break;
         case kNotes: PhoneUi::notes(*this, ph, f); break;
         case kMigos: PhoneUi::migos(*this, ph, f); break;
         case kMigas: PhoneUi::migas(*this, ph, f); break;

@@ -460,7 +460,7 @@ the old ranking.**
 
 # Geography, and the heatmap
 
-Measures affect places. [Territory](/concepts/sections/territory.md) already has
+Measures affect places. [Territory](/concepts/sections/gis/territory.md) already has
 location-faceted runes over a swappable map source, so a revision with a
 `geo`/`mapshape` gets a marker or an area for free. "Which areas get the most
 tax-exemption policies" is then: filter revisions by tag, project their areas,

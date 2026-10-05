@@ -250,10 +250,17 @@ inline void register_glyphs(maiz::Core& core,
         R"("hints":{"color":"#4e8d85","face":{"w":190,"h":52},"category":"Assets",)"
         R"("editors":{"path":"path"},)"
         R"("labels":{"path":"File","topic":"Topic"}}})");
-    core.register_glyph(
-        R"({"glyph":"note","label":"Note","fields":["text"],)"
+    // a note may sit on the map (author, 2026-10-04: "link locations to notes
+    // as well ... maybe there's something specific to note about a location"),
+    // so it carries the same location facet as a contact. It never leaves the
+    // app through a map: the PNG export and the web widget skip notes, because
+    // a note is the internal-notes class the render seam guards.
+    core.register_glyph(with_channels(
+        R"({"glyph":"note","label":"Note","fields":["text","geo","ref","ref_off"],)"
         R"("hints":{"color":"#6f6f78","face":{"w":240,"h":120},"category":"Notes",)"
-        R"("editors":{"text":"multiline:110"},"labels":{"text":"Text"}}})");
+        R"("editors":{"text":"multiline:110","ref_off":"hidden"},)"
+        R"__("labels":{"text":"Text","geo":"Location (lat,lon)",)__"
+        R"__("ref":"Reference point (fan-out parent)"}}})__"));
     // incidents are NOT events (author, 2026-07-22): dated occurrences —
     // road closures, ICE activity, emergencies — that belong on the map and,
     // when dated, on the calendar as a SEPARATE 'incident' entry, never mixed
@@ -327,7 +334,7 @@ inline void register_glyphs(maiz::Core& core,
     // map — an annotation that is a RUNE (taggable, colored by the same rules
     // engine as markers). geo1/geo2 are the bounding-box corners (lat,lon),
     // set by the draw tool. A shape can BESTOW a tag on entities inside it
-    // (the "spatial tag" — derive-then-materialize; see okf/concepts/sections/territory.md).
+    // (the "spatial tag" — derive-then-materialize; see okf/concepts/sections/gis/territory.md).
     core.register_glyph(
         R"({"glyph":"mapshape","label":"Map shape",)"
         R"("fields":["kind","geo1","geo2","label","bestows"],)"

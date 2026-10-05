@@ -17,7 +17,7 @@
 #include "stb_image_write.h" // decls only - the map exports as a PNG; the ONE implementation lives in app.cpp
 #include "json.hpp" // the position channel is a JSON payload
 
-// ── Territory placeholder (the map — concept: okf/concepts/sections/territory.md) ────
+// ── Territory placeholder (the map — concept: okf/concepts/sections/gis/territory.md) ────
 
 // web-mercator math now lives in render/mercator.hpp — the PNG export needs the
 // SAME projection as this canvas, which only became visible when it moved out
@@ -28,8 +28,8 @@ using hormiga::merc_y;
 
 // ── the background tile fetcher (pure I/O; the core is never touched) ───────
 
-void HormigaApp::TileFetcher::start(std::function<std::string(const std::string&)> sh) {
-    shell = std::move(sh);
+void HormigaApp::TileFetcher::start(std::function<bool(const std::string&, const std::string&)> get) {
+    fetch = std::move(get);
     for (int w = 0; w < 4; ++w) // parallel: fetches are latency-bound
         workers.emplace_back([this, w] {
             (void)w;
@@ -51,8 +51,7 @@ void HormigaApp::TileFetcher::start(std::function<std::string(const std::string&
                     // only ever exists COMPLETE (a half-written file would
                     // cache a permanent decode failure on the main thread)
                     std::string tmp = path + ".part" + std::to_string(w);
-                    shell("curl -s -A \"Hormiga/0.1 (dev; local-first outreach "
-                          "app)\" -o \"" + tmp + "\" \"" + url + "\"");
+                    fetch(url, tmp); // curl on a desktop, the platform's HTTP on a phone
                     std::error_code ec;
                     auto size = std::filesystem::file_size(tmp, ec);
                     if (!ec && size > 100) { // a real tile, not an error stub
@@ -87,7 +86,7 @@ HormigaApp::TileFetcher::~TileFetcher() {
 // ── position channels (the per-view location model) ─────────────────────────
 // pos(rune, view) = geo_<channel> if set, else geo (main). Views sharing a
 // channel are locked BY CONSTRUCTION (one field, no sync); a forked view
-// stores only its divergences (copy-on-write). See okf/concepts/sections/territory.md.
+// stores only its divergences (copy-on-write). See okf/concepts/sections/gis/territory.md.
 
 std::string HormigaApp::geo_field_for(const std::string& ch) {
     return (ch.empty() || ch == "main") ? "geo" : "geo_" + ch;
@@ -691,7 +690,7 @@ void HormigaApp::draw_map_section() {
         ImGui::TextWrapped(
             "No maps yet. \"New Earth map\" creates one over OpenStreetMap "
             "tiles. A database can hold many maps; the base is a SOURCE "
-            "(okf/concepts/sections/territory.md - not assumed Earth: an image source "
+            "(okf/concepts/sections/gis/territory.md - not assumed Earth: an image source "
             "renders a floor plan or a fantasy world the same way).");
         return;
     }
@@ -1030,43 +1029,18 @@ void HormigaApp::draw_map_section() {
         const maiz::SceneNode& node = *L.node;
         ImVec2 s = L.s;
         bool selected = ed.selected(node.name);
-        ImU32 col = node.glyph == "incident"       ? IM_COL32(200, 50, 50, 255)
-                    : node.glyph == "organization" ? IM_COL32(138, 109, 59, 255)
-                    : node.glyph == "event"        ? IM_COL32(63, 111, 174, 255)
-                                                   : IM_COL32(179, 89, 46, 255);
-        const char* icon = nullptr;
-        std::string shape;
-        for (const auto& r : active_rules) { // first matching rule styles it…
-            if (r.tags.empty() || !maiz::node_matches(rule_filter_expr(r), node))
-                continue;
-            for (const auto& c : kMarkerColors)
-                if (r.color == c.tag) col = c.col;
-            for (const auto& ic : kMarkerIcons)
-                if (r.icon == ic.tag) icon = ic.glyph;
-            if (!r.shape.empty()) shape = r.shape;
-            break;
-        }
-        std::string ctag = tag_value(node, "color"); // …explicit tags win
-        for (const auto& c : kMarkerColors)
-            if (ctag == c.tag) col = c.col;
-        std::string itag = tag_value(node, "icon");
-        for (const auto& ic : kMarkerIcons)
-            if (itag == ic.tag) icon = ic.glyph;
-        std::string stag = tag_value(node, "shape");
-        if (!stag.empty()) shape = stag;
-        // ALLOMONE, the `map` surface. Derived styling beats both the view's
-        // rules and the explicit tags: it is the only one of the three that
-        // COMPOSES, and a disagreement among scripts already resolved to
-        // "nothing derived" rather than to a winner, so nothing is being
-        // overridden here that anybody chose.
+        // glyph default → the view's first matching rule → the rune's own tags →
+        // ALLOMONE's `map` style, which composes and so wins (a disagreement
+        // among scripts already resolved to "nothing derived" rather than to a
+        // winner, so nothing is overridden here that anybody chose). One
+        // resolver for the desktop and the phone (marker_look).
         const AlloStyle* mst = allo_style_for("map", node.name);
-        if (mst) {
-            if (mst->has_color) col = mst->rgba;
-            for (const auto& ic : kMarkerIcons)
-                if (mst->icon == ic.tag) icon = ic.glyph;
-        }
-        MShape msh = shape_from(shape);
+        const MarkerLook look = marker_look(node, active_rules, mst);
+        ImU32 col = look.col;
+        const char* icon = look.icon;
+        MShape msh = shape_from(look.shape);
         float r = (icon ? 11.0f : 6.5f) + (selected ? 2.5f : 0.0f);
+        if (msh == MShape::Pin || msh == MShape::Balloon) r = std::max(r, 9.0f); // a pin needs a head to read as one
         /* PRESENCE ON THE MAP (2026-09-19). The author: "im looking at the map,
          * and right now there's no indication or highlight based on what users
          * are interacting with". The marker declares itself and Void Maiz draws
@@ -1077,6 +1051,8 @@ void HormigaApp::draw_map_section() {
         if (mst && mst->weight > 0) r += std::min((float)mst->weight, 6.0f);
         ImVec2 ic_at = draw_marker_shape(dl, s, r, col, IM_COL32(255, 255, 255, 230),
                                          msh);
+        if (!icon && msh == MShape::Pin) // every map's pin: a white dot in the head
+            dl->AddCircleFilled(ic_at, r * 0.36f, IM_COL32(255, 255, 255, 235));
         if (icon) {
             ImFont* f = ImGui::GetFont();
             float isz = r * 1.15f;
@@ -1089,16 +1065,17 @@ void HormigaApp::draw_map_section() {
             float lsz = ImGui::GetFontSize() * label_scale;
             // A derived `map-label` shadows the marker's caption for display
             // only — the rune's name is untouched.
-            const std::string& mlabel =
-                (mst && !mst->label.empty()) ? mst->label : node.name;
+            const std::string mlabel =
+                !look.label.empty() ? look.label : marker_caption(node);
             ImVec2 tsz = lf->CalcTextSizeA(lsz, FLT_MAX, 0, mlabel.c_str());
             // candidate anchors: right, left, above, below the marker — the
             // first that doesn't collide with an already-placed label wins;
             // none fit => this label yields (markers always draw)
-            ImVec2 cand[4] = {{s.x + r + 4, s.y - lsz * 0.5f},
-                              {s.x - r - 4 - tsz.x, s.y - lsz * 0.5f},
-                              {s.x - tsz.x * 0.5f, s.y - r - 4 - tsz.y},
-                              {s.x - tsz.x * 0.5f, s.y + r + 4}};
+            const ImVec2 lc = ic_at; // beside the head of a pin, not its tip
+            ImVec2 cand[4] = {{lc.x + r + 4, lc.y - lsz * 0.5f},
+                              {lc.x - r - 4 - tsz.x, lc.y - lsz * 0.5f},
+                              {lc.x - tsz.x * 0.5f, lc.y - r - 4 - tsz.y},
+                              {lc.x - tsz.x * 0.5f, s.y + 4}};
             int pick = no_overlap ? -1 : 0;
             for (int c = 0; c < 4 && pick < 0; ++c) {
                 bool clear = true;
@@ -1123,7 +1100,7 @@ void HormigaApp::draw_map_section() {
                 dl->AddText(lf, lsz, tp, label_col, mlabel.c_str());
             }
         }
-        float dx = mouse.x - s.x, dy = mouse.y - s.y;
+        float dx = mouse.x - ic_at.x, dy = mouse.y - ic_at.y; // aim at the head
         float hr = std::max(12.0f, r + 3);
         if (hovered && dx * dx + dy * dy < hr * hr) hit = &node;
     }
@@ -1460,6 +1437,8 @@ void HormigaApp::draw_map_section() {
         if (ImGui::MenuItem("New organization here")) map_place_new("organization");
         if (ImGui::MenuItem("New event here")) map_place_new("event");
         if (ImGui::MenuItem("New incident here")) map_place_new("incident");
+        // a note about this PLACE (2026-10-04): in the app only, never exported
+        if (ImGui::MenuItem("New note here")) map_place_new("note");
         // #4: a reference point — a gizmo children fan out around
         if (ImGui::MenuItem("New reference point here")) {
             std::string name;
@@ -1480,8 +1459,8 @@ void HormigaApp::draw_map_section() {
             "##ctxplace", ctx_search, sizeof ctx_search,
             [this](const maiz::SceneNode& n) {
                 return n.glyph != "map" && n.glyph != "image" &&
-                       n.glyph != "note" &&
-                       view_geo(n, active_channel).empty(); // unplaced here
+                       n.glyph != "mapshape" && n.glyph != "refpoint" &&
+                       view_geo(n, active_channel).empty(); // unplaced here (notes too)
             },
             "type a name...");
         if (!ctx_pick.empty()) {
@@ -1847,7 +1826,7 @@ unsigned HormigaApp::view_label_color(const maiz::SceneNode* v) const {
 
 /* Parse a view rune's style rules — shared by the map canvas, the layer
  * compositor, both PNG exports, and the CALENDAR (the rules engine is
- * cross-view: okf/concepts/sections/territory.md). v1 {filter} read for compat. */
+ * cross-view: okf/concepts/sections/gis/territory.md). v1 {filter} read for compat. */
 std::vector<HormigaApp::MapRule> HormigaApp::parse_view_rules_of(
     const maiz::SceneNode& view) {
     std::vector<MapRule> out;

@@ -173,6 +173,8 @@ struct HormigaApp {
     // run a command line, capture stdout (the ImgBB holiday's transport —
     // curl ships with Windows; nothing to vendor)
     std::function<std::string(const std::string& cmd)> on_shell_capture;
+    // GET a URL into a file (a phone has no curl: Android's HttpURLConnection); else curl
+    std::function<bool(const std::string& url, const std::string& to)> on_http_get;
 
     /* ── WHY A MERGED DOCUMENT IS NOT APPLIED WHERE IT IS COMPUTED ───────────
      *
@@ -677,8 +679,8 @@ private:
         std::set<std::string> queued;          // de-dupe
         std::atomic<bool> stop{false};
         std::atomic<int> in_flight{0};
-        std::function<std::string(const std::string&)> shell;
-        void start(std::function<std::string(const std::string&)> sh);
+        std::function<bool(const std::string& url, const std::string& to)> fetch;
+        void start(std::function<bool(const std::string& url, const std::string& to)> get);
         void want(const std::string& url, const std::string& path);
         int pending(); // queued + downloading (the map's loading indicator)
         ~TileFetcher();

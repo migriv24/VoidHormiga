@@ -147,6 +147,14 @@ void HormigaApp::PhoneUi::detail(HormigaApp& app, PhoneUi& ph, Frame& f, const m
     maiz::presence_item(app.surfaces, app.roster, app.net_settings.show,
                         ph.screen == kCalendar ? "calendar" : "table:data", n.id, maiz::Mark::Badge,
                         app.share_now && !app.share_now(n));
+    // WHERE IT IS, one tap away (2026-10-04): a thing and its place are the
+    // same thing seen two ways. Not from the map itself, which opened this.
+    if (map_placeable(n) && ph.screen != kMap) {
+        const bool placed = !hormiga::temper::field_value(n, "geo").empty();
+        if (ImGui::Button(placed ? ICON_FA_MAP_LOCATION_DOT "  Show on the map" : ICON_FA_MAP_PIN "  Put on the map",
+                          ImVec2(-FLT_MIN, 0)))
+            map_focus(app, ph, n.name);
+    }
     ImGui::Spacing();
     // LABELS ABOVE, fields full width: a phone reads down, not across. The
     // field's own right-hand label is pushed past the edge by the width.

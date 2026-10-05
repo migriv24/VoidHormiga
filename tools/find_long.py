@@ -248,7 +248,10 @@ BUDGET = {
     # (farmhost::UiState) and its code lives in app/farm_app.cpp, ui/farm.cpp and
     # phone/phone_farm.cpp; what is here is the eight methods three front-ends
     # call. Splitting HormigaApp is still the right next move for this file.
-    'src/app/app.hpp': 1267,
+    # 1267 -> 1269 (2026-10-04): the map on the phone. A phone has no `curl`,
+    # so tiles (and anything else a GUI fetches) go through on_http_get, a
+    # comment and a hook; the map screen's own state is PhoneUi's.
+    'src/app/app.hpp': 1269,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

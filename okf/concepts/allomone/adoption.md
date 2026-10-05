@@ -174,7 +174,7 @@ Notes that are not obvious:
 - **`under` exists because the kernel's `has` is exact** where the legacy
   dialect's `has "ns:"` matched a prefix. That is our tag convention, so it is
   correctly our predicate rather than an upstream gap.
-- **`near` is the Earth reading**, and [Territory](/concepts/sections/territory.md) is
+- **`near` is the Earth reading**, and [Territory](/concepts/sections/gis/territory.md) is
   explicit that the map source is swappable and not assumed to be Earth. A
   non-Earth map wants its own predicate, not a rescaled constant.
 - **`near-rune "food-bank,5"` names a rune, and that is fine here.** Naming a

@@ -10,6 +10,7 @@ extern "C" {
 }
 #include <cstdlib>
 #include "app/app_internal.hpp"
+#include "gis/marker.hpp" // the marker outlines, one geometry for every surface
 
 #include "json.hpp" // unjson_str decodes a setjson-escaped field
 #include "domain/clock.hpp" // parse_clock — ONE time parser, grid and .ics alike
@@ -90,37 +91,61 @@ MShape shape_from(const std::string& s) {
     if (s == "pin") return MShape::Pin;
     if (s == "square") return MShape::Square;
     if (s == "diamond") return MShape::Diamond;
+    if (s == "balloon") return MShape::Balloon;
     return MShape::Circle;
 }
 
+unsigned glyph_marker_colour(const std::string& glyph) {
+    if (glyph == "incident") return IM_COL32(200, 50, 50, 255);
+    if (glyph == "organization") return IM_COL32(138, 109, 59, 255);
+    if (glyph == "event") return IM_COL32(63, 111, 174, 255);
+    if (glyph == "note") return IM_COL32(214, 158, 46, 255);
+    return IM_COL32(179, 89, 46, 255);
+}
+const char* glyph_marker_shape(const std::string& glyph) { return glyph == "note" ? "balloon" : ""; }
+const char* glyph_marker_icon(const std::string& glyph) {
+    return glyph == "note" ? ICON_FA_NOTE_STICKY : nullptr;
+}
+
+std::string marker_caption(const maiz::SceneNode& n) {
+    if (n.glyph != "note") return n.name;
+    std::string t = hormiga::temper::field_value(n, "text");
+    const auto nl = t.find_first_of("\r\n");
+    if (nl != std::string::npos) t.resize(nl);
+    while (!t.empty() && t.back() == ' ') t.pop_back();
+    if (t.size() > 32) { // cut on a character boundary, not inside one
+        size_t k = 31;
+        while (k > 0 && ((unsigned char)t[k] & 0xC0) == 0x80) --k;
+        t = t.substr(0, k) + "...";
+    }
+    return t.empty() ? std::string("Note") : t;
+}
+
+/* The ImGui half of gis/marker.hpp: fill the outline, ring it, and give a form
+ * that stands on a tip a shadow where it touches the ground, which is most of
+ * what makes a pin look like it is standing on the map rather than printed on
+ * it. A pin with no icon gets the white dot in its head that every map's pin
+ * has (the caller draws an icon over it when there is one). */
 ImVec2 draw_marker_shape(ImDrawList* dl, ImVec2 s, float r, ImU32 col,
                                 ImU32 ring, MShape sh) {
-    switch (sh) {
-    case MShape::Square:
-        dl->AddRectFilled(ImVec2(s.x - r, s.y - r), ImVec2(s.x + r, s.y + r), col, 2);
-        dl->AddRect(ImVec2(s.x - r, s.y - r), ImVec2(s.x + r, s.y + r), ring, 2, 0, 2);
-        return s;
-    case MShape::Diamond: {
-        ImVec2 p[4] = {{s.x, s.y - r}, {s.x + r, s.y}, {s.x, s.y + r}, {s.x - r, s.y}};
-        dl->AddConvexPolyFilled(p, 4, col);
-        dl->AddPolyline(p, 4, ring, ImDrawFlags_Closed, 2);
-        return s;
-    }
-    case MShape::Pin: {
-        ImVec2 head(s.x, s.y - r * 1.55f); // bulb sits above; tip is at s
-        ImVec2 tri[3] = {{head.x - r * 0.72f, head.y + r * 0.35f},
-                         {head.x + r * 0.72f, head.y + r * 0.35f},
-                         {s.x, s.y}};
-        dl->AddConvexPolyFilled(tri, 3, col);
-        dl->AddCircleFilled(head, r, col);
-        dl->AddCircle(head, r, ring, 0, 2);
-        return head; // icon goes in the bulb
-    }
-    default:
-        dl->AddCircleFilled(s, r, col);
-        dl->AddCircle(s, r, ring, 0, 2);
-        return s;
-    }
+    using hormiga::gis::MarkerForm;
+    const MarkerForm f = sh == MShape::Pin       ? MarkerForm::Pin
+                         : sh == MShape::Square  ? MarkerForm::Square
+                         : sh == MShape::Diamond ? MarkerForm::Diamond
+                         : sh == MShape::Balloon ? MarkerForm::Balloon
+                                                 : MarkerForm::Circle;
+    const hormiga::gis::MarkerOutline o = hormiga::gis::marker_outline(f, r, r > 12 ? 2 : 1);
+    static thread_local std::vector<ImVec2> pts;
+    pts.clear();
+    for (const auto& p : o.pts) pts.push_back(ImVec2(s.x + p.x, s.y + p.y));
+    if (hormiga::gis::marker_on_tip(f)) // the shadow: a flat ellipse at the tip
+        dl->AddEllipseFilled(ImVec2(s.x, s.y), ImVec2(r * 0.55f, r * 0.2f), IM_COL32(0, 0, 0, 60));
+    else
+        dl->AddCircleFilled(ImVec2(s.x + r * 0.08f, s.y + r * 0.14f), r * 1.04f, IM_COL32(0, 0, 0, 40));
+    if (o.convex) dl->AddConvexPolyFilled(pts.data(), (int)pts.size(), col);
+    else dl->AddConcavePolyFilled(pts.data(), (int)pts.size(), col);
+    dl->AddPolyline(pts.data(), (int)pts.size(), ring, ImDrawFlags_Closed, std::max(1.5f, r * 0.16f));
+    return ImVec2(s.x + o.face.x, s.y + o.face.y);
 }
 
 bool cal_leap(int y) { return (y % 4 == 0 && y % 100 != 0) || y % 400 == 0; }

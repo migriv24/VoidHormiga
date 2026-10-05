@@ -566,3 +566,21 @@ rune's position through the map's active **position channel** (a per-view
 position), while the tag editor reads the rune's own `geo`. A database that uses
 channels can therefore have a tag applied by a shape the editor does not consider
 covering. One of the two has to change once channels have a second real user.
+
+# The pin redrawn, notes on the map, and the phone (2026-10-04)
+
+- **Markers are one outline** (`src/gis/marker.hpp`), filled by the canvas, the
+  PNG export and the website's widget alike. The pin is a real drop, built from
+  its tangent construction; squares are rounded, the diamond matches the others'
+  area, and a fifth form, the **balloon**, stands on a pointer like the pin. A
+  pin's label and hit area are its head, not the tip it stands on. The
+  construction is written out in [the map on a phone](/concepts/sections/gis/phone.md).
+- **A note may sit on the map.** The `note` glyph has the location facet; the
+  desktop's place menu has *New note here*; notes draw as an amber balloon with
+  their first line. **Notes never leave through a map**: the PNG export skips
+  them, as the website's widget always did.
+- **The phone has the map**, with its own interaction model, in
+  [the map on a phone](/concepts/sections/gis/phone.md). One look resolver
+  (`marker_look`) serves both front-ends, so a rule or a tag styles a marker the
+  same way on both.
+

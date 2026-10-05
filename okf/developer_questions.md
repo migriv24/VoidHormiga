@@ -11,6 +11,32 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q100 — should a place set from the phone's location remember how sure it
+  was?** (Opened 2026-10-04, [the map on a phone](/concepts/sections/gis/phone.md).)
+  A phone's fix comes with a radius (often 5 m outdoors, 40 m indoors). Today a
+  "where I am" place stores only its coordinates; the accuracy is shown when it
+  is chosen and then forgotten. **Lean: yes, as a `geo_acc` field (metres)**,
+  written by the same `place`/`move` action when the place came from a fix and
+  cleared by any later hand placement, drawn as a faint circle on the selected
+  marker. Not done now because it is a field on six glyphs and every export
+  would have to decide whether to show it.
+
+- **Q101 — may a note ever appear on a public map?** (Opened 2026-10-04.) Notes
+  are the internal-notes class, so the PNG export and the website's widget skip
+  them. **Lean: never.** A note somebody wants the public to see is really an
+  event, an incident or an organization's description, and the Add sheet makes
+  those one tap away. The alternative (a `public` note) would be the first hole
+  in the render seam made on purpose.
+
+- **Q102 — polygons, and on which surface first?** (Opened 2026-10-04.) Regions
+  are rectangles and ellipses on both front-ends. A real neighbourhood or a
+  canvass turf is a polygon. **Lean: a `polygon` kind of `mapshape` (a list of
+  vertices), placed by tapping each corner on the phone and clicking on the
+  desktop** (never by crosshair: the field research found it twice as slow), with
+  `bestow::shape_contains` learning point-in-polygon so a polygon can give its
+  tag. After the author has used the phone's map, because how people draw on it
+  should decide the gesture.
+
 - **Q88 — where does at-rest encryption live, now that the network is
   Reticulum?** (Opened 2026-09-23.) Reticulum seals what *travels*. It has no
   format for a file that *rests*: the credential vault (Argon2id +
@@ -1923,7 +1949,7 @@ fold into concepts and clear from here.
   each riding the same rules/layers machinery. Charts arrive when a chart is
   the natural next surface, not as a section project.
 - **Q14 — Territory's holidays.** The map section's physics — now fully
-  conceptualized ([territory](/concepts/sections/territory.md), 2026-07-20): (a) **map
+  conceptualized ([territory](/concepts/sections/gis/territory.md), 2026-07-20): (a) **map
   source** — the base is a *holiday*, and the twist is **don't assume Earth**:
   online tiles vs offline tile pack vs an arbitrary image (a fantasy map);
   Hormiga loads a map, it doesn't make one (map-making = a future Void Maps);

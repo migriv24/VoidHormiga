@@ -24,7 +24,7 @@
  * rune in a mantle, and eventually as something the map builder writes out.
  * Data serializes; a vtable does not. When a source needs behaviour that is not
  * expressible as a field, that is the moment to reconsider, and not before —
- * okf/concepts/sections/territory.md's "the map is a SOURCE, not an assumption" is a
+ * okf/concepts/sections/gis/territory.md's "the map is a SOURCE, not an assumption" is a
  * statement about data, and this keeps it one.
  */
 #pragma once

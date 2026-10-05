@@ -28,7 +28,7 @@
 
 namespace hormiga::phone {
 
-enum Screen { kData, kCalendar, kNotes, kMigos, kMigas, kProfile, kSettings, kAntfarm, kScreens };
+enum Screen { kData, kCalendar, kMap, kNotes, kMigos, kMigas, kProfile, kSettings, kAntfarm, kScreens };
 inline constexpr int kHome = 100; // the Hormiga button's gallery: not a screen, not on the bar
 
 struct ScreenInfo {
@@ -103,6 +103,10 @@ struct HormigaApp::PhoneUi {
     std::string packed_for;           // the .miga last packed or opened, and its state's hash:
     std::size_t packed_hash = 0;      // an unchanged database is not packed again on a switch
 
+    // Map (phone_map.cpp): its state is its own type, defined there
+    struct MapUi;
+    std::shared_ptr<MapUi> map_ui;
+
     // Antfarm
     bool farm_graph = false;          // the node graph, rather than the list
     maiz::CanvasStyle farm_style;
@@ -121,6 +125,18 @@ struct HormigaApp::PhoneUi {
     static void data(HormigaApp& app, PhoneUi& ph, Frame& f);      // phone_data.cpp
     static void detail(HormigaApp& app, PhoneUi& ph, Frame& f, const maiz::SceneNode& n);
     static void calendar(HormigaApp& app, PhoneUi& ph, Frame& f);
+    static void map(HormigaApp& app, PhoneUi& ph, Frame& f);       // phone_map.cpp
+    static bool map_route(HormigaApp& app, PhoneUi& ph, Frame& f); // phone_map_sheet.cpp: search, views…
+    static void map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f); // …and the bottom sheet
+    /* Open the map on `rune`: centred on it if it is placed, or with the
+     * placement pin ready for it if not (`place`). The Data detail and the
+     * note editor call it: a thing and where it is are one tap apart. */
+    static void map_focus(HormigaApp& app, PhoneUi& ph, const std::string& rune);
+    /* Back, on the map: it closes the sheet, then stops placing or drawing,
+     * and only then leaves the screen (the platform's order). True = used. */
+    static bool map_back(PhoneUi& ph);
+    /* Is this rune a kind that may sit on the map? */
+    static bool map_placeable(const maiz::SceneNode& n);
     static void notes(HormigaApp& app, PhoneUi& ph, Frame& f);     // phone_more.cpp
     static void antfarm(HormigaApp& app, PhoneUi& ph, Frame& f);
     static void farm(HormigaApp& app, PhoneUi& ph, Frame& f);     // phone_farm.cpp: Antfarm v2

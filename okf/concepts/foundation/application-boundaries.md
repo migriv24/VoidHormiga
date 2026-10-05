@@ -13,7 +13,7 @@ to separate something, and who pays?**
 
 This page is the general answer. The map's own decision is
 [Q42](/developer_questions.md); the map's design is
-[territory](/concepts/sections/territory.md).
+[territory](/concepts/sections/gis/territory.md).
 
 # 1. Three kinds of dependency, distinguished by what a USER experiences
 
@@ -84,7 +84,7 @@ That ruling has a consequence people keep missing, including this document's
 first draft: **"move the map canvas into Void Maiz" contradicts Maiz's
 architecture.** It is not a matter of Maiz being unwilling; views are
 deliberately not theirs. What Maiz *should* own — and what
-[territory](/concepts/sections/territory.md) §The canvas already flags as a gap — is the
+[territory](/concepts/sections/gis/territory.md) §The canvas already flags as a gap — is the
 **gesture and interaction vocabulary** a custom view hand-rolls today. That is
 generic, benefits every host, and is a row-1 separation, i.e. free.
 

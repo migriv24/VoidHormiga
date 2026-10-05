@@ -515,7 +515,7 @@ inline void register_block_glyphs(maiz::Core& core) {
     // domain → a READ-ONLY interactive JS widget (pan/zoom/markers; it can
     // never write); email domain → a static PNG at the view's home viewport.
     // PRIVACY SEAM: contacts never render into either (personal coordinates
-    // don't leave the machine; okf/concepts/sections/territory.md boundaries).
+    // don't leave the machine; okf/concepts/sections/gis/territory.md boundaries).
     block("map_embed", "map", R"("view","caption_en","caption_es")", "#2e6b4f",
           72, false, "Interactive", R"("view":"hidden")", // picker in the builder UI
           R"__("view":"Map view (name of a saved view)",)__"

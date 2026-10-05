@@ -1342,7 +1342,16 @@ void HormigaApp::init() {
     // the map canvas's gestures tomorrow; ONE compile serves both
     map_actions = hormiga::make_map_actions();
     doc_actions = hormiga::make_doc_actions(); // the Builder's verbs (B1)
-    if (on_shell_capture) tiles.start(on_shell_capture); // OSM tile downloads
+    // OSM tile downloads: the shell's HTTP if it has one (a phone), else curl
+    if (on_http_get) {
+        tiles.start(on_http_get);
+    } else if (on_shell_capture) {
+        auto shell = on_shell_capture;
+        tiles.start([shell](const std::string& url, const std::string& to) {
+            shell("curl -s -A \"Hormiga/0.1 (local-first outreach app)\" -o \"" + to + "\" \"" + url + "\"");
+            return true;
+        });
+    }
 
     palette.entries = {{"contact", "Contact", "People"},
                        {"organization", "Organization", "People"},

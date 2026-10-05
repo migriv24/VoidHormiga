@@ -7,6 +7,7 @@
 
 #include "app/app_internal.hpp"
 #include "render/mercator.hpp"
+#include "gis/marker.hpp" // the marker outlines (one geometry, three surfaces)
 
 using hormiga::merc_lat;
 using hormiga::merc_lon;
@@ -88,40 +89,53 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
     }
     // markers: the view's channel + rules (icons are canvas-only for now)
     auto rule_expr = [](const MapRule& r) { return rule_expr_of(r); };
-    // marker SHAPE into the raw buffer (matches the canvas): the anchor is the
-    // center for circle/square/diamond, the tip for a pin. Draws a white ring
-    // then the colored fill; returns the icon-center y-offset from the anchor.
-    auto fill_shape = [&](int cx_px, int cy_px, int r, unsigned col, MShape sh) {
-        auto set = [&](int dx, int dy, unsigned c) {
-            if (dx < 0 || dx >= W || dy < 0 || dy >= H) return;
-            unsigned char* p = &img[((size_t)dy * W + dx) * 3];
-            p[0] = c & 0xFF; p[1] = (c >> 8) & 0xFF; p[2] = (c >> 16) & 0xFF;
-        };
-        auto blob = [&](int ox, int oy, int rr, unsigned c) { // filled shape
-            for (int yy = -rr; yy <= rr; ++yy)
-                for (int xx = -rr; xx <= rr; ++xx) {
-                    bool in = sh == MShape::Square
-                                  ? (std::max(std::abs(xx), std::abs(yy)) <= rr)
-                              : sh == MShape::Diamond
-                                  ? (std::abs(xx) + std::abs(yy) <= rr)
-                                  : (xx * xx + yy * yy <= rr * rr); // circle/pin bulb
-                    if (in) set(ox + xx, oy + yy, c);
-                }
-        };
-        if (sh == MShape::Pin) {
-            int hy = cy_px - (int)(r * 1.55f); // bulb above; tip at (cx,cy)
-            for (int yy = 0; yy <= cy_px - hy; ++yy) { // triangle down to the tip
-                float t = (float)yy / (float)std::max(1, cy_px - hy);
-                int half = (int)((1.0f - t) * r * 0.8f);
-                for (int xx = -half; xx <= half; ++xx) set(cx_px + xx, hy + yy, col);
+    // marker SHAPE into the raw buffer: the SAME outline as the canvas and the
+    // web widget (gis/marker.hpp), filled with 4x4 supersampling so a pin's
+    // curved sides are smooth in print. The anchor is the centre of a circle,
+    // square or diamond and the tip of a pin or balloon; a white ring (the
+    // outline grown by 2 px) goes under the fill, and a pin with no icon gets
+    // its white dot. Returns the icon centre's y offset from the anchor.
+    auto blend_cov = [&](int x, int y, unsigned c, float a) {
+        if (x < 0 || x >= W || y < 0 || y >= H || a <= 0) return;
+        unsigned char* p = &img[((size_t)y * W + x) * 3];
+        p[0] = (unsigned char)(p[0] * (1 - a) + (c & 0xFF) * a);
+        p[1] = (unsigned char)(p[1] * (1 - a) + ((c >> 8) & 0xFF) * a);
+        p[2] = (unsigned char)(p[2] * (1 - a) + ((c >> 16) & 0xFF) * a);
+    };
+    auto fill_outline = [&](const hormiga::gis::MarkerOutline& o, float ax, float ay, unsigned c,
+                            float alpha) {
+        const int x0 = (int)std::floor(ax + o.lo.x), x1 = (int)std::ceil(ax + o.hi.x);
+        const int y0 = (int)std::floor(ay + o.lo.y), y1 = (int)std::ceil(ay + o.hi.y);
+        for (int y = y0; y <= y1; ++y)
+            for (int x = x0; x <= x1; ++x) {
+                int hits = 0;
+                for (int sy = 0; sy < 4; ++sy)
+                    for (int sx = 0; sx < 4; ++sx)
+                        hits += hormiga::gis::marker_contains(o, x + (sx + 0.5f) / 4 - ax,
+                                                              y + (sy + 0.5f) / 4 - ay);
+                blend_cov(x, y, c, alpha * hits / 16.0f);
             }
-            blob(cx_px, hy, r + 2, IM_COL32(255, 255, 255, 255));
-            blob(cx_px, hy, r, col);
-            return hy - cy_px; // icon centered in the bulb
+    };
+    auto fill_shape = [&](int cx_px, int cy_px, int r, unsigned col, MShape sh) {
+        using hormiga::gis::MarkerForm;
+        const MarkerForm f = sh == MShape::Pin       ? MarkerForm::Pin
+                             : sh == MShape::Square  ? MarkerForm::Square
+                             : sh == MShape::Diamond ? MarkerForm::Diamond
+                             : sh == MShape::Balloon ? MarkerForm::Balloon
+                                                     : MarkerForm::Circle;
+        const float rr = hormiga::gis::marker_on_tip(f) ? r * 1.15f : (float)r;
+        const auto ring = hormiga::gis::marker_outline(f, rr + 2.0f, 2);
+        const auto body = hormiga::gis::marker_outline(f, rr, 2);
+        // a form on a tip stands on the map: its ring is grown about the
+        // head, so move it down by the growth to keep the tips together
+        const float lift = hormiga::gis::marker_on_tip(f) ? (ring.hi.y - body.hi.y) : 0.0f;
+        fill_outline(ring, (float)cx_px, (float)cy_px - lift, IM_COL32(255, 255, 255, 255), 1.0f);
+        fill_outline(body, (float)cx_px, (float)cy_px, col, 1.0f);
+        if (f == MarkerForm::Pin) { // the white dot in the head
+            auto dot = hormiga::gis::marker_outline(MarkerForm::Circle, rr * 0.36f, 1);
+            fill_outline(dot, cx_px + body.face.x, cy_px + body.face.y, IM_COL32(255, 255, 255, 255), 1.0f);
         }
-        blob(cx_px, cy_px, r + 2, IM_COL32(255, 255, 255, 255));
-        blob(cx_px, cy_px, r, col);
-        return 0;
+        return (int)std::lround(body.face.y);
     };
     // TEXT into the raw buffer via ImGui's baked font atlas (author #6: the
     // PNG must show readable labels). We sample each glyph's alpha coverage
@@ -259,6 +273,7 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
     int placed = 0;
     for (const auto& node : scene.nodes) {
         if (node.glyph == "refpoint") continue; // gizmos never export
+        if (node.glyph == "note") continue;     // a note is internal: it never leaves through a picture
         double la, lo;
         int sx, sy;
         auto ff = ex_fans.find(node.name);
@@ -275,23 +290,11 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
             sy = (int)std::lround((merc_y(la, z) - cy) * 256.0 + H * 0.5);
         }
         if (sx < -12 || sx > W + 12 || sy < -12 || sy > H + 12) continue;
-        unsigned col = node.glyph == "incident"       ? IM_COL32(200, 50, 50, 255)
-                       : node.glyph == "organization" ? IM_COL32(138, 109, 59, 255)
-                       : node.glyph == "event"        ? IM_COL32(63, 111, 174, 255)
-                                                      : IM_COL32(179, 89, 46, 255);
-        std::string shp;
-        for (const auto& r : vrules) {
-            if (r.tags.empty() || !maiz::node_matches(rule_expr(r), node)) continue;
-            for (const auto& c : kMarkerColors)
-                if (r.color == c.tag) col = c.col;
-            if (!r.shape.empty()) shp = r.shape;
-            break;
-        }
-        std::string ctag = tag_value(node, "color");
-        for (const auto& c : kMarkerColors)
-            if (ctag == c.tag) col = c.col;
-        std::string stag = tag_value(node, "shape");
-        if (!stag.empty()) shp = stag;
+        // the same precedence as the canvas (marker_look), less Allomone,
+        // which the export has never applied (unchanged here)
+        const MarkerLook look = marker_look(node, vrules, static_cast<const AlloStyle*>(nullptr));
+        const unsigned col = look.col;
+        const std::string shp = look.shape;
         fill_shape(sx, sy, 8, col, shape_from(shp));
         // labels: same no-overlap candidates as the canvas (right/left/up/down)
         if (show_labels) {

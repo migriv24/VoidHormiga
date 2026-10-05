@@ -19,6 +19,15 @@
   <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
   <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+  <!-- Where the phone is, for the map (voidmaiz/location.hpp). DANGEROUS
+       permissions: nothing is granted at install, and the system asks the
+       person only when they press the map's locate button. Coarse alone is a
+       real answer ("approximate"), and the map draws it as a wide circle. -->
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+  <uses-feature android:name="android.hardware.location" android:required="false" />
+  <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
   <application
       android:label="Void Hormiga"
       android:hasCode="true"

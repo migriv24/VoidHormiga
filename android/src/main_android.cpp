@@ -28,6 +28,8 @@
 
 #include "platform/device_paths.hpp" // where this device keeps its files
 #include "voidmaiz/documents.hpp" // the system picker and save dialog
+#include "voidmaiz/location.hpp"  // where the phone is (the map asks, on a tap)
+#include "voidmaiz/update.hpp"    // android_http: a phone has no curl
 #include "voidmaiz/mobile.hpp"        // the safe area
 #include "voidmaiz/textinputview.hpp" // maiz::android_text_input
 
@@ -208,6 +210,17 @@ void backends_up(Shell& s) {
             return maiz::android_save_document(aapp->activity, request, src, name, "application/octet-stream");
         };
         app.on_quit = [aapp] { ANativeActivity_finish(aapp->activity); };
+        /* THE MAP ON A PHONE (2026-10-04). Tiles come over Android's own HTTP,
+         * named as this app (OpenStreetMap asks every client to say who it is),
+         * on the tile fetcher's worker threads; and the location holiday, which
+         * asks for nothing until the map's locate button is pressed. */
+        {
+            auto http = maiz::update::android_http(aapp->activity, "VoidHormiga/" HORMIGA_VERSION " (Android; local-first outreach app)");
+            app.on_http_get = [http](const std::string& url, const std::string& to) {
+                return http && http(url, to).ok;
+            };
+        }
+        maiz::install_location(maiz::android_location(aapp->activity));
         app.on_load_texture = gl_load_texture;
         app.enable_phone(true, maiz::android_text_input(s.aapp->activity), density);
         const bool first_run = !std::filesystem::exists(app.base_dir / app.state_name); // before init makes it

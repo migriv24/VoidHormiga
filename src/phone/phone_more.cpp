@@ -79,7 +79,9 @@ void HormigaApp::PhoneUi::notes(HormigaApp& app, PhoneUi& ph, Frame& f) {
             return;
         }
         app.ed.selection = {name}; // presence: the note on my screen
+        bool write_now = false;    // a note that arrives empty is opened to be written in
         if (ph.note_for != name) { // stage its text once, then the box owns it
+            write_now = hormiga::temper::field_value(*n, "text").empty();
             flush_note(app, ph);
             ph.note_for = name;
             std::snprintf(ph.note_buf.data(), ph.note_buf.size(), "%s",
@@ -98,12 +100,27 @@ void HormigaApp::PhoneUi::notes(HormigaApp& app, PhoneUi& ph, Frame& f) {
         // the text: the first line is the title, the rest is the note
         const float h = std::max(ImGui::GetFontSize() * 8.0f,
                                  ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() * 5.0f);
+        if (write_now) ImGui::SetKeyboardFocusHere();
         if (ImGui::InputTextMultiline("##note", ph.note_buf.data(), ph.note_buf.size(), ImVec2(-FLT_MIN, h)))
             ph.note_dirty = true;
         maiz::text_input_kind(maiz::InputKind::Multiline);
         if (ImGui::IsItemDeactivated()) ph.note_frame = -1; // lost focus: commit now
         ImGui::SeparatorText("Tags");
         app.draw_tag_editor(*n, f.out);
+        // a note may be ABOUT A PLACE (2026-10-04): it sits on the map, and the
+        // map's sheet lists the notes near what was tapped
+        ImGui::SeparatorText("Place");
+        if (ph.screen != kMap) {
+            const bool placed = !hormiga::temper::field_value(*n, "geo").empty();
+            if (ImGui::Button(placed ? ICON_FA_MAP_LOCATION_DOT "  Show on the map" : ICON_FA_MAP_PIN "  Pin to a place",
+                              ImVec2(-FLT_MIN, 0))) {
+                flush_note(app, ph);
+                map_focus(app, ph, name);
+            }
+        } else {
+            maiz::dim_wrapped(hormiga::temper::field_value(*n, "geo").empty() ? "Not on the map."
+                                                                             : "On the map. Back returns to it.");
+        }
         ImGui::Spacing();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.72f, 0.22f, 0.20f, 1.0f));
         if (ImGui::Button(ICON_FA_TRASH "  Delete note", ImVec2(-FLT_MIN, 0))) {

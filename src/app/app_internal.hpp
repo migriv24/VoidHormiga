@@ -375,14 +375,77 @@ std::string tag_value(const maiz::SceneNode& n, const char* ns);
 // traditional map PIN (teardrop, tip at the exact point), a square, or a
 // diamond. Set by a `shape:` tag or a style rule; shared by the canvas, the
 // PNG export, and the web widget so a styled marker looks the same everywhere.
-enum class MShape { Circle, Pin, Square, Diamond };
-inline const char* kMarkerShapes[] = {"circle", "pin", "square", "diamond"};
+// Since 2026-10-04 every form is ONE outline (gis/marker.hpp: the pin is a
+// real drop now, built from its tangent construction), plus the BALLOON, the
+// rounded "place card" pin that notes on the map use.
+enum class MShape { Circle, Pin, Square, Diamond, Balloon };
+inline const char* kMarkerShapes[] = {"circle", "pin", "square", "diamond", "balloon"};
 MShape shape_from(const std::string& s);
 /* Draw a marker of shape `sh` at `s` (which is the anchor: the CENTER for
- * circle/square/diamond, the TIP for a pin). Fills with `col`, outlines with
- * `ring`; returns the point where an icon/label glyph should be centered. */
+ * circle/square/diamond, the TIP for a pin or balloon). Fills with `col`,
+ * outlines with `ring`, and lays a soft shadow under a form that stands on a
+ * tip; returns the point where an icon/label glyph should be centered. */
 ImVec2 draw_marker_shape(ImDrawList* dl, ImVec2 s, float r, ImU32 col,
                                 ImU32 ring, MShape sh);
+
+/* What a marker looks like, resolved ONCE for every surface that draws it
+ * (the desktop canvas, the phone's map): the glyph's default colour, then the
+ * first matching rule of the view, then the rune's own `color:`/`icon:`/
+ * `shape:` tags, then Allomone's derived `map` style, which composes and so
+ * wins. The phone's map was the second copy of this precedence; a second copy
+ * is how two surfaces start to disagree, so it is one function now. */
+struct MarkerLook {
+    unsigned col = 0;
+    const char* icon = nullptr; // a Font Awesome codepoint, or none
+    std::string shape;          // "" = a circle
+    std::string label;          // what to write beside it (Allomone's map-label, else "")
+    float weight = 0;           // Allomone's weight: a bigger marker
+};
+/* The glyph's own marker: incident red, organization brown, event blue, a
+ * NOTE amber in a balloon with a note in it (2026-10-04), anyone else rust. */
+unsigned glyph_marker_colour(const std::string& glyph);
+const char* glyph_marker_shape(const std::string& glyph);
+const char* glyph_marker_icon(const std::string& glyph);
+/* A marker's caption: the rune's name, except a note, which has none worth
+ * showing ("note-3fa9-1"), so its first line, shortened. */
+std::string marker_caption(const maiz::SceneNode& n);
+/* A template only because HormigaApp's MapRule and AlloStyle are private and
+ * every caller is a member (or the phone's nested type), which may name them. */
+template <class Rule, class Allo>
+MarkerLook marker_look(const maiz::SceneNode& n, const std::vector<Rule>& rules, const Allo* allo) {
+    MarkerLook L;
+    L.col = glyph_marker_colour(n.glyph);
+    L.shape = glyph_marker_shape(n.glyph);
+    L.icon = glyph_marker_icon(n.glyph);
+    for (const auto& r : rules) { // first matching rule styles it…
+        if (r.tags.empty()) continue;
+        std::string e;
+        for (const auto& t : r.tags) e += (e.empty() ? "" : " AND ") + t;
+        if (!maiz::node_matches(e, n)) continue;
+        for (const auto& c : kMarkerColors)
+            if (r.color == c.tag) L.col = c.col;
+        for (const auto& ic : kMarkerIcons)
+            if (r.icon == ic.tag) L.icon = ic.glyph;
+        if (!r.shape.empty()) L.shape = r.shape;
+        break;
+    }
+    const std::string ctag = tag_value(n, "color"); // …explicit tags win
+    for (const auto& c : kMarkerColors)
+        if (ctag == c.tag) L.col = c.col;
+    const std::string itag = tag_value(n, "icon");
+    for (const auto& ic : kMarkerIcons)
+        if (itag == ic.tag) L.icon = ic.glyph;
+    const std::string stag = tag_value(n, "shape");
+    if (!stag.empty()) L.shape = stag;
+    if (allo) { // Allomone composes, so it wins (see the map canvas)
+        if (allo->has_color) L.col = allo->rgba;
+        for (const auto& ic : kMarkerIcons)
+            if (allo->icon == ic.tag) L.icon = ic.glyph;
+        L.label = allo->label;
+        L.weight = (float)allo->weight;
+    }
+    return L;
+}
 
 // ── calendar date math (okf/concepts/sections/calendar.md; used by the Calendar tab,
 // its exports, and the email/web calendar blocks) ───────────────────────────

@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -215,25 +215,36 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.1.10",
-    "previous": "0.1.9",
+    "version": "0.1.11",
+    "previous": "0.1.10",
     "change": "compatible",
-    "date": "2026-09-27",
-    "summary": "on a phone a tap is no longer a scroll, the Antfarm graph pinches, and switching databases is safe; right-click in Data on the desktop",
+    "date": "2026-10-05",
+    "summary": "the map on the phone: add, style and move places, your location on a tap, notes on places, and real pins on every map",
     "adds": [
-      "On a phone: scrolling no longer presses or highlights what the finger started on; a fling glides smoothly",
-      "On a phone: each screen keeps its own scroll, so a card opens at the top and Back returns to your place",
-      "On a phone: pinch to zoom the Antfarm graph",
-      "On the desktop: right-click a card or a row in Data to open, copy its name, or delete it (or the selection)"
+      "On a phone: a Map screen. One finger moves the map; pinch, double tap, two-finger tap and tap-then-drag zoom",
+      "On a phone: hold the map to add something there, or press + to place it exactly with a pin in the middle",
+      "On a phone: tap a place for its card, then its colour, icon and shape; hold a place to pick it up and move it",
+      "On a phone: the locate button shows where you are, with how sure the phone is; it asks for permission only when pressed",
+      "Notes can sit on the map (phone and desktop): a note about a place, listed on that place",
+      "Markers are redrawn as real pins (and a new balloon shape) on the desktop map, its PNG export and the website"
     ],
     "behavior_changes": [
       {
-        "what": "SWITCHING DATABASES ON A PHONE happens between frames, behind \"Opening...\", and saves the open database only if it changed.",
-        "who_is_affected": "Everyone switching databases on a phone."
+        "what": "A NEW PHONE INSTALL puts Map on the bottom bar where Notes was. Notes is still in the gallery (the centre button). A bar you arranged yourself is not changed.",
+        "who_is_affected": "People installing on a new phone."
+      },
+      {
+        "what": "THE MAP PNG EXPORT no longer includes notes, now that notes can be on the map: a note is private working material and never leaves the app in a picture.",
+        "who_is_affected": "Anyone exporting a map picture after placing notes on it."
+      },
+      {
+        "what": "THE PIN SHAPE looks different: a drop with curved sides instead of a triangle under a circle, on the desktop map, in PNG exports and on published websites (after the next publish).",
+        "who_is_affected": "Anyone using the pin shape on a map."
       }
     ],
     "read_more": [
-      "okf/concepts/sections/mobile.md"
+      "okf/concepts/sections/gis/phone.md",
+      "okf/concepts/sections/gis/worlds.md"
     ]
   },
   "update": {

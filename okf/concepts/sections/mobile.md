@@ -1,7 +1,7 @@
 ---
 type: Concept
 title: Hormiga on a phone
-description: "Opened 2026-09-22; scoped by the author 2026-09-23: no Builder, no Map, no visible console, no windows. Since 2026-09-25: eight screens (Data, Calendar, Notes, Migos, Migas, Profile, Settings, Antfarm), any four on a bar the person arranges around a locked centre Hormiga button that opens a gallery of all of them; touch scrolling; photos through the system picker; pictures that sync with a progress bar; .miga files on and off the phone; a phone that may host. BUILT in src/phone/, runnable on any desktop with --phone. The phone is a member doing field work first. Also: why a surface's identity is the concept and not the form, how Allomone should read the form (a Void Maiz predicate, like device \"pen\"), and what still stands between this and an APK (libsodium first)."
+description: "Opened 2026-09-22; scoped by the author 2026-09-23: no Builder, no Map (the Map was brought back on 2026-10-04: see sections/gis/phone.md), no visible console, no windows. Since 2026-09-25: eight screens (Data, Calendar, Notes, Migos, Migas, Profile, Settings, Antfarm), any four on a bar the person arranges around a locked centre Hormiga button that opens a gallery of all of them; touch scrolling; photos through the system picker; pictures that sync with a progress bar; .miga files on and off the phone; a phone that may host. BUILT in src/phone/, runnable on any desktop with --phone. The phone is a member doing field work first. Also: why a surface's identity is the concept and not the form, how Allomone should read the form (a Void Maiz predicate, like device \"pen\"), and what still stands between this and an APK (libsodium first)."
 tags: [status:current, audience:all, confidence:asserted]
 timestamp: 2026-09-23T00:00:00Z
 ---
@@ -102,7 +102,9 @@ The author, the next day, after Void Maiz's networking worked across Linux,
 Windows and Android:
 
 1. **No Builder.**
-2. **No Map.**
+2. **No Map.** *Reversed by the author on 2026-10-04 ("right now the clients
+   need a map on mobile"): the phone has a Map screen, designed and built in
+   [the map on a phone](/concepts/sections/gis/phone.md).*
 3. **No visible console.** *"there's no real reason to have a console (at least
    not visible to the user)"*.
 4. **No windows at all**: *"we have a navigation bar instead, where we navigate
@@ -207,7 +209,7 @@ This one rule removes most of the hard problems:
 |---|---|---|
 | **Data** (tables, cards, detail, Connections canvas, tag filter) | **yes, the centre of the app** | a searchable list of people and things with swipe actions (`begin_swipe_row`); the detail in a bottom sheet that drags to full (`begin_bottom_sheet`); tag chips with suggestions (`maiz::suggest_tags`); edits compile to the same commands |
 | **Calendar** (3-day / week / month, quick-add, `.ics`) | **yes, overhauled** | built: a week strip, the day's agenda, one-line quick add, *Coming up*. Date and time *pickers* are still Void Maiz's staged items; today the date field is the desktop's three boxes |
-| **Territory** (the map) | **no** (author, 2026-09-23) | |
+| **Territory** (the map) | **yes, since 2026-10-04** (it was "no" on 2026-09-23) | its own screen: one finger pans, a long press adds or picks up, a tap selects into a sheet, the phone's location on a tap. See [the map on a phone](/concepts/sections/gis/phone.md) |
 | **Builder** (grid, palette, inspector, preview) | **no** (author, 2026-09-23) | the reimagining below is kept as a design, not a plan |
 | **Publish** | **no** | it follows the Builder |
 | **Antfarm** | **no, until its redesign** (author, 2026-09-23) | the redesign's A11 (a read-only dashboard) is what it would become |
@@ -395,7 +397,7 @@ than carried.
 | action sheet | "Call · Email · Copy" on a contact |
 | pull-to-refresh | "sync now", which in a log-first system is a real gesture |
 | the stepper as a registry field editor | so a glyph's `hints.editors` can ask for one |
-| fling / momentum consumed by the canvas | the map should coast. Lists glide since 2026-09-25 (`touch_scroll`) |
+| ~~fling / momentum consumed by the canvas~~ | **built 2026-10-04**: the touch gate reports a canvas drag's fling, and the map coasts on it |
 
 ## Missing from Void Maiz (to ask for)
 
@@ -403,7 +405,7 @@ than carried.
 |---|---|---|
 | ~~accented letters on the drawn keyboard~~ | **resolved 2026-09-23 by not drawing one.** The author: *"Custom keyboard is too much of a hassle ... we should focus on the integration of the keyboard."* The phone's own keyboard has every accent, and emoji now survive typing too (`IMGUI_USE_WCHAR32`). Not yet typed on a device | resolved, unwitnessed |
 | **a navigation stack**, and ~~the system Back button~~ | Back is **done in Void Maiz** (2026-09-23): ImGui's android backend mapped no `AKEYCODE_BACK`, and `maiz::android_system_key` now turns it into `ImGuiKey_AppBack`, which Hormiga's phone already reads. The stack itself is still Hormiga's (`phone/nav.hpp`), offered upstream | Back resolved, unwitnessed; the stack is still asked |
-| **platform intents**: open a URL, share, `tel:` and `mailto:`, the photo picker, the camera, location | "tap to call", "photograph a flier", "drop a pin where I am" and the Builder preview all need one. Each is a JNI call into the Java runtime, the same shape as the update client's `PackageInstaller` path | **blocking for jobs 1, 3, 5, 6** |
+| **platform intents**: open a URL, share, `tel:` and `mailto:`, the photo picker, the camera, ~~location~~ (location **built 2026-10-04** as Void Maiz's location holiday, `voidmaiz/location.hpp`) | "tap to call", "photograph a flier", "drop a pin where I am" and the Builder preview all need one. Each is a JNI call into the Java runtime, the same shape as the update client's `PackageInstaller` path | **blocking for jobs 1, 3, 5, 6** |
 | **app lifecycle**: pause, resume, low memory | a backgrounded phone must save its replica and drop links cleanly, then come back. `idle_ms` already makes a silent link honest, and saving on pause is the other half | high |
 | **a general HTTP seam** | `update.hpp` has `android_http` (`HttpURLConnection` through JNI) *inside* the update client. Hormiga's HTTP shells out to `curl`, which a phone does not have. Publishing, tiles and `.ics` feeds need the seam, not the updater | high, for publish and the map |
 | text selection and copy | copying a phone number out of a note | medium; the touch page says "not planned without a client", and Hormiga is that client |
@@ -438,7 +440,7 @@ Each stage is an exit test in the roadmap's style, and each is useful alone.
 | **M2** | edits: a contact's fields, quick-add an event, tags with suggestions; errors and undo as snackbars | "I added the person I just met" |
 | **M3** | photos: camera and picker (an intent), ingest by content hash, tag, cautious transfer | "the flier I photographed is in the next issue" |
 | **M4** | publications: document list, outline, bilingual text edits, image swap, preview (an intent), *Publish now* driven by the desktop | "I fixed a typo and sent the issue from the bus" |
-| **M5** | the map: markers, detail sheets, drop a pin (location) | "I can see where things are" |
+| **M5** | the map: markers, detail sheets, drop a pin (location). **Built 2026-10-04 in the harness; not run on a device** | "I can see where things are" |
 
 **The keyboard (2026-09-23).** Hormiga's phone takes the platform keyboard
 when its shell has one: `enable_phone(touch, maiz::android_text_input(activity))`.

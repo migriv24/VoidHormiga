@@ -59,13 +59,13 @@ completely** — a click in a form and a typed verb are the same command.
    commands), and plain-language explanations on every node. Power users get
    the graph; everyone else gets the dashboard over it.
 
-4. **Territory** — the **map** ([territory](/concepts/sections/territory.md)): people,
+4. **Territory** — the **map** ([territory](/concepts/sections/gis/territory.md)): people,
    incidents, and conditions on a canvas over a swappable map source (not
    assumed to be Earth). Promoted to a fourth main section (author,
    2026-07-20): maps are a *form* of data management but canvas-native
    (pan/zoom/place/reactive-visuals), so they earn their own workflow. It
    absorbs `../Neighborhood`; its full analysis and concept mapping live in
-   the [territory](/concepts/sections/territory.md) concept.
+   the [territory](/concepts/sections/gis/territory.md) concept.
 
 Sections are chrome, not silos: one core, one undo history, one command bar
 and log strip visible everywhere. The command bar is global precisely

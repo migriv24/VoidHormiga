@@ -20,6 +20,13 @@
  *   key enter|back
  *   wait N         N frames
  *   shot PATH      a PNG of the whole screen, safe area included
+ * The map's gestures (2026-10-04), all through the touch gate:
+ *   dtap X Y       a double tap
+ *   tap2 X Y       a two-finger tap (fingers 50 dp apart)
+ *   qzoom X Y DY   a tap, then put back down and dragged DY (one-handed zoom)
+ *   holddrag X0 Y0 X1 Y1 [FRAMES]   hold still (a long press), then drag
+ *   location LAT LON [ACC] | deny | off   a stand-in for the phone's location:
+ *                  unasked until the app asks, then granted (or refused)
  *   quit
  * `#` starts a comment. */
 #pragma once
@@ -55,6 +62,9 @@ struct PhoneHarness {
     int release_in_ = -1;        // frames until a held tap is released
     std::vector<ImVec2> drag_;   // positions still to visit, one a frame
     std::vector<std::pair<ImVec2, ImVec2>> pinch_; // two fingers' positions still to visit
+    std::vector<ImVec2> after_hold_; // a holddrag's drag, once the hold is over
+    int hold_left_ = 0;              // frames of holding still left
+    int two_up_ = -1;                // frames until a two-finger tap lifts
     std::string pending_shot_;
     ImVec2 finger_{-1, -1};      // where the script's finger last touched
     bool quit_ = false;

@@ -3738,7 +3738,7 @@ never shadowed.
 
 `domain/bestow.hpp`, and the concepts in
 [data model](/concepts/foundation/data-model.md) and
-[territory](/concepts/sections/territory.md): a map shape that bestows a tag is a
+[territory](/concepts/sections/gis/territory.md): a map shape that bestows a tag is a
 **giver**; a tag it gives is drawn as given and sends a person to the shape
 instead of being removed where it landed; a tag a giver can give exists in the
 vocabulary before anything carries it; and one containment test now serves both
@@ -5541,3 +5541,116 @@ The author: *"continue with development"* (Verguenza and Chisme stay OKF-only).
   refusal of v1 peers needs a version in Void Maiz's handshake.
 - **Measured:** 53 of 54 tests (`reduce_conformance`, the known red), layering,
   host seams and budgets ok.
+
+# The map on the phone, notes on the map, and the pin redrawn (2026-10-04)
+
+The author: *"lets begin work on the map, specifically on mobile ... right now
+the clients need a map on mobile!"*, with GPS, notes linked to places, real
+location markers drawn by our own method, research on mobile map and GIS UX,
+and minimal changes to the desktop. This reverses the 2026-09-23 "No Map". The
+design, the research table, the gesture table and **every desktop map feature
+with what it became** are in [the map on a phone](/concepts/sections/gis/phone.md).
+
+- **The phone's Map screen** (`src/phone/phone_map.cpp`, the canvas;
+  `phone_map_sheet.cpp`, the sheet and the map's own screens; `phone_map.hpp`,
+  their shared state. Split the same day when it outgrew one file's budget,
+  and the harness scripts re-run after the split gave identical results): one finger always pans
+  (and coasts); pinch, double tap, two-finger tap and tap-then-drag zoom, on a
+  continuous zoom (`src/gis/view.hpp`). A tap selects into a bottom sheet (open,
+  move, a note here, centre; colour, icon and form, one tap each; notes within
+  40 m; the reference point it is grouped at; take off the map or delete, both
+  with UNDO). A tap on two markers too close to tell apart asks which. Markers
+  that would overlap cluster into a counted disc. A long press on empty map
+  offers six kinds to add there; a long press on a marker picks it up, riding
+  above the finger. The + button places precisely, with a pin fixed in the
+  middle and the map moved under it. Search, views and base map are screens of
+  their own. Back closes the sheet before it leaves. Its camera has its own key
+  (`view.phone.map.camera`), so a phone does not move a desktop's map. Every
+  change is the desktop's command: `place`/`move` actions, `tag`, `set`, `rm`.
+- **The phone's location**: Void Maiz's new location holiday, asked for only
+  from the locate button, drawn with its accuracy, followed while the map is on
+  screen and stopped on any other. A refusal says so in a snackbar. The Add sheet
+  offers *Where I am instead*, the placement bar *Here*.
+- **Tiles on a phone**: a phone has no `curl`, so the tile fetcher takes an HTTP
+  function (`on_http_get`, `app.hpp` 1267 -> 1269); Android's shell gives it
+  `android_http` with a User-Agent naming the app, for OSM's tile policy. The
+  manifest asks for ACCESS_FINE/COARSE_LOCATION, both requested at runtime only.
+- **Notes on the map**, both front-ends: the `note` glyph has the location facet;
+  *Add here → Note*, *Note* in a marker's sheet (a note about this place), *Pin
+  to a place* / *Show on the map* in the note editor, *Put on the map* / *Show on
+  the map* in the phone's Data detail, *New note here* on the desktop. A note on
+  the map is an amber balloon with its first line. **The PNG export now skips
+  notes**, as the website's widget did, so a note's position never leaves in a
+  picture.
+- **The pin, redrawn** (`src/gis/marker.hpp`): every marker is one outline,
+  filled by the canvas, the PNG (supersampled) and the website (a JS port). The
+  pin is built from its tangent construction with curved sides; a fifth form,
+  the balloon. Labels and the desktop's hit test aim at a pin's head. `gis_smoke`
+  checks the geometry and the continuous zoom.
+- **One look resolver**, `marker_look`, for both front-ends (glyph, rule, tags,
+  Allomone), replacing the desktop canvas's own copy.
+- **Void Maiz** (the author's standing permission to edit it): the touch gate's
+  long press, double tap, two-finger tap, quick zoom and canvas fling, the
+  location holiday, and a User-Agent on `android_http`. See its log.
+- **Default bar** for a new install: Data, Map | Calendar, Migos (Map takes
+  Notes' place; Notes is in the gallery). A bar someone arranged is untouched.
+- **Found while running it, and fixed**: Back on the map went to Data instead of
+  closing the sheet; changing the sheet from inside its own content left its
+  child window open (an ImGui error); a region's sheet closed the frame it was
+  made, before its rune existed; a place chosen low on the map was hidden by the
+  sheet asking about it (the map now slides it into view); the search field did
+  not take the keyboard; a refused location left the button following.
+- **Measured** in the phone harness at 412x785@2 against a fictional fixture:
+  the map, selection, the sheet at full height, a cluster opened, long press to
+  add (with the slide into view), a person added, the locate button with a
+  stand-in fix and refused, precise placement for an unplaced contact found by
+  search, a long-press move (logged with UNDO), double tap, two-finger tap, quick
+  zoom, pinch, a region drawn, a note written from the map, Data's *Show on the
+  map*. On the desktop: the new pins and the note balloon on the canvas, and a
+  PNG export at two zooms with no note in it. The Android library builds and
+  links (`libvoidhormiga.so`); the Java compiles to dex. Getting there found
+  that **Void Palabra no longer built for Android**: its newest commit's
+  `entropy.cpp` calls `getrandom`, which bionic declares only from API 28, and
+  the APK targets 26. Fixed there (bionic's `arc4random_buf` on Android, the
+  author's standing permission), as its own change. Tests: 54 of 55
+  (`reduce_conformance`, the known red); the golden render moved in exactly one
+  file, the website's `app.js` (the pin's JS port), and was re-captured. **Nothing has run on a phone**, and no APK was cut (the
+  version is the author's to raise). Nothing is committed in any of the three
+  repositories; that is the author's call too. The harness's new script lines: `dtap`,
+  `tap2`, `qzoom`, `holddrag`, `location`.
+- **Open**: Q100 (store a GPS place's accuracy), Q101 (notes on public maps:
+  never), Q102 (polygons).
+
+# The GIS folder, worlds, and 0.1.11 prepared (2026-10-05)
+
+The author: *"the map should have its own folder in the OKF ... under a GIS
+general okf stuff ... we won't [separate it] yet, but we should begin
+modularizing in the okf"*, a place for research and things to keep in mind, and
+*"which concepts could only exist in a normal earth map"* (GPS cannot work on a
+D&D map). Then publish 0.1.11 for desktop and phone.
+
+- **`okf/concepts/sections/gis/`**, organized around application-boundaries'
+  four layers: [index](/concepts/sections/gis/index.md) (the boundary and reading
+  order), [territory](/concepts/sections/gis/territory.md) and
+  [phone](/concepts/sections/gis/phone.md) (moved; every inbound link rewritten),
+  **[worlds](/concepts/sections/gis/worlds.md)** (new), **[research](/concepts/sections/gis/research.md)**
+  (new: the phone's research moved there, plus what to keep in mind before a map
+  feature and what to read next), **[roadmap](/concepts/sections/gis/roadmap.md)**
+  (new: every map item, built or wanted, tagged by the world it needs).
+- **Worlds**: three kinds (Earth; *anchored*, an image pinned to Earth by
+  control points, so a floor plan or a fair's site map can have GPS; *authored*,
+  a fantasy world with its own units). Every spatial idea classified as
+  universal, anchored or Earth-only. **The rule: a feature asks the world
+  whether it can exist there, and is absent, not broken, where it cannot.**
+  Made true in code for the phone: the locate button, the blue dot, *Here* and
+  *Where I am instead* exist only when the source's metric is haversine
+  (`phone_map.cpp`). What the code still assumes about Earth is written down on
+  the page, not hidden.
+- **0.1.11**: version raised in CMakeLists.txt and void.json, with release notes
+  and three behaviour changes (Map replaces Notes on a new phone's bar; the PNG
+  export leaves notes out; the pin looks different). Void Maiz (`778511a`) and
+  Void Palabra (`b0128bf`) committed and pushed first, because the release
+  runners clone them. 54 of 55 tests (`reduce_conformance`, the known red).
+- **A credential note**: the token pasted into the session was rejected by
+  GitHub (401); this machine's existing GitHub sign-in did the work. No token was
+  written to any file.

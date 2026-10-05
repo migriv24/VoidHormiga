@@ -1,5 +1,5 @@
 /* map_actions.hpp — Territory's interaction vocabulary as NAMED actions
- * (Void Maiz `action.hpp` draft, 2026-07-21; okf/concepts/sections/territory.md
+ * (Void Maiz `action.hpp` draft, 2026-07-21; okf/concepts/sections/gis/territory.md
  * "Canvas actions as first-class commands").
  *
  * Each ActionDescriptor's `compile` is THE one definition: today the command

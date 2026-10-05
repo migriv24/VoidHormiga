@@ -145,6 +145,33 @@
     }).catch(function(){ /* keep the build-time cards */ });
   });
 
+  // ── the marker outline: a port of src/gis/marker.hpp (keep in step). The
+  // anchor (0,0) is the location: a pin or balloon stands on its tip. A pin is
+  // a head of radius r, 2.2r above the tip, whose sides leave the head along
+  // its tangents from the tip and curve in to a sharp point. ──────────────
+  function mkOutline(f,r){
+    var P=[],PI=Math.PI;
+    function arc(cx,cy,rr,a0,a1,n){for(var i=0;i<=n;i++){var a=a0+(a1-a0)*i/n;P.push([cx+rr*Math.cos(a),cy+rr*Math.sin(a)]);}}
+    function cub(p0,p1,p2,p3,n,skip){for(var i=skip?1:0;i<=n;i++){var t=i/n,u=1-t;
+      P.push([u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0],u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]]);}}
+    var fx=0,fy=0;
+    if(f==='pin'){var h=2.2*r,ph=Math.acos(r/h),C=[0,-h],T=[0,0];
+      var Pl=[-r*Math.sin(ph),-h+r*Math.cos(ph)],Pr=[r*Math.sin(ph),-h+r*Math.cos(ph)];
+      cub(T,[-0.18*r,-0.5*r],[Pl[0]+(T[0]-Pl[0])*0.45,Pl[1]+(T[1]-Pl[1])*0.45],Pl,6,false);P.pop();
+      arc(C[0],C[1],r,PI/2+ph,PI/2-ph+2*PI,24);
+      cub(Pr,[Pr[0]+(T[0]-Pr[0])*0.45,Pr[1]+(T[1]-Pr[1])*0.45],[0.18*r,-0.5*r],T,6,true);P.pop();
+      fy=-h;}
+    else if(f==='balloon'){var a=1.12*r,b=r,tl=0.62*r,tw=0.4*r,cr=0.42*r,top=-tl-2*b,bot=-tl;
+      P.push([0,0]);P.push([-tw,bot]);
+      arc(-a+cr,bot-cr,cr,PI/2,PI,6);arc(-a+cr,top+cr,cr,PI,1.5*PI,6);
+      arc(a-cr,top+cr,cr,1.5*PI,2*PI,6);arc(a-cr,bot-cr,cr,0,PI/2,6);P.push([tw,bot]);fy=bot-b;}
+    else if(f==='square'){var q=0.28*r;
+      arc(-r+q,-r+q,q,PI,1.5*PI,4);arc(r-q,-r+q,q,1.5*PI,2*PI,4);arc(r-q,r-q,q,0,PI/2,4);arc(-r+q,r-q,q,PI/2,PI,4);}
+    else if(f==='diamond'){var d=1.25*r;P=[[0,-d],[d,0],[0,d],[-d,0]];}
+    else{arc(0,0,r,-PI/2,1.5*PI,24);P.pop();}
+    return {p:P,fx:fx,fy:fy};
+  }
+
   // ── the MAP widget: a hand-rolled READ-ONLY slippy map (canvas tiles +
   // markers). It can pan, zoom, and show names — it can never write. ──────
   document.querySelectorAll('.mapwidget').forEach(function(w){
@@ -206,27 +233,17 @@
       mk.forEach(function(m){
         var sx=W/2+(mx(m.lo,z)-cx)*256+(m.dx||0),sy=H/2+(my(m.la,z)-cy)*256+(m.dy||0);
         if(sx<-20||sx>W+20||sy<-20||sy>H+20)return;
-        // marker SHAPE (matches the app): pin/square/diamond/circle
-        function poly(pts,fill){ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
-          for(var i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);
-          ctx.closePath();ctx.fillStyle=fill;ctx.fill();}
-        var R=7;
-        if(m.s==='square'){
-          ctx.fillStyle='#fff';ctx.fillRect(sx-R-2,sy-R-2,2*R+4,2*R+4);
-          ctx.fillStyle=m.c;ctx.fillRect(sx-R,sy-R,2*R,2*R);
-        }else if(m.s==='diamond'){
-          poly([[sx,sy-R-2],[sx+R+2,sy],[sx,sy+R+2],[sx-R-2,sy]],'#fff');
-          poly([[sx,sy-R],[sx+R,sy],[sx,sy+R],[sx-R,sy]],m.c);
-        }else if(m.s==='pin'){
-          var hy=sy-R*1.6;
-          poly([[sx-R*0.75,hy+R*0.4],[sx+R*0.75,hy+R*0.4],[sx,sy]],m.c);
-          ctx.beginPath();ctx.arc(sx,hy,R+1.5,0,7);ctx.fillStyle='#fff';ctx.fill();
-          ctx.beginPath();ctx.arc(sx,hy,R,0,7);ctx.fillStyle=m.c;ctx.fill();
-        }else{
-          ctx.beginPath();ctx.arc(sx,sy,8,0,7);ctx.fillStyle='#fff';ctx.fill();
-          ctx.beginPath();ctx.arc(sx,sy,6,0,7);ctx.fillStyle=m.c;ctx.fill();
-        }
-        m._sx=sx;m._sy=sy;});
+        // marker SHAPE (matches the app): the outline is a port of
+        // src/gis/marker.hpp's marker_outline — keep the two in step
+        var R=7,f=m.s||'circle',o=mkOutline(f,(f==='pin'||f==='balloon')?8:R);
+        if(f==='pin'||f==='balloon'){ctx.save();ctx.globalAlpha=0.24;ctx.fillStyle='#000';
+          ctx.beginPath();ctx.ellipse(sx,sy,4.4,1.6,0,0,7);ctx.fill();ctx.restore();}
+        ctx.beginPath();ctx.moveTo(sx+o.p[0][0],sy+o.p[0][1]);
+        for(var i=1;i<o.p.length;i++)ctx.lineTo(sx+o.p[i][0],sy+o.p[i][1]);
+        ctx.closePath();ctx.fillStyle=m.c;ctx.fill();
+        ctx.lineWidth=1.6;ctx.strokeStyle='#fff';ctx.stroke();
+        if(f==='pin'){ctx.beginPath();ctx.arc(sx+o.fx,sy+o.fy,2.9,0,7);ctx.fillStyle='#fff';ctx.fill();}
+        m._sx=sx+o.fx;m._sy=sy+o.fy;});
     }
     function hit(e){var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
       for(var i=0;i<mk.length;i++){var m=mk[i];

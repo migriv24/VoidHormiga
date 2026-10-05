@@ -62,7 +62,7 @@ with it.
 | folder | what belongs there |
 |---|---|
 | [foundation](/concepts/foundation/index.md) | what the application *is*, prior to any feature |
-| [sections](/concepts/sections/index.md) | the rooms: Data, Builder, Calendar, Territory |
+| [sections](/concepts/sections/index.md) | the rooms: Data, Builder, Calendar, the map (a GIS folder), the phone |
 | [platform](/concepts/platform/index.md) | the machine underneath: storage, backends, privacy, network |
 | [allomone](/concepts/allomone/index.md) | the rules engine, adopted from Void Maiz |
 | [projects](/concepts/projects/index.md) | the neighbours: sibling repos and the test colony |
@@ -106,10 +106,18 @@ with it.
   calendar. The X-track (exchange) makes "we are not exclusive" a property of the
   mechanism — one `VEVENT ⟷ rune` lens, and every calendar system a transport
   onto it.
-- [Territory](/concepts/sections/territory.md) — the map: location-faceted
-  runes on a canvas over a swappable map source (not assumed to be Earth); the
-  Neighborhood analysis and its clean mapping to runes/holidays/tags/Scry;
-  reactive visuals as interaction-net-flavored projections.
+- [GIS](/concepts/sections/gis/index.md) — **a folder since 2026-10-05**, the
+  map's documentation boundary drawn where a code boundary would one day be
+  (the author: modularize in the OKF now, separate later, if ever). Inside:
+  [Territory](/concepts/sections/gis/territory.md) (the map: location-faceted
+  runes over a swappable source, layers as tags, views and channels, rules,
+  shapes, reference points, exports); [the map on a phone](/concepts/sections/gis/phone.md)
+  (built 2026-10-04: one finger pans, a long press adds or picks up, a sheet
+  answers, location on a tap, notes on places, pins from their own geometry);
+  [worlds](/concepts/sections/gis/worlds.md) (universal, anchored and
+  Earth-only ideas: a feature asks the world whether it can exist there);
+  [research](/concepts/sections/gis/research.md); and the
+  [roadmap](/concepts/sections/gis/roadmap.md).
 - [Hormiga on a phone](/concepts/sections/mobile.md) — **opened 2026-09-22**:
   a significantly smaller Hormiga that puts UX first, as the author asked. The
   phone is a member doing field work, never the host or the composer. On a
@@ -270,6 +278,14 @@ with it.
   reply 2026-07-21), not the message files.
 
 # Status
+
+**2026-10-04: the map is on the phone.** A Map screen with the gestures every
+phone map has (Void Maiz's touch gate learned long press, double tap, two-finger
+tap, one-handed zoom and a canvas fling), the phone's location through a new
+Void Maiz location holiday, notes placed on the map on both front-ends, and pins
+redrawn from one outline on the canvas, the PNG export and the website. Run in
+the phone harness end to end; not yet on a device. See
+[the map on a phone](/concepts/sections/gis/phone.md).
 
 **2026-09-29: 0.1.10 is current, and Antfarm v2 is a prototype.** Five
 releases since the phone opened: **0.1.7** (09-24) the first Android build,

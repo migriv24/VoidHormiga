@@ -1,7 +1,7 @@
 ---
 type: Index
 title: Sections — the application's rooms
-description: "The four main sections over one core, and the documents they author: workspace shape, Builder, blocks and domains, Calendar, Territory."
+description: "The main sections over one core, and the documents they author: workspace shape, Builder, blocks and domains, Calendar, the GIS folder (Territory, the map on a phone, worlds, research, roadmap), and the phone."
 tags: [status:current, audience:all, confidence:asserted]
 timestamp: 2026-08-27T00:00:00Z
 ---
@@ -33,10 +33,12 @@ rather than a rewrite ([application boundaries](/concepts/foundation/application
   **X-track** (the exchange — the iCalendar lens, conformance, time, import,
   subscriptions, two-way) added by the 2026-09-10 reframe of the calendar as a
   *hub* rather than a destination, plus the continuing C-track (the room).
-- [Territory](/concepts/sections/territory.md) — the map: location-faceted
-  runes on a canvas over a swappable map source (not assumed to be Earth); the
-  Neighborhood analysis and its mapping to runes / holidays / tags / Scry;
-  reactive visuals as interaction-net-flavoured projections.
+- [GIS](/concepts/sections/gis/index.md) — **a folder since 2026-10-05**:
+  everything spatial. The Territory section (the desktop map), the map on a
+  phone, **worlds** (which ideas exist on any map and which only on Earth, so GPS
+  never appears on a fantasy map), the research the map rests on, and its
+  roadmap. The first step toward a separable GIS, taken in the OKF before the
+  code.
 - [Hormiga on a phone](/concepts/sections/mobile.md) — **opened
   2026-09-22.** Which rooms exist on a phone, and in what form. The phone is a
   *member doing field work*, never the host or the composer. The Builder is

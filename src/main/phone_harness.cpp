@@ -1,6 +1,7 @@
 /* main/phone_harness.cpp — see phone_harness.hpp. */
 #include "main/phone_harness.hpp"
 
+#include "voidmaiz/location.hpp" // a stand-in for where the phone is (`location`)
 #include "voidmaiz/mobile.hpp" // the touch gate a scripted finger goes through
 
 #include "stb_image_write.h" // decls only: the one implementation lives in app.cpp
@@ -78,6 +79,15 @@ void PhoneHarness::inject(ImGuiIO& io) {
             maiz::touch_gate_up(gate, 1, b.x, b.y, t);
             maiz::touch_gate_up(gate, 0, a.x, a.y, t);
         }
+        return;
+    }
+    if (two_up_ >= 0 && two_up_-- == 0) { // a two-finger tap lifts both
+        maiz::touch_gate_up(gate, 1, finger_.x + 25 * density, finger_.y, t);
+        maiz::touch_gate_up(gate, 0, finger_.x - 25 * density, finger_.y, t);
+        return;
+    }
+    if (hold_left_ > 0) { // a long press, then the drag it picked up
+        if (--hold_left_ == 0) drag_.swap(after_hold_);
         return;
     }
     if (!drag_.empty()) {
@@ -171,6 +181,55 @@ void PhoneHarness::inject(ImGuiIO& io) {
                 pinch_.push_back({ImVec2((cx - s / 2) * d, cy * d), ImVec2((cx + s / 2) * d, cy * d)});
             }
             return;
+        }
+        // ── the map's gestures (2026-10-04) ──
+        if (op == "dtap" || op == "qzoom") { // a double tap; a tap then a drag (one-handed zoom)
+            float x = 0, y = 0, dy = 0;
+            in >> x >> y >> dy;
+            char a[64], b[96];
+            std::snprintf(a, sizeof a, "tap %g %g", x, y);
+            if (op == "dtap") std::snprintf(b, sizeof b, "tap %g %g", x, y);
+            else std::snprintf(b, sizeof b, "drag %g %g %g %g", x, y, x, y + dy);
+            script.insert(script.begin() + (long)pc_, {a, "wait 1", b});
+            continue;
+        }
+        if (op == "tap2") { // two fingers down and up, 50 dp apart
+            float x = 0, y = 0;
+            in >> x >> y;
+            finger_ = ImVec2(x * d, y * d);
+            maiz::touch_gate_down(gate, 0, finger_.x - 25 * d, finger_.y, t);
+            maiz::touch_gate_down(gate, 1, finger_.x + 25 * d, finger_.y, t);
+            two_up_ = 1;
+            return;
+        }
+        if (op == "holddrag") { // hold still (a long press), then drag what it picked up
+            float x0, y0, x1, y1;
+            int frames = 40;
+            in >> x0 >> y0 >> x1 >> y1 >> frames;
+            finger_ = ImVec2(x0 * d, y0 * d);
+            maiz::touch_gate_down(gate, 0, finger_.x, finger_.y, t);
+            after_hold_.clear();
+            for (int k = 1; k <= 14; ++k)
+                after_hold_.push_back(ImVec2((x0 + (x1 - x0) * k / 14.0f) * d, (y0 + (y1 - y0) * k / 14.0f) * d));
+            hold_left_ = frames;
+            return;
+        }
+        if (op == "location") { // LAT LON [ACC] | deny | off: a stand-in for the phone's GPS
+            std::string a;
+            in >> a;
+            auto* fixed = dynamic_cast<maiz::FixedLocation*>(maiz::location());
+            if (!fixed) {
+                maiz::install_location(std::make_unique<maiz::FixedLocation>());
+                fixed = dynamic_cast<maiz::FixedLocation*>(maiz::location());
+            }
+            if (a == "deny") fixed->grant = maiz::LocationAccess::Denied;
+            else if (a == "off") fixed->grant = maiz::LocationAccess::Unavailable;
+            else {
+                float lon = 0, acc = 10;
+                in >> lon >> acc;
+                fixed->set(std::atof(a.c_str()), lon, acc);
+            }
+            continue;
         }
         if (op == "type") {
             std::string rest;
