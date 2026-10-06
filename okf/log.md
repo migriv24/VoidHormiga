@@ -5777,3 +5777,24 @@ ghosts the other visible layers underneath. See
 
 **Opened**: Q104 (send only what a member lacks), Q105 (join over a radio).
 55 of 56 tests (the known red), every linter, every budget. Not committed.
+
+## 0.1.12 shipped (2026-10-06)
+
+All three runner legs built (linux-x64, macos-arm64, macos-x64), from Void Maiz
+`9186a10` and Void Palabra `603a7db`, both pushed before the tag. Installer
+16,057,760 bytes; the staged NSIS script is identical to 0.1.11's with versions
+and dates masked. APK 5.29 MB, signed with the Hormiga key (certificate
+`37d0ee24…`), its manifest carrying the Nearby-devices permissions. The Linux
+archive was downloaded into the release folder before `mago feed --artifacts`;
+checked by hand, both feed artifacts hash to what the feed says and match its
+`bytes`, and the Linux digest `2fac2490…` equals the runner's own. The live feed
+says `latest 0.1.12`. Release page: https://github.com/migriv24/VoidHormiga/releases/tag/v0.1.12
+
+**The `ci` workflow on main is red, as it was for 0.1.11**, for the same two
+reasons and no new one: on Windows (MSVC) the vendored MinGW libsodium does not
+link (`___chkstk_ms`), and on macOS and Linux `hormiga_golden_render` fails. The
+release workflow does not run either, which is why the release is green. Both
+are owed a fix of their own.
+
+**Still owed:** two phones running the radios (Bluetooth and, for the first
+time anywhere, Wi-Fi Direct); the macOS archives remain unrun.
