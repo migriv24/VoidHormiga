@@ -171,6 +171,31 @@ struct LanRuntime {
     std::map<std::string, std::pair<double, std::uint32_t>> heard_mark;
     std::map<std::string, float> strength;           // fingerprint -> 0..1, beacons arriving
 
+    /* ── THE RADIOS (2026-10-05, app/lan_radio.cpp) ───────────────────────
+     * Members of this database kept in sync with no network in common:
+     * Bluetooth LE and Wi-Fi Direct (Void Maiz's radio holiday), carrying
+     * Reticulum (Void Palabra), carrying the same `Network` frames a LAN link
+     * carries. Only members: discovery advertises a tag derived from the room
+     * key, and a link proves membership (a keyed hash over the link) before a
+     * frame moves. Radio links are `link_io` entries named "rns:<fingerprint>".
+     * Declared everywhere; a build without Reticulum answers "unavailable". */
+    enum RadioKindId { kRadioBle = 0, kRadioWifiDirect = 1 };
+    struct RadioNear {
+        std::string peer, name, user, fingerprint; // the radio's handle; the member, once proven
+        int kind = 0, rssi = 0;
+        bool member = false, linked = false;
+        double seen = 0;
+    };
+    struct RadioState;                   // lan_radio.cpp
+    std::shared_ptr<RadioState> radio;   // made when a radio is first switched on
+    static bool radio_available();       // this build carries Reticulum and a radio is installed
+    static int radio_access(HormigaApp& app, int kind);   // maiz::RadioAccess
+    static bool radio_switch(HormigaApp& app, int kind, bool on, std::string* why);
+    static bool radio_on(HormigaApp& app, int kind);
+    static void radio_tick(HormigaApp& app, double now);  // every frame (Reticulum needs pumping)
+    static std::vector<RadioNear> radio_near(HormigaApp& app);
+    static std::string radio_status(HormigaApp& app);
+
     ~LanRuntime();
 
     /* ── operations: GUI thread (or the CLI's only thread) ─────────────────── */

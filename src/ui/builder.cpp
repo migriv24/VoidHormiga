@@ -1406,29 +1406,30 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
             // the Map tab (where views are created/styled). Multi-view layering
             // on one widget is noted as future.
             if (sel->glyph == "map_embed") {
-                ImGui::SeparatorText("Map view");
+                ImGui::SeparatorText("Map layer");
                 maiz::ProjectOptions dpo;
                 dpo.mantle = kDataMantle;
                 maiz::Scene dsc = maiz::project_scene(core, dpo);
                 std::string cur_view = field_value(*sel, "view");
                 ImGui::SetNextItemWidth(-1);
-                std::string prev = cur_view.empty() ? "(first view)" : cur_view;
+                const maiz::SceneNode* cv = cur_view.empty() ? nullptr : dsc.find(cur_view);
+                std::string prev = cur_view.empty() ? "(the first layer)" : cv ? rune_title(*cv) : cur_view;
                 if (ImGui::BeginCombo("##mapview", prev.c_str())) {
-                    if (ImGui::Selectable("(first view)", cur_view.empty()))
+                    if (ImGui::Selectable("(the first layer)", cur_view.empty()))
                         pending_cmds.push_back("set " + sel->name + " view \"\"");
                     for (const auto& n : dsc.nodes)
                         if (n.glyph == "map")
-                            if (ImGui::Selectable(n.name.c_str(), cur_view == n.name))
+                            if (ImGui::Selectable((rune_title(n) + "##" + n.name).c_str(), cur_view == n.name))
                                 pending_cmds.push_back("set " + sel->name +
                                                        " view \"" + n.name + "\"");
                     ImGui::EndCombo();
                 }
-                if (ImGui::SmallButton("Manage views (Map tab)")) {
+                if (ImGui::SmallButton("Edit the map's layers (Map tab)")) {
                     sec_open[3] = true; // the Map section
                     show_manage_views = true;
                 }
-                ImGui::TextDisabled("views are created & styled on the Map tab;\n"
-                                    "this widget draws the chosen view's markers");
+                ImGui::TextDisabled("layers are made and styled on the Map tab;\n"
+                                    "this block draws the chosen layer's markers");
                 ImGui::Spacing();
             }
             ImGui::SeparatorText("This block's own name, tags and settings");

@@ -485,6 +485,7 @@ private:
     // a reusable Tags editor (chips + a type-ahead to add) — appends `tag …`
     // commands to `out`; used by the contact/org form and the script editor.
     void draw_tag_editor(const maiz::SceneNode& n, std::vector<std::string>& out);
+    void draw_save_check(const maiz::SceneNode& n, std::vector<std::string>& out); // Save, and what it confirmed
     char detail_tag_buf[96] = {}; // the tag editor's add picker buffer
     // Tag RECOMMENDER (okf/concepts/allomone/tag-recommender.md): suggest tags
     // to add, over the tag co-occurrence graph, in one of three modes. A read of
@@ -662,7 +663,7 @@ private:
     std::string map_drag_marker; // rune being marker-dragged ("" = none/pan)
     std::string map_drag_ref;    // refpoint GIZMO being dragged (#4 move)
     double map_ctx_lat = 0, map_ctx_lon = 0; // right-click point (place target)
-    void map_new_earth();        // "New Earth map" → a map rune, one batch
+    void map_new_earth(double lat, double lon, int zoom); // a new layer on top, centred there; one batch
     void map_place_new(const char* glyph);   // context: place new rune at ctx
     void map_place_existing(const std::string& name); // set geo on existing
 
@@ -689,6 +690,7 @@ private:
 
     // map UX state (search / arm-to-place / marker menu / rename staging)
     char map_search[128] = {};   // the canvas's database search bar
+    char map_filter[128] = {};   // what the map shows: the one search grammar (@tag, type:event)
     std::string map_place_arm;   // "click the map to place <name>" mode
     std::string map_ctx_marker;  // marker under the right-click menu
     // #3 drawable map SHAPES: a draw mode + the in-progress drag
@@ -736,7 +738,8 @@ private:
 
     // ── views: manage window + the active view's parsed state ──────────────
     bool show_manage_views = false;
-    void draw_manage_views();
+    void draw_map_panels(); // ui/map_panels.cpp: the map's Inspector, Overview, Layers, Actions
+    std::vector<const maiz::SceneNode*> map_layers() const; // the layers, bottom to top
     struct MapRule {                  // rules v2: named, multi-tag
         std::string name;
         std::vector<std::string> tags; // AND-joined for matching

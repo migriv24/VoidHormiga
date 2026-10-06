@@ -88,15 +88,14 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
     const bool earth = world.metric == hormiga::gis::Metric::Haversine;
     maiz::LocationPlatform* loc = earth ? maiz::location() : nullptr;
 
-    // the views (maps): the active one gives the rules and the position channel
-    std::vector<const maiz::SceneNode*> views;
-    for (const auto& n : app.scene.nodes)
-        if (n.glyph == "map") views.push_back(&n);
+    // the layers, bottom to top (the desktop's own list): the one being edited
+    // gives the rules and the position channel; with none chosen, the top one
+    const std::vector<const maiz::SceneNode*> views = app.map_layers();
     const maiz::SceneNode* view = nullptr;
     for (auto* v : views)
         if (v->name == app.map_sel) view = v;
     if (!view && !views.empty()) {
-        view = views.front();
+        view = views.back();
         app.map_sel = view->name;
     }
     const std::string channel = [&] {
@@ -245,12 +244,44 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
         if (app.basemap_fade > 0.001f) dl->AddRectFilled(p0, p1, IM_COL32(150, 150, 150, (int)(app.basemap_fade * 200)));
     }
 
+    /* ── THE OTHER VISIBLE LAYERS, ghosted underneath (the desktop's rule) ──
+     * Each draws its own positions in its own colour, at its opacity and
+     * brightness; only the layer being edited answers a finger. */
+    for (auto* v : views) {
+        if (v == view || hormiga::temper::field_value(*v, "visible") == "0") continue;
+        std::string vch = hormiga::temper::field_value(*v, "channel");
+        if (vch.empty()) vch = "main";
+        const auto vrules = parse_view_rules_of(*v);
+        const std::string vfilter = hormiga::temper::field_value(*v, "filter");
+        const float lop = app.view_layer_opacity(v), lbr = app.view_layer_brightness(v);
+        auto dim = [&](ImU32 c) {
+            const int r = std::min(255, (int)((c & 0xFF) * lbr)), g = std::min(255, (int)(((c >> 8) & 0xFF) * lbr)),
+                      b = std::min(255, (int)(((c >> 16) & 0xFF) * lbr));
+            return IM_COL32(r, g, b, (int)(lop * 255));
+        };
+        for (const auto& n : app.scene.nodes) {
+            if (!map_placeable(n) || (!vfilter.empty() && !maiz::node_matches(vfilter, n))) continue;
+            double la, lo;
+            if (!hormiga::parse_geo(view_geo(n, vch), la, lo)) continue;
+            const ImVec2 s = scr(la, lo);
+            if (s.x < p0.x - 20 * dp || s.x > p1.x + 20 * dp || s.y < p0.y - 20 * dp || s.y > p1.y + 20 * dp) continue;
+            const MarkerLook L = marker_look(n, vrules, app.allo_style_for("map", n.name));
+            dl->AddCircleFilled(s, 5.5f * dp, dim(L.col));
+            dl->AddCircle(s, 5.5f * dp, IM_COL32(255, 255, 255, (int)(lop * 0.6f * 255)), 0, 1.5f * dp);
+        }
+    }
+
     // ── what is on the map ───────────────────────────────────────────────────
+    /* What THIS layer draws: everything placed, unless its eye is shut or its
+     * own `filter` (a tag query, no UI yet) keeps only what it holds. */
     using Placed = MapUi::Placed;
     const auto fans = app.ref_fans(app.scene, channel);
+    const bool layer_hidden = view && hormiga::temper::field_value(*view, "visible") == "0";
+    const std::string layer_filter = view ? hormiga::temper::field_value(*view, "filter") : std::string();
     std::vector<Placed> placed;
     for (const auto& n : app.scene.nodes) {
         if (!map_placeable(n)) continue;
+        if (layer_hidden || (!layer_filter.empty() && !maiz::node_matches(layer_filter, n))) continue;
         double la, lo;
         ImVec2 s;
         bool fanned = false;

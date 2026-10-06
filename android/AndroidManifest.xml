@@ -28,6 +28,23 @@
   <uses-feature android:name="android.hardware.location" android:required="false" />
   <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+  <!-- Members near by with no Wi-Fi in common (voidmaiz/radio.hpp; Hormiga's
+       app/lan_radio.cpp). Bluetooth LE and Wi-Fi Direct, never a hotspot.
+       Android 12+ asks once for "Nearby devices" (SCAN / CONNECT / ADVERTISE;
+       NEARBY_WIFI_DEVICES from 13), only when the person switches a radio on
+       in Migos. neverForLocation: Hormiga never derives where anyone is from
+       what it hears. Older Android has no such permission and asks for location
+       instead (the two above), and needs the legacy pair, capped at 30. -->
+  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+  <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation" />
+  <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+  <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+  <uses-feature android:name="android.hardware.wifi.direct" android:required="false" />
+
   <application
       android:label="Void Hormiga"
       android:hasCode="true"

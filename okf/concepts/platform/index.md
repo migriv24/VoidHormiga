@@ -44,6 +44,10 @@ Read in this order the first time:
 - [LAN sharing](/concepts/platform/lan-sharing.md) — **opened 2026-09-16.**
   Profiles, joining a database over the local network, the members registry,
   presence and private data, and the Antfarm nodes that decide them.
+- [Radios](/concepts/platform/radios.md) — **opened 2026-10-05.** Members
+  near by with no Wi-Fi in common: Bluetooth LE and Wi-Fi Direct carrying
+  Reticulum, never a hotspot. The four layers and whose each is, how only
+  members connect, why frames are compressed on a radio, what was measured.
 - [Identity](/concepts/platform/identity.md) — **opened 2026-08-27.** Who is
   making a change: the admin profile, the signed-in identity, and the contact.
   Three different things that a conventional design would collapse into one

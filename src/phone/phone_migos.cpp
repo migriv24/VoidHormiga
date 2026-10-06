@@ -27,6 +27,7 @@
 #include "phone/phone_ui.hpp"
 
 #include "app/lan_internal.hpp" // lan_detail::now_seconds: the link threads' clock
+#include "voidmaiz/radio.hpp"      // RadioAccess, for the switches
 
 #include <cfloat>
 
@@ -45,6 +46,81 @@ void signal_bars(ImVec2 at, float h, float s, bool known) {
         const float bh = h * (0.35f + 0.65f * (float)i / 3.0f);
         const ImVec2 p0(at.x + i * (w + gap), at.y + h - bh), p1(p0.x + w, at.y + h);
         dl->AddRectFilled(p0, p1, i < lit ? on : ImGui::GetColorU32(ImGuiCol_FrameBg), w * 0.3f);
+    }
+}
+
+/* ── NEARBY, NO WI-FI NEEDED (2026-10-05) ──────────────────────────────────
+ * The author: share between phones with no network in common, never through a
+ * hotspot. Bluetooth works with any phone (and, later, an iPhone) but is slow;
+ * Wi-Fi Direct is fast, Android to Android. Each is a switch, off until the
+ * person turns it on: the first time, the system asks for "Nearby devices".
+ * Only members of this database are ever connected (app/lan_radio.cpp). */
+void radio_section(HormigaApp& app, HormigaApp::PhoneUi& ph) {
+    LanRuntime& rt = LanRuntime::of(app);
+    ImGui::SeparatorText("Nearby, no Wi-Fi needed");
+    if (!LanRuntime::radio_available()) {
+        maiz::dim_wrapped("This device has no Bluetooth or Wi-Fi Direct that Hormiga can use.");
+        return;
+    }
+    if (rt.room_key.empty()) {
+        maiz::dim_wrapped("Share or join a database first: the radios only ever connect members of the same one.");
+        return;
+    }
+    struct Row {
+        int kind;
+        const char* icon;
+        const char* name;
+        const char* what;
+    };
+    static const Row rows[] = {
+        {LanRuntime::kRadioBle, ICON_FA_SIGNAL, "Bluetooth",
+         "Any phone, slower: a first sync can take a minute or two. Works later with iPhones too."},
+        {LanRuntime::kRadioWifiDirect, ICON_FA_WIFI, "Wi-Fi Direct",
+         "Android to Android, fast. The other phone may be asked to accept."},
+    };
+    for (const auto& r : rows) {
+        ImGui::PushID(r.kind);
+        bool on = LanRuntime::radio_on(app, r.kind);
+        const int access = LanRuntime::radio_access(app, r.kind);
+        const bool none = access == (int)maiz::RadioAccess::Unavailable;
+        ImGui::BeginDisabled(none);
+        if (ImGui::Checkbox("##on", &on)) {
+            std::string why;
+            if (!LanRuntime::radio_switch(app, r.kind, on, &why) && !why.empty()) maiz::show_snackbar(ph.snack, why);
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        ImGui::Text("%s  %s", r.icon, r.name);
+        if (none) ImGui::TextDisabled("not on this device");
+        else if (access == (int)maiz::RadioAccess::Denied) ImGui::TextDisabled("not allowed: see the system's settings");
+        else if (access == (int)maiz::RadioAccess::Off) ImGui::TextDisabled("switched off on the phone");
+        else maiz::dim_wrapped(r.what);
+        ImGui::EndGroup();
+        ImGui::PopID();
+    }
+    const std::string status = LanRuntime::radio_status(app);
+    if (!status.empty()) ImGui::TextDisabled("%s", status.c_str());
+    if (!LanRuntime::radio_on(app, LanRuntime::kRadioBle) && !LanRuntime::radio_on(app, LanRuntime::kRadioWifiDirect))
+        return;
+    const auto near = LanRuntime::radio_near(app);
+    int members = 0;
+    for (const auto& n : near) members += n.member ? 1 : 0;
+    if (!members) {
+        maiz::dim_wrapped("Looking. Members appear here when their phone is near, Hormiga is open, and the same "
+                          "switch is on there.");
+        return;
+    }
+    for (const auto& n : near) {
+        if (!n.member) continue; // other devices are none of our business, and not shown
+        const char* how = n.kind == LanRuntime::kRadioBle ? ICON_FA_SIGNAL : ICON_FA_WIFI;
+        std::string line = std::string(how) + "  " + (n.name.empty() ? std::string("a member's phone") : n.name);
+        line += n.linked ? "   connected" : "   in range";
+        ImGui::TextUnformatted(line.c_str());
+        if (n.rssi) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("%d dBm", n.rssi);
+        }
     }
 }
 
@@ -69,7 +145,7 @@ void HormigaApp::PhoneUi::migos(HormigaApp& app, PhoneUi& ph, Frame&) {
     if (rt.present.empty())
         maiz::dim_wrapped(rt.sharing || !rt.member_rows.empty()
                               ? "Nobody else, right now. Members appear here when they open this database on the "
-                                "same network."
+                                "same network, or near by with a radio on (below)."
                               : "Nobody: this database is not shared yet. Join one below, or share this one.");
     for (const auto& [fp, a] : rt.present) {
         ImGui::PushID(fp.c_str());
@@ -135,6 +211,8 @@ void HormigaApp::PhoneUi::migos(HormigaApp& app, PhoneUi& ph, Frame&) {
                                          : -1.0f * (float)ImGui::GetTime(); // unknown length: the moving bar
         ImGui::ProgressBar(frac, ImVec2(-FLT_MIN, 0), done ? (std::string(ICON_FA_CHECK "  ") + label).c_str() : label);
     }
+
+    radio_section(app, ph);
 
     // ── the sync, and the database's sharing ────────────────────────────────
     LanRuntime::draw_sync_section(app); // brings its own heading

@@ -474,6 +474,20 @@ std::string subtitle(const maiz::SceneNode& n);
 std::vector<std::string> tokenize(const std::string& s);
 
 bool contains_ci(std::string_view hay, std::string_view needle);
+/* What a person calls a rune, everywhere a rune is shown by name (2026-10-05):
+ * its printed name, its title, a note's own title or first line, a shape's
+ * label, else its handle. The map captioned markers with the handle, so a thing
+ * named on one device kept its minted name ("event-0140-1") on every map. */
+std::string rune_title(const maiz::SceneNode& n);
+/* THE ONE SEARCH (2026-10-05: "you should be able to search via tags, or
+ * filter ... for all 'search' bars everywhere"). Every word must match:
+ *   a word          its title, its handle, or any of its tags contains it
+ *   @tag  #tag      it carries a tag starting with that (@vol finds volunteer)
+ *   ns:value        the same, for a namespaced tag (type:event, kw:food)
+ *   -word -@tag     it must NOT match
+ * Case does not matter. An empty query matches everything. */
+bool search_match(const maiz::SceneNode& n, std::string_view query);
+inline constexpr const char* kSearchHint = "search...  @tag  type:event  -@tag";
 
 /* Turn a rune's slug name back into a display title ("oakshire-inspires-
  * benefit" → "Oakshire Inspires Benefit"). The import slugified titles into

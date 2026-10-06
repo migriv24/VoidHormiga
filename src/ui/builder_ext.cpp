@@ -15,6 +15,7 @@
  * layout and calls in.
  */
 #include "app/app_internal.hpp"
+#include "domain/bestow.hpp"  // the tags a region gives
 #include "render/text.hpp" // rank_tokens: the ordering fields' grammar
 #include "domain/date_query.hpp" // query_matches, today_days — the ONE evaluation
 #include "render/icon_set.hpp"   // the one icon vocabulary
@@ -539,6 +540,87 @@ void HormigaApp::draw_block_extras(const maiz::SceneNode& sel) {
 }
 
 void HormigaApp::ensure_icon_editor() {
+    /* THE TAGS A REGION GIVES (2026-10-05). The author: granting tags "should
+     * have a similar layout to just adding normal tags on something (except the
+     * functionality is slightly different, so maybe some different colors)".
+     * So: chips with an x and the same type-ahead picker as the tag editor, in
+     * INDIGO, the colour a given tag already wears on whatever carries it
+     * (ui/tags.cpp), so the two ends of a gift look like one thing. And the
+     * difference stated where it is used: these are not this shape's tags, they
+     * are what it hands to everything inside it, when "Give" is pressed. */
+    if (!widgets.editors.count("bestow"))
+        widgets.editors["bestow"] = [this](maiz::WidgetContext& ctx, const maiz::SceneNode& n,
+                                           const maiz::SceneField& f, std::string_view) -> bool {
+            static char add_buf[64];
+            const ImVec4 indigo(0.35f, 0.33f, 0.72f, 1.0f);
+            const auto tags = hormiga::bestow::bestowed_tags(n);
+            bool committed = false;
+            auto commit = [&](const std::vector<std::string>& ts) {
+                ctx.commands.push_back("set " + n.name + " " + f.key + " " +
+                                       json_str(hormiga::bestow::join_bestowed(ts)));
+                committed = true;
+            };
+            ImGui::PushID(f.key.c_str());
+            ImGui::TextColored(indigo, ICON_FA_GIFT "  %s", f.label.empty() ? "Gives these tags" : f.label.c_str());
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x);
+            ImGui::TextDisabled("Not this shape's own tags: what it hands to everything inside it. "
+                                "On what carries them they show in this colour, and clicking one "
+                                "there brings you here.");
+            ImGui::PopTextWrapPos();
+            for (size_t i = 0; i < tags.size(); ++i) {
+                ImGui::PushID((int)i);
+                if (i) ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_Button, indigo);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                ImGui::SmallButton((ICON_FA_GIFT " " + tags[i]).c_str());
+                ImGui::PopStyleColor(2);
+                ImGui::SameLine(0, 2);
+                if (ImGui::SmallButton("x")) {
+                    auto rest = tags;
+                    rest.erase(rest.begin() + (long)i);
+                    commit(rest);
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("stop giving this tag (what already has it keeps it)");
+                ImGui::PopID();
+            }
+            if (tags.empty()) ImGui::TextDisabled("(gives nothing yet)");
+            const std::string picked = tag_picker("##bestow-add", add_buf, sizeof add_buf, "+ a tag to give...");
+            if (!picked.empty() && std::find(tags.begin(), tags.end(), picked) == tags.end()) {
+                auto more = tags;
+                more.push_back(picked);
+                commit(more);
+            }
+            // what is inside now, and the one action that writes the tags
+            if (!tags.empty()) {
+                std::vector<std::string> cmds;
+                int inside = 0;
+                for (const auto& en : ctx.scene.nodes) {
+                    if (en.glyph == "mapshape" || en.glyph == "map" || en.glyph == "refpoint") continue;
+                    double la, lo;
+                    if (!hormiga::parse_geo(view_geo(en, active_channel), la, lo)) continue;
+                    if (!hormiga::bestow::shape_contains(n, la, lo)) continue;
+                    ++inside;
+                    std::string cmd;
+                    for (const auto& t : tags)
+                        if (std::find(en.tags.begin(), en.tags.end(), t) == en.tags.end()) cmd += " +" + t;
+                    if (!cmd.empty()) cmds.push_back("tag " + en.name + cmd);
+                }
+                ImGui::BeginDisabled(cmds.empty());
+                const std::string give = inside == 0   ? std::string("Nothing is inside it yet")
+                                         : cmds.empty() ? "All " + std::to_string(inside) + " inside have them"
+                                                        : "Give them now to " + std::to_string(cmds.size()) + " inside";
+                ImGui::PushStyleColor(ImGuiCol_Button, indigo);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+                if (ImGui::Button((std::string(ICON_FA_GIFT "  ") + give).c_str())) {
+                    ctx.commands.push_back(maiz::compile_commit(cmds));
+                    committed = true;
+                }
+                ImGui::PopStyleColor(2);
+                ImGui::EndDisabled();
+            }
+            ImGui::PopID();
+            return committed;
+        };
     if (!widgets.editors.count("taglist"))
         widgets.editors["taglist"] = [this](maiz::WidgetContext& ctx, const maiz::SceneNode& n,
                                             const maiz::SceneField& f, std::string_view) {

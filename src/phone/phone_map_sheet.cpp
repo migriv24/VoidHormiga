@@ -35,7 +35,7 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
         ImGui::SetNextItemWidth(-FLT_MIN);
         ImGui::InputTextWithHint("##msearch",
                                  existing ? ICON_FA_MAGNIFYING_GLASS "  Who or what goes here?"
-                                          : ICON_FA_MAGNIFYING_GLASS "  Search people, places, notes",
+                                          : ICON_FA_MAGNIFYING_GLASS "  Search  (@tag works too)",
                                  buf, cap);
         maiz::text_input_kind(maiz::InputKind::Search);
         if (existing)
@@ -48,9 +48,7 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
             const std::string g = view_geo(n, channel);
             if (existing && !g.empty()) continue;
             const std::string t = n.glyph == "note" ? marker_caption(n) : title_of(n);
-            if (!q.empty() && lower(t).find(q) == std::string::npos && lower(n.name).find(q) == std::string::npos &&
-                lower(subtitle_of(n)).find(q) == std::string::npos)
-                continue;
+            if (!search_match(n, buf) && lower(subtitle_of(n)).find(q) == std::string::npos) continue; // @tags too
             if (++shown > 60) break;
             ImGui::PushID(n.name.c_str());
             const float h = 58.0f * dp;
@@ -96,31 +94,161 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
         return true;
     }
     if (f.route == "layers") {
-        ImGui::SeparatorText("Views");
-        maiz::dim_wrapped("A view is a way of looking at the map: its own colours and rules, set on the desktop. "
-                          "The others show faintly under it when they are visible.");
-        for (auto* v : views) {
-            ImGui::PushID(v->name.c_str());
-            bool vis = hormiga::temper::field_value(*v, "visible") != "0";
-            if (v->name != app.map_sel && ImGui::Checkbox("##vis", &vis))
-                f.out.push_back("set " + v->name + " visible \"" + (vis ? "1" : "0") + "\"");
-            if (v->name == app.map_sel) ImGui::Dummy(ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()));
-            ImGui::SameLine();
-            if (ImGui::RadioButton(title_of(*v).c_str(), v->name == app.map_sel)) app.map_sel = v->name;
+        /* THE DESKTOP'S LAYERS PANEL, AT A FINGER'S SIZE (2026-10-05). The
+         * author: keep the phone "aligned with the design in the desktop (with
+         * the new layer system and such)". The same stack, top first; the same
+         * eye, the same "the one being edited", the same order, name, opacity,
+         * own positions and labels; the base map as the bottom row. Each is the
+         * command the desktop sends. Style rules stay on the desktop: the phone
+         * says how many a layer has and uses them. No Actions here (the author:
+         * not on the phone yet). */
+        auto slider = [&](const char* label, float stored, float lo, float hi, const char* fmt, float* out) {
+            ImGuiStorage* st = ImGui::GetStateStorage();
+            const ImGuiID id = ImGui::GetID(label);
+            float* v = st->GetFloatRef(id, stored);
+            bool* held = st->GetBoolRef(id + 1, false);
+            if (!*held) *v = stored; // follows the database until a finger holds it
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            ImGui::SliderFloat(label, v, lo, hi, fmt);
+            *held = ImGui::IsItemActive();
+            if (!ImGui::IsItemDeactivatedAfterEdit()) return false;
+            *out = *v;
+            return true;
+        };
+        const float row_h = 52 * dp, eye_w = 48 * dp, arrow_w = 40 * dp;
+        if (ImGui::Button(ICON_FA_PLUS "  New layer on top", ImVec2(-FLT_MIN, 0)))
+            app.map_new_earth(m.v.lat, m.v.lon, (int)m.v.zoom); // it says so itself (a toast)
+        ImGui::Spacing();
+        int move_from = -1, move_dir = 0;
+        for (int i = (int)views.size() - 1; i >= 0; --i) { // top first, as every drawing app lists it
+            const maiz::SceneNode& l = *views[(size_t)i];
+            ImGui::PushID(l.name.c_str());
+            const bool active = l.name == app.map_sel;
+            const bool vis = hormiga::temper::field_value(l, "visible") != "0";
+            const std::string ch = hormiga::temper::field_value(l, "channel");
+            const bool own = !ch.empty() && ch != "main";
+            const ImVec2 a = ImGui::GetCursorScreenPos();
+            const float w = ImGui::GetContentRegionAvail().x;
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            dl->AddRectFilled(a, ImVec2(a.x + w, a.y + row_h),
+                              ImGui::GetColorU32(active ? ImGuiCol_HeaderActive : ImGuiCol_FrameBg), 10 * dp);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            if (ImGui::Button(vis ? ICON_FA_EYE : ICON_FA_EYE_SLASH, ImVec2(eye_w, row_h)))
+                f.out.push_back("set " + l.name + " visible \"" + (vis ? "0" : "1") + "\"");
+            ImGui::SameLine(0, 0);
+            const float name_w = w - eye_w - arrow_w * 2;
+            if (ImGui::InvisibleButton("##edit", ImVec2(name_w, row_h))) app.map_sel = l.name;
+            const ImVec2 na = ImGui::GetItemRectMin();
+            const std::string nm = rune_title(l);
+            const float fh = ImGui::GetFontSize();
+            dl->AddText(ImVec2(na.x + 4 * dp, na.y + row_h * 0.5f - fh * (active ? 1.0f : 0.5f)),
+                        ImGui::GetColorU32(vis ? ImGuiCol_Text : ImGuiCol_TextDisabled), nm.c_str());
+            if (active || own) {
+                const std::string sub = std::string(active ? "editing" : "") + (active && own ? "  ·  " : "") +
+                                        (own ? ICON_FA_CODE_BRANCH " own positions" : "");
+                dl->AddText(ImGui::GetFont(), fh * 0.85f, ImVec2(na.x + 4 * dp, na.y + row_h * 0.5f + 1 * dp),
+                            ImGui::GetColorU32(ImGuiCol_TextDisabled), sub.c_str());
+            }
+            ImGui::SameLine(0, 0);
+            ImGui::BeginDisabled(i == (int)views.size() - 1);
+            if (ImGui::Button(ICON_FA_ARROW_UP "##up", ImVec2(arrow_w, row_h))) move_from = i, move_dir = +1;
+            ImGui::EndDisabled();
+            ImGui::SameLine(0, 0);
+            ImGui::BeginDisabled(i == 0);
+            if (ImGui::Button(ICON_FA_ARROW_DOWN "##down", ImVec2(arrow_w, row_h))) move_from = i, move_dir = -1;
+            ImGui::EndDisabled();
+            ImGui::PopStyleColor();
             ImGui::PopID();
+            ImGui::Dummy(ImVec2(0, 2 * dp));
         }
-        if (views.empty()) maiz::dim_wrapped("No views yet: everything shows in its kind's colour.");
+        if (move_from >= 0) { // swap two neighbours, renumber 0..n-1: the desktop's rule
+            std::vector<const maiz::SceneNode*> re = views;
+            std::swap(re[(size_t)move_from], re[(size_t)(move_from + move_dir)]);
+            std::vector<std::string> cmds;
+            for (size_t k = 0; k < re.size(); ++k)
+                if (hormiga::temper::field_value(*re[k], "order") != std::to_string(k))
+                    cmds.push_back("set " + re[k]->name + " order \"" + std::to_string(k) + "\"");
+            if (!cmds.empty()) f.out.push_back(maiz::compile_commit(cmds));
+        }
+        if (views.empty())
+            maiz::dim_wrapped("No layers yet: everything shows in its kind's colour. A layer is a way of drawing "
+                              "the map (its colours, which things, its labels), not a box things live in.");
+
+        // the background: under every layer
+        {
+            const ImVec2 a = ImGui::GetCursorScreenPos();
+            const float w = ImGui::GetContentRegionAvail().x;
+            ImGui::GetWindowDrawList()->AddRect(a, ImVec2(a.x + w, a.y + row_h), ImGui::GetColorU32(ImGuiCol_Border),
+                                                10 * dp, 0, 1.0f * dp);
+            const int bsi = std::clamp(app.basemap_src, 0, kBaseSourceCount - 1);
+            const std::string lbl = std::string(ICON_FA_MAP "   Base map: ") + kBaseSources[bsi].label;
+            ImGui::GetWindowDrawList()->AddText(ImVec2(a.x + 14 * dp, a.y + row_h * 0.5f - ImGui::GetFontSize() * 0.5f),
+                                                ImGui::GetColorU32(ImGuiCol_Text), lbl.c_str());
+            ImGui::Dummy(ImVec2(w, row_h));
+        }
+
+        if (view) {
+            ImGui::SeparatorText(("Layer: " + rune_title(*view)).c_str());
+            for (const auto& fl : view->fields)
+                if (fl.key == "title") {
+                    maiz::WidgetContext wctx{app.scene, f.out, std::string(), 0.0f};
+                    maiz::widget_field(wctx, app.widgets, *view, fl);
+                }
+            float v;
+            ImGui::TextDisabled("Opacity, seen under another layer");
+            if (slider("##opacity", app.view_layer_opacity(view), 0.05f, 1.0f, "%.2f", &v)) {
+                char b[32];
+                std::snprintf(b, sizeof b, "%.2f", v);
+                f.out.push_back("set " + view->name + " layer_opacity \"" + b + "\"");
+            }
+            ImGui::TextDisabled("Brightness, seen under another layer");
+            if (slider("##brightness", app.view_layer_brightness(view), 0.3f, 1.5f, "%.2f", &v)) {
+                char b[32];
+                std::snprintf(b, sizeof b, "%.2f", v);
+                f.out.push_back("set " + view->name + " layer_brightness \"" + b + "\"");
+            }
+            const std::string ch = hormiga::temper::field_value(*view, "channel");
+            bool own = !ch.empty() && ch != "main";
+            if (ImGui::Checkbox("Its own positions", &own))
+                f.out.push_back("set " + view->name + " channel \"" + (own ? view->name : std::string("main")) + "\"");
+            maiz::dim_wrapped(own ? "Moving something on this layer moves it only here."
+                                  : "Things sit where they sit on every layer.");
+            bool lbl = app.view_show_labels(view);
+            if (ImGui::Checkbox("Names beside the markers", &lbl))
+                f.out.push_back("set " + view->name + " show_labels \"" + (lbl ? "1" : "0") + "\"");
+            const auto n_rules = m.rules.size();
+            if (n_rules)
+                ImGui::TextDisabled("%zu colour rule%s, set on the desktop", n_rules, n_rules == 1 ? "" : "s");
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.72f, 0.22f, 0.20f, 1.0f));
+            if (ImGui::Button(ICON_FA_TRASH "  Delete this layer", ImVec2(-FLT_MIN, 0))) {
+                f.out.push_back("rm " + view->name);
+                app.map_sel.clear();
+                maiz::show_snackbar(ph.snack, "Deleted the layer. What was on it stays on the map", "UNDO");
+            }
+            ImGui::PopStyleColor();
+        }
+
         ImGui::SeparatorText("Base map");
         for (int i = 0; i < kBaseSourceCount; ++i)
             if (ImGui::RadioButton(kBaseSources[i].label, app.basemap_src == i)) {
                 app.basemap_src = i;
                 f.out.push_back(std::string("config set ui.basemap \"") + kBaseSources[i].key + "\"");
             }
-        if (view) {
-            ImGui::SeparatorText("Labels");
-            bool lbl = app.view_show_labels(view);
-            if (ImGui::Checkbox("Names beside the markers", &lbl))
-                f.out.push_back("set " + view->name + " show_labels \"" + (lbl ? "1" : "0") + "\"");
+        float bv;
+        ImGui::TextDisabled("Brightness");
+        if (slider("##basebright", app.basemap_brightness, 0.3f, 1.0f, "%.2f", &bv)) {
+            app.basemap_brightness = bv;
+            char b[64];
+            std::snprintf(b, sizeof b, "config set ui.basemap_brightness \"%.2f\"", bv);
+            f.out.push_back(b);
+        }
+        ImGui::TextDisabled("Fade");
+        if (slider("##basefade", app.basemap_fade, 0.0f, 1.0f, "%.2f", &bv)) {
+            app.basemap_fade = bv;
+            char b[64];
+            std::snprintf(b, sizeof b, "config set ui.basemap_fade \"%.2f\"", bv);
+            f.out.push_back(b);
         }
         ImGui::Spacing();
         maiz::dim_wrapped(kBaseSources[std::clamp(app.basemap_src, 0, kBaseSourceCount - 1)].attribution);
@@ -478,26 +606,16 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
                    ell ? "Ellipse" : "Rectangle");
             const std::string cur_col = tag_value(n, "color");
             swatches(cur_col, [&](const std::string& c) { retag(n.name, "color", cur_col, c); });
-            const std::string bestows = hormiga::temper::field_value(n, "bestows");
-            if (!bestows.empty()) {
-                maiz::dim_wrapped(("Gives @" + bestows + " to what is inside it.").c_str());
-                if (ImGui::Button(("Tag what is inside with @" + bestows).c_str(), ImVec2(-FLT_MIN, 0))) {
-                    std::vector<std::string> cmds;
-                    for (const auto& en : app.scene.nodes) {
-                        if (!map_placeable(en)) continue;
-                        double ela, elo;
-                        if (!hormiga::parse_geo(view_geo(en, channel), ela, elo)) continue;
-                        if (hormiga::bestow::shape_contains(n, ela, elo)) cmds.push_back("tag " + en.name + " +" + bestows);
-                    }
-                    if (!cmds.empty()) {
-                        f.out.push_back(maiz::compile_commit(cmds));
-                        maiz::show_snackbar(ph.snack, "Tagged " + std::to_string(cmds.size()) + " inside", "UNDO");
-                    } else {
-                        maiz::show_snackbar(ph.snack, "Nothing is inside it.");
-                    }
+            // the tags it gives: the same chip editor as the desktop's inspector
+            // (the registry's "bestow" editor), the same commands
+            ImGui::Spacing();
+            for (const auto& fl : n.fields)
+                if (fl.key == "bestows") {
+                    maiz::WidgetContext wctx{app.scene, f.out, std::string(), 0.0f};
+                    maiz::widget_field(wctx, app.widgets, n, fl);
                 }
-            }
-            if (ImGui::Button(ICON_FA_PEN "  Name, and the tag it gives", ImVec2(-FLT_MIN, 0))) f.stack->push("detail:" + n.name);
+            ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_PEN "  Name it", ImVec2(-FLT_MIN, 0))) f.stack->push("detail:" + n.name);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.72f, 0.22f, 0.20f, 1.0f));
             if (ImGui::Button(ICON_FA_TRASH "  Delete the region", ImVec2(-FLT_MIN, 0))) {
                 f.out.push_back("rm " + n.name);

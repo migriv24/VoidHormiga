@@ -27,7 +27,12 @@ E = Earth only ([worlds](/concepts/sections/gis/worlds.md)).
 
 | | item | world | note |
 |---|---|---|---|
-| ✅ | the desktop canvas: pan, wheel zoom, markers, labels, rules, views as layers | U | [territory](/concepts/sections/gis/territory.md) |
+| ✅ | the desktop canvas: pan, wheel and + / - zoom, markers labelled by name, rules | U | [territory](/concepts/sections/gis/territory.md) |
+| ✅ | layers (were views): eye, order, name, opacity, own positions, duplicate; four docked windows (Inspector, Overview, Layers, Actions) | U | 2026-10-05 |
+| ✅ | find and filter in the one search grammar | U | 2026-10-05 |
+| ✅ | a region gives several tags, edited as chips | U | 2026-10-05 |
+| ✅ | add a layer to a newsletter or website from the map (Actions) | U | 2026-10-05 |
+| ⬜ | a layer that holds only what carries a tag: the UI | U | the `filter` field exists and is honoured; no UI by the author's choice |
 | ✅ | regions (rectangle, ellipse), colour, a tag they give | U | both front-ends |
 | ✅ | reference points and the fan-out | U | both front-ends |
 | ✅ | notes on the map | U | both front-ends, 2026-10-04; never exported |
@@ -35,7 +40,7 @@ E = Earth only ([worlds](/concepts/sections/gis/worlds.md)).
 | ✅ | the website's read-only map widget | E | CARTO tiles; skips contacts and notes |
 | 🔨 | **the phone's map** | U | built 2026-10-04, run in the harness, **not on a device** ([phone](/concepts/sections/gis/phone.md)) |
 | 🔨 | the phone's location, accuracy circle, follow | A | built; the system prompt and a real fix are unwitnessed |
-| ⬜ | ghosted layers of other visible views on the phone | U | desktop has them |
+| ⬜ | ghosted layers of other visible layers on the phone | U | desktop has them |
 | ⬜ | share a map picture from the phone | U | needs the platform's share intent |
 | ⬜ | polygons, drawn by tapping corners (Q102) | U | never by crosshair |
 | ⬜ | clustering on the desktop | U | the phone has it |

@@ -298,7 +298,8 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
         fill_shape(sx, sy, 8, col, shape_from(shp));
         // labels: same no-overlap candidates as the canvas (right/left/up/down)
         if (show_labels) {
-            float tw2 = text_w(node.name), th2 = font_px * label_scale * 1.2f;
+            const std::string cap = rune_title(node); // its name, never its handle (2026-10-05)
+            float tw2 = text_w(cap), th2 = font_px * label_scale * 1.2f;
             float cand[4][2] = {
                 {(float)sx + 14, sy - th2 * 0.5f},
                 {(float)sx - 14 - tw2, sy - th2 * 0.5f},
@@ -319,7 +320,7 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
                 placed_labels.push_back({cand[pick][0], cand[pick][1],
                                          cand[pick][0] + tw2,
                                          cand[pick][1] + th2});
-                blit_text((int)cand[pick][0], (int)cand[pick][1], node.name);
+                blit_text((int)cand[pick][0], (int)cand[pick][1], cap);
             }
         }
         ++placed;

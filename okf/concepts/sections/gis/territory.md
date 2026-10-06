@@ -584,3 +584,40 @@ covering. One of the two has to change once channels have a second real user.
   (`marker_look`) serves both front-ends, so a rule or a tag styles a marker the
   same way on both.
 
+# The map as a drawing application (2026-10-05)
+
+The author asked for ten things in one message; these are the map's:
+
+- **Views became LAYERS**, "like layers in a drawing application". A layer is
+  still a `map` rune (so every layer already made is a layer now), and gains a
+  `title`, an `order` (higher draws on top) and a `filter`: a tag query that
+  limits what the layer holds. **The filter has no UI yet, by the author's
+  choice** ("for now, we won't be able to give layers tags ... internally ...
+  layers should be able to be given tags"), and the canvas already honours it.
+  A layer is a way of drawing things, not a box they live in: deleting one
+  leaves everything on the map.
+- **The top bar is gone.** No "New view", "Manage views", "Draw shape" or view
+  dropdown: one row with **find** (the database, jump or place) and **filter**
+  (what the map draws), both in [the one search grammar](/concepts/foundation/data-model.md).
+- **Four windows beside the canvas**, docked as tabs and free to be torn off,
+  like the Builder's (`ui/map_panels.cpp`): **Inspector** (the thing last
+  clicked, or the batch panel for several; Save and its check at the top),
+  **Overview** (everything on the map, grouped by kind, filtered like the map,
+  each row with the marker's own right-click menu), **Layers** (the stack top
+  first with an eye, the edited one highlighted, up/down, + / duplicate /
+  delete, a branch mark on a layer with its own positions; the base map as the
+  background row; the edited layer's name, opacity, brightness, positions,
+  rules and labels), **Actions** (export a picture of the layer; make the view
+  on screen its home; add the layer to a newsletter or website as a map block,
+  at the end of the chosen document).
+- **Tools and zoom on the canvas**: select, rectangle and ellipse at the left
+  edge, and + / - at the bottom right.
+- **Markers are labelled by name** (`rune_title`), not by handle, on the canvas,
+  the Overview and the PNG export. A thing named on a phone kept its minted
+  handle on the desktop's map before this; that was the author's "no gui
+  update" report.
+- **A region gives several tags**, edited as chips in indigo (the colour a given
+  tag wears on whatever carries it) with the tag editor's picker, in the
+  Inspector on the desktop and in the region's sheet on the phone, through one
+  registry editor (`bestow`). Stored as one comma-separated field;
+  `domain/bestow.hpp` reads it as a list.

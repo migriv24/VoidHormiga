@@ -11,6 +11,31 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q104 — should Palabra send a member only what it lacks?** (Opened
+  2026-10-05, [radios](/concepts/platform/radios.md) §3.) Measured: when two
+  members meet, Palabra's session sends each one's shareable state **whole**
+  (`Kind::doc`); for the Cat Colony a one-field edit is a 600 KB frame, on the
+  LAN as on a radio. Compressed on the radio it is 70 KB, about twelve seconds
+  of Bluetooth LE; uncompressed it was a hundred. Two ways further: (a) **delta
+  states**: the sender keeps, per peer, the digest the peer last acknowledged
+  and sends only what joined in since (the replica already knows its history);
+  (b) **compression in Palabra's frame** for every transport, not only ours.
+  **Lean: (b) now, as a frame flag Palabra owns (it is ours on the radio
+  today); (a) as Palabra's next design**, because it changes what a `doc`
+  message means and so belongs in Palabra's OKF first. Either is Palabra's to
+  decide; this is the message for it.
+
+- **Q105 — should a phone be able to JOIN a database over a radio?** (Opened
+  2026-10-05.) Today the radios keep members in sync, but joining (the sealed
+  transfer of the database, files, room key and members registry, approved on
+  both screens) still runs on the LAN, once. In the field that means the first
+  meeting needs a network. Over Wi-Fi Direct the existing join could run as is
+  (a group is an IP network); over Bluetooth it would be a Reticulum Resource of
+  the bundle, minutes for a database with photos. **Lean: yes, Wi-Fi Direct
+  first** (the join code needs no change, only the beacon on the group's
+  address), then Bluetooth for a database small enough to wait for, with the
+  bar and an honest estimate before anyone taps Allow.
+
 - **Q100 — should a place set from the phone's location remember how sure it
   was?** (Opened 2026-10-04, [the map on a phone](/concepts/sections/gis/phone.md).)
   A phone's fix comes with a radius (often 5 m outdoors, 40 m indoors). Today a

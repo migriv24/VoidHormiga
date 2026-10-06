@@ -5669,3 +5669,111 @@ feed says `latest 0.1.11`, and the stable `VoidHormiga-android-arm64.apk` URL
 serves the new APK. Release page: https://github.com/migriv24/VoidHormiga/releases/tag/v0.1.11
 **Still owed:** the author's phone running 0.1.11 (the map, the location
 prompt, tiles over Android's HTTP), and the macOS archives remain unrun.
+
+# The map as a drawing application, one search, names, Save (2026-10-05, later)
+
+The author sent ten points after 0.1.11. What each became:
+
+1. **Zoom buttons on the desktop map**: + / - at the canvas's bottom right.
+2. **A name set on the phone never showed on the map**: the desktop labelled
+   markers with the rune's handle (`event-0140-1`), so the title typed on the
+   phone, which did sync, was never drawn. `rune_title` now names a rune
+   everywhere a map shows it (canvas, Overview, PNG). Taps on the bar or the
+   back arrow do end a phone field's edit before the screen changes, so the
+   name was not lost on the way; that was checked, not assumed.
+3. **Notes have names**: a `title` field on `note`, in the inspector, the
+   desktop Notes tab and the phone's note editor; blank, the first line stands
+   in. Lists, search and the map use it.
+4. **Giving tags looks like adding tags**: a region gives a *list*, edited as
+   indigo chips with the tag editor's picker and a "give them now to N inside"
+   button, one registry editor (`bestow`) for the desktop inspector and the
+   phone's sheet. Registered at start-up rather than when the Builder opens.
+5. **One search everywhere** (`search_match`): words match titles, handles and
+   tags; `@tag`, `#tag` and `ns:value` match tags; `-` excludes. In every
+   search bar on both front-ends. See [data model](/concepts/foundation/data-model.md).
+6–7. **Views are layers, and the map is windows**: the top bar is gone (find and
+   filter only); Inspector, Overview, Layers and Actions dock beside the canvas
+   as tabs that can be torn off; tools and zoom on the canvas. A layer has a
+   name, an order, an eye, its look under others, shared or own positions, its
+   rules and labels, and a `filter` (a tag query: honoured, no UI, as the
+   author asked). See [territory](/concepts/sections/gis/territory.md).
+8. **Actions**: export a picture of the layer; make the view on screen its home;
+   add the layer to a newsletter or website as a map block (the Builder's own
+   `doc place`, at the end of the chosen document).
+9. **Save on a rune**: lets a field being typed commit, saves the database on
+   this device, and then checks, line by line: in the database, saved, named
+   (not just its handle), on the map, and who it goes to (private, not shared,
+   or the members as they connect). Desktop inspector and phone detail.
+10. **"We're using Reticulum, right?" Not yet**, and nearby phones cannot share
+    without a network in common today. Hormiga's sharing is still Void Maiz's
+    LAN session; Reticulum is built in Palabra and unused by Hormiga. Written up
+    as Q103 with the three ways to get there.
+
+**Measured**: desktop harness (the new windows and tabs, the canvas tools and
+zoom, markers labelled by name, a region given two tags through the chip editor
+and stored as `canvassed, outreach-zone`, Save's checklist on a contact); phone
+harness (`type:organization` in Data's search, a region's sheet with the same
+editor, Save's checklist on a detail screen). 54 of 55 tests (the known red);
+layering, budgets (`app.hpp` 1269 -> 1272; the panels are `ui/map_panels.cpp`),
+glyph fields, host seams, i18n and OKF links all pass. Not released, not
+committed.
+
+# The radios: members in sync with no Wi-Fi in common; the phone's layers (2026-10-05, later still)
+
+The author's ask, in order of size: "the bigger ask right now is the networking
+between mobile devices": Wi-Fi Direct between Android phones and Bluetooth
+("substantially slower (so a lot more progress bars and such will be needed),
+however, it would be compatible with an iOS device"), Reticulum on top, and
+**no hotspot** ("a big waste of data plans and money ... not everyone can
+easily do hotspot"). The small ask: the phone's GUI aligned with the desktop's
+new layer system, **no Actions on the phone yet**. Permission was given to
+change Void Maiz for the networking. Q103 is answered by
+[radios](/concepts/platform/radios.md) and cleared.
+
+**Across three repositories, each its own part.**
+- **Void Palabra**: a Reticulum *pipe* (an interface whose packets the host
+  carries), HDLC framing as Reticulum's own TCP and serial interfaces frame,
+  interfaces added and removed while the node runs, and `transfers()` (each
+  Resource's progress). Also `arc4random_buf` on Android, where `getrandom` is
+  API 28. Suite 29/29; the new interop tests run Reticulum over a throttled pipe
+  against the Python reference.
+- **Void Maiz**: the radio holiday (`voidmaiz/radio.hpp`; LE GATT in both roles,
+  Wi-Fi Direct DNS-SD and groups, the permissions, in `MaizRadio.java`), a
+  desktop stand-in (`loopback_radio`, a throttled local TCP stream), and the
+  bridge (`voidmaiz/rnsradio.hpp`: an LE peer is a pipe, a Wi-Fi Direct group a
+  UDP interface). `maiz_radio_smoke`: two processes, 30 KB over "LE" at 8 KB/s.
+- **Hormiga** (`app/lan_radio.cpp`): who may connect (a keyed room tag, then a
+  proof over each link before any frame), and `Network`'s frames onto Reticulum
+  links. A radio link is an ordinary `link_io` entry keyed by the member's
+  fingerprint, so one carrier per member and nothing above it changes.
+
+**What the first two-process run found.** The edits did not arrive: Palabra
+sends a member's state *whole* when a session starts, and for the Cat Colony a
+one-field edit is a **600 KB** frame, the same on the LAN (checked: 599,672
+bytes there too, unnoticed because it is fast). At 6 KB/s that is a hundred
+seconds. Frames on a radio are now deflated (stb's compressor and inflater,
+already vendored): **600 KB crosses as 70 KB**. Deltas are Palabra's; Q104.
+
+**Measured.**
+- Two CLI members, no LAN beacon (`HORMIGA_NO_BEACON`, a test hook), met over the
+  loopback radio at 6 KB/s, proved membership and synced: each one's edit landed
+  on the other, no conflicts. (An earlier run showed two conflicts and empty
+  names: a joiner unpacked by hand never got the join's starting replica. A
+  test-setup artifact, recorded so nobody chases it.)
+- Phone harness against a CLI member: Migos' new *Nearby, no Wi-Fi needed*,
+  Bluetooth switched on, ana found and connected (-40 dBm), on *Here now*, a bar
+  "36 KB of 68 KB, 3 KB/s", and the member's edit in the phone's database.
+- The APK builds with the manifest's new permissions and the radio installed.
+  **Nothing has run on a phone**; Wi-Fi Direct has no stand-in at all.
+
+**The phone's layers.** *Layers* is the desktop's panel at a finger's size: the
+stack top first with eyes, tap to edit, reorder, *New layer on top* (at the
+phone's camera: `map_new_earth` now takes a centre and zoom), the edited
+layer's name, opacity, brightness, own positions, labels and delete; the base
+map as the bottom row with brightness and fade. The canvas draws the layers in
+the desktop's order, hides a hidden layer, honours a layer's `filter`, and
+ghosts the other visible layers underneath. See
+[the map on a phone](/concepts/sections/gis/phone.md).
+
+**Opened**: Q104 (send only what a member lacks), Q105 (join over a radio).
+55 of 56 tests (the known red), every linter, every budget. Not committed.

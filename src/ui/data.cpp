@@ -123,7 +123,7 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         ImGui::SetTooltip("import CSV, tidy date tags, and other data utilities");
     ImGui::SameLine(0, 16);
     ImGui::SetNextItemWidth(160);
-    ImGui::InputTextWithHint("##search", "search names...", search, sizeof search);
+    ImGui::InputTextWithHint("##search", kSearchHint, search, sizeof search);
     ImGui::SameLine();
     if (ImGui::SmallButton("clear")) {
         filter[0] = 0;
@@ -311,7 +311,7 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
     for (const auto& n : scene.nodes) {
         if (n.glyph == "note" || n.glyph == "rule") continue; // own tabs
         if (!kind_sel.empty() && n.glyph != kind_sel) continue;
-        if (!contains_ci(n.name, search)) continue;
+        if (!search_match(n, search)) continue; // names, titles, @tags (2026-10-05)
         if (!maiz::node_matches(filter, n)) continue;
         rows.push_back(&n);
     }
@@ -869,7 +869,7 @@ void HormigaApp::draw_notes_body() {
     // top: name search + the SAME tag-filter builder as the Data tab (author
     // 2026-08-03: notes get tags + filter searching too)
     ImGui::SetNextItemWidth(160);
-    ImGui::InputTextWithHint("##notesearch", "search notes...", notes_search,
+    ImGui::InputTextWithHint("##notesearch", kSearchHint, notes_search,
                              sizeof notes_search);
     ImGui::SameLine();
     if (ImGui::SmallButton("clear")) {
@@ -891,11 +891,14 @@ void HormigaApp::draw_notes_body() {
     int shown = 0;
     for (const auto& n : scene.nodes) {
         if (n.glyph != "note") continue;
-        if (!contains_ci(n.name, notes_search)) continue;
+        if (!search_match(n, notes_search) && !contains_ci(hormiga::temper::field_value(n, "text"), notes_search))
+            continue;
         if (!maiz::node_matches(notes_filter_expr, n)) continue;
         ++shown;
         const bool priv = std::find(n.tags.begin(), n.tags.end(), notes_private_tag()) != n.tags.end();
-        if (ImGui::Selectable(((priv ? ICON_FA_LOCK " " : "") + n.name).c_str(), ed.selected(n.name)))
+        // listed by its NAME (or first line), not its handle (2026-10-05)
+        if (ImGui::Selectable(((priv ? ICON_FA_LOCK " " : "") + marker_caption(n) + "##" + n.name).c_str(),
+                              ed.selected(n.name)))
             ed.selection = {n.name};
         maiz::presence_item(surfaces, roster, net_settings.show, "list:notes", n.id,
                             maiz::Mark::Badge, share_now && !share_now(n));
@@ -925,6 +928,14 @@ void HormigaApp::draw_notes_body() {
         }
         ImGui::SameLine();
         ImGui::TextDisabled("(note)");
+        // its NAME (author, 2026-10-05): what the list, the map and search call
+        // it; blank, the first line stands in. The handle above stays the handle.
+        for (const auto& fl : sel->fields)
+            if (fl.key == "title") {
+                ImGui::SetNextItemWidth(-1);
+                maiz::WidgetContext wctx{scene, pending_cmds, std::string(), 0.0f};
+                maiz::widget_field(wctx, widgets, *sel, fl);
+            }
         /* PRIVATE OR SHARED (2026-09-16, lan-sharing.md §7). The author: *"the
          * notes should have the option of making private and shared notes."* A
          * private note carries the Antfarm's private tag, and every share and

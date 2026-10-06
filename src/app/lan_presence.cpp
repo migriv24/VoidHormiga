@@ -54,6 +54,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
             app.run_busy("Opening the shared database", [&app] { LanRuntime::finish_join(app); });
         }
     }
+    radio_tick(app, now); // every frame: Reticulum over the radios needs pumping (lan_radio.cpp)
     if (now - rt.checked_at < 1.0) return;
     rt.checked_at = now;
 
@@ -126,7 +127,11 @@ void LanRuntime::tick(HormigaApp& app, double now) {
         offer.port = share.port;
     }
     self.extra = hormiga::lan::beacon_extra(rt.sharing ? &offer : nullptr, room, sealed);
-    if (!rt.beacon) {
+    /* HORMIGA_NO_BEACON: no LAN presence at all, so two processes on one
+     * computer can only meet over the radio (lan_radio.cpp's two-process run). */
+    static const bool no_beacon = std::getenv("HORMIGA_NO_BEACON") != nullptr;
+    if (no_beacon) {
+    } else if (!rt.beacon) {
         rt.beacon = std::make_unique<hormiga::sync::Beacon>();
         std::string err;
         if (!rt.beacon->start(self, &err)) {
@@ -139,7 +144,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
     }
 
     // presence in: members of this room only
-    if (presence) {
+    if (presence && rt.beacon) {
         for (const auto& peer : rt.beacon->peers(12)) {
             hormiga::lan::ExtraParts parts;
             if (!hormiga::lan::read_extra(peer.extra, parts) || parts.room != room) continue;

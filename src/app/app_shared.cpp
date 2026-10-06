@@ -108,7 +108,8 @@ const char* glyph_marker_icon(const std::string& glyph) {
 }
 
 std::string marker_caption(const maiz::SceneNode& n) {
-    if (n.glyph != "note") return n.name;
+    if (n.glyph != "note") return rune_title(n);
+    if (std::string named = hormiga::temper::field_value(n, "title"); !named.empty()) return named;
     std::string t = hormiga::temper::field_value(n, "text");
     const auto nl = t.find_first_of("\r\n");
     if (nl != std::string::npos) t.resize(nl);
@@ -329,6 +330,68 @@ bool contains_ci(std::string_view hay, std::string_view needle) {
         return o;
     };
     return lower(hay).find(lower(needle)) != std::string::npos;
+}
+
+std::string rune_title(const maiz::SceneNode& n) {
+    for (const char* k : {"display_name", "title", "title_en", "label"}) {
+        std::string v = hormiga::temper::field_value(n, k);
+        if (!v.empty()) return v;
+    }
+    if (n.glyph == "note") return marker_caption(n);
+    // an incident is named by what happened: its description's first words
+    if (std::string d = hormiga::temper::field_value(n, "description"); !d.empty()) {
+        if (const auto nl = d.find_first_of("\r\n"); nl != std::string::npos) d.resize(nl);
+        if (d.size() > 48) {
+            size_t k = 47;
+            while (k > 0 && ((unsigned char)d[k] & 0xC0) == 0x80) --k;
+            d = d.substr(0, k) + "...";
+        }
+        return d;
+    }
+    return n.name;
+}
+
+bool search_match(const maiz::SceneNode& n, std::string_view query) {
+    auto low = [](std::string_view s) {
+        std::string o(s);
+        for (char& c : o) c = (char)std::tolower((unsigned char)c);
+        return o;
+    };
+    const std::string q = low(query);
+    size_t i = 0;
+    while (i < q.size()) {
+        while (i < q.size() && std::isspace((unsigned char)q[i])) ++i;
+        size_t j = i;
+        while (j < q.size() && !std::isspace((unsigned char)q[j])) ++j;
+        if (j == i) break;
+        std::string w = q.substr(i, j - i);
+        i = j;
+        bool neg = false;
+        if (w.size() > 1 && w[0] == '-') {
+            neg = true;
+            w.erase(0, 1);
+        }
+        bool tag_only = false;
+        if (w[0] == '@' || w[0] == '#') {
+            tag_only = true;
+            w.erase(0, 1);
+        } else if (w.find(':') != std::string::npos) {
+            tag_only = true;
+        }
+        if (w.empty()) continue; // a lone "@" while typing: no constraint yet
+        bool hit = false;
+        for (const auto& t : n.tags) {
+            const std::string lt = low(t);
+            if (tag_only ? lt.rfind(w, 0) == 0 : lt.find(w) != std::string::npos) {
+                hit = true;
+                break;
+            }
+        }
+        if (!hit && !tag_only)
+            hit = low(n.name).find(w) != std::string::npos || low(rune_title(n)).find(w) != std::string::npos;
+        if (hit == neg) return false;
+    }
+    return true;
 }
 
 std::string humanize(const std::string& slug) {

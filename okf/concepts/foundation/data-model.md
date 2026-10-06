@@ -222,3 +222,28 @@ replay or undo. It **is** recorded, as a `view` entry in the log strip, because
 "how did I get here" deserves an answer. It is applied at the START of the next
 frame, never mid-draw, since changing the mantle or the selection inside a
 widget invalidates the scene that widget is drawing.
+
+# The one search (2026-10-05)
+
+The author: *"for searching the database, you should be able to search via
+tags, or filter or something (for all 'search' bars everywhere on the
+application)."* So every search bar reads one grammar (`search_match`,
+`app/app_shared.cpp`):
+
+| you type | it matches |
+|---|---|
+| `maria` | a title, a handle, or any tag containing it |
+| `@volunteer`, `#volunteer` | a tag starting with it (`@vol` finds `volunteer`) |
+| `type:event`, `kw:food` | the same, for a namespaced tag |
+| `-@private`, `-type:note` | must **not** match |
+
+Words are ANDed and case does not matter. It runs in the Data list, the Notes
+list, the map's find and filter, the Overview, the pickers that search runes or
+images, and the phone's Data, Notes and map search. It is not the block
+queries' grammar (`maiz::node_matches`), which is for documents; a search bar
+is for a person typing, so it forgives prefixes and partial words.
+
+**What a rune is called, everywhere** (`rune_title`): its printed name, its
+title, a note's own name or first line, a shape's label, an incident's
+description, else its handle. A note gained a `title` field the same day
+("notes have names i should be able to assign in inspector").

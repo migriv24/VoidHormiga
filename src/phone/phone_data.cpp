@@ -147,6 +147,8 @@ void HormigaApp::PhoneUi::detail(HormigaApp& app, PhoneUi& ph, Frame& f, const m
     maiz::presence_item(app.surfaces, app.roster, app.net_settings.show,
                         ph.screen == kCalendar ? "calendar" : "table:data", n.id, maiz::Mark::Badge,
                         app.share_now && !app.share_now(n));
+    // SAVE, and what it confirmed (2026-10-05): the shared check, ui/widgets.cpp
+    app.draw_save_check(n, f.out);
     // WHERE IT IS, one tap away (2026-10-04): a thing and its place are the
     // same thing seen two ways. Not from the map itself, which opened this.
     if (map_placeable(n) && ph.screen != kMap) {
@@ -192,7 +194,7 @@ void HormigaApp::PhoneUi::detail(HormigaApp& app, PhoneUi& ph, Frame& f, const m
 void HormigaApp::PhoneUi::data(HormigaApp& app, PhoneUi& ph, Frame& f) {
     const float dp = ph.dp;
     ImGui::SetNextItemWidth(-FLT_MIN);
-    ImGui::InputTextWithHint("##search", ICON_FA_MAGNIFYING_GLASS "  Search", ph.search, sizeof ph.search);
+    ImGui::InputTextWithHint("##search", ICON_FA_MAGNIFYING_GLASS "  Search  (@tag works too)", ph.search, sizeof ph.search);
     maiz::text_input_kind(maiz::InputKind::Search); // the keyboard's action key says "search"
     std::map<std::string, int> counts;
     for (const auto& n : app.scene.nodes) counts[n.glyph]++;
@@ -219,8 +221,8 @@ void HormigaApp::PhoneUi::data(HormigaApp& app, PhoneUi& ph, Frame& f) {
         bool data_kind = false;
         for (const auto& e : app.palette.entries) data_kind |= (e.glyph == n.glyph);
         if (!data_kind || (!ph.kind.empty() && n.glyph != ph.kind)) continue;
-        if (!q.empty() && lower(title_of(n)).find(q) == std::string::npos && lower(n.name).find(q) == std::string::npos)
-            continue;
+        if (!q.empty() && !search_match(n, ph.search) && lower(title_of(n)).find(q) == std::string::npos)
+            continue; // names, titles, @tags, type:event (the one search, 2026-10-05)
         rows.push_back(&n);
     }
     std::sort(rows.begin(), rows.end(), [](const maiz::SceneNode* a, const maiz::SceneNode* b) {

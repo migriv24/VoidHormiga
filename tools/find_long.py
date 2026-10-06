@@ -251,7 +251,10 @@ BUDGET = {
     # 1267 -> 1269 (2026-10-04): the map on the phone. A phone has no `curl`,
     # so tiles (and anything else a GUI fetches) go through on_http_get, a
     # comment and a hook; the map screen's own state is PhoneUi's.
-    'src/app/app.hpp': 1269,
+    # 1269 -> 1272 (2026-10-05): the map as a drawing application's windows
+    # (draw_map_panels, map_layers; Manage views' slot reused), its filter,
+    # and the per-rune Save check. The panels' code is ui/map_panels.cpp.
+    'src/app/app.hpp': 1272,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

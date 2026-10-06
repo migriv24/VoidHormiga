@@ -48,7 +48,18 @@ int LanRuntime::cli(HormigaApp& app, std::string_view op, const std::vector<std:
         rt.headless = true;
         const double end = now() + seconds(0, 30);
         std::string last;
+        /* `radio` (or HORMIGA_SIM_RADIO on a desktop): the members near by
+         * Bluetooth too. The room key is read on the first tick, so the radio is
+         * switched on after it. */
+        bool radio = std::find(args.begin(), args.end(), "radio") != args.end() ||
+                     std::getenv("HORMIGA_SIM_RADIO") != nullptr;
         while (now() < end) {
+            if (radio && !rt.room_key.empty()) {
+                std::string why;
+                if (!radio_switch(app, kRadioBle, true, &why)) std::cerr << "  [warn] radio: " << why << "\n";
+                else std::cerr << "  " << radio_status(app) << "\n";
+                radio = false;
+            }
             tick(app, now());
             apply_incoming(app);
             {
@@ -57,10 +68,12 @@ int LanRuntime::cli(HormigaApp& app, std::string_view op, const std::vector<std:
                 rt.thread_log.clear();
             }
             for (const auto& e : app.log)
-                if (e.op == "sync") std::cerr << "  [" << e.level << "] sync: " << e.msg << "\n";
+                if (e.op == "sync" || e.op == "share")
+                    std::cerr << "  [" << e.level << "] " << e.op << ": " << e.msg << "\n";
             app.log.clear();
             if (rt.synced_note != last) std::cerr << "  " << (last = rt.synced_note) << "\n";
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            // Reticulum over a radio is pumped every tick; a slow tick is a slow link
+            std::this_thread::sleep_for(std::chrono::milliseconds(radio_on(app, kRadioBle) ? 10 : 200));
         }
         std::cerr << "  present: " << rt.present.size() << ", conflicts: " << rt.conflicts.size() << "\n";
         for (const auto& c : rt.conflicts) {

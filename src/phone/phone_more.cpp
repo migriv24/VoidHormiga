@@ -44,6 +44,7 @@ bool has_tag(const maiz::SceneNode& n, const std::string& t) {
 
 /* A note's title is its first line; the rune's handle only when it has none. */
 std::string note_title(const maiz::SceneNode& n) {
+    if (std::string named = hormiga::temper::field_value(n, "title"); !named.empty()) return named; // its own name
     std::string t = hormiga::temper::field_value(n, "text");
     const auto nl = t.find('\n');
     if (nl != std::string::npos) t.resize(nl);
@@ -97,6 +98,14 @@ void HormigaApp::PhoneUi::notes(HormigaApp& app, PhoneUi& ph, Frame& f) {
                             app.share_now && !app.share_now(*n));
         maiz::dim_wrapped(is_priv ? "Only on this phone: never sent to the database's members."
                                   : "Everyone this database is shared with sees it.");
+        // its NAME (2026-10-05); blank, the first line stands in for it
+        for (const auto& fl : n->fields)
+            if (fl.key == "title") {
+                ImGui::TextDisabled("Name");
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                maiz::WidgetContext wctx{app.scene, f.out, std::string(), 0.0f};
+                maiz::widget_field(wctx, app.widgets, *n, fl);
+            }
         // the text: the first line is the title, the rest is the note
         const float h = std::max(ImGui::GetFontSize() * 8.0f,
                                  ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() * 5.0f);
@@ -140,9 +149,9 @@ void HormigaApp::PhoneUi::notes(HormigaApp& app, PhoneUi& ph, Frame& f) {
     maiz::text_input_kind(maiz::InputKind::Search);
     const std::string q = lower(ph.note_search);
     std::vector<const maiz::SceneNode*> rows;
-    for (const auto& n : app.scene.nodes)
-        if (n.glyph == "note" && (q.empty() || lower(hormiga::temper::field_value(n, "text")).find(q) != std::string::npos ||
-                                  lower(n.name).find(q) != std::string::npos))
+    for (const auto& n : app.scene.nodes) // names, @tags (search_match), and the words inside
+        if (n.glyph == "note" && (search_match(n, ph.note_search) ||
+                                  lower(hormiga::temper::field_value(n, "text")).find(q) != std::string::npos))
             rows.push_back(&n);
     std::sort(rows.begin(), rows.end(), [](const maiz::SceneNode* a, const maiz::SceneNode* b) {
         return lower(note_title(*a)) < lower(note_title(*b));

@@ -245,7 +245,7 @@ void HormigaApp::phone_frame() {
     const std::string title = home_screen ? std::string("Everything")
                               : is_detail ? (open_node ? title_of(*open_node) : std::string("Removed"))
                               : f.route == "search" ? std::string("Search the map")
-                              : f.route == "layers" ? std::string("Views and base map")
+                              : f.route == "layers" ? std::string("Layers")
                               : f.route == "existing" ? std::string("Put something here")
                               : f.route.rfind("note:", 0) == 0 ? std::string("Note")
                                           : std::string(screen_info(ph.screen).label);

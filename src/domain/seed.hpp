@@ -250,16 +250,18 @@ inline void register_glyphs(maiz::Core& core,
         R"("hints":{"color":"#4e8d85","face":{"w":190,"h":52},"category":"Assets",)"
         R"("editors":{"path":"path"},)"
         R"("labels":{"path":"File","topic":"Topic"}}})");
-    // a note may sit on the map (author, 2026-10-04: "link locations to notes
+    // a note has a NAME of its own (author, 2026-10-05: "notes have names i
+    // should be able to assign in inspector"); blank, it is called by its first
+    // line, as before. And it may sit on the map (author, 2026-10-04: "link locations to notes
     // as well ... maybe there's something specific to note about a location"),
     // so it carries the same location facet as a contact. It never leaves the
     // app through a map: the PNG export and the web widget skip notes, because
     // a note is the internal-notes class the render seam guards.
     core.register_glyph(with_channels(
-        R"({"glyph":"note","label":"Note","fields":["text","geo","ref","ref_off"],)"
+        R"({"glyph":"note","label":"Note","fields":["title","text","geo","ref","ref_off"],)"
         R"("hints":{"color":"#6f6f78","face":{"w":240,"h":120},"category":"Notes",)"
         R"("editors":{"text":"multiline:110","ref_off":"hidden"},)"
-        R"__("labels":{"text":"Text","geo":"Location (lat,lon)",)__"
+        R"__("labels":{"title":"Name (blank = its first line)","text":"Text","geo":"Location (lat,lon)",)__"
         R"__("ref":"Reference point (fan-out parent)"}}})__"));
     // incidents are NOT events (author, 2026-07-22): dated occurrences —
     // road closures, ICE activity, emergencies — that belong on the map and,
@@ -295,18 +297,25 @@ inline void register_glyphs(maiz::Core& core,
     // channel = the position channel it reads/writes: views sharing a channel
     // are LOCKED together by construction; "main" is the default channel and
     // every other channel falls back to it (copy-on-write divergence).
+    // A LAYER (2026-10-05; it was a "view"): the author wants the map's views to
+    // work like a drawing application's layers. `title` names it, `order`
+    // stacks it, `visible` is its eye, and `filter` (a tag query, no UI yet, by
+    // the author's choice) is what lets a layer one day hold only the things
+    // carrying a tag; it is honoured by the drawing code already.
     // display fields (map config, 2026-07-22): label_scale/show_labels size and
     // toggle marker labels; layer_* adjust this view AS a ghosted layer under
     // another (opacity/brightness). All are ordinary fields so they log, undo,
     // ride the org, and shape the PNG export — but they must be DECLARED here or
     // projection drops them (the same seam that bit position channels).
     core.register_glyph(
-        R"({"glyph":"map","label":"View",)"
-        R"("fields":["source","center","zoom","rules","channel","visible",)"
+        R"({"glyph":"map","label":"Layer",)"
+        R"("fields":["title","order","filter","source","center","zoom","rules","channel","visible",)"
         R"("label_scale","show_labels","layer_opacity","layer_brightness",)"
         R"("no_overlap","label_color"],)"
         R"("hints":{"color":"#2e6b4f","face":{"w":200,"h":52},"category":"Territory",)"
-        R"__("labels":{"source":"Base source (legacy; see Settings)",)__"
+        R"__("labels":{"title":"Name","order":"Stacking order (higher draws on top)",)__"
+        R"__("filter":"What belongs to it (a tag query; blank = everything)",)__"
+        R"__("source":"Base source (legacy; see Settings)",)__"
         R"__("center":"Home center (lat,lon)","zoom":"Home zoom",)__"
         R"__("rules":"Style rules (managed in the Map panel)",)__"
         R"__("channel":"Position channel (main = locked to main)",)__"
@@ -339,10 +348,11 @@ inline void register_glyphs(maiz::Core& core,
         R"({"glyph":"mapshape","label":"Map shape",)"
         R"("fields":["kind","geo1","geo2","label","bestows"],)"
         R"("hints":{"color":"#2e6b4f","face":{"w":190,"h":52},"category":"Territory",)"
-        R"("editors":{"kind":"combo:rect,ellipse","geo1":"hidden","geo2":"hidden"},)"
+        R"("editors":{"kind":"combo:rect,ellipse","geo1":"hidden","geo2":"hidden",)"
+        R"("bestows":"bestow"},)" // chips, like a tag editor's (2026-10-05)
         R"__("labels":{"kind":"Shape","geo1":"Corner 1 (lat,lon)",)__"
         R"__("geo2":"Corner 2 (lat,lon)","label":"Label",)__"
-        R"__("bestows":"Bestows tag (on entities inside)"}}})__");
+        R"__("bestows":"Gives these tags to everything inside it"}}})__");
     // a REFERENCE POINT (author 2026-07-24): an editor-only gizmo marking a
     // location; NEVER drawn in exports/webview. Entities whose `ref` field
     // names it are its CHILDREN — fanned out around the shared point on the

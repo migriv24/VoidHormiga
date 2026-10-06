@@ -4,6 +4,7 @@
  * and the rule editor, and lived in the map file because that is where the
  * first caller was. A widget every section uses belongs to none of them. */
 
+#include "app/lan_share.hpp" // the Save check: who this database is shared with
 #include "app/app_internal.hpp"
 #include "domain/bestow.hpp" // givers: the tag vocabulary and the redirect
 #include "stb_image_write.h" // decls only - the map exports as a PNG; the ONE implementation lives in app.cpp
@@ -19,14 +20,14 @@ std::string HormigaApp::search_picker(
     int shown = 0;
     for (const auto& n : scene.nodes) {
         if (keep && !keep(n)) continue;
-        if (!contains_ci(n.name, buf)) continue;
+        if (!search_match(n, buf)) continue; // names, titles, @tags (2026-10-05)
         if (++shown > 8) { ImGui::TextDisabled("(keep typing...)"); break; }
         /* ONE ID PER ROW, BY RUNE NAME (2026-09-19). The label used to end in
          * "##" + id, and every caller's `id` already starts with "##" -- ImGui
          * reads from the FIRST "##", so all eight rows shared the id
          * "##linksearch" and Dear ImGui's conflict detector painted them red. */
         ImGui::PushID(n.name.c_str());
-        std::string lbl = n.name + "  (" + n.glyph + ")";
+        std::string lbl = rune_title(n) + "  (" + n.glyph + ")";
         if (ImGui::Selectable(lbl.c_str())) {
             picked = n.name;
             buf[0] = 0;
@@ -224,7 +225,7 @@ std::string HormigaApp::org_image_picker(const char* popup_id,
         if (n.glyph != "image") continue;
         const std::string path = hormiga::temper::field_value(n, "path");
         if (path.empty()) { ++remote_only; continue; }
-        if (!contains_ci(n.name, img_pick_search)) continue;
+        if (!search_match(n, img_pick_search)) continue;
         ++shown;
         ImGui::PushID(n.name.c_str());
         const HostTexture t = texture_for(path);
@@ -636,4 +637,85 @@ void HormigaApp::apply_redirect() {
     ed.selection = {r.rune};
     ImGui::SetWindowFocus(where.c_str());
     log.push_back({"view", "redirect", r.why + " -> " + where + ": " + r.rune});
+}
+
+/* ── SAVE, AND WHAT IT CONFIRMED (2026-10-05) ─────────────────────────────────
+ *
+ * The author: *"a 'save' button is nice for individual runes ... especially
+ * nice to have for making things and adding them to the map ... we still have
+ * the same flow of information as before (with multiple devices sharing stuff
+ * to each other), but the save button is sort of like a 'double check' where we
+ * make sure that what is on this person's device is properly added and
+ * configured to the database."*
+ *
+ * So it changes nothing about the flow: every edit was already a command, and
+ * sync already carries them. What it adds is the check. Pressing it lets the
+ * field being typed in commit first (the click ends that edit, and the save
+ * waits one frame for its command to land), saves the database on this device,
+ * and then says, line by line, what is true of this rune now: it is in the
+ * database, it is saved here, it has a name rather than its minted handle, it
+ * is (or is not) on the map, and who it goes to. A line that needs attention
+ * says what to do. Desktop inspector and phone detail share it. */
+
+void HormigaApp::draw_save_check(const maiz::SceneNode& n, std::vector<std::string>& out) {
+    (void)out;
+    static std::string pending, checked;
+    static int pending_frame = -1;
+    static bool saved_ok = false;
+    static double checked_at = -100.0;
+    if (pending == n.name && ImGui::GetFrameCount() > pending_frame + 1) {
+        saved_ok = dispatch_and_reproject("save").ok; // the typed field's command has landed by now
+        checked = n.name;
+        checked_at = ImGui::GetTime();
+        pending.clear();
+    }
+    const bool busy = pending == n.name;
+    ImGui::BeginDisabled(busy);
+    if (ImGui::Button(busy ? ICON_FA_FLOPPY_DISK "  Saving..." : ICON_FA_FLOPPY_DISK "  Save")) {
+        pending = n.name;
+        pending_frame = ImGui::GetFrameCount();
+    }
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("save this database on this device, and check that\n"
+                          "this is in it, named, placed and shared as you meant");
+    if (checked != n.name || ImGui::GetTime() - checked_at > 30.0) return;
+
+    const ImVec4 ok(0.20f, 0.55f, 0.30f, 1.0f), warn(0.80f, 0.50f, 0.10f, 1.0f), info(0.45f, 0.45f, 0.50f, 1.0f);
+    auto line = [&](const ImVec4& c, const char* icon, const std::string& text) {
+        ImGui::TextColored(c, "%s", icon);
+        ImGui::SameLine();
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x);
+        ImGui::TextUnformatted(text.c_str());
+        ImGui::PopTextWrapPos();
+    };
+    line(ok, ICON_FA_CHECK, "In the database");
+    if (saved_ok) line(ok, ICON_FA_CHECK, "Saved on this device");
+    else line(warn, ICON_FA_TRIANGLE_EXCLAMATION, "Not saved: see the message, then try again");
+    if (rune_title(n) == n.name)
+        line(warn, ICON_FA_TRIANGLE_EXCLAMATION, "No name yet: it is still called " + n.name);
+    else
+        line(ok, ICON_FA_CHECK, "Named \"" + rune_title(n) + "\"");
+    const bool placeable = n.glyph == "contact" || n.glyph == "organization" || n.glyph == "event" ||
+                           n.glyph == "incident" || n.glyph == "note";
+    if (placeable) {
+        if (!view_geo(n, active_channel).empty()) line(ok, ICON_FA_CHECK, "On the map");
+        else line(info, ICON_FA_CIRCLE_INFO, "Not on the map");
+    }
+    if (share_now && !share_now(n)) {
+        line(info, ICON_FA_LOCK, "Private: stays on this device, never sent to members");
+    } else if (lan) {
+        const LanRuntime& rt = LanRuntime::of(*this);
+        int members = 0;
+        for (const auto& row : rt.member_rows)
+            if (auto l = row.find("left"); l == row.end() || l->second.empty()) ++members;
+        const int here = (int)rt.present.size();
+        if (members == 0 && !rt.sharing)
+            line(info, ICON_FA_CIRCLE_INFO, "This database is not shared with anyone");
+        else
+            line(ok, ICON_FA_USERS,
+                 "Goes to the database's members as they connect (" + std::to_string(here) + " here now)");
+    } else {
+        line(info, ICON_FA_CIRCLE_INFO, "This database is not shared with anyone");
+    }
 }

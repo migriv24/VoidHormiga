@@ -181,6 +181,8 @@ void LanRuntime::net_tick(HormigaApp& app, double now) {
         for (auto& o : outgoing) {
             auto it = rt.link_io.find(o.link);
             if (it == rt.link_io.end() || !it->second.carrying) { ++dropped; continue; }
+            if (std::getenv("HORMIGA_SYNC_TRACE"))
+                std::fprintf(stderr, "[sync] frame of %zu bytes to %s\n", o.frame.size(), o.link.c_str());
             it->second.out.push_back(std::move(o.frame));
         }
     }

@@ -116,8 +116,8 @@ decision, with its reason; **later** is wanted and not built.
 | "On this map" list | **adapted** | the sheet's resting state, nearest first |
 | marker menu: centre, icon, colour, shape, remove from map, delete | **built** | in the sheet; *Take off the map* and *Delete* both offer UNDO |
 | shift-click / box select, batch panel | **left out** | a multi-selection on a 6-inch screen is a desktop job; the phone does one thing at a time. Retagging many is the Data screen's or the desktop's |
-| views as layers (eye toggle, ghosted layers) | **adapted** | *Views and base map* switches the active view and toggles the others' visibility; ghosted layers are not drawn on the phone yet (**later**) |
-| creating views, unlocking channels, per-view layer opacity | **left out** | configuration; desktop |
+| layers (2026-10-05: views became layers) | **built** | *Layers*: the desktop panel at a finger's size. The same stack top first, an eye each, tap a row to edit that layer, arrows to reorder (renumbered 0..n-1, the desktop's rule), *New layer on top* at the phone's own camera; the edited layer's name, opacity and brightness under others, own positions, labels, delete (UNDO); the base map as the bottom row, with its source, brightness and fade. The other visible layers are drawn ghosted underneath, in their own positions, colours, opacity and brightness; a hidden layer or a layer's `filter` hides its markers, as on the desktop |
+| Actions (export, home view, map block) | **left out** | the author: not on the phone yet |
 | per-view position channels | **built** | the phone reads and writes the active view's channel, as the desktop does |
 | rule editor, rule audit, match counts, conflicts | **left out** | configuration; desktop |
 | map config (labels on/off, label size, colour) | **adapted** | labels on/off from the phone; size and colour read |
@@ -243,8 +243,8 @@ time before becoming a press (it may be a quick zoom).
 
 `src/phone/phone_map.cpp` (the canvas: tiles, markers, clusters, location,
 gestures, the floating controls), `src/phone/phone_map_sheet.cpp` (the bottom
-sheet, and the map's own screens: search, put something saved here, views and
-base map), `src/phone/phone_map.hpp` (their shared state, `MapUi`).
+sheet, and the map's own screens: search, put something saved here, layers and
+the base map), `src/phone/phone_map.hpp` (their shared state, `MapUi`).
 `src/gis/marker.hpp` and `src/gis/view.hpp` are the engine's: the outline and
 the continuous viewport, both tested in `gis_smoke`. The desktop's half is
 `marker_look` and `draw_marker_shape` (`app/app_internal.hpp`, `app_shared.cpp`).
@@ -257,6 +257,6 @@ The phone harness learned `dtap`, `tap2`, `qzoom`, `holddrag` and `location`.
   stand-in location granted and refused). Nothing has run on a phone, so the
   first real GPS fix, the system prompt, the tile download over Android's HTTP
   and the feel of the gestures are the author's to judge on 0.1.11.
-- Ghosted layers of other visible views; polygons; sharing a map picture;
+- Polygons; sharing a map picture;
   geocoding; image markers (all in the table above).
 - Q100 to Q102 in [developer questions](/developer_questions.md).

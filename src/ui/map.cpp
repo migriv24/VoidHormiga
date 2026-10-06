@@ -255,168 +255,23 @@ void HormigaApp::draw_rule_editor() {
     ImGui::End();
 }
 
-/* MANAGE VIEWS — list, rename, delete, and the LOCK story: a view's channel
- * names its position set; channel "main" = locked to main (the default);
- * "Unlock" gives it its own channel (copy-on-write: nothing is copied until
- * something is actually moved there); "Lock to main" rejoins (its own
- * positions stay stored but dormant). */
-void HormigaApp::draw_manage_views() {
-    if (!show_manage_views) return;
-    ImGui::SetNextWindowSize(ImVec2(430, 0), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Manage views", &show_manage_views)) {
-        ImGui::TextDisabled("a view = camera + rules + a position channel;\n"
-                            "views on the SAME channel move together (locked)");
-
-        // ── the BASE MAP row (author #3): the shared foundation every view
-        // draws over ("for us, google maps"). Its source (labeled / no-labels)
-        // and color treatment are GLOBAL config — one base map, many views. ──
-        ImGui::SeparatorText("Base map (shared by all views)");
-        int bsi = std::clamp(basemap_src, 0, kBaseSourceCount - 1);
-        ImGui::SetNextItemWidth(240);
-        if (ImGui::BeginCombo("##basesrc", kBaseSources[bsi].label)) {
-            for (int i = 0; i < kBaseSourceCount; ++i)
-                if (ImGui::Selectable(kBaseSources[i].label, i == bsi)) {
-                    basemap_src = i;
-                    dispatch_and_reproject(std::string("config set ui.basemap \"") +
-                                           kBaseSources[i].key + "\"");
-                }
-            ImGui::EndCombo();
-        }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("raster tiles bake labels/icons into the pixels -\n"
-                              "a 'no labels' base is a different tile SOURCE,\n"
-                              "not a filter. Pick a label-free style to quiet\n"
-                              "the map (author: 'turn off base map text/icons')");
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Adjust##base")) ImGui::OpenPopup("##baseadjust");
-        if (ImGui::BeginPopup("##baseadjust")) {
-            ImGui::TextDisabled("calm a busy base map (markers stay crisp)");
-            // sliders edit the MEMBER directly (persists across frames — the
-            // snap-back fix) and preview LIVE; the config-set lands on release
-            ImGui::SetNextItemWidth(160);
-            ImGui::SliderFloat("Brightness", &basemap_brightness, 0.3f, 1.0f,
-                               "%.2f");
-            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                char b[56];
-                std::snprintf(b, sizeof b,
-                              "config set ui.basemap_brightness \"%.2f\"",
-                              basemap_brightness);
-                pending_cmds.push_back(b);
-            }
-            ImGui::SetNextItemWidth(160);
-            ImGui::SliderFloat("Fade (desaturate)", &basemap_fade, 0.0f, 1.0f,
-                               "%.2f");
-            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                char b[56];
-                std::snprintf(b, sizeof b, "config set ui.basemap_fade \"%.2f\"",
-                              basemap_fade);
-                pending_cmds.push_back(b);
-            }
-            ImGui::TextDisabled("hue/contrast/true-saturation need a tile shader\n"
-                                "(a noted future ask) - these cover 'too busy'");
-            ImGui::EndPopup();
-        }
-
-        ImGui::SeparatorText("Views (layers, top draws last)");
-        int vi = 0;
-        for (const auto& n : scene.nodes) {
-            if (n.glyph != "map") continue;
-            ImGui::PushID(++vi);
-            bool active = (n.name == map_sel);
-            // layer visibility (art-program style): the eye checkbox
-            bool vis = hormiga::temper::field_value(n, "visible") != "0";
-            if (ImGui::Checkbox("##vis", &vis))
-                pending_cmds.push_back("set " + n.name + " visible \"" +
-                                       (vis ? "1" : "0") + "\"");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("layer visibility: shown views composite\n"
-                                  "on the map (ghosted); the active view is\n"
-                                  "the one you edit");
-            ImGui::SameLine();
-            if (ImGui::RadioButton(n.name.c_str(), active)) map_sel = n.name;
-            std::string ch = hormiga::temper::field_value(n, "channel");
-            if (ch.empty()) ch = "main";
-            ImGui::SameLine(215);
-            if (ch == "main") {
-                ImGui::TextDisabled("locked");
-                ImGui::SameLine(280);
-                if (ImGui::SmallButton("Unlock"))
-                    pending_cmds.push_back("set " + n.name + " channel \"" +
-                                           n.name + "\"");
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("own positions (copy-on-write: entities\n"
-                                      "stay where main has them until you move\n"
-                                      "them IN this view)");
-            } else {
-                ImGui::TextDisabled("own ch.");
-                ImGui::SameLine(280);
-                if (ImGui::SmallButton("Lock"))
-                    pending_cmds.push_back("set " + n.name + " channel \"main\"");
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("rejoin main's positions (this view's own\n"
-                                      "positions stay stored, dormant)");
-            }
-            ImGui::SameLine();
-            // per-view LAYER treatment (author #3): how this view looks as a
-            // ghosted layer under another. Stored on the view rune.
-            if (ImGui::SmallButton("Adjust")) ImGui::OpenPopup("##layeradjust");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("layer look when this view shows UNDER another\n"
-                                  "(opacity + brightness of its ghosted markers)");
-            if (ImGui::BeginPopup("##layeradjust")) {
-                ImGui::TextDisabled("%s as a ghosted layer", n.name.c_str());
-                float op, lb;
-                ImGui::SetNextItemWidth(150);
-                if (slider_field("Opacity", view_layer_opacity(&n), 0.05f, 1.0f,
-                                 "%.2f", &op)) {
-                    char b[48];
-                    std::snprintf(b, sizeof b, "%.2f", op);
-                    pending_cmds.push_back("set " + n.name + " layer_opacity \"" +
-                                           b + "\"");
-                }
-                ImGui::SetNextItemWidth(150);
-                if (slider_field("Brightness", view_layer_brightness(&n), 0.3f,
-                                 1.5f, "%.2f", &lb)) {
-                    char b[48];
-                    std::snprintf(b, sizeof b, "%.2f", lb);
-                    pending_cmds.push_back("set " + n.name + " layer_brightness \"" +
-                                           b + "\"");
-                }
-                ImGui::EndPopup();
-            }
-            ImGui::SameLine();
-            if (ImGui::SmallButton("PNG")) export_map_png(n.name);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("export this view at the CURRENT camera as a\n"
-                                  "PNG (exports/ folder) - for newsletters,\n"
-                                  "the website, or anywhere");
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Delete")) {
-                pending_cmds.push_back("rm " + n.name);
-                if (active) map_sel.clear();
-            }
-            ImGui::PopID();
-        }
-        if (vi == 0) ImGui::TextDisabled("no views yet - use \"New view\"");
-        ImGui::Separator();
-        ImGui::TextDisabled("rename a view: select it in Data and edit its name");
-    }
-    ImGui::End();
-}
-
 // ── map creation + placement (all through the dispatcher) ───────────────────
 
-void HormigaApp::map_new_earth() {
-    std::string name;
-    for (int i = 1;; ++i) {
-        name = "earth-map" + std::string(i > 1 ? "-" + std::to_string(i) : "");
-        if (!scene.find(name)) break;
+/* A NEW LAYER (2026-10-05; it was "New Earth map" / "New view"). A layer is a
+ * `map` rune: a name, a place in the stack, its own style rules, and the
+ * position channel it reads (new layers share main's positions). It goes on
+ * top, and becomes the layer being edited. Device-scoped name, so two devices
+ * adding a layer at once never mint the same one. */
+void HormigaApp::map_new_earth(double lat, double lon, int zoom) {
+    const std::string name = mint_name("layer");
+    int top = 0, count = 0;
+    for (const auto* l : map_layers()) {
+        top = std::max(top, std::atoi(hormiga::temper::field_value(*l, "order").c_str()));
+        ++count;
     }
     char center[64];
-    std::snprintf(center, sizeof center, "%.5f,%.5f", (double)map_cam.y,
-                  (double)map_cam.x);
-    // default STYLE RULES (named, v2): kinds read at a glance out of the box;
-    // edit or remove them in the map panel / Rule Editor
+    std::snprintf(center, sizeof center, "%.5f,%.5f", lat, lon); // the phone passes its own camera
+    // default STYLE RULES: kinds read at a glance out of the box
     const char* default_rules =
         R"([{"name":"people","tags":["type:contact"],"icon":"user","color":""},)"
         R"({"name":"organizations","tags":["type:organization"],"icon":"house","color":""},)"
@@ -424,14 +279,28 @@ void HormigaApp::map_new_earth() {
         R"({"name":"incidents","tags":["type:incident"],"icon":"warning","color":"red"}])";
     pending_cmds.push_back(maiz::compile_commit(
         {"rune new map " + name, "set " + name + " source \"osm\"",
+         "set " + name + " title " + json_str("Layer " + std::to_string(count + 1)),
+         "set " + name + " order \"" + std::to_string(count ? top + 1 : 0) + "\"",
          "set " + name + " center " + json_str(center),
-         "set " + name + " zoom \"" + std::to_string((int)map_cam.zoom) + "\"",
-         "set " + name + " channel \"main\"", // new views start LOCKED to main
+         "set " + name + " zoom \"" + std::to_string(zoom) + "\"",
+         "set " + name + " channel \"main\"", // new layers share main's positions
          "setjson " + name + " rules " + json_arg(default_rules),
          "tag " + name + " +type:map"}));
     map_sel = name;
-    toast("created view " + name + " - locked to main positions; Manage views "
-          "to unlock");
+    toast("added a layer on top - it is the one you are editing now");
+}
+
+/* The layers, bottom to top: by `order`, then as the scene has them (a layer
+ * made before `order` existed sits where it always did). */
+std::vector<const maiz::SceneNode*> HormigaApp::map_layers() const {
+    std::vector<const maiz::SceneNode*> out;
+    for (const auto& n : scene.nodes)
+        if (n.glyph == "map") out.push_back(&n);
+    std::stable_sort(out.begin(), out.end(), [](const maiz::SceneNode* a, const maiz::SceneNode* b) {
+        return std::atoi(hormiga::temper::field_value(*a, "order").c_str()) <
+               std::atoi(hormiga::temper::field_value(*b, "order").c_str());
+    });
+    return out;
 }
 
 void HormigaApp::map_place_new(const char* glyph) {
@@ -581,72 +450,78 @@ void HormigaApp::draw_map_section() {
             map_cam = saved;
     }
 
-    // the database's maps (one db, many maps — each map is a rune)
-    std::vector<const maiz::SceneNode*> maps;
-    for (const auto& n : scene.nodes)
-        if (n.glyph == "map") maps.push_back(&n);
+    /* ── THE MAP IS A DRAWING APPLICATION'S WINDOWS (2026-10-05) ─────────────
+     *
+     * The author: remove the top bar ("new view", "manage views", "draw
+     * shape", the dropdown) and keep "just the search bar and filters"; the
+     * views become LAYERS, "like layers in a drawing application", managed in a
+     * window of their own; the inspector gets "mini tabs": the inspector, a map
+     * overview, the layers, and the map's actions (exporting), "similar to how
+     * we restructured the builder with windows". So, as the Builder does, this
+     * tab hosts its own dockspace: the canvas, and four windows docked as tabs
+     * beside it, each one free to be torn off, floated or re-docked, the
+     * arrangement remembered in imgui.ini. The drawing tools and the zoom live
+     * ON the canvas, where a drawing application keeps them. */
+    const std::vector<const maiz::SceneNode*> maps = map_layers();
     const maiz::SceneNode* cur = nullptr;
     for (auto* m : maps)
         if (m->name == map_sel) cur = m;
-    if (!cur && !maps.empty()) { cur = maps[0]; map_sel = cur->name; }
+    if (!cur && !maps.empty()) { cur = maps.back(); map_sel = cur->name; } // the top layer
 
-    // ── toolbar: views (a view = camera + rules + a position channel) ───────
-    if (ImGui::SmallButton("New view")) map_new_earth();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("a fresh view over the base map (Settings > Base map).\n"
-                          "New views start LOCKED to main's positions; unlock\n"
-                          "in Manage views for view-specific placement");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Manage views")) show_manage_views = true;
-    ImGui::SameLine();
-    // #3: the shape DRAW tool — arm rect/ellipse, then drag on the map
-    if (map_draw_shape) ImGui::PushStyleColor(ImGuiCol_Button,
-                                              ImVec4(0.18f, 0.42f, 0.30f, 1));
-    if (ImGui::SmallButton(map_draw_shape ? "Drawing… (Esc)" : "Draw shape"))
-        ImGui::OpenPopup("##drawshape");
-    if (map_draw_shape) ImGui::PopStyleColor();
-    if (ImGui::BeginPopup("##drawshape")) {
-        ImGui::TextDisabled("drag on the map to draw an annotation");
-        if (ImGui::MenuItem("Rectangle")) map_draw_shape = 1;
-        if (ImGui::MenuItem("Ellipse")) map_draw_shape = 2;
-        if (map_draw_shape && ImGui::MenuItem("Stop drawing")) map_draw_shape = 0;
-        ImGui::EndPopup();
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("draw a rectangle/ellipse over the map - it's a rune,\n"
-                          "colored by the same rules/tags as markers; can bestow\n"
-                          "a tag on entities inside it");
-    ImGui::SameLine();
-    if (!maps.empty()) {
-        ImGui::SetNextItemWidth(180);
-        if (ImGui::BeginCombo("##mapsel", map_sel.c_str())) {
-            for (auto* m : maps)
-                if (ImGui::Selectable(m->name.c_str(), m->name == map_sel))
-                    map_sel = m->name;
-            ImGui::EndCombo();
+#ifdef IMGUI_HAS_DOCK
+    {
+        const ImGuiID dock = ImGui::GetID("map-dock");
+        if (ImGui::DockBuilderGetNode(dock) == nullptr) { // seeded once; a person's own layout wins after
+            ImVec2 size = ImGui::GetContentRegionAvail();
+            if (size.x < 200.0f || size.y < 150.0f) size = ImVec2(1200.0f, 800.0f);
+            ImGui::DockBuilderAddNode(dock, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dock, size);
+            ImGuiID c = dock;
+            const ImGuiID right = ImGui::DockBuilderSplitNode(c, ImGuiDir_Right, 0.30f, nullptr, &c);
+            for (const char* w : {"Inspector##map", "Overview##map", "Layers##map", "Actions##map"})
+                ImGui::DockBuilderDockWindow(w, right);
+            ImGui::DockBuilderDockWindow("Map##canvas", c);
+            ImGui::DockBuilderFinish(dock);
         }
-        ImGui::SameLine();
-        if (active_channel != "main") {
-            ImGui::TextColored(ImVec4(0.55f, 0.4f, 0.75f, 1), "[own positions]");
-            ImGui::SameLine();
-        }
+        ImGui::DockSpace(dock, ImVec2(0, 0));
     }
-    // database search (LOCAL, not geocoding): find any rune, see whether it
-    // has a location; located → jump to it, unlocated → arm click-to-place
-    ImGui::SetNextItemWidth(210);
-    ImGui::InputTextWithHint("##mapsearch", "search the database...", map_search,
+#endif
+
+    ImGui::Begin("Map##canvas", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    // ── the one bar: search the database, and filter what the map shows ──────
+    ImGui::SetNextItemWidth(std::min(260.0f, ImGui::GetContentRegionAvail().x * 0.4f));
+    ImGui::InputTextWithHint("##mapsearch", ICON_FA_MAGNIFYING_GLASS "  find...  @tag  type:event", map_search,
                              sizeof map_search);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("find anything in the database: words match names and titles;\n"
+                          "@tag or type:event match tags; -@tag excludes.\n"
+                          "Placed: jump to it. Not placed yet: click the map to put it there.");
     ImVec2 srch_min = ImGui::GetItemRectMin(), srch_max = ImGui::GetItemRectMax();
     ImGui::SameLine();
-    int located = 0;
-    for (const auto& n : scene.nodes)
-        for (const auto& t : n.tags)
-            if (t == "located") { ++located; break; }
-    ImGui::TextDisabled("%d located | drag: pan | wheel: zoom | right-click: place",
-                        located);
+    ImGui::SetNextItemWidth(std::min(240.0f, ImGui::GetContentRegionAvail().x * 0.45f));
+    ImGui::InputTextWithHint("##mapfilter", ICON_FA_FILTER "  show only...  @volunteer  -type:note", map_filter,
+                             sizeof map_filter);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("filter the map: only what matches is drawn\n"
+                          "(the same grammar as every search bar)");
+    if (map_filter[0]) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton("clear##mapfilter")) map_filter[0] = 0;
+    }
+    ImGui::SameLine();
+    {
+        int located = 0, shown = 0;
+        for (const auto& n : scene.nodes)
+            if (std::find(n.tags.begin(), n.tags.end(), "located") != n.tags.end()) {
+                ++located;
+                if (search_match(n, map_filter)) ++shown;
+            }
+        if (map_filter[0]) ImGui::TextDisabled("%d of %d shown", shown, located);
+        else ImGui::TextDisabled("%d on the map", located);
+    }
     if (map_search[0]) {
         ImGui::SetNextWindowPos(ImVec2(srch_min.x, srch_max.y + 4));
-        ImGui::SetNextWindowSize(ImVec2(320, 0));
+        ImGui::SetNextWindowSize(ImVec2(340, 0));
         ImGui::Begin("##map-search-results", nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                          ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
@@ -655,10 +530,10 @@ void HormigaApp::draw_map_section() {
         int shown = 0;
         for (const auto& node : scene.nodes) {
             if (node.glyph == "map" || node.glyph == "image") continue;
-            if (!contains_ci(node.name, map_search)) continue;
+            if (!search_match(node, map_search)) continue;
             if (++shown > 8) { ImGui::TextDisabled("(keep typing...)"); break; }
-            std::string g = hormiga::temper::field_value(node, "geo");
-            std::string lbl = node.name + "  (" + node.glyph + ")";
+            std::string g = view_geo(node, active_channel);
+            std::string lbl = rune_title(node) + "  (" + node.glyph + ")##" + node.name;
             if (ImGui::Selectable(lbl.c_str())) {
                 double la, lo;
                 if (!g.empty() && hormiga::parse_geo(g, la, lo)) {
@@ -675,39 +550,39 @@ void HormigaApp::draw_map_section() {
             }
             ImGui::Indent(10);
             if (!g.empty())
-                ImGui::TextDisabled("at %s", g.c_str());
+                ImGui::TextDisabled("on the map");
             else
                 ImGui::TextColored(ImVec4(0.75f, 0.45f, 0.25f, 1),
-                                   "no spatial location - click to place");
+                                   "not on the map yet - click to place");
             ImGui::Unindent(10);
         }
-        if (shown == 0) ImGui::TextDisabled("no matches");
+        if (shown == 0) ImGui::TextDisabled("nothing matches");
         ImGui::End();
     }
 
     if (!cur) {
         ImGui::Spacing();
-        ImGui::TextWrapped(
-            "No maps yet. \"New Earth map\" creates one over OpenStreetMap "
-            "tiles. A database can hold many maps; the base is a SOURCE "
-            "(okf/concepts/sections/gis/territory.md - not assumed Earth: an image source "
-            "renders a floor plan or a fantasy world the same way).");
+        ImGui::TextWrapped("No layers yet. A map is a stack of layers over a base map: each "
+                           "layer has its own colours and rules, and can be shown, hidden and "
+                           "exported (okf/concepts/sections/gis/).");
+        if (ImGui::Button(ICON_FA_LAYER_GROUP "  Start with one layer")) map_new_earth(map_cam.y, map_cam.x, (int)map_cam.zoom);
+        ImGui::End();
+        draw_map_panels();
         return;
     }
 
-    // ── layout: canvas | splitter | inspector ───────────────────────────────
-    float body_h = ImGui::GetContentRegionAvail().y;
-    ImVec2 area = ImGui::GetContentRegionAvail();
-    const float th = 6.0f;
-    float main_w = std::max(160.0f, (area.x - th) * canvas_frac);
-
-    ImGui::BeginChild("map-canvas", ImVec2(main_w, body_h), ImGuiChildFlags_None,
+    ImGui::BeginChild("map-canvas", ImVec2(0, 0), ImGuiChildFlags_None,
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     maiz::presence_focus_if_active(surfaces, "map");  // inside the window it asks about
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImGui::GetCursorScreenPos();
     ImVec2 sz = ImGui::GetContentRegionAvail();
-    if (sz.x < 16 || sz.y < 16) { ImGui::EndChild(); return; } // collapsed pane
+    if (sz.x < 16 || sz.y < 16) { // collapsed pane
+        ImGui::EndChild();
+        ImGui::End();
+        draw_map_panels();
+        return;
+    }
     ImVec2 ctr(p0.x + sz.x * 0.5f, p0.y + sz.y * 0.5f);
     int z = std::clamp((int)std::lround(map_cam.zoom), 3, 19);
     double cx = merc_x(map_cam.x, z), cy = merc_y(map_cam.y, z); // center tile
@@ -836,6 +711,14 @@ void HormigaApp::draw_map_section() {
         if (!ch.empty()) active_channel = ch;
         active_rules = parse_view_rules(*cur);
     }
+    /* WHAT THIS LAYER DRAWS: everything placed, unless the filter bar narrows
+     * it (any layer), the layer's own `filter` keeps only what it holds (a tag
+     * query; no UI for it yet, by the author's choice), or its eye is shut. */
+    const std::string layer_filter = hormiga::temper::field_value(*cur, "filter");
+    const bool layer_hidden = hormiga::temper::field_value(*cur, "visible") == "0";
+    auto drawn_in = [&](const maiz::SceneNode& n, const std::string& lf) {
+        return search_match(n, map_filter) && (lf.empty() || maiz::node_matches(lf, n));
+    };
     bool show_labels = view_show_labels(cur);   // map config (#6)
     float label_scale = view_label_scale(cur);
     bool no_overlap = view_no_overlap(cur);     // labels dodge each other
@@ -856,6 +739,7 @@ void HormigaApp::draw_map_section() {
     std::vector<Located> located_nodes;
     for (const auto& node : scene.nodes) {
         if (node.glyph == "refpoint") continue; // gizmos drawn separately
+        if (layer_hidden || !drawn_in(node, layer_filter)) continue;
         double la, lo;
         ImVec2 s;
         auto fit = fans.find(node.name);
@@ -946,7 +830,9 @@ void HormigaApp::draw_map_section() {
             return IM_COL32(std::min(r, 255), std::min(g, 255), std::min(b, 255),
                             la8);
         };
+        const std::string vfilter = hormiga::temper::field_value(*v, "filter");
         for (const auto& node : scene.nodes) {
+            if (!drawn_in(node, vfilter)) continue;
             std::string g = view_geo(node, vch);
             double la, lo;
             if (g.empty() || !hormiga::parse_geo(g, la, lo)) continue;
@@ -1374,47 +1260,15 @@ void HormigaApp::draw_map_section() {
                 }
                 ImGui::EndMenu();
             }
-            // bestow a tag on entities inside (materialize the spatial relation)
-            static char bestow_buf[48];
-            std::string cur_bestow = hormiga::temper::field_value(*sp, "bestows");
-            ImGui::TextDisabled("bestows tag: %s",
-                                cur_bestow.empty() ? "(none)" : cur_bestow.c_str());
-            ImGui::SetNextItemWidth(120);
-            if (ImGui::InputTextWithHint("##bestow", "tag to bestow", bestow_buf,
-                                         sizeof bestow_buf,
-                                         ImGuiInputTextFlags_EnterReturnsTrue) &&
-                bestow_buf[0]) {
-                pending_cmds.push_back("set " + sp->name + " bestows \"" +
-                                       bestow_buf + "\"");
-                bestow_buf[0] = 0;
-            }
-            if (!cur_bestow.empty() &&
-                ImGui::MenuItem("Apply tag to entities inside now")) {
-                // materialize: point-in-bbox → tag each contained entity
-                double la1, lo1, la2, lo2;
-                if (hormiga::parse_geo(hormiga::temper::field_value(*sp, "geo1"),
-                                       la1, lo1) &&
-                    hormiga::parse_geo(hormiga::temper::field_value(*sp, "geo2"),
-                                       la2, lo2)) {
-                    // one containment test with the tag editor (domain/bestow.hpp),
-                    // which also stops an ellipse reaching its bounding box's corners
-                    std::vector<std::string> cmds;
-                    for (const auto& en : scene.nodes) {
-                        if (en.glyph == "mapshape" || en.glyph == "map") continue;
-                        double ela, elo;
-                        std::string eg = view_geo(en, active_channel);
-                        if (eg.empty() || !hormiga::parse_geo(eg, ela, elo)) continue;
-                        if (hormiga::bestow::shape_contains(*sp, ela, elo))
-                            cmds.push_back("tag " + en.name + " +" + cur_bestow);
-                    }
-                    if (!cmds.empty()) {
-                        pending_cmds.push_back(maiz::compile_commit(cmds));
-                        toast("bestowed @" + cur_bestow + " on " +
-                              std::to_string(cmds.size()) + " entities inside");
-                    } else {
-                        toast("no entities inside this shape", true);
-                    }
-                }
+            // the tags it gives: a chip editor in the Inspector (the registry's
+            // "bestow" editor), never a raw string in a menu (2026-10-05)
+            {
+                const auto gives = hormiga::bestow::bestowed_tags(*sp);
+                std::string what;
+                for (const auto& t : gives) what += (what.empty() ? "" : ", ") + t;
+                if (ImGui::MenuItem((std::string(ICON_FA_GIFT "  Tags it gives") +
+                                     (what.empty() ? "..." : ": " + what)).c_str()))
+                    ed.selection = {sp->name}; // the Inspector shows its editor
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Delete shape")) {
@@ -1469,320 +1323,63 @@ void HormigaApp::draw_map_section() {
         }
         ImGui::EndPopup();
     }
+    if (layer_hidden)
+        dl->AddText(ImVec2(p0.x + 60, p0.y + 12), IM_COL32(150, 60, 40, 255),
+                    ICON_FA_EYE_SLASH "  this layer is hidden - its eye is in Layers");
+
+    /* ── ON THE CANVAS: the tools and the zoom (2026-10-05) ─────────────────
+     * Where a drawing application keeps them: a strip of tools at the left
+     * edge (select, rectangle, ellipse) and + / - at the bottom right (the
+     * author's ask 1: a wheel is not the only way to zoom). Each is a small
+     * child window, so a click on one is never a click on the map under it. */
+    {
+        const float b = ImGui::GetFrameHeight() * 1.2f;
+        const ImGuiChildFlags cf = ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AutoResizeX |
+                                   ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1, 1, 1, 0.92f));
+        ImGui::SetCursorScreenPos(ImVec2(p0.x + 8, p0.y + 8));
+        ImGui::BeginChild("##map-tools", ImVec2(0, 0), cf, ImGuiWindowFlags_NoScrollbar);
+        auto tool = [&](const char* icon, const char* tip, int which) {
+            const bool on = map_draw_shape == which;
+            if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.42f, 0.30f, 1));
+            if (on) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+            ImGui::PushID(which);
+            if (ImGui::Button(icon, ImVec2(b, b))) map_draw_shape = which;
+            ImGui::PopID();
+            if (on) ImGui::PopStyleColor(2);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
+        };
+        tool(ICON_FA_ARROW_POINTER, "Select and move\n(drag the map to pan; right-click to add)", 0);
+        tool(ICON_FA_VECTOR_SQUARE, "Draw a rectangle: drag across the map (Esc stops)", 1);
+        tool(ICON_FA_CIRCLE, "Draw an ellipse: drag across the map (Esc stops)", 2);
+        ImGui::EndChild();
+        ImGui::SetCursorScreenPos(ImVec2(p0.x + sz.x - b - 18, p0.y + sz.y - 2 * b - 34));
+        ImGui::BeginChild("##map-zoom", ImVec2(0, 0), cf, ImGuiWindowFlags_NoScrollbar);
+        auto step = [&](int dz) {
+            const int nz2 = std::clamp((int)std::lround(map_cam.zoom) + dz, 3, 19);
+            if (nz2 != (int)std::lround(map_cam.zoom)) {
+                map_cam.zoom = (float)nz2; // about the centre: the centre is the camera
+                pending_cmds.push_back(maiz::compile_camera(map_cam, "view.map.camera"));
+            }
+        };
+        ImGui::BeginDisabled(z >= 19);
+        if (ImGui::Button(ICON_FA_PLUS, ImVec2(b, b))) step(+1);
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("zoom in");
+        ImGui::BeginDisabled(z <= 3);
+        if (ImGui::Button(ICON_FA_MINUS, ImVec2(b, b))) step(-1);
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("zoom out");
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
+    }
     dl->PopClipRect();
     ImGui::EndChild();
-
-    ImGui::SameLine(0, 0);
-    auto vs = maiz::splitter("##map-vsplit", true, canvas_frac, area.x - th, 0.4f,
-                             0.92f, th, body_h);
-    ImGui::SameLine(0, 0);
-    ImGui::BeginChild("map-inspector", ImVec2(0, body_h));
-    bool have_sel = !ed.selection.empty() && scene.find(ed.selection.front());
-    if (ed.selection.size() > 1) {
-        // ── MULTI-SELECT (box/shift, author #2): act on the whole set at once ─
-        if (ImGui::SmallButton("< back to map list")) ed.selection.clear();
-        ImGui::SameLine();
-        ImGui::Text("%d selected", (int)ed.selection.size());
-        ImGui::Separator();
-        for (const auto& nm : ed.selection) {
-            const maiz::SceneNode* n = scene.find(nm);
-            ImGui::BulletText("%s%s", nm.c_str(),
-                              n ? ("  (" + n->glyph + ")").c_str() : "");
-        }
-        ImGui::Spacing();
-        ImGui::TextDisabled("apply to all selected:");
-        // tag every selected entity (the reusable tag picker, #4)
-        std::string t = tag_picker("##multitag", tag_pick_input, sizeof tag_pick_input,
-                                   "tag all selected...");
-        if (!t.empty())
-            for (const auto& nm : ed.selection)
-                pending_cmds.push_back("tag " + nm + " +" + t);
-        // color/icon submenus via a small popup
-        if (ImGui::Button("Color all")) ImGui::OpenPopup("##multicolor");
-        ImGui::SameLine();
-        if (ImGui::Button("Icon all")) ImGui::OpenPopup("##multiicon");
-        ImGui::SameLine();
-        if (ImGui::Button("Remove from map")) {
-            std::string fld = geo_field_for(active_channel);
-            for (const auto& nm : ed.selection) {
-                std::vector<std::string> c = {"set " + nm + " " + fld + " \"\""};
-                if (fld == "geo") c.push_back("tag " + nm + " -located");
-                pending_cmds.push_back(maiz::compile_commit(c));
-            }
-            ed.selection.clear();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Delete all")) {
-            for (const auto& nm : ed.selection) pending_cmds.push_back("rm " + nm);
-            ed.selection.clear();
-        }
-        if (ImGui::BeginPopup("##multicolor")) {
-            for (const auto& c : kMarkerColors) {
-                ImGui::PushStyleColor(ImGuiCol_Text,
-                                      ImGui::ColorConvertU32ToFloat4(c.col));
-                bool pick = ImGui::MenuItem(c.tag);
-                ImGui::PopStyleColor();
-                if (pick)
-                    for (const auto& nm : ed.selection) {
-                        const maiz::SceneNode* n = scene.find(nm);
-                        std::string cur = n ? tag_value(*n, "color") : "";
-                        std::string cmd = "tag " + nm;
-                        if (!cur.empty()) cmd += " -color:" + cur;
-                        cmd += " +color:" + std::string(c.tag);
-                        pending_cmds.push_back(cmd);
-                    }
-            }
-            ImGui::EndPopup();
-        }
-        if (ImGui::BeginPopup("##multiicon")) {
-            for (const auto& ic : kMarkerIcons) {
-                std::string lbl = std::string(ic.glyph) + "  " + ic.label;
-                if (ImGui::MenuItem(lbl.c_str()))
-                    for (const auto& nm : ed.selection) {
-                        const maiz::SceneNode* n = scene.find(nm);
-                        std::string cur = n ? tag_value(*n, "icon") : "";
-                        std::string cmd = "tag " + nm;
-                        if (!cur.empty()) cmd += " -icon:" + cur;
-                        cmd += " +icon:" + std::string(ic.tag);
-                        pending_cmds.push_back(cmd);
-                    }
-            }
-            ImGui::EndPopup();
-        }
-    } else if (have_sel) {
-        if (ImGui::SmallButton("< back to map list")) ed.selection.clear();
-        ImGui::Separator();
-        maiz::CanvasIO iio = maiz::draw_inspector(scene, ed, &widgets);
-        for (const auto& cmd : iio.commands) pending_cmds.push_back(cmd);
-    } else {
-        // ── nothing selected: the map PANEL — search, everything placed,
-        // and this map's style RULES ────────────────────────────────────────
-        std::string picked = search_picker(
-            "##mappanelsearch", panel_search, sizeof panel_search,
-            [](const maiz::SceneNode& n) {
-                return n.glyph != "map" && n.glyph != "image";
-            },
-            "search this map / the database...");
-        if (!picked.empty()) {
-            const maiz::SceneNode* pn = scene.find(picked);
-            std::string g = pn ? hormiga::temper::field_value(*pn, "geo") : "";
-            double la, lo;
-            if (!g.empty() && hormiga::parse_geo(g, la, lo)) {
-                map_cam.x = (float)lo;
-                map_cam.y = (float)la;
-                if (map_cam.zoom < 15) map_cam.zoom = 15;
-                pending_cmds.push_back(
-                    maiz::compile_camera(map_cam, "view.map.camera"));
-                ed.selection = {picked};
-            } else {
-                map_place_arm = picked; // click-to-place
-            }
-        }
-        ImGui::Spacing();
-        ImGui::SeparatorText(
-            ("On this map (" + std::to_string(located_nodes.size()) + ")").c_str());
-        ImGui::BeginChild("##maplist", ImVec2(0, ImGui::GetContentRegionAvail().y *
-                                                     0.55f));
-        for (const auto& L : located_nodes) {
-            ImGui::PushID(L.node->name.c_str());
-            std::string lbl = L.node->name + "  (" + L.node->glyph + ")";
-            bool sel = ed.selected(L.node->name);
-            if (ImGui::Selectable(lbl.c_str(), sel)) {
-                map_cam.x = (float)L.lon;
-                map_cam.y = (float)L.lat;
-                pending_cmds.push_back(
-                    maiz::compile_camera(map_cam, "view.map.camera"));
-                ed.selection = {L.node->name};
-            }
-            // author #1: right-click a list row → the SAME marker menu as the map
-            if (ImGui::BeginPopupContextItem("##rowmenu"))
-                marker_menu_items(*L.node), ImGui::EndPopup();
-            ImGui::PopID();
-        }
-        if (located_nodes.empty())
-            ImGui::TextDisabled("nothing placed yet - right-click the map");
-        ImGui::EndChild();
-
-        // ── this view's RULES: named, listed with LIVE match counts + conflict
-        // flags, click-to-EDIT, right-click for the full menu, x to delete.
-        // Rules apply automatically every frame (the marker styling loop reads
-        // active_rules) — there is no separate "apply" step; adding a rule
-        // restyles the map immediately (author #5). ─────────────────────────
-        ImGui::SeparatorText("Rules (tags -> style)");
-        if (cur) {
-            bool rules_dirty = false;
-            auto stage_edit = [&](int i) { // load a rule into the editor window
-                const auto& r = active_rules[i];
-                rule_edit_idx = i;
-                std::snprintf(rule_name, sizeof rule_name, "%s", r.name.c_str());
-                rule_tags = r.tags;
-                rule_tag_input[0] = 0;
-                rule_icon = 0;
-                for (int ii = 0; ii < (int)(sizeof kMarkerIcons /
-                                            sizeof kMarkerIcons[0]); ++ii)
-                    if (r.icon == kMarkerIcons[ii].tag) rule_icon = ii + 1;
-                rule_color = 0;
-                for (int ci = 0; ci < (int)(sizeof kMarkerColors /
-                                            sizeof kMarkerColors[0]); ++ci)
-                    if (r.color == kMarkerColors[ci].tag) rule_color = ci + 1;
-                rule_shape = 0;
-                for (int si = 0; si < (int)(sizeof kMarkerShapes /
-                                            sizeof kMarkerShapes[0]); ++si)
-                    if (r.shape == kMarkerShapes[si]) rule_shape = si;
-                show_rule_editor = true;
-            };
-            // live audit: for each data entity, the FIRST matching rule wins;
-            // a later rule that also matches is SHADOWED (never styles it).
-            std::vector<int> match_count(active_rules.size(), 0);
-            std::vector<int> shadowed_by(active_rules.size(), -1);
-            for (const auto& node : scene.nodes) {
-                if (node.glyph == "map" || node.glyph == "image" ||
-                    node.glyph == "note")
-                    continue;
-                int first = -1;
-                for (size_t i = 0; i < active_rules.size(); ++i) {
-                    if (active_rules[i].tags.empty() ||
-                        !maiz::node_matches(rule_filter_expr(active_rules[i]), node))
-                        continue;
-                    if (first < 0) { first = (int)i; ++match_count[i]; }
-                    else if (shadowed_by[i] < 0) shadowed_by[i] = first;
-                }
-            }
-            for (size_t i = 0; i < active_rules.size(); ++i) {
-                ImGui::PushID((int)i);
-                if (ImGui::SmallButton("x")) {
-                    active_rules.erase(active_rules.begin() + i--);
-                    rules_dirty = true;
-                    ImGui::PopID();
-                    continue;
-                }
-                ImGui::SameLine();
-                const auto& r = active_rules[i];
-                const char* ig = nullptr;
-                for (const auto& ic : kMarkerIcons)
-                    if (r.icon == ic.tag) ig = ic.glyph;
-                ImU32 rc = IM_COL32(60, 60, 60, 255);
-                for (const auto& c : kMarkerColors)
-                    if (r.color == c.tag) rc = c.col;
-                std::string lbl = std::string(ig ? ig : "") + " " + r.name + "  [" +
-                                  rule_filter_expr(r) + "]  (" +
-                                  std::to_string(match_count[i]) + ")";
-                if (shadowed_by[i] >= 0) lbl = ICON_FA_TRIANGLE_EXCLAMATION " " + lbl;
-                ImGui::PushStyleColor(ImGuiCol_Text,
-                                      ImGui::ColorConvertU32ToFloat4(rc));
-                bool open_edit = ImGui::Selectable(lbl.c_str());
-                ImGui::PopStyleColor();
-                if (ImGui::IsItemHovered()) {
-                    if (shadowed_by[i] >= 0)
-                        ImGui::SetTooltip(
-                            "conflict: '%s' matches first and wins for some\n"
-                            "entities (first rule wins). Reorder or narrow tags.\n"
-                            "click to edit - right-click for more",
-                            active_rules[shadowed_by[i]].name.c_str());
-                    else
-                        ImGui::SetTooltip("styles %d on the map\n"
-                                          "click to edit - right-click for more",
-                                          match_count[i]);
-                }
-                if (open_edit) stage_edit((int)i);
-                if (ImGui::BeginPopupContextItem("##rulemenu")) { // author #5
-                    if (ImGui::MenuItem("Edit...")) stage_edit((int)i);
-                    if (ImGui::MenuItem("Duplicate")) {
-                        MapRule dup = r;
-                        dup.name += " copy";
-                        active_rules.insert(active_rules.begin() + i + 1, dup);
-                        rules_dirty = true;
-                    }
-                    ImGui::BeginDisabled(i == 0);
-                    if (ImGui::MenuItem("Move up (higher priority)")) {
-                        std::swap(active_rules[i], active_rules[i - 1]);
-                        rules_dirty = true;
-                    }
-                    ImGui::EndDisabled();
-                    ImGui::BeginDisabled(i + 1 >= active_rules.size());
-                    if (ImGui::MenuItem("Move down (lower priority)")) {
-                        std::swap(active_rules[i], active_rules[i + 1]);
-                        rules_dirty = true;
-                    }
-                    ImGui::EndDisabled();
-                    ImGui::Separator();
-                    if (ImGui::MenuItem("Delete")) {
-                        active_rules.erase(active_rules.begin() + i);
-                        rules_dirty = true;
-                    }
-                    ImGui::EndPopup();
-                }
-                ImGui::PopID();
-            }
-            if (ImGui::Button("+ Rule")) {
-                rule_edit_idx = -1;
-                rule_name[0] = 0;
-                rule_tags.clear();
-                rule_tag_input[0] = 0;
-                rule_icon = 0;
-                rule_color = 0;
-                rule_shape = 0;
-                show_rule_editor = true;
-            }
-            ImGui::SameLine();
-            ImGui::TextDisabled("(n) = how many it styles; " ICON_FA_TRIANGLE_EXCLAMATION
-                                " = shadowed");
-            if (rules_dirty) save_rules(cur->name);
-
-            // ── MAP CONFIG (author #6): view display knobs, stored as fields on
-            // the view rune ("internally rules"), surfaced like settings. They
-            // shape BOTH the live canvas and the PNG export so the exported
-            // image shows the labels/sizes you set. ─────────────────────────
-            ImGui::SeparatorText("Map config (this view)");
-            bool show_lbl = view_show_labels(cur);
-            if (ImGui::Checkbox("Show labels", &show_lbl))
-                pending_cmds.push_back("set " + cur->name + " show_labels \"" +
-                                       (show_lbl ? "1" : "0") + "\"");
-            float lscale;
-            ImGui::SetNextItemWidth(160);
-            if (slider_field("Label size", view_label_scale(cur), 0.6f, 2.5f,
-                             "%.2fx", &lscale)) {
-                char b[48];
-                std::snprintf(b, sizeof b, "%.2f", lscale);
-                pending_cmds.push_back("set " + cur->name + " label_scale \"" +
-                                       b + "\"");
-            }
-            bool nol = view_no_overlap(cur);
-            if (ImGui::Checkbox("No overlap (labels dodge)", &nol))
-                pending_cmds.push_back("set " + cur->name + " no_overlap \"" +
-                                       (nol ? "1" : "0") + "\"");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("labels try right/left/above/below; when\n"
-                                  "nothing fits, a label yields (markers\n"
-                                  "always draw)");
-            // label COLOR (author: "changes to font color, fonts in general")
-            std::string cur_lc = hormiga::temper::field_value(*cur, "label_color");
-            if (cur_lc.empty()) cur_lc = "dark";
-            ImGui::SetNextItemWidth(160);
-            if (ImGui::BeginCombo("Label color", cur_lc.c_str())) {
-                const char* fixed[] = {"dark", "black", "white"};
-                for (const char* f : fixed)
-                    if (ImGui::Selectable(f, cur_lc == f))
-                        pending_cmds.push_back("set " + cur->name +
-                                               " label_color \"" + f + "\"");
-                for (const auto& c : kMarkerColors) {
-                    ImGui::PushStyleColor(ImGuiCol_Text,
-                                          ImGui::ColorConvertU32ToFloat4(c.col));
-                    bool pick = ImGui::Selectable(c.tag, cur_lc == c.tag);
-                    ImGui::PopStyleColor();
-                    if (pick)
-                        pending_cmds.push_back("set " + cur->name +
-                                               " label_color \"" + c.tag + "\"");
-                }
-                ImGui::EndCombo();
-            }
-            ImGui::TextDisabled("applies to the map and its PNG export\n"
-                                "(font FAMILY choice needs vendored fonts -\n"
-                                "a noted future)");
-        }
-    }
-    ImGui::EndChild();
-    if (vs.released) flush_panels();
+    ImGui::End(); // Map##canvas
+    draw_map_panels(); // ui/map_panels.cpp
 }
 
 /* The `map` verb-macro front-end (Core's 2026-07-21 ruling made real): the

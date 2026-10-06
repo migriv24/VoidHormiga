@@ -474,6 +474,7 @@ between two computers yet** — that is the author's test.
 | a delete that raced an edit, shown with a choice | built; the conflict list is in Share database. Not yet provoked on purpose |
 | `lan-serve` / `lan-sync` | **retired** — they resurrected deletions for every peer they met |
 | roles enforced, signed changes, relay | **not built** — §8, §9, Palabra |
+| members kept in sync with no network in common (Bluetooth LE, Wi-Fi Direct) | **verified on two processes over a stand-in radio** (2026-10-05): [radios](/concepts/platform/radios.md) |
 
 **Windows Firewall asks the first time Hormiga listens.** Sharing and presence
 open ports on the network; Windows shows its "allow public and private networks"

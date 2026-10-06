@@ -37,6 +37,7 @@
 #include "gis/geo.hpp"            // parse_geo
 
 #include <algorithm>
+#include <cctype>
 #include <string>
 #include <vector>
 
@@ -67,19 +68,51 @@ inline bool shape_contains(const maiz::SceneNode& shape, double lat, double lon)
     return dx * dx + dy * dy <= 1.0;
 }
 
-inline Bestower shape_giver(const maiz::SceneNode& shape) {
+/* THE TAGS A SHAPE GIVES (several since 2026-10-05: the author found one raw
+ * string unclear, "it doesn't really make it clear how to do multiple tag
+ * granting"). Stored as one field, the tags separated by commas or spaces; a
+ * leading `+`, `@` or `#` someone typed is not part of the tag. Order kept,
+ * duplicates dropped. */
+inline std::vector<std::string> bestowed_tags(const maiz::SceneNode& shape) {
+    std::vector<std::string> out;
+    const std::string v = temper::field_value(shape, "bestows");
+    std::string cur;
+    auto flush = [&] {
+        while (!cur.empty() && (cur[0] == '+' || cur[0] == '@' || cur[0] == '#')) cur.erase(0, 1);
+        if (!cur.empty() && std::find(out.begin(), out.end(), cur) == out.end()) out.push_back(cur);
+        cur.clear();
+    };
+    for (char c : v) {
+        if (c == ',' || std::isspace((unsigned char)c)) flush();
+        else cur += c;
+    }
+    flush();
+    return out;
+}
+
+/* The field's value for a list of tags (what an editor writes back). */
+inline std::string join_bestowed(const std::vector<std::string>& tags) {
+    std::string v;
+    for (const auto& t : tags) v += (v.empty() ? "" : ", ") + t;
+    return v;
+}
+
+inline std::vector<Bestower> shape_givers(const maiz::SceneNode& shape) {
     std::string label = temper::field_value(shape, "label");
     if (label.empty()) label = shape.name;
-    return {temper::field_value(shape, "bestows"), shape.name, shape.glyph,
-            "the map shape '" + label + "', which gives it to everything inside it"};
+    std::vector<Bestower> out;
+    for (const auto& t : bestowed_tags(shape))
+        out.push_back({t, shape.name, shape.glyph,
+                       "the map shape '" + label + "', which gives it to everything inside it"});
+    return out;
 }
 
 // every tag something in the data can give, whether or not anything carries it yet
 inline std::vector<Bestower> bestowers(const maiz::Scene& data) {
     std::vector<Bestower> out;
     for (const auto& n : data.nodes)
-        if (n.glyph == "mapshape" && !temper::field_value(n, "bestows").empty())
-            out.push_back(shape_giver(n));
+        if (n.glyph == "mapshape")
+            for (auto& b : shape_givers(n)) out.push_back(std::move(b));
     return out;
 }
 
@@ -91,9 +124,8 @@ inline std::vector<Bestower> covering(const maiz::Scene& data, const maiz::Scene
     double lat, lon;
     if (!parse_geo(temper::field_value(rune, "geo"), lat, lon)) return out;
     for (const auto& n : data.nodes)
-        if (n.glyph == "mapshape" && !temper::field_value(n, "bestows").empty() &&
-            shape_contains(n, lat, lon))
-            out.push_back(shape_giver(n));
+        if (n.glyph == "mapshape" && shape_contains(n, lat, lon))
+            for (auto& b : shape_givers(n)) out.push_back(std::move(b));
     return out;
 }
 

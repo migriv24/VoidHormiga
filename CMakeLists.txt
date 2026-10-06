@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20)
 # does not produce a missing answer, it produces a confident wrong one. It is
 # also what the running binary reports to the update client, which is the other
 # reason it cannot be a literal typed into a third place.
-project(voidhormiga VERSION 0.1.11 LANGUAGES CXX C)
+project(voidhormiga VERSION 0.1.12 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -247,7 +247,7 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
-  src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/calendar.cpp
+  src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/map_panels.cpp src/ui/calendar.cpp
   src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
   src/ui/tags.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
@@ -259,7 +259,7 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/platform/miga.cpp src/platform/preview_server.cpp
   src/platform/profile.cpp src/platform/device_paths.cpp src/platform/app_settings.cpp src/app/lan_wire.cpp src/app/lan_share.cpp
   src/app/lan_threads.cpp src/app/lan_presence.cpp src/app/lan_cli.cpp src/app/lan_sync.cpp
-  src/app/lan_net.cpp
+  src/app/lan_net.cpp src/app/lan_radio.cpp
   src/ui/share.cpp src/ui/profile_window.cpp src/ui/console.cpp
   src/ui/databases.cpp
   src/phone/phone.cpp src/phone/nav.cpp src/phone/phone_data.cpp src/phone/phone_more.cpp

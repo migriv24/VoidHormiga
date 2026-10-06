@@ -1341,6 +1341,7 @@ void HormigaApp::init() {
     // Territory's action vocabulary — the command bar's `map …` verbs today,
     // the map canvas's gestures tomorrow; ONE compile serves both
     map_actions = hormiga::make_map_actions();
+    ensure_icon_editor(); // the registry's own editors (icon, taglist, bestow): every surface, not only the Builder
     doc_actions = hormiga::make_doc_actions(); // the Builder's verbs (B1)
     // OSM tile downloads: the shell's HTTP if it has one (a phone), else curl
     if (on_http_get) {
@@ -2878,7 +2879,6 @@ void HormigaApp::frame() {
     draw_data_tools_window();
     draw_templates_window();
     draw_rule_editor();
-    draw_manage_views();
     if (win_console) {
         if (ImGui::Begin("Console", &win_console)) draw_console();
         ImGui::End();
