@@ -659,6 +659,9 @@ private:
     // ── the live map canvas (mode 2, v1: OSM slippy map) ────────────────────
     maiz::Camera map_cam{-123.09f, 44.05f, 12.0f}; // x=lon, y=lat, zoom (a default view)
     std::string map_sel;         // selected map rune ("" = first available)
+    std::string map_canvas;      // the canvas on screen: "" = Earth (domain/canvas.hpp)
+    void map_switch_canvas(const std::string& name); // each canvas keeps its own camera
+    void map_new_canvas(const std::string& title, double w, double h); // a drawn plan, with one layer
     bool map_cam_loaded = false; // view.map.camera restored once
     std::string map_drag_marker; // rune being marker-dragged ("" = none/pan)
     std::string map_drag_ref;    // refpoint GIZMO being dragged (#4 move)
@@ -758,6 +761,9 @@ private:
     static std::string view_geo(const maiz::SceneNode& n, const std::string& ch);
     static std::string geo_field_for(const std::string& ch); // "geo"/"geo_<ch>"
     std::vector<std::string> channel_fields; // geo_<ch> registered on glyphs
+    void rebuild_kind_palette(); // the Data palette from the database's kinds (domain/kinds.hpp)
+    bool show_kinds = false;     // the Kinds window (ui/kinds.cpp): name and shape the kinds
+    void draw_kinds_window();
 
     // ── the physics connections view (Gephi-class, not the node editor) ─────
     std::map<std::string, ImVec2> phys_pos; // layout space positions
@@ -1258,7 +1264,7 @@ private:
     std::function<void()> busy_action;   // runs at the START of the next frame
     void run_busy(const std::string& label, std::function<void()> action);
     void draw_busy_overlay();
-    void new_database();         // a fresh, empty database (new working copy)
+    void new_database(const std::string& workspace = "");         // a fresh, empty database (new working copy)
     // reset the working copy's local files so databases stay ISOLATED: clear
     // tiles/site/exports/preview caches (re-derivable) and — when switching
     // databases — assets/ too (each .miga carries its own). Invalidates the

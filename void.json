@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.1.12",
+  "version": "0.2.0",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -215,41 +215,45 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.1.12",
-    "previous": "0.1.11",
+    "version": "0.2.0",
+    "previous": "0.1.12",
     "change": "compatible",
-    "date": "2026-10-05",
-    "summary": "phones keep each other in sync over Bluetooth or Wi-Fi Direct with no Wi-Fi in common; the map becomes layers and windows; one search everywhere; Save on a rune",
+    "date": "2026-10-08",
+    "summary": "kinds are yours: call your data what you call it, make kinds of your own, and draw floor plans; new workspaces for a store, a home and a campaign",
     "adds": [
-      "On a phone: Migos > Nearby, no Wi-Fi needed. Switch on Bluetooth or Wi-Fi Direct and members of the same database near you stay in sync, with a progress bar for each transfer. Only members are ever connected",
-      "The map is a drawing application: layers with names, order, visibility, opacity and their own positions, on the desktop and the phone",
-      "On the desktop map: Inspector, Overview, Layers and Actions windows beside the canvas, + / - zoom, and the drawing tools on the canvas",
-      "Map actions: export a picture, set the home view, add the map to a newsletter or website",
-      "One search in every search bar: words, @tags and -exclusions",
-      "Notes have names; a region gives several tags, edited like tags",
-      "Save on a contact, event or any rune: saves, then checks that it is in the database, named, on the map and shared as you expect"
+      "Data > Edit kinds: rename any kind (Contacts can be Customers), change its icon and colour, relabel its fields and add your own",
+      "Make new kinds of thing with their own fields, and say what they can do: be on a map, be on the calendar, be listed in a directory",
+      "Canvases: besides Earth, draw floor plans in metres or maps in feet, with rooms and aisles that give tags to what is inside them",
+      "New database asks what it is for: an organization, a grocery store (Whisker Mart), a smart home (the House of Cats) or a D&D campaign (the Whiskerwood)",
+      "A directory block can list any listed kind (a store's vendors), and an event grid any dated kind that is tagged clearance:public",
+      "The calendar shows names instead of handles, and a kind's own date (an expiration date, a due date)"
     ],
     "behavior_changes": [
       {
-        "what": "THE DESKTOP MAP'S TOP BAR IS GONE. Its tools are on the canvas; the inspector, the list of what is on the map, layers and map actions are windows docked beside it, which can be torn off.",
-        "who_is_affected": "Everyone using the map on the desktop."
+        "what": "CALENDAR ENTRIES ARE LABELLED BY NAME, not by their internal handle, on the desktop calendar.",
+        "who_is_affected": "Everyone using the calendar."
       },
       {
-        "what": "VIEWS ARE NOW CALLED LAYERS, and are stacked in an order. Existing views keep their settings and appear as layers.",
-        "who_is_affected": "Anyone who made map views."
+        "what": "THE MAP HAS A CANVAS PICKER beside its search. Your existing map is the Earth canvas and is unchanged.",
+        "who_is_affected": "Everyone using the map."
       },
       {
-        "what": "MARKERS ARE LABELLED BY THEIR NAME, not their handle, on the map, its list and the PNG export.",
-        "who_is_affected": "Anyone reading marker labels."
+        "what": "A DIRECTORY BLOCK'S 'kind' is now picked from the kinds this database lists. Existing blocks keep what they showed.",
+        "who_is_affected": "Anyone with directory blocks."
       },
       {
-        "what": "ON A PHONE, the first time Bluetooth or Wi-Fi Direct is switched on, Android asks for 'Nearby devices'. Nothing is asked until then.",
-        "who_is_affected": "Phone users who turn a radio on."
+        "what": "A KIND YOU MAKE STAYS PRIVATE BY DEFAULT. Things of a kind your database made (a store's vendors, a home's devices) reach a website or newsletter only when tagged clearance:public, and then only their name, date and the line under their name; email and phone also need clearance:contact.",
+        "who_is_affected": "Anyone who makes kinds of their own and publishes."
+      },
+      {
+        "what": "THE GROCERY STORE DEMO IS NOW WHISKER MART, built from kinds the database defines itself. The Corner Market demo from 0.1.12 is gone; databases made from it keep their data.",
+        "who_is_affected": "Anyone who made a database from the 0.1.12 grocery workspace."
       }
     ],
     "read_more": [
-      "okf/concepts/platform/radios.md",
-      "okf/concepts/sections/gis/phone.md"
+      "okf/concepts/foundation/kinds.md",
+      "okf/concepts/sections/gis/canvases.md",
+      "okf/concepts/platform/workspaces.md"
     ]
   },
   "update": {

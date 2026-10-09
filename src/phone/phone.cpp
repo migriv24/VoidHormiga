@@ -338,12 +338,21 @@ void HormigaApp::phone_frame() {
 /* The add button, where a screen has one thing it adds. */
 void HormigaApp::PhoneUi::add_button(HormigaApp& app, PhoneUi& ph, Frame& f) {
     if (ph.screen == kData) { // the kinds a field worker adds
-        static const std::vector<std::string> kAdd = {"Contact", "Organization", "Event"};
-        static const char* kGlyph[] = {"contact", "organization", "event"};
-        const int pick = maiz::speed_dial("##phone-add", ICON_FA_PLUS, kAdd, ph.dial_open);
-        if (pick >= 0) {
+        /* THE DATABASE'S OWN KINDS FIRST (2026-10-07, domain/kinds.hpp): a
+         * store adds products, a home devices. Then the people and events every
+         * database has. Each as the database calls it. Seven at most: a speed
+         * dial longer than that is a list, and Data's palette is the list. */
+        std::vector<std::string> labels, glyphs;
+        const auto& reg = hormiga::kinds::current();
+        for (const hormiga::kinds::Kind* k : reg.own())
+            if (k->palette && glyphs.size() < 4) glyphs.push_back(k->glyph);
+        for (const char* g : {"contact", "organization", "event"})
+            if (glyphs.size() < 7) glyphs.push_back(g);
+        for (const auto& g : glyphs) labels.push_back(reg.title(g));
+        const int pick = maiz::speed_dial("##phone-add", ICON_FA_PLUS, labels, ph.dial_open);
+        if (pick >= 0 && pick < (int)glyphs.size()) {
             ph.dial_open = false;
-            app.new_rune(kGlyph[pick]); // mints (device-scoped), tags, selects
+            app.new_rune(glyphs[(size_t)pick]); // mints (device-scoped), tags, selects
             if (!app.ed.selection.empty()) f.stack->push("detail:" + app.ed.selection.front());
         }
     } else if (ph.screen == kNotes) {

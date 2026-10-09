@@ -130,6 +130,7 @@ void HormigaApp::load_throwaway(const std::string& state_json) {
     hormiga::register_antfarm_glyphs(core);
     farm::register_glyphs(core);
     hormiga::chambers::register_glyphs(core);
+    hormiga::kinds::apply(core, {}); // the database's own kinds, after every application glyph
     scene = maiz::project_scene(core);
     refresh_allo_rules();
     if (hormiga::Vault::exists(vault_path().string()))

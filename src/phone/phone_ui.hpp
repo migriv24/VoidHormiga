@@ -128,6 +128,7 @@ struct HormigaApp::PhoneUi {
     static void map(HormigaApp& app, PhoneUi& ph, Frame& f);       // phone_map.cpp
     static bool map_route(HormigaApp& app, PhoneUi& ph, Frame& f); // phone_map_sheet.cpp: search, views…
     static void map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f); // …and the bottom sheet
+    static void map_ground(HormigaApp& app, PhoneUi& ph, ImDrawList* dl, ImVec2 p0, ImVec2 p1); // phone_map_ground.cpp
     /* Open the map on `rune`: centred on it if it is placed, or with the
      * placement pin ready for it if not (`place`). The Data detail and the
      * note editor call it: a thing and where it is are one tap apart. */

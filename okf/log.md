@@ -5798,3 +5798,262 @@ are owed a fix of their own.
 
 **Still owed:** two phones running the radios (Bluetooth and, for the first
 time anywhere, Wi-Fi Direct); the macOS archives remain unrun.
+
+# Canvases with data, the first floor plan, and workspaces (2026-10-06)
+
+The author: maps generalize into **"canvases with data"**, as documents
+generalize newsletters and websites; next is **"a 2D map builder"**, "a 2D plane
+where we are placing geometry and associating geometry with data ... more so
+with data categories", starting with **indoor layouts** and **a grocery store
+with aisles and product locations**; and Hormiga should be set up for more than
+outreach organizations: **grocery stores, smart homes, volunteer
+organizations, D&D campaigns**. Two concepts opened:
+[canvases](/concepts/sections/gis/canvases.md) and
+[workspaces](/concepts/platform/workspaces.md).
+
+**What a canvas is.** A world with its own layers, regions and positions: a
+`canvas` rune, and a `canvas` field on layers, regions and reference points,
+**blank meaning Earth**, so no existing database changes. The first drawn world
+is a **plan**: metres from the top-left corner, a grid, no tiles, no GPS. It is
+the engine's flat projection, which had no caller until now.
+
+**The decision that matters most: positions on a drawn canvas never fall back
+to Earth.** A canvas's channel is named `cv_<canvas>`, and `view_geo` refuses
+the Earth `geo` for any such channel. Latitude 47.6 is not 47.6 metres into a
+store. Kept as a naming rule so every caller obeys it without being told.
+Containment learned the same: a region gives its categories to what is on its
+own canvas (`bestow::covering`).
+
+**Geometry meets data three ways** (canvases.md): placed, contained (a region
+gives `aisle:3`, `dept:snacks`), and a region that is a thing. Data categories
+are tag namespaces, so the one search, layer rules and filters understand them
+already.
+
+**Built.**
+- Desktop: a canvas picker beside the map's search, with *New floor plan*; the
+  floor drawn with its grid, edge and size; pan, zoom, drawing regions, placing
+  and moving on it; a camera per canvas; on a plan, Layers shows the floor's
+  name, width, depth and grid instead of the base map; region labels stay
+  inside their region. Exports of a plan are not built and the Actions window
+  says so.
+- Phone: the canvas list on the Layers screen; `SlippyView` gained a flat mode
+  (tested); the floor fitted to the screen; no tiles, credit or locate button;
+  *Add here* offers a product first. `phone_map.cpp` passed its budget, so the
+  ground (tiles or floor) moved to `phone_map_ground.cpp`.
+- **Workspaces**: *New database* asks which: Organization (what it always
+  made), **Grocery store** (built), and Smart home, Volunteer organization,
+  D&D campaign listed as *not yet*. Desktop File menu, the Databases window,
+  the phone's Migas, and the `new-database` effect.
+- **The grocery store**: Corner Market, made up: a 40 x 24 m sales floor,
+  produce, dairy, bakery and frozen along the walls, six aisles, checkout; 25
+  products (the new `product` glyph: price, unit, SKU, stock) placed in them
+  and carrying the categories their regions give; layer rules colour them by
+  department and flag low stock.
+
+**Found on the way.** A config value loaded from a saved database comes back
+from `config get` quoted (`"store-floor"`), one set in the same session does
+not; the phone opened on Earth until both were read alike
+(`canvas::config_name`).
+
+**Measured.** Desktop harness: *New database > Grocery store*, the floor with
+its regions and products, Layers' floor fields, Overview listing 11 regions
+and 25 products. Phone harness: the floor fitted, a product tapped open, the
+Layers screen's canvas list and floor fields; the Cat Colony's Earth map
+unchanged. `spine_smoke` replays the grocery transcript and checks the floor,
+the products, containment per canvas and the no-fallback rule; `gis_smoke`
+checks the flat viewport. 55 of 56 tests (the known red), every linter, every
+budget.
+
+**Opened**: Q106 (a canvas as its own document), Q107 (how much a workspace
+changes the application). Not committed.
+
+# Kinds are yours: the next major version begins (2026-10-06, later)
+
+The author: "what we want is to be able to organize and name our data whatever
+we want. so contact, organization, event, etc. could be renamed to: product,
+vendor, invoice, expiration date ... this will begin the NEXT major version of
+hormiga. while to the user, this next major version won't seem like such a big
+change, to us internally, it certainly will." With three new cat demos to mark
+it, and the rule that the demos are the RESULT, not the goal. Concept:
+[kinds](/concepts/foundation/kinds.md).
+
+**The audit.** About 340 string literals name a built-in kind across ~25
+files. Read one by one they ask four questions: how does it look, what can it
+do, which kind does this block show, and which kind does this importer make.
+Only the last is genuinely about a name. Recorded in kinds.md with counts.
+
+**The design.** A kind is a `kind` rune in a `kinds` mantle that travels with
+the database: title, plural, icon, colour, palette group, fields (as JSON),
+date and subtitle fields, and TRAITS as tags (`trait:located`, `trait:dated`,
+`trait:listed`). A rune named like a built-in renames it (stored data never
+changes: a renamed contact is still glyph `contact`); any other name is a new
+kind, registered as a glyph from its fields. `domain/kinds.hpp` merges the
+built-ins and the database's kinds into one registry at every projection.
+
+**Two measurements decided the mechanism.** Void Core refuses a rune of an
+unknown glyph, so a kind is registered before anything is made of it (a demo
+is kinds, registration, data; the CLI registers at load). And a glyph the
+document declares (`glyph declare`) shadows one the app registers, which would
+drop the canvas position channels, so kinds are registered from their runes,
+as layer channels always were. `spine_smoke` pins the shadowing.
+
+**Built.**
+- The registry, the `kind` glyph, registration in `reproject` and the CLI.
+- *Looks* from the registry: Data's list (plural names, icons), the add
+  palette, `glyph_icon`, map markers, the phone's cards (colour, icon,
+  subtitle, plural chips), calendar entries (colour, icon, and names instead of
+  handles, for every kind).
+- *Traits* replacing names: what can be placed (phone map, *Add here*, the
+  desktop right-click), and the calendar for a database's own dated kinds,
+  including moving one to another day (its own date field, not `date`).
+- **The Kinds window** (Data > *Edit kinds*): rename (one, many, palette
+  group), icon and colour, traits, fields (add, relabel, editor, remove), the
+  date and subtitle fields, a new kind. Each change is one batch in the `kinds`
+  mantle. Measured: Contacts renamed to Patrons through the window, the batch
+  in the console, "Patrons (0)" in Data.
+- **Canvases** gained a unit and a span that grows with their size, and open
+  fitted to the view, so a 2400 ft campaign map and a 14 m house both start
+  whole.
+- **Three demos, kinds as data only** (`domain/demos.hpp`): **the
+  Whiskerwood** (7 cat adventurers of 5e races with abilities, 7 SRD
+  creatures, places, quests with deadlines, sessions, items, a map in feet);
+  **Whisker Mart** (18 products, vendors BIG FISH, M.E.O.W. Distribution and
+  three more, customers, sales and purchase orders: the first shape of a point
+  of sale; replaces last session's Corner Market); **the House of Cats** (11
+  smart devices, residents, supplies whose expiration dates are on the
+  calendar, chores). The Cat Colony is unchanged. The `product` glyph left the
+  C++: it is Whisker Mart's own kind now.
+
+**Measured.** `spine_smoke` replays all three demos (kinds, registration,
+data) and checks counts, data-defined fields projecting, containment per
+canvas, dates from each kind's own field, and a built-in renamed. Desktop
+harness: each demo made from *New database*, its kinds in Data, the Kinds
+window, the Whiskerwood map, the House of Cats map and calendar. Phone
+harness: the House of Cats' cards and floor. 55 of 56 tests (the known red;
+`radio_smoke` timed out once while a GUI harness ran beside it and passed alone
+in 45 s), every linter and budget (`headless.cpp` +1 for the kinds hook).
+
+**Not yet** (kinds.md, the order of work): the directory blocks and the
+website and newsletter renderers choosing a kind by trait; a built-in kind's
+field labels and extra fields (Q109); field keys renamed by migration.
+**Opened**: Q108 (call it 0.2.0), Q109. Not committed.
+
+# 0.2.0 begins: built-in fields renamed, blocks choose a kind (2026-10-06, later still)
+
+The author took both leans (Q108, Q109) and asked to continue. Both answers
+folded into [kinds](/concepts/foundation/kinds.md) and cleared.
+
+**The version is 0.2.0** (CMakeLists, `void.json` and its release notes);
+nothing is published yet.
+
+**A built-in kind's fields are the database's to name (Q109).** Every
+built-in registration in `register_glyphs` is now remembered
+(`kinds::remember_builtin`); a `kind` rune for a built-in may carry `fields`,
+where an entry for one of its keys relabels it and any other key is a field of
+the database's own, and `kinds::apply` registers the built-in again with those
+over the application's descriptor (and back to the application's own when the
+database stops saying anything). The Kinds window lists a built-in's fields:
+relabel any, add your own, remove only your own; only what differs is stored.
+Measured in `spine_smoke`: a contact's `role` shown as "Favourite fish", an
+extra `loyalty` field projecting its value, the key `role` unchanged, the
+application's fields all present, and the override undone.
+
+**Directory blocks list by trait.** One rule, `kinds::in_directory` (every
+`listed` kind; "" or "both" for all), and one for the line under a name,
+`kinds::directory_line`, which never releases `notes`, `email` or `phone`
+whatever a kind's subtitle says. The website (`published::directory`), the
+newsletter and the Builder's preview all ask them; the copies of the filter in
+email.cpp and builder.cpp are gone. The block's kind is a picker of listed
+kinds by their names (`listedkind`). Both consent gates unchanged.
+
+**Event grids may show a database's dated kind** (`kind` on `event_grid`,
+picker `datedkind`): blank is events, as always; a database's own dated kind is
+shown only when it carries `clearance:public` (a kind somebody made may hold
+anything: a store's sales name its customers), sorted by its own date, and
+its card is its name, date and `directory_line` only
+(`published::dated_card`, and the newsletter's equivalent).
+
+**Measured.** The golden render is unchanged, so a database of contacts and
+organizations publishes byte for byte what it did. `spine_smoke`: Q109 as
+above; Whisker Mart's vendors listed by trait, not its products; a subtitle set
+to `notes` never reaches a directory; a session in an event grid only after
+`clearance:public`. 55 of 56 (the known red), every linter; budgets:
+`site.cpp` +5 for the event grid's kind, the editors moved to `ui/kinds.cpp`
+so `builder_ext.cpp` stays inside its own. The glyph-fields lint counts
+`render/published.hpp` and `domain/kinds.hpp` as helpers both renderers share,
+which is what they now are.
+
+**Next in the kinds release**: the job grid and the remaining name checks in
+the renderers' map widget and assets list; the phone's Kinds screen (it reads
+renames today, it cannot make them).
+
+# The kinds release, reviewed at its seams (2026-10-07)
+
+The author: "continue with general development, please make sure to check ur
+work carefully. we are changing some fundemental structures, gotta be
+thorough." So this session read the changed structure where it meets
+everything else, and measured each path rather than trusting it. What held,
+what did not, and what was fixed ([kinds](/concepts/foundation/kinds.md), "at
+the public seams").
+
+**Held, now pinned in `spine_smoke`.**
+- A database with its own kinds, saved and opened again by a core that knows
+  only the built-ins: every product, vendor and sale back, every field, through
+  the JSON state and the SQLite mirror; editable, undoable, and new ones made.
+  Void Core keeps runes of a glyph it does not know when a STATE is loaded; it
+  refuses only `rune new`.
+- A member's merge: Void Maiz's `Network` splices with `replace_state`, the
+  same state-level door, and every mantle travels, `kinds` included.
+
+**Found and fixed.**
+1. **A kind could take an application glyph's name** ("Directory", "Note",
+   "Map") and register over the block or the notes. The Kinds window refuses
+   it; `kinds::apply` refuses a kind rune that arrives any other way, reports
+   it, and the window shows it. Pinned with a kind rune called `note`.
+2. **The website's map widget published by subtraction**, so a database's own
+   placed kinds (a home's residents, its door sensor) would have been on a
+   public map. Now `on_public_map`: own kinds only with `clearance:public`. A
+   layer on a drawn canvas puts nothing on the Earth map (its metres are not
+   latitude), and only Earth's regions are drawn.
+3. **The calendar embed and its `.ics`** published any dated rune its query
+   matched. A database's own kind now needs `clearance:public` and leaves as
+   name and date (and its safe line as the place): no times, description or
+   position.
+4. **The CLI rendered a database's own kinds with no fields.** Its render, its
+   effects and the Antfarm throwaway each build a fresh core and registered only
+   the application's glyphs. Every core that projects a database now applies
+   its kinds last. Found by rendering Whisker Mart's vendor directory: listed,
+   but named "Big Fish" (its handle) with no terms.
+5. **A directory named an own kind by its handle**: `published::listed_name`
+   (its `title`).
+6. **The phone could not add a database's own kinds** (a fixed Contact,
+   Organization, Event): its add button now offers the database's kinds first.
+7. **A kind could not be let go**: delete one nothing is of; a renamed built-in
+   back to the application's own.
+8. The block pickers had no label and a long label collapsed them to nothing.
+
+**Measured end to end.** Whisker Mart rendered from the CLI with a vendor
+directory: the consented vendor named and its terms shown; its contact person,
+email, phone and notes absent; the four unconsented vendors absent; with
+`clearance:contact` added, exactly its email and phone appear. Desktop harness:
+the Builder's directory picker (Contacts, Organizations, Vendors, All of them),
+choosing Vendors logging `set dir-test kind "vendor"` and the preview reading
+"0 listed, 5 withheld". Phone harness: the add button offering Device,
+Resident, Supply, Chore, then the built-ins; a new device opening on its own
+fields. 54 of the 55 tests run (the known red; `radio_smoke` was not run,
+nothing it covers changed), every linter; `headless.cpp` +3 lines, one for each
+core that now applies kinds.
+
+**Found while writing 0.2.0's release notes: a 0.1.12 grocery database would
+have opened with every product blank.** 0.1.12 registered `product` in C++ for
+Corner Market; 0.2.0 makes products a kind the database defines (Whisker Mart)
+and no longer registers it. The data survives a load (Void Core keeps runes of
+an unknown glyph) but projection drops every field. So `product` is now a
+LEGACY kind (`kinds::legacy_kinds`): always known with exactly 0.1.12's fields,
+overridden by a database that defines its own `product`, offered in Data and
+the Kinds window only where products exist, and under the directory's consent
+rule like any kind of a database's own. Pinned in `spine_smoke` with 0.1.12's
+descriptor: a product made under it opens in 0.2.0 with its title, price and
+store-floor position, and a new one can still be made. The Data palette is now
+rebuilt on every projection, because whether the legacy kind is listed depends
+on the data, not on the kinds.

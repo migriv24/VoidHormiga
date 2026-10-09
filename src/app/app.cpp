@@ -13,6 +13,7 @@
  */
 
 #include "app/app_internal.hpp" // the shared includes, helpers and structs
+#include "domain/workspaces.hpp" // what a new database can start as
 #include "app/lan_share.hpp"     // LanRuntime: sharing, joining, presence
 #include "platform/app_settings.hpp" // recent databases, the default one
 #include "platform/device_paths.hpp"  // the Antfarm's device nodes
@@ -218,6 +219,9 @@ void HormigaApp::install_host() {
         hormiga::register_antfarm_glyphs(c);
         farm::register_glyphs(c);
         hormiga::chambers::register_glyphs(c);
+        // the database's own kinds, LAST: after every application glyph, so a
+        // kind named like one of them is caught (domain/kinds.hpp, apply)
+        hormiga::kinds::apply(c, {});
     };
     // the effect seam: world-facing ops the core can't do itself. `save`
     // writes the exported state; `render` walks the issue chain into HTML
@@ -375,8 +379,14 @@ void HormigaApp::install_host() {
             export_document();
             return {};
         }
-        if (op == "new-database") { // a fresh empty database (agent/test seam)
-            new_database();
+        if (op == "new-database") { // a fresh database (agent/test seam); args: [workspace]
+            std::string ws;
+            try {
+                auto aj = nlohmann::json::parse(args);
+                if (aj.contains("args") && !aj["args"].empty()) ws = aj["args"][0].get<std::string>();
+            } catch (...) {
+            }
+            new_database(ws);
             return {};
         }
         if (op == "save-database") { // save the bundle to a path (args = path)
@@ -563,7 +573,21 @@ void HormigaApp::flush_data_panels() {
 
 // ── projection + feedback ────────────────────────────────────────────────────
 
+/* THE DATA PALETTE IS THE DATABASE'S KINDS (2026-10-06, domain/kinds.hpp):
+ * the built-ins as they are called here, then the kinds it made itself. */
+void HormigaApp::rebuild_kind_palette() {
+    palette.entries.clear();
+    for (const auto& k : hormiga::kinds::current().all) {
+        bool used = false; // a legacy kind is offered only where the database has some
+        if (k.legacy)
+            for (const auto& n : scene.nodes) used = used || n.glyph == k.glyph;
+        if (k.palette || used) palette.entries.push_back({k.glyph, k.title, k.category, {}});
+    }
+}
+
 void HormigaApp::reproject() {
+    // the database's own KINDS first, so projection keeps their fields
+    const std::string kinds_sig = hormiga::kinds::apply(core, channel_fields);
     scene = maiz::project_scene(core);
     // per-view position channels: projection only fills DECLARED glyph
     // fields, so every unlocked view's geo_<channel> must be registered on
@@ -572,6 +596,10 @@ void HormigaApp::reproject() {
     // moves — unlocking a view makes its positions visible the same frame.
     std::vector<std::string> chans;
     for (const auto& n : scene.nodes) {
+        if (n.glyph == "canvas") { // a drawn canvas's shared positions, even before it has a layer
+            chans.push_back("geo_" + hormiga::canvas::shared_channel(n.name));
+            continue;
+        }
         if (n.glyph != "map") continue;
         std::string ch = hormiga::temper::field_value(n, "channel");
         if (!ch.empty() && ch != "main") chans.push_back("geo_" + ch);
@@ -581,8 +609,11 @@ void HormigaApp::reproject() {
     if (chans != channel_fields) {
         channel_fields = chans;
         hormiga::register_glyphs(core, channel_fields);
+        hormiga::kinds::apply(core, channel_fields); // a located kind carries every channel too
         scene = maiz::project_scene(core);
     }
+    (void)kinds_sig;
+    rebuild_kind_palette(); // every time: a legacy kind is listed only while the data has some
     maiz::Result h = core.dispatch("history");
     undo_depth = (h.lines.size() == 1 && h.lines[0] == "(no history)")
                      ? 0
@@ -1143,6 +1174,8 @@ void HormigaApp::init() {
                 if (ch >= '0' && ch <= '2') { tag_rec_mode = ch - '0'; break; }
         }
         // base map source + color treatment (global; the base map is singular)
+        // the canvas last open (domain/canvas.hpp), for the desktop's map and the phone's
+        map_canvas = hormiga::canvas::config_name(core.dispatch("config get view.map.canvas").data);
         v = core.dispatch("config get ui.basemap").data;
         for (int i = 0; i < kBaseSourceCount; ++i)
             if (v.find(kBaseSources[i].key) != std::string::npos) basemap_src = i;
@@ -1354,15 +1387,10 @@ void HormigaApp::init() {
         });
     }
 
-    palette.entries = {{"contact", "Contact", "People"},
-                       {"organization", "Organization", "People"},
-                       {"event", "Event", "Events"},
-                       {"incident", "Incident", "Events"},
-                       {"job", "Job", "Events"},
-                       {"image", "Image", "Assets"},
-                       {"resource", "Resource", "Assets"}};
-    // note: `note` is intentionally NOT in the Data palette — notes have their
-    // own tab now (draw_notes_body); the glyph is still registered in the model.
+    // the Data palette is the database's KINDS (domain/kinds.hpp), rebuilt by
+    // reproject() whenever they change. `note` is not among them: notes have
+    // their own tab (draw_notes_body).
+    rebuild_kind_palette();
     /* THE BLOCK PALETTE IS NOT WRITTEN HERE. It comes from the glyph
      * declarations themselves (`hormiga::block_palette()`, filled by `block()`
      * in domain/glyphs_blocks.hpp), because the hand-maintained copy that used
@@ -2604,13 +2632,24 @@ void HormigaApp::frame() {
                                     : ("database: " +
                                        fs::path(cur_miga).filename().string())
                                           .c_str());
-            if (ImGui::MenuItem("New database"))
-                run_busy("Creating new database…", [this] { new_database(); });
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("start a fresh, empty database (a new\n"
-                                  "working copy); Save database as... names it.\n"
-                                  "If this one is shared, you leave it: reopen it\n"
-                                  "from Recent databases to be back in.");
+            /* NEW DATABASE, AS WHAT (2026-10-06, okf/concepts/platform/workspaces.md):
+             * a workspace is where a database starts. The ones not built yet are
+             * listed and marked, so the breadth the author wants is seen. */
+            if (ImGui::BeginMenu("New database")) {
+                for (const auto& w : hormiga::workspaces::kAll) {
+                    ImGui::BeginDisabled(!w.built);
+                    if (ImGui::MenuItem(w.title, w.built ? nullptr : "not yet")) {
+                        const std::string key = w.key;
+                        run_busy("Creating new database…", [this, key] { new_database(key); });
+                    }
+                    ImGui::EndDisabled();
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                        ImGui::SetTooltip("%s\nSave database as... names it. If this one is shared,\n"
+                                          "you leave it: reopen it from Recent databases.",
+                                          w.line);
+                }
+                ImGui::EndMenu();
+            }
             if (ImGui::MenuItem("Open database...")) {
                 if (on_pick_file) {
                     std::string p = on_pick_file(""); // OS open dialog (.miga)
@@ -2874,6 +2913,7 @@ void HormigaApp::frame() {
     draw_settings();
     draw_preferences();
     draw_databases();
+    draw_kinds_window(); // name and shape the kinds (ui/kinds.cpp)
     draw_style_tab();
     draw_share_window();
     draw_data_tools_window();

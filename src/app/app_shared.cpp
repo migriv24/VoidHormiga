@@ -95,7 +95,58 @@ MShape shape_from(const std::string& s) {
     return MShape::Circle;
 }
 
+/* ── KINDS' ICONS AND COLOURS (2026-10-06, domain/kinds.hpp) ───────────────
+ * A kind names its icon; this is the vocabulary, broad enough for the kinds
+ * the author listed (stores, homes, campaigns) and short enough to pick from. */
+const std::vector<std::string>& kind_icon_names() {
+    static const std::vector<std::string> names = {
+        "user", "users", "building", "store", "calendar", "warning", "briefcase", "book", "image", "note",
+        "basket", "cart", "receipt", "coins", "truck", "box", "tag", "fish", "bowl", "utensils", "leaf",
+        "house", "door", "lightbulb", "plug", "bolt", "thermometer", "camera", "video", "lock", "key",
+        "wrench", "clock", "cat", "paw", "dragon", "skull", "crown", "wizard", "wand", "dice", "scroll",
+        "shield", "fire", "map", "flag", "star", "heart", "gift"};
+    return names;
+}
+const char* kind_icon_named(const std::string& name) {
+    struct Row { const char* name; const char* icon; };
+    static const Row kRows[] = {
+        {"user", ICON_FA_USER}, {"users", ICON_FA_USERS}, {"building", ICON_FA_BUILDING}, {"store", ICON_FA_STORE},
+        {"calendar", ICON_FA_CALENDAR}, {"warning", ICON_FA_TRIANGLE_EXCLAMATION}, {"briefcase", ICON_FA_BRIEFCASE},
+        {"book", ICON_FA_BOOK_OPEN}, {"image", ICON_FA_IMAGE}, {"note", ICON_FA_NOTE_STICKY},
+        {"basket", ICON_FA_BASKET_SHOPPING}, {"cart", ICON_FA_CART_SHOPPING}, {"receipt", ICON_FA_RECEIPT},
+        {"coins", ICON_FA_COINS}, {"truck", ICON_FA_TRUCK}, {"box", ICON_FA_BOX}, {"tag", ICON_FA_TAG},
+        {"fish", ICON_FA_FISH}, {"bowl", ICON_FA_BOWL_FOOD}, {"utensils", ICON_FA_UTENSILS}, {"leaf", ICON_FA_LEAF},
+        {"house", ICON_FA_HOUSE}, {"door", ICON_FA_DOOR_OPEN}, {"lightbulb", ICON_FA_LIGHTBULB},
+        {"plug", ICON_FA_PLUG}, {"bolt", ICON_FA_BOLT}, {"thermometer", ICON_FA_TEMPERATURE_HALF},
+        {"camera", ICON_FA_CAMERA}, {"video", ICON_FA_VIDEO}, {"lock", ICON_FA_LOCK}, {"key", ICON_FA_KEY},
+        {"wrench", ICON_FA_WRENCH}, {"clock", ICON_FA_CLOCK}, {"cat", ICON_FA_CAT}, {"paw", ICON_FA_PAW},
+        {"dragon", ICON_FA_DRAGON}, {"skull", ICON_FA_SKULL}, {"crown", ICON_FA_CROWN},
+        {"wizard", ICON_FA_HAT_WIZARD}, {"wand", ICON_FA_WAND_MAGIC_SPARKLES}, {"dice", ICON_FA_DICE_D20},
+        {"scroll", ICON_FA_SCROLL}, {"shield", ICON_FA_SHIELD_HALVED}, {"fire", ICON_FA_FIRE}, {"map", ICON_FA_MAP},
+        {"flag", ICON_FA_FLAG}, {"star", ICON_FA_STAR}, {"heart", ICON_FA_HEART}, {"gift", ICON_FA_GIFT},
+    };
+    for (const Row& r : kRows)
+        if (name == r.name) return r.icon;
+    return ICON_FA_TAG;
+}
+unsigned kind_colour_u32(const std::string& hex, unsigned fallback) {
+    if (hex.size() != 7 || hex[0] != '#') return fallback;
+    unsigned v = 0;
+    for (size_t i = 1; i < 7; ++i) {
+        const char c = hex[i];
+        v <<= 4;
+        if (c >= '0' && c <= '9') v |= (unsigned)(c - '0');
+        else if (c >= 'a' && c <= 'f') v |= (unsigned)(c - 'a' + 10);
+        else if (c >= 'A' && c <= 'F') v |= (unsigned)(c - 'A' + 10);
+        else return fallback;
+    }
+    return IM_COL32((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF, 255);
+}
+
 unsigned glyph_marker_colour(const std::string& glyph) {
+    // a kind the database made, or recoloured, is drawn in its own colour
+    if (const auto* k = hormiga::kinds::current().find(glyph); k && (!k->builtin || k->defined))
+        return kind_colour_u32(k->color, IM_COL32(179, 89, 46, 255));
     if (glyph == "incident") return IM_COL32(200, 50, 50, 255);
     if (glyph == "organization") return IM_COL32(138, 109, 59, 255);
     if (glyph == "event") return IM_COL32(63, 111, 174, 255);
@@ -103,7 +154,36 @@ unsigned glyph_marker_colour(const std::string& glyph) {
     return IM_COL32(179, 89, 46, 255);
 }
 const char* glyph_marker_shape(const std::string& glyph) { return glyph == "note" ? "balloon" : ""; }
+void draw_plan_grid(ImDrawList* dl, ImVec2 p0, ImVec2 p1, const hormiga::canvas::Canvas& cv, ImVec2 origin,
+                    float px_m) {
+    dl->AddRectFilled(p0, p1, IM_COL32(214, 216, 220, 255)); // beyond the walls
+    const ImVec2 a = origin, b(origin.x + (float)cv.w * px_m, origin.y + (float)cv.h * px_m);
+    dl->AddRectFilled(a, b, IM_COL32(250, 250, 247, 255));
+    const double g = cv.grid > 0 ? cv.grid : 1.0;
+    if (g * px_m >= 5.0f) { // a grid finer than 5 px is noise
+        const int nx = (int)(cv.w / g), ny = (int)(cv.h / g);
+        for (int i = 1; i < nx + (cv.w / g > nx ? 1 : 0); ++i) {
+            const float x = a.x + (float)(i * g) * px_m;
+            if (x < p0.x || x > p1.x) continue;
+            dl->AddLine(ImVec2(x, std::max(a.y, p0.y)), ImVec2(x, std::min(b.y, p1.y)),
+                        i % 5 ? IM_COL32(226, 228, 232, 255) : IM_COL32(200, 204, 212, 255), i % 5 ? 1.0f : 1.4f);
+        }
+        for (int j = 1; j < ny + (cv.h / g > ny ? 1 : 0); ++j) {
+            const float y = a.y + (float)(j * g) * px_m;
+            if (y < p0.y || y > p1.y) continue;
+            dl->AddLine(ImVec2(std::max(a.x, p0.x), y), ImVec2(std::min(b.x, p1.x), y),
+                        j % 5 ? IM_COL32(226, 228, 232, 255) : IM_COL32(200, 204, 212, 255), j % 5 ? 1.0f : 1.4f);
+        }
+    }
+    dl->AddRect(a, b, IM_COL32(90, 96, 110, 255), 0, 0, 2.0f);
+    char note[96];
+    std::snprintf(note, sizeof note, "%s  %g x %g %s   grid %g %s", cv.title.c_str(), cv.w, cv.h, cv.unit.c_str(), g,
+                  cv.unit.c_str());
+    dl->AddText(ImVec2(p0.x + 8, p1.y - ImGui::GetFontSize() - 6), IM_COL32(90, 96, 110, 230), note);
+}
+
 const char* glyph_marker_icon(const std::string& glyph) {
+    if (const auto* k = hormiga::kinds::current().find(glyph); k && !k->builtin) return kind_icon_named(k->icon);
     return glyph == "note" ? ICON_FA_NOTE_STICKY : nullptr;
 }
 

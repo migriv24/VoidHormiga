@@ -44,17 +44,21 @@ command goes through `map_actions`; a view only draws and compiles commands.
    region, a label), which need real coordinates (GPS, geocoding, metres,
    weather), and which need only an anchor to them (a floor plan). The rule
    that keeps Earth-only features from appearing on a fantasy map.
-2. [Territory](/concepts/sections/gis/territory.md) — the map as a section:
+2. [Canvases with data](/concepts/sections/gis/canvases.md) — **2026-10-06.**
+   Earth is one canvas; a floor plan in metres is another, with its own layers,
+   regions and positions. How geometry meets data (placed, contained, being),
+   data categories as tag namespaces, and the grocery store demo.
+3. [Territory](/concepts/sections/gis/territory.md) — the map as a section:
    location-faceted runes, the source as a holiday, layers as tags, views and
    channels, rules, shapes, reference points, exports, notes on the map, and the
    redrawn pins. The desktop map.
-3. [The map on a phone](/concepts/sections/gis/phone.md) — the phone's own
+4. [The map on a phone](/concepts/sections/gis/phone.md) — the phone's own
    interaction model, every desktop feature with what it became, location, and
    what Void Maiz gained for it.
-4. [Research](/concepts/sections/gis/research.md) — what the field and HCI
+5. [Research](/concepts/sections/gis/research.md) — what the field and HCI
    literature says, what each finding decided, and what to keep in mind (and
    read next) before adding a feature.
-5. [Roadmap](/concepts/sections/gis/roadmap.md) — the do-list, with ✅ / 🔨 / ⬜.
+6. [Roadmap](/concepts/sections/gis/roadmap.md) — the do-list, with ✅ / 🔨 / ⬜.
 
 # Status (2026-10-05)
 

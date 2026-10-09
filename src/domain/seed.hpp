@@ -22,6 +22,7 @@
 
 #include "voidmaiz/embed.hpp"
 
+#include "domain/kinds.hpp" // remember_builtin: a database relabels a built-in
 #include "json.hpp"
 
 #include <algorithm>
@@ -70,10 +71,17 @@ inline void register_glyphs(maiz::Core& core,
         auto j = nlohmann::json::parse(json);
         for (const auto& f : channel_geo_fields) {
             j["fields"].push_back(f);
-            j["hints"]["labels"][f] =
-                "Location in view '" + f.substr(4) + "'"; // strip "geo_"
+            const std::string ch = f.substr(4); // strip "geo_"
+            j["hints"]["labels"][f] = ch.rfind("cv_", 0) == 0 ? "Location on the canvas '" + ch.substr(3) + "'"
+                                                              : "Location in layer '" + ch + "'";
         }
         return j.dump();
+    };
+    // every built-in is REMEMBERED as registered, so a database may relabel
+    // its fields and extend it (domain/kinds.hpp, Q109)
+    auto reg = [&](const std::string& json) {
+        kinds::remember_builtin(json);
+        core.register_glyph(json);
     };
     // `hints.editors` binds fields to widget-protocol editors (one binding
     // lights up the inspector, forms, faces, and the coming table cells);
@@ -83,7 +91,7 @@ inline void register_glyphs(maiz::Core& core,
     // actually carries (src/rescue_import.hpp is the once-ever mapping)
     // `geo` is the Territory facet ("lat,lon" — map coordinates, not assumed
     // Earth); set by map actions / drag-to-place, queried by `effect query near`
-    core.register_glyph(with_channels(
+    reg(with_channels(
         R"({"glyph":"contact","label":"Contact",)"
         /* `bio_en`/`bio_es` joined `bio` on 2026-09-03. A bilingual site's
          * directory published one language of prose whatever page it was on,
@@ -104,7 +112,7 @@ inline void register_glyphs(maiz::Core& core,
         R"__("image_url":"Photo URL (legacy)",)__"
         R"__("geo":"Location (lat,lon)","ref":"Reference point (fan-out parent)",)__"
         R"__("notes":"Internal notes (never exported)"}}})__"));
-    core.register_glyph(with_channels(
+    reg(with_channels(
         R"({"glyph":"organization","label":"Organization",)"
         R"("fields":["display_name","avatar","abbreviation","kind","email","url",)"
         R"("location","bio_en","bio_es","bio","image_url","geo","ref","ref_off"],)"
@@ -158,7 +166,7 @@ inline void register_glyphs(maiz::Core& core,
      * NOT a person. Which contact that identity is, is a link in this database
      * and nowhere else — so the provider can be swapped and the relationships
      * survive it, which is `antfarm.md`'s disposability rule applied to login. */
-    core.register_glyph(
+    reg(
         R"({"glyph":"submission","label":"Submission","kind":"act",)"
         R"("fields":["actor","actor_email","transcript","received","state",)"
         R"("decided","note","evidence"],)"
@@ -172,7 +180,7 @@ inline void register_glyphs(maiz::Core& core,
         R"__("received":"Received","state":"State","decided":"Decided on",)__"
         R"__("note":"Reviewer note","evidence":"Uploaded file / URL"}}})__");
 
-    core.register_glyph(with_channels(
+    reg(with_channels(
         R"({"glyph":"event","label":"Event",)"
         R"("fields":["title_en","title_es","date","days","start_time","end_time",)"
         R"("venue","virtual","summary_en","summary_es",)"
@@ -211,7 +219,7 @@ inline void register_glyphs(maiz::Core& core,
      * This is the failure class `tools/lint_glyph_fields.py` was built for, one
      * level up: not "a declared field nothing renders", but "a thing every
      * other published glyph declares and this one does not". */
-    core.register_glyph(
+    reg(
         R"({"glyph":"job","label":"Job",)"
         R"("fields":["title_en","title_es","org","pay","job_type","location",)"
         R"("description",)"
@@ -226,7 +234,7 @@ inline void register_glyphs(maiz::Core& core,
         R"("availability":"Availability","deadline":"Closes",)"
         R"__("contact_name":"Contact name","contact_email":"Contact email",)__"
         R"__("contact_phone":"Contact phone"}}})__");
-    core.register_glyph(
+    reg(
         R"({"glyph":"image","label":"Image",)"
         /* `alt` and `description` are prose an organization wrote, and a
          * caption under a flier on the Spanish page is exactly the text a
@@ -245,7 +253,7 @@ inline void register_glyphs(maiz::Core& core,
         R"__("description_en":"Description (English)",)__"
         R"__("description_es":"Descripcion (espanol)",)__"
         R"__("description":"Description (legacy)"}}})__");
-    core.register_glyph(
+    reg(
         R"({"glyph":"resource","label":"Resource","fields":["path","topic"],)"
         R"("hints":{"color":"#4e8d85","face":{"w":190,"h":52},"category":"Assets",)"
         R"("editors":{"path":"path"},)"
@@ -257,7 +265,7 @@ inline void register_glyphs(maiz::Core& core,
     // so it carries the same location facet as a contact. It never leaves the
     // app through a map: the PNG export and the web widget skip notes, because
     // a note is the internal-notes class the render seam guards.
-    core.register_glyph(with_channels(
+    reg(with_channels(
         R"({"glyph":"note","label":"Note","fields":["title","text","geo","ref","ref_off"],)"
         R"("hints":{"color":"#6f6f78","face":{"w":240,"h":120},"category":"Notes",)"
         R"("editors":{"text":"multiline:110","ref_off":"hidden"},)"
@@ -267,7 +275,7 @@ inline void register_glyphs(maiz::Core& core,
     // road closures, ICE activity, emergencies — that belong on the map and,
     // when dated, on the calendar as a SEPARATE 'incident' entry, never mixed
     // with planned events. type:incident keeps the query surfaces apart.
-    core.register_glyph(with_channels(
+    reg(with_channels(
         R"({"glyph":"incident","label":"Incident","kind":"act",)"
         R"("fields":["date","time","severity","description","geo","ref",)"
         R"("ref_off","ext_uid"],)"
@@ -279,12 +287,25 @@ inline void register_glyphs(maiz::Core& core,
         R"__("description":"Description","geo":"Location (lat,lon)",)__"
         R"__("ref":"Reference point (fan-out parent)",)__"
         R"__("ext_uid":"Imported UID (matches this to its source calendar)"}}})__"));
+    /* A KIND (2026-10-06, okf/concepts/foundation/kinds.md): a kind of thing
+     * a database names and shapes itself, in its `kinds` mantle. Named like a
+     * built-in glyph it renames it; otherwise it is a new kind, registered as a
+     * glyph from its `fields` at load (domain/kinds.hpp). Traits are its tags:
+     * trait:located, trait:dated, trait:listed. */
+    reg(
+        R"({"glyph":"kind","label":"Kind",)"
+        R"("fields":["title","plural","icon","color","category","fields","date_field","subtitle_field","hidden"],)"
+        R"("hints":{"color":"#6a5acd","face":{"w":200,"h":52},"category":"Kinds",)"
+        R"("editors":{"fields":"hidden","hidden":"hidden"},)"
+        R"__("labels":{"title":"Called (one)","plural":"Called (many)","icon":"Icon","color":"Colour",)__"
+        R"__("category":"Group","fields":"Fields","date_field":"The date that puts it on the calendar",)__"
+        R"__("subtitle_field":"Shown under its name","hidden":"Hidden from lists"}}})__");
     // a DAY is a taggable rune keyed by date (author, 2026-08-04): tag a
     // calendar day WITHOUT scheduling anything on it. Named `day-YYYY-MM-DD`
     // so it is findable from a date; carries only `date` + `name` fields and
     // its tags. Flows into Allomone as an ordinary thing (glyph `day`), which
     // is the whole point — a cheap surface to test scripts against dates.
-    core.register_glyph(
+    reg(
         R"({"glyph":"day","label":"Day",)"
         R"("fields":["date","name"],)"
         R"("hints":{"color":"#8a7a2f","face":{"w":150,"h":40},"category":"Events",)"
@@ -307,11 +328,11 @@ inline void register_glyphs(maiz::Core& core,
     // another (opacity/brightness). All are ordinary fields so they log, undo,
     // ride the org, and shape the PNG export — but they must be DECLARED here or
     // projection drops them (the same seam that bit position channels).
-    core.register_glyph(
+    reg(
         R"({"glyph":"map","label":"Layer",)"
         R"("fields":["title","order","filter","source","center","zoom","rules","channel","visible",)"
         R"("label_scale","show_labels","layer_opacity","layer_brightness",)"
-        R"("no_overlap","label_color"],)"
+        R"("no_overlap","label_color","canvas"],)"
         R"("hints":{"color":"#2e6b4f","face":{"w":200,"h":52},"category":"Territory",)"
         R"__("labels":{"title":"Name","order":"Stacking order (higher draws on top)",)__"
         R"__("filter":"What belongs to it (a tag query; blank = everything)",)__"
@@ -323,14 +344,27 @@ inline void register_glyphs(maiz::Core& core,
         R"__("label_scale":"Label size","show_labels":"Show labels (1)",)__"
         R"__("layer_opacity":"Layer opacity","layer_brightness":"Layer brightness",)__"
         R"__("no_overlap":"Labels dodge each other (1)",)__"
-        R"__("label_color":"Label color name"}}})__");
+        R"__("label_color":"Label color name",)__"
+        R"__("canvas":"Canvas it belongs to (blank = Earth)"}}})__");
+    /* A CANVAS (2026-10-06; okf/concepts/sections/gis/canvases.md): a world
+     * with its own layers, regions and positions. The author: maps become
+     * "canvases with data", and "we would wanna make maps of anything",
+     * starting with indoor layouts. `world` is `plan` (metres from the top-left
+     * corner, a grid, no tiles, no GPS); Earth is the canvas with no rune. */
+    reg(
+        R"({"glyph":"canvas","label":"Canvas",)"
+        R"("fields":["title","world","width","height","grid","unit","notes"],)"
+        R"("hints":{"color":"#2e6b4f","face":{"w":200,"h":52},"category":"Territory",)"
+        R"("editors":{"world":"combo:plan","notes":"multiline:60"},)"
+        R"__("labels":{"title":"Name","world":"World (plan = a drawn layout in metres)",)__"
+        R"__("width":"Width","height":"Depth","grid":"Grid","unit":"Unit (m, ft, sq)","notes":"Notes"}}})__");
     // a CALENDAR VIEW (C4d, author 2026-07-23): a saved, named calendar — its
     // FILTER (kind + tag query), default granularity, and (future) its own
     // rules. The filter makes privacy publishable: a "Public Events" view can
     // exclude incidents by construction, not by session state. Lives with the
     // data (like map views) so the calendar, which reads the data mantle,
     // finds it.
-    core.register_glyph(
+    reg(
         R"({"glyph":"calview","label":"Calendar view",)"
         R"("fields":["title","filter","kind","mode","rules"],)"
         R"("hints":{"color":"#b3592e","face":{"w":200,"h":52},"category":"Territory",)"
@@ -344,31 +378,32 @@ inline void register_glyphs(maiz::Core& core,
     // engine as markers). geo1/geo2 are the bounding-box corners (lat,lon),
     // set by the draw tool. A shape can BESTOW a tag on entities inside it
     // (the "spatial tag" — derive-then-materialize; see okf/concepts/sections/gis/territory.md).
-    core.register_glyph(
+    reg(
         R"({"glyph":"mapshape","label":"Map shape",)"
-        R"("fields":["kind","geo1","geo2","label","bestows"],)"
+        R"("fields":["kind","geo1","geo2","label","bestows","canvas"],)"
         R"("hints":{"color":"#2e6b4f","face":{"w":190,"h":52},"category":"Territory",)"
         R"("editors":{"kind":"combo:rect,ellipse","geo1":"hidden","geo2":"hidden",)"
         R"("bestows":"bestow"},)" // chips, like a tag editor's (2026-10-05)
         R"__("labels":{"kind":"Shape","geo1":"Corner 1 (lat,lon)",)__"
         R"__("geo2":"Corner 2 (lat,lon)","label":"Label",)__"
-        R"__("bestows":"Gives these tags to everything inside it"}}})__");
+        R"__("bestows":"Gives these tags to everything inside it",)__"
+        R"__("canvas":"Canvas it is drawn on (blank = Earth)"}}})__");
     // a REFERENCE POINT (author 2026-07-24): an editor-only gizmo marking a
     // location; NEVER drawn in exports/webview. Entities whose `ref` field
     // names it are its CHILDREN — fanned out around the shared point on the
     // generated map instead of overlapping. A clean answer to "10 orgs at the
     // same building."
-    core.register_glyph(
+    reg(
         R"({"glyph":"refpoint","label":"Reference point",)"
-        R"("fields":["geo","label"],)"
+        R"("fields":["geo","label","canvas"],)"
         R"("hints":{"color":"#8a6d3b","face":{"w":180,"h":44},"category":"Territory",)"
-        R"__("labels":{"geo":"Location (lat,lon)","label":"Name"}}})__");
+        R"__("labels":{"geo":"Location (lat,lon)","label":"Name","canvas":"Canvas (blank = Earth)"}}})__");
     // ── ALLOMONE (okf/concepts/allomone/): a rule rune. Phase A is derive-only:
     // a tag CONDITION (`cond` = compiled tag-grammar; `condjson` = the editable
     // FilterTerm structure) → an appearance ACTION (`color` = the card color).
     // `enabled` gates it. All fields are edited in the Allomone tab, not the
     // generic inspector, so they are editor:"hidden". ────────────────────────
-    core.register_glyph(
+    reg(
         R"({"glyph":"rule","label":"Rule",)"
         R"("fields":["label","cond","condjson","color","enabled"],)"
         R"("hints":{"color":"#7a5cc0","face":{"w":200,"h":48},"category":"Allomone",)"
@@ -381,18 +416,18 @@ inline void register_glyphs(maiz::Core& core,
     // shape:block/ports — the node canvas is gone; a custom view
     // (draw_allomone_stack) renders these. This rune tree IS the AST that
     // Allomone Script (text) also projects. ──────────────────────────────────
-    core.register_glyph(
+    reg(
         R"({"glyph":"allo_when","label":"When a thing matches",)"
         R"("fields":["order"],)"
         R"("hints":{"color":"#7a5cc0","category":"Allomone",)"
         R"("editors":{"order":"hidden"}}})");
-    core.register_glyph(
+    reg(
         R"({"glyph":"allo_hastag","label":"has tag",)"
         R"("fields":["tag","parent","slot","order"],)"
         R"("hints":{"color":"#3f8f6f","category":"Allomone",)"
         R"("editors":{"parent":"hidden","slot":"hidden","order":"hidden"},)"
         R"("labels":{"tag":"Tag"}}})");
-    core.register_glyph(
+    reg(
         R"({"glyph":"allo_setcolor","label":"set card color",)"
         R"("fields":["color","parent","slot","order"],)"
         R"("hints":{"color":"#c06a2f","category":"Allomone",)"
@@ -410,7 +445,7 @@ inline void register_glyphs(maiz::Core& core,
     // is where new rules go; its descriptor lives in the domain library, next
     // to the code that reads it, along with the resolution glyph upstream's
     // own commands name. ─────────────────────────────────────────────────────
-    core.register_glyph(
+    reg(
         R"__({"glyph":"script","label":"Allomone Script (legacy)",)__"
         R"("fields":["name","body","enabled"],)"
         R"("hints":{"color":"#6b5a8a","category":"Allomone",)"

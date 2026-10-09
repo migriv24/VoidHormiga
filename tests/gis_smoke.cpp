@@ -229,6 +229,42 @@ int main() {
         near_eq(d.metres_per_px() * 256 * 1024, 40075016.686, 1.0, "metres per px at the equator");
     }
 
+    // ── the viewport over a FLAT world (2026-10-06: a store floor on a phone) ──
+    {
+        std::printf("flat viewport (a drawn plan, metres)\n");
+        SlippyView f;
+        f.flat = true;
+        f.span = 256;
+        f.min_zoom = 1;
+        f.max_zoom = 9;
+        f.tile_px = 256;
+        f.w = 400;
+        f.h = 300;
+        f.lat = 12; // y, metres
+        f.lon = 20; // x, metres
+        f.zoom = 4; // 16 px a metre
+        float sx, sy;
+        f.to_screen(12, 20, sx, sy);
+        near_eq(sx, 200, 1e-3, "the centre is the middle of the screen");
+        f.to_screen(12, 21, sx, sy);
+        near_eq(sx, 216, 1e-3, "one metre right is 16 px at zoom 4");
+        f.to_screen(-5, 300, sx, sy);
+        ok(sx > 400 && sy < 0, "no wrapping and no clamping: 300 m east is off the right edge");
+        double la, lo;
+        f.to_geo(216, 150, la, lo);
+        near_eq(lo, 21, 1e-9, "screen back to metres (x)");
+        near_eq(la, 12, 1e-9, "screen back to metres (y)");
+        f.pan(-32, 0);
+        near_eq(f.lon, 22, 1e-9, "dragging the floor left 32 px looks 2 m east");
+        double la0, lo0;
+        f.to_geo(216, 150, la0, lo0);
+        f.zoom_about(2.0, 216, 150);
+        f.to_geo(216, 150, la, lo);
+        near_eq(lo, lo0, 1e-9, "a zoom keeps the metre under the finger (x)");
+        near_eq(la, la0, 1e-9, "a zoom keeps the metre under the finger (y)");
+        near_eq(f.metres_per_px(), 1.0 / 32, 1e-12, "metres per px is the plan's own (32 px a metre at zoom 5)");
+    }
+
 
     std::printf(failures ? "\nFAILED (%d)\n" : "\nOK - the map engine holds\n",
                 failures);

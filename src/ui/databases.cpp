@@ -14,6 +14,7 @@
  * Switching saves the open database first, as File > Open always should have:
  * opening another database replaces the working copy. */
 #include "app/app_internal.hpp"
+#include "domain/workspaces.hpp" // what a new database can start as
 #include "app/lan_share.hpp"
 #include "platform/app_settings.hpp"
 #include "platform/device_paths.hpp"
@@ -71,7 +72,21 @@ void HormigaApp::draw_databases() {
         on_open(dir.string());
     }
 
-    // a new one, named, in the databases folder
+    // a new one, named, in the databases folder, starting as a workspace
+    static int workspace = 0;
+    ImGui::SetNextItemWidth(180);
+    if (ImGui::BeginCombo("##workspace", hormiga::workspaces::kAll[workspace].title)) {
+        for (int i = 0; i < hormiga::workspaces::kCount; ++i) {
+            const auto& w = hormiga::workspaces::kAll[i];
+            ImGui::BeginDisabled(!w.built);
+            if (ImGui::Selectable(w.built ? w.title : (std::string(w.title) + "  (not yet)").c_str(), i == workspace))
+                workspace = i;
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", w.line);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
     ImGui::SetNextItemWidth(220);
     const bool go = ImGui::InputTextWithHint("##newdb", "name of a new database", new_name, sizeof new_name,
                                              ImGuiInputTextFlags_EnterReturnsTrue);
@@ -92,8 +107,9 @@ void HormigaApp::draw_databases() {
             fs::create_directories(dir, ec);
             save_open();
             const std::string path = out.string();
-            run_busy("Creating new database…", [this, path] {
-                new_database();
+            const std::string ws = hormiga::workspaces::kAll[workspace].key;
+            run_busy("Creating new database…", [this, path, ws] {
+                new_database(ws);
                 save_database_as(path);
             });
             new_name[0] = 0;

@@ -38,7 +38,9 @@ const char* layer_name_of(const maiz::SceneNode& l) {
 } // namespace
 
 void HormigaApp::draw_map_panels() {
-    const std::vector<const maiz::SceneNode*> layers = map_layers();
+    const std::vector<const maiz::SceneNode*> layers = map_layers(); // the canvas on screen's
+    const hormiga::canvas::Canvas cvs = hormiga::canvas::find(scene, map_canvas);
+    const maiz::SceneNode* cv_rune = map_canvas.empty() ? nullptr : scene.find(map_canvas);
     const maiz::SceneNode* cur = nullptr;
     for (auto* l : layers)
         if (l->name == map_sel) cur = l;
@@ -157,7 +159,7 @@ void HormigaApp::draw_map_panels() {
                 map_cam.x = (float)lo;
                 map_cam.y = (float)la;
                 if (map_cam.zoom < 15) map_cam.zoom = 15;
-                pending_cmds.push_back(maiz::compile_camera(map_cam, "view.map.camera"));
+                pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
                 ed.selection = {picked};
             } else {
                 map_place_arm = picked; // click the map to place it
@@ -171,7 +173,8 @@ void HormigaApp::draw_map_panels() {
         std::map<std::string, std::vector<Row>> by_kind;
         int total = 0;
         for (const auto& n : scene.nodes) {
-            if (n.glyph == "map" || n.glyph == "image") continue;
+            if (n.glyph == "map" || n.glyph == "image" || n.glyph == "canvas") continue;
+            if ((n.glyph == "mapshape" || n.glyph == "refpoint") && !hormiga::canvas::on(n, map_canvas)) continue;
             double la, lo;
             const std::string g = n.glyph == "mapshape" ? hormiga::temper::field_value(n, "geo1")
                                   : n.glyph == "refpoint" ? hormiga::temper::field_value(n, "geo")
@@ -197,7 +200,7 @@ void HormigaApp::draw_map_panels() {
                 if (ImGui::Selectable(rune_title(*r.n).c_str(), ed.selected(r.n->name))) {
                     map_cam.x = (float)r.lo;
                     map_cam.y = (float)r.la;
-                    pending_cmds.push_back(maiz::compile_camera(map_cam, "view.map.camera"));
+                    pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
                     ed.selection = {r.n->name};
                 }
                 if (kind != "mapshape" && kind != "refpoint" && ImGui::BeginPopupContextItem("##rowmenu")) {
@@ -235,7 +238,8 @@ void HormigaApp::draw_map_panels() {
                                              "set " + name + " order \"" + std::to_string(top + 1) + "\"",
                                              "tag " + name + " +type:map"};
             for (const char* k : {"source", "center", "zoom", "channel", "visible", "label_scale", "show_labels",
-                                  "layer_opacity", "layer_brightness", "no_overlap", "label_color", "filter"}) {
+                                  "layer_opacity", "layer_brightness", "no_overlap", "label_color", "filter",
+                                  "canvas"}) {
                 const std::string v = hormiga::temper::field_value(*cur, k);
                 if (!v.empty()) cmds.push_back("set " + name + " " + k + " " + json_str(v));
             }
@@ -269,8 +273,8 @@ void HormigaApp::draw_map_panels() {
             ImGui::PopStyleColor();
             if (ImGui::IsItemHovered()) ImGui::SetTooltip(vis ? "hide this layer" : "show this layer");
             ImGui::SameLine();
-            const bool own = !hormiga::temper::field_value(l, "channel").empty() &&
-                             hormiga::temper::field_value(l, "channel") != "main";
+            const std::string lch = hormiga::temper::field_value(l, "channel");
+            const bool own = !lch.empty() && lch != hormiga::canvas::shared_channel(map_canvas);
             const std::string lbl = std::string(layer_name_of(l)) + (own ? "   " ICON_FA_CODE_BRANCH : "");
             if (ImGui::Selectable(lbl.c_str(), active, 0,
                                   ImVec2(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight() * 2 - 8, 0)))
@@ -281,7 +285,9 @@ void HormigaApp::draw_map_panels() {
             if (ImGui::BeginPopupContextItem("##layermenu")) {
                 if (ImGui::MenuItem("Edit this layer")) map_sel = l.name;
                 if (ImGui::MenuItem(own ? "Share positions with the other layers" : "Give it its own positions"))
-                    pending_cmds.push_back("set " + l.name + " channel \"" + (own ? std::string("main") : l.name) + "\"");
+                    pending_cmds.push_back("set " + l.name + " channel " +
+                                           json_str(own ? hormiga::canvas::shared_channel(map_canvas)
+                                                        : hormiga::canvas::own_channel(map_canvas, l.name)));
                 if (ImGui::MenuItem("Delete")) {
                     pending_cmds.push_back("rm " + l.name);
                     if (active) map_sel.clear();
@@ -311,8 +317,21 @@ void HormigaApp::draw_map_panels() {
         }
         if (layers.empty()) ImGui::TextDisabled("no layers yet");
 
-        // the background: the base map, under every layer
+        // the background: the base map, under every layer; on a drawn canvas,
+        // its floor (name, size, grid), which is the canvas rune's own fields
         ImGui::Separator();
+        if (cv_rune) {
+            ImGui::TextDisabled(ICON_FA_TABLE_CELLS "  The canvas itself (under every layer)");
+            maiz::WidgetContext wctx{scene, pending_cmds, std::string(), 0.0f};
+            for (const auto& fl : cv_rune->fields)
+                if (fl.key == "title" || fl.key == "width" || fl.key == "height" || fl.key == "grid" ||
+                    fl.key == "unit") {
+                    ImGui::SetNextItemWidth(-ImGui::CalcTextSize("Depth (m)").x - 12);
+                    maiz::widget_field(wctx, widgets, *cv_rune, fl);
+                }
+            maiz::dim_wrapped("Metres from the top-left corner. Draw rooms, aisles and shelves with the "
+                              "rectangle tool; a region's tags go to everything placed inside it.");
+        } else {
         ImGui::TextDisabled(ICON_FA_MAP "  Base map (under every layer)");
         const int bsi = std::clamp(basemap_src, 0, kBaseSourceCount - 1);
         ImGui::SetNextItemWidth(-1);
@@ -338,6 +357,7 @@ void HormigaApp::draw_map_panels() {
             std::snprintf(b, sizeof b, "config set ui.basemap_fade \"%.2f\"", basemap_fade);
             pending_cmds.push_back(b);
         }
+        } // Earth's base map
 
         // THE LAYER BEING EDITED: its name, its look under others, its rules, its labels
         if (cur) {
@@ -363,9 +383,11 @@ void HormigaApp::draw_map_panels() {
                 pending_cmds.push_back("set " + cur->name + " layer_brightness \"" + b + "\"");
             }
             const std::string ch = hormiga::temper::field_value(*cur, "channel");
-            bool own = !ch.empty() && ch != "main";
+            bool own = !ch.empty() && ch != hormiga::canvas::shared_channel(map_canvas);
             if (ImGui::Checkbox("Its own positions", &own))
-                pending_cmds.push_back("set " + cur->name + " channel \"" + (own ? cur->name : std::string("main")) + "\"");
+                pending_cmds.push_back("set " + cur->name + " channel " +
+                                       json_str(own ? hormiga::canvas::own_channel(map_canvas, cur->name)
+                                                    : hormiga::canvas::shared_channel(map_canvas)));
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("off: things sit where they sit on every layer.\n"
                                   "on: moving something on this layer moves it only here\n"
@@ -547,6 +569,11 @@ void HormigaApp::draw_map_panels() {
     ImGui::Begin("Actions##map");
     if (!cur) {
         maiz::dim_wrapped("Add a layer first (Layers, + Layer).");
+    } else if (cvs.plan()) {
+        ImGui::TextDisabled("Canvas: %s", cvs.title.c_str());
+        maiz::dim_wrapped("A picture of a floor plan, and a floor plan on a website, are not built yet: "
+                          "both exports draw Earth's tiles today. They come with the floor plan's own "
+                          "export (okf/concepts/sections/gis/canvases.md).");
     } else {
         static int doc_pick = 0;
         ImGui::TextDisabled("Layer: %s", layer_name_of(*cur));

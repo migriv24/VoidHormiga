@@ -35,6 +35,7 @@
 #include "app/app_internal.hpp"
 #include "domain/date_query.hpp" // date: predicates in the block grammar
 #include "render/download.hpp" // a file a visitor can keep
+#include "render/published.hpp" // who a directory lists: one answer for every output
 #include "render/audio.hpp" // the audio block's markup, both domains
 #include "render/video.hpp"      // a pasted video URL, understood
 #include "render/text.hpp"
@@ -486,9 +487,10 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             const int limit = hormiga::doc_field_int(*n, "limit", 0);
             const std::string sort = field_value(*n, "sort");
 
+            const std::string ekind = field_value(*n, "kind"); // "" = events (domain/kinds.hpp)
             std::vector<const maiz::SceneNode*> hits;
             for (const auto& dn : data.nodes)
-                if (dn.glyph == "event" && hormiga::query_matches(query, data, dn, today) &&
+                if (hormiga::kinds::in_event_grid(dn, ekind) && hormiga::query_matches(query, data, dn, today) &&
                     !allo_web_hidden(dn.name))
                     hits.push_back(&dn);
             if (sort == "name") {
@@ -500,8 +502,8 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                 const bool desc = sort == "date-desc";
                 std::stable_sort(hits.begin(), hits.end(),
                                  [&](const maiz::SceneNode* a, const maiz::SceneNode* b) {
-                                     const std::string da = field_value(*a, "date");
-                                     const std::string db = field_value(*b, "date");
+                                     const std::string da = hormiga::kinds::grid_date(*a);
+                                     const std::string db = hormiga::kinds::grid_date(*b);
                                      // ISO dates sort as strings; an undated
                                      // event holds its place at the end rather
                                      // than jumping to the front as ""
@@ -518,8 +520,9 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                  * not honour until a person read a real issue and said it was
                  * a wall of text: the times on a DATED event, the event's own
                  * colour, the title, and how much of the summary to show. */
-                std::string when = human_date(field_value(dn, "date"), lang);
-                if (when.empty()) when = field_value(dn, "days");
+                const bool own = dn.glyph != "event"; // a database's dated kind: name, date and line only
+                std::string when = human_date(hormiga::kinds::grid_date(dn), lang);
+                if (when.empty() && !own) when = field_value(dn, "days");
                 const std::string st = field_value(dn, "start_time");
                 const std::string etime = field_value(dn, "end_time");
                 std::string bar = field_value(dn, "color");
@@ -533,10 +536,15 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                     line += (line.empty() ? "" : " \xc2\xb7 ") + st;
                     if (!etime.empty()) line += "\xe2\x80\x93" + etime;
                 }
-                const std::string venue = field_value(dn, "venue");
+                const std::string venue = own ? hormiga::kinds::directory_line(dn) : field_value(dn, "venue");
                 if (!venue.empty())
                     line += (line.empty() ? "" : " \xc2\xb7 ") + venue;
                 meta_line(line);
+                if (own) {
+                    html << "</td></tr></table>\n";
+                    grid_cell_close(ei, hits.size(), ecols);
+                    continue;
+                }
                 const std::string vlink = field_value(dn, "virtual");
                 if (!vlink.empty())
                     html << "<br>"
@@ -571,11 +579,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             std::vector<const maiz::SceneNode*> dpeople;
             int dwithheld = 0;
             for (const auto& dn : data.nodes) {
-                const bool is_c = dn.glyph == "contact";
-                const bool is_o = dn.glyph == "organization";
-                if (!is_c && !is_o) continue;
-                if (dkind == "contact" && !is_c) continue;
-                if (dkind == "organization" && !is_o) continue;
+                if (!hormiga::published::in_directory(dn, dkind)) continue; // the shared answer
                 if (!dq.empty() && !hormiga::query_matches(dq, data, dn, today)) continue;
                 if (allo_web_hidden(dn.name)) continue;
                 if (!maiz::node_matches("clearance:public", dn)) { ++dwithheld; continue; }
@@ -583,7 +587,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
             }
             std::stable_sort(dpeople.begin(), dpeople.end(),
                              [&](const maiz::SceneNode* a, const maiz::SceneNode* b) {
-                                 return display_name(*a) < display_name(*b);
+                                 return hormiga::published::listed_name(*a) < hormiga::published::listed_name(*b);
                              });
             rank_by_tags(dpeople, field_value(*n, "rank_up"), field_value(*n, "rank_down"));
             if (dlim > 0 && (int)dpeople.size() > dlim) dpeople.resize((size_t)dlim);
@@ -595,11 +599,9 @@ std::string HormigaApp::render_preview(std::string_view lang) {
                                    "`clearance:public` are published."});
             for (const maiz::SceneNode* pn : dpeople) {
                 const maiz::SceneNode& dn = *pn;
-                const std::string role = dn.glyph == "contact"
-                                             ? field_value(dn, "role")
-                                             : field_value(dn, "abbreviation");
+                const std::string role = hormiga::published::directory_role(dn);
                 html << et.card_open(et.card, acc, "8px 0", "8px 12px") << et.b_open()
-                     << html_escape(display_name(dn)) << "</b>";
+                     << html_escape(hormiga::published::listed_name(dn)) << "</b>";
                 meta_line(role);
                 const std::string dbio = field_value(dn, "bio");
                 if (!dbio.empty()) html << "<br>" << prose(clip(dbio, 200));

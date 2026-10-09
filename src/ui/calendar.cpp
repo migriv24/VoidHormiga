@@ -64,6 +64,15 @@ void HormigaApp::cal_new_dated(const char* glyph, int y, int m, int d, float t0,
 /* Everything dated on one day, styled: the selected map view's rules give
  * icon/color (one engine, two surfaces), explicit tags win, glyph kinds
  * ground the defaults. Incidents are ALWAYS visibly distinct (directive). */
+/* The field that holds a rune's date on the calendar: `date`, or the date
+ * field of a kind the database made (a supply's `expires`, a chore's `due`;
+ * domain/kinds.hpp), so moving it to another day moves the right date. */
+static std::string cal_date_field(const maiz::Scene& s, const std::string& rune) {
+    const maiz::SceneNode* n = s.find(rune);
+    const auto* k = n ? hormiga::kinds::current().find(n->glyph) : nullptr;
+    return k && !k->builtin && !k->date_field.empty() ? k->date_field : std::string("date");
+}
+
 std::vector<HormigaApp::CalEntry> HormigaApp::cal_entries_on(int y, int m,
                                                              int d) const {
     std::vector<CalEntry> out;
@@ -77,6 +86,9 @@ std::vector<HormigaApp::CalEntry> HormigaApp::cal_entries_on(int y, int m,
         if (node.glyph == "day") continue;
         int yy, mm, dd;
         std::string ds = hormiga::temper::field_value(node, "date");
+        const auto* own = hormiga::kinds::current().find(node.glyph);
+        if (own && own->builtin) own = nullptr;
+        if (own) ds = hormiga::kinds::current().date_of(node); // its own date field, when it is `dated`
         if (std::sscanf(ds.c_str(), "%d-%d-%d", &yy, &mm, &dd) != 3) continue;
         /* RECURRENCE (C3a, 2026-09-11). An entry lands on this day if its own
          * date IS this day, or if its rule puts an occurrence here.
@@ -109,7 +121,9 @@ std::vector<HormigaApp::CalEntry> HormigaApp::cal_entries_on(int y, int m,
         CalEntry e{&node, nullptr, 0, node.glyph == "incident"};
         e.col = e.incident                ? IM_COL32(200, 50, 50, 255)
                 : node.glyph == "event"   ? IM_COL32(63, 111, 174, 255)
+                : own                     ? (ImU32)kind_colour_u32(own->color, IM_COL32(110, 110, 118, 255))
                                           : IM_COL32(110, 110, 118, 255);
+        if (own) e.icon = kind_icon_named(own->icon);
         for (const auto& r : rules) {
             if (r.tags.empty() || !maiz::node_matches(rule_expr_of(r), node))
                 continue;
@@ -225,7 +239,7 @@ void HormigaApp::draw_calendar_body() {
             std::string st = hormiga::temper::field_value(*e.node, "start_time");
             if (!st.empty()) lbl += st + " ";
         }
-        lbl += e.node->name;
+        lbl += rune_title(*e.node); // its name, as the map shows it
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(e.col));
         if (ImGui::Selectable(lbl.c_str(), ed.selected(e.node->name), 0,
                               ImVec2(w, 0)))
@@ -244,7 +258,7 @@ void HormigaApp::draw_calendar_body() {
             marker_menu_items(*e.node);
             ImGui::Separator();
             if (ImGui::MenuItem("Unschedule (clear date)"))
-                pending_cmds.push_back("set " + e.node->name + " date \"\"");
+                pending_cmds.push_back("set " + e.node->name + " " + cal_date_field(scene, e.node->name) + " \"\"");
             ImGui::EndPopup();
         } else if (ImGui::IsItemHovered()) {
             std::string tip = e.node->glyph + "  (right-click for actions)";
@@ -373,7 +387,7 @@ void HormigaApp::draw_calendar_body() {
                             char d[16];
                             std::snprintf(d, sizeof d, "%04d-%02d-%02d",
                                           cal_year, cal_month, dnum);
-                            pending_cmds.push_back("set " + nm + " date \"" + d +
+                            pending_cmds.push_back("set " + nm + " " + cal_date_field(scene, nm) + " \"" + d +
                                                    "\"");
                         }
                         ImGui::EndDragDropTarget();
@@ -717,7 +731,7 @@ void HormigaApp::draw_calendar_body() {
                                     share_now && !share_now(*e.node));
                 std::string bl;
                 if (e.incident) bl += "! ";
-                bl += e.node->name;
+                bl += rune_title(*e.node);
                 /* Clipped to the block: once lanes divide a column three ways
                  * an unclipped label runs straight across its neighbours and
                  * the grid reads as noise. */
@@ -815,7 +829,7 @@ void HormigaApp::draw_calendar_body() {
                         int ny, nm, nd; day_of_col(mc, ny, nm, nd);
                         char d[16];
                         std::snprintf(d, sizeof d, "%04d-%02d-%02d", ny, nm, nd);
-                        cmds.push_back("set " + cal_move + " date \"" + d + "\"");
+                        cmds.push_back("set " + cal_move + " " + cal_date_field(scene, cal_move) + " \"" + d + "\"");
                         cmds.push_back("set " + cal_move + " start_time \"" +
                                        cal_fmt_hhmm(nt0) + "\"");
                         cmds.push_back("set " + cal_move + " end_time \"" +

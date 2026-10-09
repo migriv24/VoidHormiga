@@ -7,6 +7,7 @@
 #include "app/lan_share.hpp"          // leave_database: New and Open leave the shared one
 #include "platform/app_settings.hpp"  // the default database
 #include "domain/seed.hpp"             // register_glyphs, seed_antfarm_transcript
+#include "domain/workspaces.hpp"       // what a new database can start as
 
 #include <ctime>
 
@@ -101,7 +102,7 @@ void HormigaApp::save_database_as(const std::string& path) {
  * copy — empty data, one blank newsletter document, the Antfarm topology (the
  * protocol layer) — and NO bundle yet (Save database as... names & places its
  * .miga). This is the multi-database "new project" entry the app was missing. */
-void HormigaApp::new_database() {
+void HormigaApp::new_database(const std::string& workspace) {
     LanRuntime::leave_database(*this); // out of the shared one: a new database is nobody's yet
     reset_working_copy(true); // a fresh db owns nothing from the old working copy
     core = maiz::Core(); // a fresh, empty state (no demo data)
@@ -122,16 +123,48 @@ void HormigaApp::new_database() {
     core.dispatch("set masthead row \"0\"");
     for (const auto& c : hormiga::seed_antfarm_transcript()) core.dispatch(c);
     core.dispatch(std::string("use ") + kDataMantle);
+    // the WORKSPACE it starts as (okf/concepts/platform/workspaces.md): its
+    // canvases, regions, categories and examples, as dispatcher commands
+    std::string opens_on; // a workspace may open on a canvas of its own (a store's floor)
+    const auto ws = hormiga::workspaces::transcript(workspace);
+    if (!ws.kinds.empty()) { // its KINDS first, in their own mantle, then registered (domain/kinds.hpp)
+        core.dispatch(std::string("mantle new ") + hormiga::kinds::kMantle);
+        for (const auto& c : ws.kinds) core.dispatch(c);
+        core.dispatch(std::string("use ") + kDataMantle);
+        hormiga::kinds::apply(core, {});
+    }
+    for (const auto& c : ws.data) {
+        const auto r = core.dispatch(c);
+        if (!r.ok) log.push_back({"warn", "workspace", "refused while setting up: " + c});
+        if (c.rfind("config set view.map.canvas ", 0) == 0) opens_on = c.substr(27);
+    }
+    while (!opens_on.empty() && (opens_on.back() == '"' || opens_on.back() == ' ')) opens_on.pop_back();
+    while (!opens_on.empty() && opens_on.front() == '"') opens_on.erase(0, 1);
+    map_canvas.clear();
+    map_sel.clear();
     reproject();
     read_view_config();
     apply_theme();
+    if (const auto cv = hormiga::canvas::find(scene, opens_on); cv.plan()) { // centred on its floor
+        map_canvas = cv.name;
+        map_cam.x = (float)(cv.w / 2);
+        map_cam.y = (float)(cv.h / 2);
+        map_cam.zoom = (float)cv.fit_zoom(); // the whole of it in view
+        map_cam_loaded = true;
+    }
     cur_miga.clear();      // unsaved: a new database has no file until Save As
     remember_bundle("");
     cur_doc = "issue-demo";
     cur_page.clear();
     ed.selection.clear();
     do_save();             // flush the fresh structure into the working .db
-    if (!phone) toast("new database (empty) - use 'Save database as...' to name & place it"); // a phone names it first
+    if (!phone) // a phone names it first
+        toast(workspace.empty() || workspace == "organization"
+                  ? "new database (empty) - use 'Save database as...' to name & place it"
+                  : "new database, set up as " + std::string(hormiga::workspaces::find(workspace)
+                                                                 ? hormiga::workspaces::find(workspace)->title
+                                                                 : workspace) +
+                        " - use 'Save database as...' to name & place it");
 }
 
 /* SETTINGS > STARTING HORMIGA (the author, 2026-09-25): "default database ...

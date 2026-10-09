@@ -25,6 +25,29 @@ fold into concepts and clear from here.
   message means and so belongs in Palabra's OKF first. Either is Palabra's to
   decide; this is the message for it.
 
+- **Q106 — should a canvas be its own document?** (Opened 2026-10-06,
+  [canvases](/concepts/sections/gis/canvases.md).) The author wants canvases to
+  become documents, as newsletters and websites are. Today a canvas (its rune,
+  layers and regions) lives in the data mantle, because placement and
+  containment work on one scene. As its own mantle it could be opened from the
+  Builder's document list, copied, published as a page, and shared or kept
+  private as a unit; the cost is that its regions would give categories to runes
+  in another mantle, which nothing does yet. **Lean: yes, in two steps**: first
+  a canvas is listed and opened like a document (the Builder's list shows it,
+  opening it shows the map on it) while its runes stay where they are; then,
+  when a second consumer needs it, its layers and regions move into its own
+  mantle and containment learns to look across one.
+
+- **Q107 — how much should a workspace change the application?** (Opened
+  2026-10-06, [workspaces](/concepts/platform/workspaces.md).) Built today, a
+  workspace only seeds the database and records its kind. It could also choose
+  the first screen (a store opens on its floor), the phone's bar, the Data
+  list's order, and words ("Products" before "Contacts"; "Customers" for a
+  store). **Lean: screens, order and the phone's bar yes, from
+  `workspace.kind`, each overridable in Settings; words no**, except where a
+  kind is the workspace's own: renaming "Contact" per workspace splits the
+  documentation and the search grammar in two.
+
 - **Q105 — should a phone be able to JOIN a database over a radio?** (Opened
   2026-10-05.) Today the radios keep members in sync, but joining (the sealed
   transfer of the database, files, room key and members registry, approved on

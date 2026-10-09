@@ -245,10 +245,15 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
                           kind_sel.empty()))
         kind_sel.clear();
     ImGui::Separator();
-    for (const auto& e : palette.entries) {
-        std::string row = e.label + " (" + std::to_string(counts[e.glyph]) + ")";
+    for (const auto& e : palette.entries) { // the kinds, as this database calls them
+        std::string row = std::string(glyph_icon(e.glyph)) + "  " + hormiga::kinds::current().plural(e.glyph) +
+                          " (" + std::to_string(counts[e.glyph]) + ")##" + e.glyph;
         if (ImGui::Selectable(row.c_str(), kind_sel == e.glyph)) kind_sel = e.glyph;
     }
+    ImGui::Spacing();
+    if (ImGui::SmallButton(ICON_FA_PEN_TO_SQUARE "  Edit kinds")) show_kinds = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("call these whatever you call them, change their looks,\nand make kinds of your own");
     ImGui::EndChild();
 
     // splitter 1: sidebar | (list + detail)

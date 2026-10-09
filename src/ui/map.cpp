@@ -89,12 +89,13 @@ HormigaApp::TileFetcher::~TileFetcher() {
 // stores only its divergences (copy-on-write). See okf/concepts/sections/gis/territory.md.
 
 std::string HormigaApp::geo_field_for(const std::string& ch) {
-    return (ch.empty() || ch == "main") ? "geo" : "geo_" + ch;
+    return hormiga::canvas::geo_field(ch);
 }
 std::string HormigaApp::view_geo(const maiz::SceneNode& n, const std::string& ch) {
     if (!ch.empty() && ch != "main") {
         std::string v = hormiga::temper::field_value(n, ("geo_" + ch).c_str());
         if (!v.empty()) return v; // this view's own position
+        if (hormiga::canvas::strict(ch)) return {}; // a drawn canvas: never Earth's (domain/canvas.hpp)
     }
     return hormiga::temper::field_value(n, "geo"); // fallback: main
 }
@@ -108,7 +109,7 @@ std::map<std::string, HormigaApp::RefFan> HormigaApp::ref_fans(
     const maiz::Scene& s, [[maybe_unused]] const std::string& ch) const {
     std::map<std::string, std::pair<double, double>> rp; // refpoint → geo
     for (const auto& n : s.nodes)
-        if (n.glyph == "refpoint") {
+        if (n.glyph == "refpoint" && hormiga::canvas::on(n, map_canvas)) {
             double la, lo;
             if (hormiga::parse_geo(hormiga::temper::field_value(n, "geo"), la, lo))
                 rp[n.name] = {la, lo};
@@ -277,25 +278,82 @@ void HormigaApp::map_new_earth(double lat, double lon, int zoom) {
         R"({"name":"organizations","tags":["type:organization"],"icon":"house","color":""},)"
         R"({"name":"events","tags":["type:event"],"icon":"calendar","color":""},)"
         R"({"name":"incidents","tags":["type:incident"],"icon":"warning","color":"red"}])";
-    pending_cmds.push_back(maiz::compile_commit(
-        {"rune new map " + name, "set " + name + " source \"osm\"",
-         "set " + name + " title " + json_str("Layer " + std::to_string(count + 1)),
-         "set " + name + " order \"" + std::to_string(count ? top + 1 : 0) + "\"",
-         "set " + name + " center " + json_str(center),
-         "set " + name + " zoom \"" + std::to_string(zoom) + "\"",
-         "set " + name + " channel \"main\"", // new layers share main's positions
-         "setjson " + name + " rules " + json_arg(default_rules),
-         "tag " + name + " +type:map"}));
+    // on a drawn canvas the layer belongs to it, shares ITS positions, and has
+    // no tile source; Earth's rules (people, places, events) mean nothing there
+    const bool plan = hormiga::canvas::find(scene, map_canvas).plan();
+    std::vector<std::string> cmds = {
+        "rune new map " + name, "set " + name + " source " + json_str(plan ? "plan" : "osm"),
+        "set " + name + " title " + json_str("Layer " + std::to_string(count + 1)),
+        "set " + name + " order \"" + std::to_string(count ? top + 1 : 0) + "\"",
+        "set " + name + " center " + json_str(center),
+        "set " + name + " zoom \"" + std::to_string(zoom) + "\"",
+        "set " + name + " channel " + json_str(hormiga::canvas::shared_channel(map_canvas)),
+        "setjson " + name + " rules " + json_arg(plan ? "[]" : default_rules),
+        "tag " + name + " +type:map"};
+    if (!map_canvas.empty()) cmds.push_back("set " + name + " canvas " + json_str(map_canvas));
+    pending_cmds.push_back(maiz::compile_commit(cmds));
     map_sel = name;
     toast("added a layer on top - it is the one you are editing now");
+}
+
+/* A NEW FLOOR PLAN (2026-10-06, okf/concepts/sections/gis/canvases.md): a
+ * `canvas` rune of world `plan`, w by h metres, a 1 m grid, and its first
+ * layer, in one batch; then it is the canvas on screen, centred and fitted. */
+void HormigaApp::map_new_canvas(const std::string& title, double w, double h) {
+    const std::string cv = mint_name("canvas"), layer = mint_name("layer");
+    char ws[32], hs[32], center[64];
+    std::snprintf(ws, sizeof ws, "%g", w);
+    std::snprintf(hs, sizeof hs, "%g", h);
+    std::snprintf(center, sizeof center, "%g,%g", h / 2, w / 2);
+    pending_cmds.push_back(maiz::compile_commit(
+        {"rune new canvas " + cv, "set " + cv + " title " + json_str(title), "set " + cv + " world \"plan\"",
+         "set " + cv + " width " + json_str(ws), "set " + cv + " height " + json_str(hs),
+         "set " + cv + " grid \"1\"", "tag " + cv + " +type:canvas",
+         "rune new map " + layer, "set " + layer + " source \"plan\"", "set " + layer + " title \"Layout\"",
+         "set " + layer + " order \"0\"", "set " + layer + " center " + json_str(center),
+         "set " + layer + " canvas " + json_str(cv),
+         "set " + layer + " channel " + json_str(hormiga::canvas::shared_channel(cv)),
+         "setjson " + layer + " rules " + json_arg("[]"), "tag " + layer + " +type:map"}));
+    pending_cmds.push_back("config set view.map.canvas " + json_str(cv));
+    map_canvas = cv;
+    map_sel = layer;
+    map_cam.x = (float)(w / 2);
+    map_cam.y = (float)(h / 2);
+    hormiga::canvas::Canvas fresh; // the whole floor in view
+    fresh.w = w;
+    fresh.h = h;
+    map_cam.zoom = (float)fresh.fit_zoom();
+    ed.selection.clear();
+    toast("a new floor plan: draw rooms and aisles with the rectangle tool, then place things in them");
+}
+
+/* Switch the canvas on screen. Each canvas keeps its own camera, remembered
+ * like the map's always was; a plan never seen is centred on its floor. */
+void HormigaApp::map_switch_canvas(const std::string& name) {
+    if (name == map_canvas) return;
+    pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
+    map_canvas = name;
+    map_sel.clear();
+    ed.selection.clear();
+    pending_cmds.push_back("config set view.map.canvas " + json_str(name));
+    maiz::Camera saved;
+    const auto cv = hormiga::canvas::find(scene, name);
+    if (maiz::parse_camera(core.dispatch("config get " + hormiga::canvas::camera_key("view.map.camera", name)).data,
+                           saved))
+        map_cam = saved;
+    else if (cv.plan()) {
+        map_cam.x = (float)(cv.w / 2);
+        map_cam.y = (float)(cv.h / 2);
+        map_cam.zoom = (float)cv.fit_zoom(); // the whole of it in view
+    }
 }
 
 /* The layers, bottom to top: by `order`, then as the scene has them (a layer
  * made before `order` existed sits where it always did). */
 std::vector<const maiz::SceneNode*> HormigaApp::map_layers() const {
     std::vector<const maiz::SceneNode*> out;
-    for (const auto& n : scene.nodes)
-        if (n.glyph == "map") out.push_back(&n);
+    for (const auto& n : scene.nodes) // the canvas on screen's layers only
+        if (n.glyph == "map" && hormiga::canvas::on(n, map_canvas)) out.push_back(&n);
     std::stable_sort(out.begin(), out.end(), [](const maiz::SceneNode* a, const maiz::SceneNode* b) {
         return std::atoi(hormiga::temper::field_value(*a, "order").c_str()) <
                std::atoi(hormiga::temper::field_value(*b, "order").c_str());
@@ -342,7 +400,7 @@ void HormigaApp::marker_menu_items(const maiz::SceneNode& mk) {
         if (hormiga::parse_geo(view_geo(mk, active_channel), la, lo)) {
             map_cam.x = (float)lo;
             map_cam.y = (float)la;
-            pending_cmds.push_back(maiz::compile_camera(map_cam, "view.map.camera"));
+            pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
         }
     }
     std::string cur_icon = tag_value(mk, "icon");
@@ -444,11 +502,32 @@ void HormigaApp::draw_map_section() {
     // blessed compile_camera(key) pattern upstream generalized for us)
     if (!map_cam_loaded) {
         map_cam_loaded = true;
+        map_canvas = hormiga::canvas::config_name(core.dispatch("config get view.map.canvas").data); // last open
+        if (!scene.find(map_canvas)) map_canvas.clear();
         maiz::Camera saved;
-        if (maiz::parse_camera(core.dispatch("config get view.map.camera").data,
-                               saved))
+        if (maiz::parse_camera(
+                core.dispatch("config get " + hormiga::canvas::camera_key("view.map.camera", map_canvas)).data,
+                saved))
             map_cam = saved;
+        else if (const auto cv = hormiga::canvas::find(scene, map_canvas); cv.plan()) { // never seen: its floor
+            map_cam.x = (float)(cv.w / 2);
+            map_cam.y = (float)(cv.h / 2);
+            map_cam.zoom = (float)cv.fit_zoom(); // the whole of it in view
+        }
     }
+    /* THE CANVAS ON SCREEN (2026-10-06, domain/canvas.hpp): Earth, or a drawn
+     * plan in metres. Everything below that turns a position into the screen
+     * asks it, so a plan pans, zooms and draws on the same code as Earth. */
+    const hormiga::canvas::Canvas cvs = hormiga::canvas::find(scene, map_canvas);
+    const bool plan = cvs.plan();
+    const int zmin = plan ? (int)cvs.min_zoom() : 3;
+    const int zmax = plan ? (int)cvs.max_zoom() : 19;
+    map_cam.zoom = std::clamp(map_cam.zoom, (float)zmin, (float)zmax);
+    const double span = cvs.span(); // a store's 256 units, a forest's more
+    auto px_of = [&](double lon, int zz) { return plan ? hormiga::gis::flat_x(lon, zz, span) : merc_x(lon, zz); };
+    auto py_of = [&](double lat, int zz) { return plan ? hormiga::gis::flat_y(lat, zz, span) : merc_y(lat, zz); };
+    auto lon_of = [&](double t, int zz) { return plan ? hormiga::gis::flat_inv(t, zz, span) : merc_lon(t, zz); };
+    auto lat_of = [&](double t, int zz) { return plan ? hormiga::gis::flat_inv(t, zz, span) : merc_lat(t, zz); };
 
     /* ── THE MAP IS A DRAWING APPLICATION'S WINDOWS (2026-10-05) ─────────────
      *
@@ -488,6 +567,23 @@ void HormigaApp::draw_map_section() {
 #endif
 
     ImGui::Begin("Map##canvas", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    // ── which canvas: Earth, or a drawn plan (canvases.md) ───────────────────
+    auto canvas_label = [](const hormiga::canvas::Canvas& c) {
+        return std::string(c.plan() ? ICON_FA_TABLE_CELLS "  " : ICON_FA_EARTH_AMERICAS "  ") + c.title;
+    };
+    ImGui::SetNextItemWidth(std::min(190.0f, ImGui::GetContentRegionAvail().x * 0.25f));
+    if (ImGui::BeginCombo("##canvas", canvas_label(cvs).c_str())) {
+        for (const auto& c : hormiga::canvas::all(scene))
+            if (ImGui::Selectable((canvas_label(c) + "##" + c.name).c_str(), c.name == map_canvas))
+                map_switch_canvas(c.name);
+        ImGui::Separator();
+        if (ImGui::Selectable(ICON_FA_PLUS "  New floor plan")) map_new_canvas("Floor plan", 30, 20);
+        ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("the canvas: Earth, or a drawn layout in metres (a store, a house, a hall).\n"
+                          "Each has its own layers, regions and positions.");
+    ImGui::SameLine();
     // ── the one bar: search the database, and filter what the map shows ──────
     ImGui::SetNextItemWidth(std::min(260.0f, ImGui::GetContentRegionAvail().x * 0.4f));
     ImGui::InputTextWithHint("##mapsearch", ICON_FA_MAGNIFYING_GLASS "  find...  @tag  type:event", map_search,
@@ -539,9 +635,9 @@ void HormigaApp::draw_map_section() {
                 if (!g.empty() && hormiga::parse_geo(g, la, lo)) {
                     map_cam.x = (float)lo;      // jump to it
                     map_cam.y = (float)la;
-                    if (map_cam.zoom < 15) map_cam.zoom = 15;
+                    if (map_cam.zoom < (plan ? 5 : 15)) map_cam.zoom = plan ? 5.0f : 15.0f;
                     pending_cmds.push_back(
-                        maiz::compile_camera(map_cam, "view.map.camera"));
+                        maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
                     ed.selection = {node.name};
                 } else {
                     map_place_arm = node.name;  // click-to-place mode
@@ -584,15 +680,15 @@ void HormigaApp::draw_map_section() {
         return;
     }
     ImVec2 ctr(p0.x + sz.x * 0.5f, p0.y + sz.y * 0.5f);
-    int z = std::clamp((int)std::lround(map_cam.zoom), 3, 19);
-    double cx = merc_x(map_cam.x, z), cy = merc_y(map_cam.y, z); // center tile
+    int z = std::clamp((int)std::lround(map_cam.zoom), zmin, zmax);
+    double cx = px_of(map_cam.x, z), cy = py_of(map_cam.y, z); // center tile
     auto to_screen = [&](double lat, double lon) {
-        return ImVec2((float)(ctr.x + (merc_x(lon, z) - cx) * 256.0),
-                      (float)(ctr.y + (merc_y(lat, z) - cy) * 256.0));
+        return ImVec2((float)(ctr.x + (px_of(lon, z) - cx) * 256.0),
+                      (float)(ctr.y + (py_of(lat, z) - cy) * 256.0));
     };
     auto to_geo = [&](ImVec2 s, double& lat, double& lon) {
-        lon = merc_lon(cx + (s.x - ctr.x) / 256.0, z);
-        lat = merc_lat(cy + (s.y - ctr.y) / 256.0, z);
+        lon = lon_of(cx + (s.x - ctr.x) / 256.0, z);
+        lat = lat_of(cy + (s.y - ctr.y) / 256.0, z);
     };
 
     // an input surface over the whole canvas (also clips the draw)
@@ -617,11 +713,13 @@ void HormigaApp::draw_map_section() {
         if (!fs::exists(base_dir / rel)) return {};
         return texture_for(rel);
     };
+    if (plan) // no tiles on a drawn canvas: its floor and its grid
+        draw_plan_grid(dl, p0, ImVec2(p0.x + sz.x, p0.y + sz.y), cvs, to_screen(0, 0), to_screen(1, 1).x - to_screen(0, 0).x);
     int tx0 = (int)std::floor(cx - sz.x * 0.5 / 256.0) - 1;
     int tx1 = (int)std::floor(cx + sz.x * 0.5 / 256.0) + 1;
     int ty0 = std::max(0, (int)std::floor(cy - sz.y * 0.5 / 256.0) - 1);
     int ty1 = std::min(n - 1, (int)std::floor(cy + sz.y * 0.5 / 256.0) + 1);
-    for (int ty = ty0; ty <= ty1; ++ty)
+    for (int ty = ty0; ty <= ty1 && !plan; ++ty)
         for (int txr = tx0; txr <= tx1; ++txr) {
             /* THE WORLD DECIDES WHETHER IT WRAPS. This was
              * `((txr % n) + n) % n` — correct for Earth, and silently wrong for
@@ -680,13 +778,13 @@ void HormigaApp::draw_map_section() {
     // hue/contrast-adjusted per-pixel without a shader (a noted future ask);
     // brightness + fade + the label-free source cover the "too busy" need. ───
     ImVec2 p1(p0.x + sz.x, p0.y + sz.y);
-    if (basemap_brightness < 0.999f)
+    if (basemap_brightness < 0.999f && !plan)
         dl->AddRectFilled(p0, p1,
                           IM_COL32(0, 0, 0, (int)((1.0f - basemap_brightness) * 255)));
-    if (basemap_fade > 0.001f)
+    if (basemap_fade > 0.001f && !plan)
         dl->AddRectFilled(p0, p1, IM_COL32(150, 150, 150, (int)(basemap_fade * 200)));
-    dl->AddText(ImVec2(p0.x + 6, p0.y + sz.y - 20), IM_COL32(90, 90, 90, 200),
-                bsrc.attribution);
+    if (!plan)
+        dl->AddText(ImVec2(p0.x + 6, p0.y + sz.y - 20), IM_COL32(90, 90, 90, 200), bsrc.attribution);
     if (int pend = tiles.pending(); pend > 0) { // the loading indicator
         char msg[48];
         std::snprintf(msg, sizeof msg, "loading %d tile%s...", pend,
@@ -762,7 +860,7 @@ void HormigaApp::draw_map_section() {
     // fanned child, so the parent-child grouping is visible while editing.
     const maiz::SceneNode* ref_hit = nullptr;
     for (const auto& node : scene.nodes) {
-        if (node.glyph != "refpoint") continue;
+        if (node.glyph != "refpoint" || !hormiga::canvas::on(node, map_canvas)) continue;
         double la, lo;
         if (!hormiga::parse_geo(hormiga::temper::field_value(node, "geo"), la, lo))
             continue;
@@ -799,9 +897,10 @@ void HormigaApp::draw_map_section() {
             for (size_t j = i + 1; j < located_nodes.size(); ++j) {
                 if (!located_nodes[i].on_screen && !located_nodes[j].on_screen)
                     continue;
-                double d = hormiga::geo_distance_m(
-                    located_nodes[i].lat, located_nodes[i].lon,
-                    located_nodes[j].lat, located_nodes[j].lon);
+                const double d = plan ? std::hypot(located_nodes[i].lat - located_nodes[j].lat,
+                                                   located_nodes[i].lon - located_nodes[j].lon)
+                                      : hormiga::geo_distance_m(located_nodes[i].lat, located_nodes[i].lon,
+                                                                located_nodes[j].lat, located_nodes[j].lon);
                 if (d > map_prox_m) continue;
                 float w = 1.0f - (float)(d / map_prox_m); // closer = stronger
                 dl->AddLine(located_nodes[i].s, located_nodes[j].s,
@@ -858,7 +957,7 @@ void HormigaApp::draw_map_section() {
     // shape to select it; right-click for its menu. ────────────────────────
     const maiz::SceneNode* shape_hit = nullptr;
     for (const auto& node : scene.nodes) {
-        if (node.glyph != "mapshape") continue;
+        if (node.glyph != "mapshape" || !hormiga::canvas::on(node, map_canvas)) continue;
         double la1, lo1, la2, lo2;
         if (!hormiga::parse_geo(hormiga::temper::field_value(node, "geo1"), la1, lo1) ||
             !hormiga::parse_geo(hormiga::temper::field_value(node, "geo2"), la2, lo2))
@@ -901,8 +1000,11 @@ void HormigaApp::draw_map_section() {
             dl->AddRect(mn, mx, line, 4.0f, 0, sel ? 2.5f : 1.5f);
         }
         std::string lbl = hormiga::temper::field_value(node, "label");
-        if (!lbl.empty())
+        if (!lbl.empty()) { // inside its own region: a narrow aisle's name never runs over the next one
+            dl->PushClipRect(ImVec2(mn.x + 2, mn.y), ImVec2(mx.x - 2, mx.y), true);
             dl->AddText(ImVec2(mn.x + 4, mn.y + 3), line, lbl.c_str());
+            dl->PopClipRect();
+        }
         if (hovered && mouse.x >= mn.x && mouse.x <= mx.x && mouse.y >= mn.y &&
             mouse.y <= mx.y)
             shape_hit = &node;
@@ -1033,6 +1135,7 @@ void HormigaApp::draw_map_section() {
                          (map_draw_shape == 2 ? "ellipse" : "rect") + "\"",
                      "set " + name + " geo1 \"" + g1 + "\"",
                      "set " + name + " geo2 \"" + g2 + "\"",
+                     "set " + name + " canvas " + json_str(map_canvas),
                      "tag " + name + " +type:mapshape"}));
                 ed.selection = {name};
             }
@@ -1115,7 +1218,7 @@ void HormigaApp::draw_map_section() {
             if (!picked.empty()) ed.selection = picked;
             map_box_active = false;
         } else { // pan ended: flush the viewport (config tier, undo-exempt)
-            pending_cmds.push_back(maiz::compile_camera(map_cam, "view.map.camera"));
+            pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
         }
     }
     if (!was_drawing && ImGui::IsItemActive() &&
@@ -1124,8 +1227,8 @@ void HormigaApp::draw_map_section() {
         if (!map_drag_marker.empty() || !map_drag_ref.empty() || map_box_active) {
             // staged: marker/gizmo follows cursor / box grows — nothing to pan
         } else if (d.x != 0 || d.y != 0) {
-            map_cam.x = (float)merc_lon(cx - d.x / 256.0, z);
-            map_cam.y = (float)merc_lat(cy - d.y / 256.0, z);
+            map_cam.x = (float)lon_of(cx - d.x / 256.0, z);
+            map_cam.y = (float)lat_of(cy - d.y / 256.0, z);
         }
     }
     if (map_box_active) { // the selection rectangle
@@ -1157,16 +1260,16 @@ void HormigaApp::draw_map_section() {
                         IM_COL32(40, 40, 40, 255), map_drag_marker.c_str());
     }
     if (hovered && ImGui::GetIO().MouseWheel != 0) {
-        int nz = std::clamp(z + (ImGui::GetIO().MouseWheel > 0 ? 1 : -1), 3, 19);
+        int nz = std::clamp(z + (ImGui::GetIO().MouseWheel > 0 ? 1 : -1), zmin, zmax);
         if (nz != z) {
             // zoom about the cursor: keep the geo under the mouse fixed
             double mlat, mlon;
             to_geo(mouse, mlat, mlon);
             double fx = (mouse.x - ctr.x) / 256.0, fy = (mouse.y - ctr.y) / 256.0;
             map_cam.zoom = (float)nz;
-            map_cam.x = (float)merc_lon(merc_x(mlon, nz) - fx, nz);
-            map_cam.y = (float)merc_lat(merc_y(mlat, nz) - fy, nz);
-            pending_cmds.push_back(maiz::compile_camera(map_cam, "view.map.camera"));
+            map_cam.x = (float)lon_of(px_of(mlon, nz) - fx, nz);
+            map_cam.y = (float)lat_of(py_of(mlat, nz) - fy, nz);
+            pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
         }
     }
     if (hit && !shift && ImGui::IsItemClicked(ImGuiMouseButton_Left) &&
@@ -1287,6 +1390,10 @@ void HormigaApp::draw_map_section() {
     if (ImGui::BeginPopup("map-place-menu")) {
         ImGui::TextDisabled("place at %.5f, %.5f", map_ctx_lat, map_ctx_lon);
         ImGui::Separator();
+        // the database's own located kinds first (a store's products, a home's devices)
+        for (const hormiga::kinds::Kind* k : hormiga::kinds::current().own())
+            if (k->located && k->palette && ImGui::MenuItem(("New " + k->title + " here").c_str()))
+                map_place_new(k->glyph.c_str());
         if (ImGui::MenuItem("New contact here")) map_place_new("contact");
         if (ImGui::MenuItem("New organization here")) map_place_new("organization");
         if (ImGui::MenuItem("New event here")) map_place_new("event");
@@ -1304,7 +1411,7 @@ void HormigaApp::draw_map_section() {
             std::snprintf(geo, sizeof geo, "%.7g,%.7g", map_ctx_lat, map_ctx_lon);
             pending_cmds.push_back(maiz::compile_commit(
                 {"rune new refpoint " + name, "set " + name + " geo \"" + geo + "\"",
-                 "set " + name + " label \"Reference\""}));
+                 "set " + name + " label \"Reference\"", "set " + name + " canvas " + json_str(map_canvas)}));
             ed.selection = {name};
         }
         ImGui::Separator();
@@ -1358,17 +1465,17 @@ void HormigaApp::draw_map_section() {
         ImGui::SetCursorScreenPos(ImVec2(p0.x + sz.x - b - 18, p0.y + sz.y - 2 * b - 34));
         ImGui::BeginChild("##map-zoom", ImVec2(0, 0), cf, ImGuiWindowFlags_NoScrollbar);
         auto step = [&](int dz) {
-            const int nz2 = std::clamp((int)std::lround(map_cam.zoom) + dz, 3, 19);
+            const int nz2 = std::clamp((int)std::lround(map_cam.zoom) + dz, zmin, zmax);
             if (nz2 != (int)std::lround(map_cam.zoom)) {
                 map_cam.zoom = (float)nz2; // about the centre: the centre is the camera
-                pending_cmds.push_back(maiz::compile_camera(map_cam, "view.map.camera"));
+                pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
             }
         };
-        ImGui::BeginDisabled(z >= 19);
+        ImGui::BeginDisabled(z >= zmax);
         if (ImGui::Button(ICON_FA_PLUS, ImVec2(b, b))) step(+1);
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("zoom in");
-        ImGui::BeginDisabled(z <= 3);
+        ImGui::BeginDisabled(z <= zmin);
         if (ImGui::Button(ICON_FA_MINUS, ImVec2(b, b))) step(-1);
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("zoom out");

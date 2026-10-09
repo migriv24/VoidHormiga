@@ -48,6 +48,10 @@ Read in this order the first time:
   near by with no Wi-Fi in common: Bluetooth LE and Wi-Fi Direct carrying
   Reticulum, never a hotspot. The four layers and whose each is, how only
   members connect, why frames are compressed on a radio, what was measured.
+- [Workspaces](/concepts/platform/workspaces.md) — **opened 2026-10-06.**
+  One application set up for different kinds of work: an outreach
+  organization, a grocery store, a smart home, a volunteer organization, a D&D
+  campaign. A workspace is where a database starts, not a mode: one data model.
 - [Identity](/concepts/platform/identity.md) — **opened 2026-08-27.** Who is
   making a change: the admin profile, the signed-in identity, and the contact.
   Three different things that a conventional design would collapse into one

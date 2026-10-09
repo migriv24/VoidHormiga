@@ -160,6 +160,7 @@ void wire(HormigaApp& app) {
         hormiga::register_antfarm_glyphs(c);
         farm::register_glyphs(c);
         hormiga::chambers::register_glyphs(c);
+        hormiga::kinds::apply(c, {}); // the database's own kinds: an effect's core is fresh from the document
     };
 }
 
@@ -286,6 +287,7 @@ maiz::HostApp build_app() {
         hormiga::register_antfarm_glyphs(core);
         farm::register_glyphs(core);
         hormiga::chambers::register_glyphs(core);
+        hormiga::kinds::apply(core, {}); // the database's own kinds, now loaded (kinds.md)
     };
 
     h.effects = [](std::string_view op, std::string_view args) -> std::string {
@@ -1240,6 +1242,7 @@ std::string HormigaApp::render_from_state(const std::string& state_json,
     hormiga::register_antfarm_glyphs(core);
     farm::register_glyphs(core);
     hormiga::chambers::register_glyphs(core);
+    hormiga::kinds::apply(core, {}); // a database's own kinds, or their fields never reach a page
     scene = maiz::project_scene(core);
     refresh_allo_rules();
     /* `cur_doc` is Builder VIEW state, absent from the state document, so a

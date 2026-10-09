@@ -27,6 +27,11 @@ If you are reading the OKF for the first time, read this folder before
 - [Data model](/concepts/foundation/data-model.md) — the five kinds of thing an
   outreach org runs on, as glyphs; tag axes and temper hygiene; relations as
   edges.
+- [Kinds are yours](/concepts/foundation/kinds.md) — **the next major version
+  (2026-10-06).** Those kinds stop being the application's and become the
+  database's: renamed, recoloured, and new ones made, as `kind` runes in a
+  `kinds` mantle, with traits (located, dated, listed) that the code asks
+  instead of names. The audit, the design, the order of work, the demos.
 
 # What does not live here
 

@@ -13,12 +13,13 @@ E = Earth only ([worlds](/concepts/sections/gis/worlds.md)).
 
 | | item | world | note |
 |---|---|---|---|
-| ✅ | sources as values: projection, metric, wrapping, edges | U | `source.hpp`; the flat half has no caller yet |
+| ✅ | sources as values: projection, metric, wrapping, edges | U | `source.hpp`; the flat half's first caller is the plan canvas (2026-10-06) |
+| ✅ | canvases: Earth, or a drawn plan in metres with its own layers, regions and positions | U | `domain/canvas.hpp`, [canvases](/concepts/sections/gis/canvases.md) |
 | ✅ | web-mercator and flat projections | U | `projection.hpp`, `gis_smoke` |
 | ✅ | marker outlines (pin, balloon, circle, square, diamond) | U | `marker.hpp`, 2026-10-04 |
 | ✅ | a continuous-zoom viewport | E | `view.hpp`; mercator only |
 | ✅ | one containment test (rectangle, ellipse) | U | `domain/bestow.hpp` |
-| ⬜ | the viewport over a flat world | U | when a flat world first has a phone |
+| ✅ | the viewport over a flat world | U | `SlippyView::flat`, 2026-10-06, `gis_smoke` |
 | ⬜ | point-in-polygon | U | with polygons (Q102) |
 | ⬜ | georeferencing: control points → a transform | A | the first piece of the map builder; unlocks GPS on a floor plan |
 | ⬜ | formats: GeoJSON / GPX in and out | E (A through a transform) | import as a holiday, export as a render |

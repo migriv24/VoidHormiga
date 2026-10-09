@@ -816,10 +816,11 @@ std::string HormigaApp::render_site(std::string_view lang) {
             const std::string detail = field_value(*n, "detail");
             const int limit = hormiga::doc_field_int(*n, "limit", 0);
             const std::string sort = field_value(*n, "sort");
+            const std::string ekind = field_value(*n, "kind"); // "" = events (domain/kinds.hpp)
 
             std::vector<const maiz::SceneNode*> evs;
             for (const auto& dn : data.nodes)
-                if (dn.glyph == "event" && hormiga::query_matches(q, data, dn, today) &&
+                if (hormiga::kinds::in_event_grid(dn, ekind) && hormiga::query_matches(q, data, dn, today) &&
                     !allo_web_hidden(dn.name))
                     evs.push_back(&dn);
             if (sort == "name") {
@@ -831,8 +832,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
                 const bool desc = sort == "date-desc";
                 std::stable_sort(evs.begin(), evs.end(),
                                  [&](const maiz::SceneNode* a, const maiz::SceneNode* b) {
-                                     const std::string da = field_value(*a, "date");
-                                     const std::string db = field_value(*b, "date");
+                                     const std::string da = hormiga::kinds::grid_date(*a);
+                                     const std::string db = hormiga::kinds::grid_date(*b);
                                      // ISO dates sort as strings; an undated
                                      // event holds its place at the end rather
                                      // than jumping to the front as ""
@@ -861,6 +862,12 @@ std::string HormigaApp::render_site(std::string_view lang) {
               << " reveal\">\n";
             for (const maiz::SceneNode* ev : evs) {
                 const maiz::SceneNode& dn = *ev;
+                if (dn.glyph != "event") { // a database's own dated kind: its name, date and line only
+                    h << hormiga::published::dated_card(dn, human_date(hormiga::kinds::grid_date(dn), lang),
+                                                        site_th.icons ? hormiga::icons::svg("calendar") : "",
+                                                        site_th.icons ? hormiga::icons::svg("tag") : "");
+                    continue;
+                }
                 const std::string st = field_value(dn, "start_time");
                 const std::string et = field_value(dn, "end_time");
                 // the card is filterable by the SEARCH BOX app.js generates, so
@@ -1691,7 +1698,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
                     if (site_th.icons) out << hormiga::icons::svg(icon);
                     out << "<span>" << html_escape(text) << "</span></p>";
                 };
-                dir_row(pp.glyph == "contact" ? "user" : "building-2", role);
+                dir_row(pp.glyph == "contact" ? "user" : pp.glyph == "organization" ? "building-2" : "tag", role);
                 dir_row("map-pin", place);
                 if (!bio.empty()) out << "<p>" << html_escape(clip(bio, 260)) << "</p>";
                 /* THE SECOND CONSENT. An email or a phone reaches a public page
@@ -1775,11 +1782,10 @@ std::string HormigaApp::render_site(std::string_view lang) {
             };
             auto web_fans = ref_fans(data, ch); // #4: fan ref-children
             nlohmann::json mj = nlohmann::json::array();
+            // a FLOOR PLAN's positions are metres, not latitude: never on this Earth map
+            const bool drawn_canvas = view && !hormiga::canvas::of(*view).empty();
             for (const auto& dn : data.nodes) {
-                if (dn.glyph == "contact" || dn.glyph == "map" ||
-                    dn.glyph == "image" || dn.glyph == "note" ||
-                    dn.glyph == "refpoint")
-                    continue; // contacts: the seam; refpoints: editor-only gizmos
+                if (drawn_canvas || !hormiga::kinds::on_public_map(dn)) continue; // the seam (domain/kinds.hpp)
                 double la, lo;
                 float dx = 0, dy = 0;
                 auto ff = web_fans.find(dn.name);
@@ -1811,7 +1817,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
             // #3: shapes (rect/ellipse annotations) into the widget too
             nlohmann::json sj = nlohmann::json::array();
             for (const auto& dn : data.nodes) {
-                if (dn.glyph != "mapshape") continue;
+                if (dn.glyph != "mapshape" || drawn_canvas || !hormiga::canvas::on(dn, "")) continue; // Earth's only
                 double a1, o1, a2, o2;
                 if (!hormiga::parse_geo(field_value(dn, "geo1"), a1, o1) ||
                     !hormiga::parse_geo(field_value(dn, "geo2"), a2, o2))
@@ -1849,18 +1855,19 @@ std::string HormigaApp::render_site(std::string_view lang) {
             std::vector<hormiga::ical::Event> ics_entries;
             for (const auto& dn : data.nodes) {
                 int yy, mm, dd;
-                std::string ds = field_value(dn, "date");
-                if (std::sscanf(ds.c_str(), "%d-%d-%d", &yy, &mm, &dd) != 3)
+                const bool own = hormiga::kinds::is_own(dn); // its date field, consent, name/date/line only
+                std::string ds = hormiga::kinds::grid_date(dn);
+                if (std::sscanf(ds.c_str(), "%d-%d-%d", &yy, &mm, &dd) != 3 || hormiga::kinds::withheld(dn))
                     continue;
                 if ((q.empty() ? dn.glyph != "event"
                                : !hormiga::query_matches(q, data, dn, today)) ||
                     allo_web_hidden(dn.name))
                     continue;
-                std::string st = field_value(dn, "start_time");
+                std::string st = own ? "" : field_value(dn, "start_time");
                 if (st.empty() && dn.glyph == "incident")
                     st = field_value(dn, "time");
-                std::string en = field_value(dn, "end_time");
-                std::string venue = field_value(dn, "venue");
+                std::string en = own ? "" : field_value(dn, "end_time");
+                std::string venue = own ? hormiga::kinds::directory_line(dn) : field_value(dn, "venue");
                 ej.push_back({{"n", title_of(dn)},
                               {"d", ds},
                               {"s", st},
@@ -1885,9 +1892,9 @@ std::string HormigaApp::render_site(std::string_view lang) {
                  * event DELETED it and created an unrelated new one. */
                 ie.uid = (dn.id.empty() ? dn.name : dn.id) + "@voidhormiga";
                 ie.summary = title_of(dn);
-                ie.description = text_or(dn, "summary", "summary");
+                ie.description = own ? std::string() : text_or(dn, "summary", "summary");
                 ie.location = venue;
-                ie.geo = field_value(dn, "geo");
+                ie.geo = own ? std::string() : field_value(dn, "geo"); // name, date and line only
                 ie.categories = hormiga::ical::public_categories(dn.tags);
                 ie.date = ds;
                 ie.start_time = st;

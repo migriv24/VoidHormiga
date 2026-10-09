@@ -116,6 +116,20 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
             return true;
         };
         const float row_h = 52 * dp, eye_w = 48 * dp, arrow_w = 40 * dp;
+        // WHICH CANVAS (2026-10-06, canvases.md): Earth, or a drawn floor plan
+        ImGui::SeparatorText("Canvas");
+        for (const auto& c : hormiga::canvas::all(app.scene)) {
+            const std::string lbl = std::string(c.plan() ? ICON_FA_TABLE_CELLS "  " : ICON_FA_EARTH_AMERICAS "  ") +
+                                    c.title + "##cv" + c.name;
+            if (ImGui::RadioButton(lbl.c_str(), c.name == app.map_canvas) && c.name != app.map_canvas) {
+                f.out.push_back("config set view.map.canvas " + json_str(c.name));
+                app.map_canvas = c.name;
+                app.map_sel.clear();
+                m.deselect();
+            }
+        }
+        if (ImGui::Button(ICON_FA_PLUS "  New floor plan", ImVec2(-FLT_MIN, 0))) app.map_new_canvas("Floor plan", 30, 20);
+        ImGui::SeparatorText("Layers");
         if (ImGui::Button(ICON_FA_PLUS "  New layer on top", ImVec2(-FLT_MIN, 0)))
             app.map_new_earth(m.v.lat, m.v.lon, (int)m.v.zoom); // it says so itself (a toast)
         ImGui::Spacing();
@@ -126,7 +140,7 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
             const bool active = l.name == app.map_sel;
             const bool vis = hormiga::temper::field_value(l, "visible") != "0";
             const std::string ch = hormiga::temper::field_value(l, "channel");
-            const bool own = !ch.empty() && ch != "main";
+            const bool own = !ch.empty() && ch != hormiga::canvas::shared_channel(app.map_canvas);
             const ImVec2 a = ImGui::GetCursorScreenPos();
             const float w = ImGui::GetContentRegionAvail().x;
             ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -174,8 +188,8 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
             maiz::dim_wrapped("No layers yet: everything shows in its kind's colour. A layer is a way of drawing "
                               "the map (its colours, which things, its labels), not a box things live in.");
 
-        // the background: under every layer
-        {
+        // the background: under every layer (Earth's base map, or the floor)
+        if (!m.plan) {
             const ImVec2 a = ImGui::GetCursorScreenPos();
             const float w = ImGui::GetContentRegionAvail().x;
             ImGui::GetWindowDrawList()->AddRect(a, ImVec2(a.x + w, a.y + row_h), ImGui::GetColorU32(ImGuiCol_Border),
@@ -187,6 +201,14 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
             ImGui::Dummy(ImVec2(w, row_h));
         }
 
+        if (const maiz::SceneNode* cr = m.plan ? app.scene.find(app.map_canvas) : nullptr) {
+            ImGui::SeparatorText(ICON_FA_TABLE_CELLS "  The floor");
+            maiz::WidgetContext wctx{app.scene, f.out, std::string(), 0.0f};
+            for (const auto& fl : cr->fields)
+                if (fl.key == "title" || fl.key == "width" || fl.key == "height" || fl.key == "grid" || fl.key == "unit")
+                    maiz::widget_field(wctx, app.widgets, *cr, fl);
+            maiz::dim_wrapped("Metres from the top-left corner. A region's tags go to everything placed inside it.");
+        }
         if (view) {
             ImGui::SeparatorText(("Layer: " + rune_title(*view)).c_str());
             for (const auto& fl : view->fields)
@@ -208,9 +230,9 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
                 f.out.push_back("set " + view->name + " layer_brightness \"" + b + "\"");
             }
             const std::string ch = hormiga::temper::field_value(*view, "channel");
-            bool own = !ch.empty() && ch != "main";
+            bool own = !ch.empty() && ch != hormiga::canvas::shared_channel(app.map_canvas);
             if (ImGui::Checkbox("Its own positions", &own))
-                f.out.push_back("set " + view->name + " channel \"" + (own ? view->name : std::string("main")) + "\"");
+                f.out.push_back("set " + view->name + " channel " + json_str(own ? hormiga::canvas::own_channel(app.map_canvas, view->name) : hormiga::canvas::shared_channel(app.map_canvas)));
             maiz::dim_wrapped(own ? "Moving something on this layer moves it only here."
                                   : "Things sit where they sit on every layer.");
             bool lbl = app.view_show_labels(view);
@@ -229,6 +251,7 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
             ImGui::PopStyleColor();
         }
 
+        if (m.plan) return true; // a floor has no base map
         ImGui::SeparatorText("Base map");
         for (int i = 0; i < kBaseSourceCount; ++i)
             if (ImGui::RadioButton(kBaseSources[i].label, app.basemap_src == i)) {
@@ -355,7 +378,7 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
             double la = 0, lo = 0;
             const bool located = hormiga::parse_geo(view_geo(n, channel), la, lo);
             if (have_fix && located)
-                sub += "  ·  " + human_m(hormiga::geo_distance_m(fix.lat, fix.lon, la, lo)) + " away";
+                sub += "  ·  " + human_m(map_distance(m, fix.lat, fix.lon, la, lo)) + " away";
             header(L.icon ? L.icon : kind_icon(n.glyph), L.col, n.glyph == "note" ? marker_caption(n) : title_of(n), sub);
             // the four things a person does with a place
             const float gap = ImGui::GetStyle().ItemSpacing.x;
@@ -446,7 +469,7 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
                 for (const auto& o : app.scene.nodes) {
                     double ola, olo;
                     if (o.glyph != "note" || o.name == n.name || !hormiga::parse_geo(view_geo(o, channel), ola, olo)) continue;
-                    if (hormiga::geo_distance_m(la, lo, ola, olo) <= 40.0) near.push_back(&o);
+                    if (map_distance(m, la, lo, ola, olo) <= 40.0) near.push_back(&o);
                 }
                 if (!near.empty()) {
                     ImGui::SeparatorText("Notes here");
@@ -499,12 +522,18 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
                 const char* label;
                 const char* icon;
             };
-            static const Kind kinds[] = {{"contact", "Person", ICON_FA_USER},
-                                         {"organization", "Organization", ICON_FA_BUILDING},
-                                         {"event", "Event", ICON_FA_CALENDAR_DAYS},
-                                         {"incident", "Incident", ICON_FA_TRIANGLE_EXCLAMATION},
-                                         {"note", "Note", ICON_FA_NOTE_STICKY},
-                                         {"refpoint", "Reference point", ICON_FA_CROSSHAIRS}};
+            /* WHAT CAN GO HERE: every kind that can be on a map (trait
+             * `located`, domain/kinds.hpp), the database's own first (a store's
+             * products, a home's devices), as the database calls them; then
+             * notes and reference points, which are the map's own. */
+            std::vector<Kind> kinds;
+            const auto& reg = hormiga::kinds::current();
+            for (int pass = 0; pass < 2; ++pass)
+                for (const auto& kd : reg.all)
+                    if (kd.located && kd.palette && kd.builtin == (pass == 1))
+                        kinds.push_back({kd.glyph.c_str(), kd.title.c_str(), glyph_icon(kd.glyph)});
+            kinds.push_back({"note", "Note", ICON_FA_NOTE_STICKY});
+            kinds.push_back({"refpoint", "Reference point", ICON_FA_CROSSHAIRS});
             const float gap = ImGui::GetStyle().ItemSpacing.x;
             const float w = (ImGui::GetContentRegionAvail().x - gap * 2) / 3, h = 72 * dp;
             int i = 0;
@@ -532,7 +561,8 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
                 if (std::string(k.glyph) == "refpoint") {
                     const std::string name = app.mint_name("refpoint");
                     f.out.push_back(maiz::compile_commit({"rune new refpoint " + name, "set " + name + " geo \"" + g + "\"",
-                                                          "set " + name + " label \"Reference\""}));
+                                                          "set " + name + " label \"Reference\"",
+                                                          "set " + name + " canvas " + json_str(app.map_canvas)}));
                     m.sel = name;
                     m.set_sheet(MapUi::Ref);
                     break;
@@ -654,7 +684,7 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
             for (const auto& P : placed) rows.push_back(&P);
             const double cla = have_fix && m.follow ? fix.lat : m.v.lat, clo = have_fix && m.follow ? fix.lon : m.v.lon;
             std::sort(rows.begin(), rows.end(), [&](const Placed* a, const Placed* b) {
-                return hormiga::geo_distance_m(cla, clo, a->la, a->lo) < hormiga::geo_distance_m(cla, clo, b->la, b->lo);
+                return map_distance(m, cla, clo, a->la, a->lo) < map_distance(m, cla, clo, b->la, b->lo);
             });
             ImGui::Text("%d on this map", (int)rows.size());
             ImGui::SameLine();
@@ -677,7 +707,7 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
                 const std::string t = P->node->glyph == "note" ? marker_caption(*P->node) : title_of(*P->node);
                 sdl->AddText(ImVec2(c.x + 24 * dp, a.y + 6 * dp), ImGui::GetColorU32(ImGuiCol_Text), t.c_str());
                 const std::string sub = kind_label(P->node->glyph) + "  ·  " +
-                                        human_m(hormiga::geo_distance_m(cla, clo, P->la, P->lo));
+                                        human_m(map_distance(m, cla, clo, P->la, P->lo));
                 sdl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.85f,
                              ImVec2(c.x + 24 * dp, a.y + 8 * dp + ImGui::GetFontSize()),
                              ImGui::GetColorU32(ImGuiCol_TextDisabled), sub.c_str());

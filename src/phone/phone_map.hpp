@@ -53,6 +53,7 @@ inline ImU32 with_alpha(ImU32 c, int a) { return (c & 0x00FFFFFFu) | ((ImU32)a <
 struct HormigaApp::PhoneUi::MapUi {
     hormiga::gis::SlippyView v;
     bool loaded = false;
+    std::string canvas_shown = "\x01"; // the canvas the camera was loaded for (domain/canvas.hpp)
 
     // motion: a coast after a fling, and an animation (zoom about a point, or a flight)
     float coast_x = 0, coast_y = 0;
@@ -123,6 +124,7 @@ struct HormigaApp::PhoneUi::MapUi {
     std::vector<const maiz::SceneNode*> views;
     const maiz::SceneNode* view = nullptr;
     std::string channel = "main", field = "geo";
+    bool plan = false; // the canvas is a drawn plan: metres, no tiles, no GPS
     std::vector<HormigaApp::MapRule> rules;
     std::vector<Placed> placed;
     maiz::LocationFix fix;
@@ -179,6 +181,12 @@ namespace hormiga::phone::mapx {
 
 using MapUi = HormigaApp::PhoneUi::MapUi;
 using hormiga::gis::SlippyView;
+
+/* Distance in the canvas's own world: metres on Earth (haversine), metres on a
+ * drawn plan (flat), so "12 m away" is true on both. */
+inline double map_distance(const MapUi& m, double la1, double lo1, double la2, double lo2) {
+    return m.plan ? std::hypot(la1 - la2, lo1 - lo2) : hormiga::geo_distance_m(la1, lo1, la2, lo2);
+}
 
 inline void start_zoom(MapUi& m, double dz, float px, float py) {
     m.anim = {};

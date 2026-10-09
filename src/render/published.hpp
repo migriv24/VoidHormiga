@@ -41,6 +41,7 @@
 #pragma once
 
 #include "domain/date_query.hpp"  // date: predicates in the block grammar
+#include "domain/kinds.hpp"       // which kinds a directory may list (trait `listed`)
 #include "domain/scene_value.hpp" // the ONE field reader
 #include "render/text.hpp"        // display_name
 #include "voidmaiz/scene.hpp"
@@ -59,7 +60,7 @@ namespace hormiga::published {
  * every URL the site emits, so it discloses nothing `display` does not. */
 struct Person {
     std::string name;    // the rune's name: the stable id
-    std::string glyph;   // "contact" | "organization"
+    std::string glyph;   // a listed kind: "contact", "organization", a database's own
     std::string display; // display_name, or the humanized slug
     std::string role;    // contact: role. organization: abbreviation
     std::string place;   // organization: location
@@ -84,6 +85,46 @@ struct Directory {
     int withheld = 0;
 };
 
+/* ── WHO A DIRECTORY MAY LIST (2026-10-06, the kinds release) ─────────────
+ * Every kind with the trait `listed` (domain/kinds.hpp): contacts and
+ * organizations, and whatever kinds a database lists of its own (a store's
+ * vendors). `kind` is one of them, or "" / "both" for all of them. ONE answer
+ * for the website, the newsletter and the Builder's preview, so a block is
+ * never safe in one and leaky in another. The consent gates below are not
+ * touched: `clearance:public` to appear at all, `clearance:contact` for an
+ * email or a phone. */
+inline bool in_directory(const maiz::SceneNode& dn, const std::string& kind) {
+    return kinds::in_directory(dn, kind);
+}
+/* The line under a listed name (domain/kinds.hpp, `directory_line`): never a
+ * field the gates guard, whatever a kind says. */
+inline std::string directory_role(const maiz::SceneNode& dn) { return kinds::directory_line(dn); }
+/* The name a directory prints: a contact's or an organization's display name,
+ * as always; a database's own kind's `title` (its name field), never its
+ * handle. Found by rendering Whisker Mart's vendors: "Big Fish", the humanized
+ * handle, where the vendor is called "BIG FISH Seafood Supply". */
+inline std::string listed_name(const maiz::SceneNode& dn) {
+    if (kinds::is_own(dn))
+        if (std::string t = hormiga::temper::field_value(dn, "title"); !t.empty()) return t;
+    return display_name(dn);
+}
+
+/* A database's own dated kind in a website's event grid (kinds::in_event_grid
+ * let it in): its name, its date and its `directory_line`, and nothing else a
+ * kind might hold. `cal_svg` / `tag_svg` are the row icons, or "". */
+inline std::string dated_card(const maiz::SceneNode& dn, const std::string& when, const std::string& cal_svg,
+                              const std::string& tag_svg) {
+    std::string name = hormiga::temper::field_value(dn, "title");
+    if (name.empty()) name = display_name(dn);
+    std::string tagbag = name + " ";
+    for (const auto& t : dn.tags) tagbag += t + " ";
+    std::string h = "<article class=\"card event\" data-tags=\"" + html_escape(tagbag) + "\"><h3>" +
+                    html_escape(name) + "</h3>";
+    for (const auto& [svg, txt] : {std::pair<std::string, std::string>{cal_svg, when}, {tag_svg, kinds::directory_line(dn)}})
+        if (!txt.empty()) h += "<p class=\"meta-row\">" + svg + "<span>" + html_escape(txt) + "</span></p>";
+    return h + "</article>\n";
+}
+
 /* THE GATE. `hidden` is the Allomone `web-hide` predicate, passed in because
  * this header must not know about `HormigaApp`.
  *
@@ -104,9 +145,7 @@ inline Directory directory(const maiz::Scene& data, const std::string& query,
     for (const auto& dn : data.nodes) {
         const bool is_c = dn.glyph == "contact";
         const bool is_o = dn.glyph == "organization";
-        if (!is_c && !is_o) continue;
-        if (kind == "contact" && !is_c) continue;
-        if (kind == "organization" && !is_o) continue;
+        if (!in_directory(dn, kind)) continue;
         /* The block's own query goes through the DATE-AWARE matcher (the
          * grammar plus `date:` — see domain/date_query.hpp); the two clearance
          * checks below deliberately do not, because a consent tag is a fact
@@ -120,13 +159,13 @@ inline Directory directory(const maiz::Scene& data, const std::string& query,
         Person p;
         p.name = dn.name;
         p.glyph = dn.glyph;
-        p.display = display_name(dn);
-        p.role = is_c ? hormiga::temper::field_value(dn, "role")
-                      : hormiga::temper::field_value(dn, "abbreviation");
+        p.display = listed_name(dn);
+        p.role = directory_role(dn);
         p.place = is_o ? hormiga::temper::field_value(dn, "location") : std::string();
         p.bio = lang_text(dn, "bio", lang);
-        p.website = is_c ? hormiga::temper::field_value(dn, "website")
-                         : hormiga::temper::field_value(dn, "url");
+        p.website = is_o ? hormiga::temper::field_value(dn, "url")
+                         : hormiga::temper::field_value(dn, "website");
+        (void)is_c;
         p.avatar = hormiga::temper::field_value(dn, "avatar");
         if (p.avatar.empty())
             p.avatar = hormiga::temper::field_value(dn, "image_url");

@@ -33,6 +33,7 @@
  */
 #pragma once
 
+#include "domain/canvas.hpp"      // which canvas a shape is on, and its positions
 #include "domain/scene_value.hpp" // temper::field_value
 #include "gis/geo.hpp"            // parse_geo
 
@@ -116,16 +117,21 @@ inline std::vector<Bestower> bestowers(const maiz::Scene& data) {
     return out;
 }
 
-/* The givers whose rule covers this rune right now: the shapes its `geo` falls
- * inside. A rune with no location is covered by nothing. */
+/* The givers whose rule covers this rune right now: the shapes its position
+ * falls inside, each on its own canvas (an aisle tests the rune's place on the
+ * store floor, a neighbourhood its place on Earth). A rune with no location on
+ * a shape's canvas is not covered by it. */
 inline std::vector<Bestower> covering(const maiz::Scene& data, const maiz::SceneNode& rune) {
     std::vector<Bestower> out;
-    if (rune.glyph == "mapshape" || rune.glyph == "map") return out;
-    double lat, lon;
-    if (!parse_geo(temper::field_value(rune, "geo"), lat, lon)) return out;
-    for (const auto& n : data.nodes)
-        if (n.glyph == "mapshape" && shape_contains(n, lat, lon))
+    if (rune.glyph == "mapshape" || rune.glyph == "map" || rune.glyph == "canvas") return out;
+    for (const auto& n : data.nodes) {
+        if (n.glyph != "mapshape") continue;
+        const std::string field = canvas::geo_field(canvas::shared_channel(canvas::of(n)));
+        double lat, lon;
+        if (!parse_geo(temper::field_value(rune, field.c_str()), lat, lon)) continue;
+        if (shape_contains(n, lat, lon))
             for (auto& b : shape_givers(n)) out.push_back(std::move(b));
+    }
     return out;
 }
 

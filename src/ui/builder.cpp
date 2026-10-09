@@ -13,6 +13,7 @@
  * worse than one that shows nothing. */
 #include "domain/date_query.hpp"
 #include "render/download.hpp" // the refusal list, so the canvas can warn
+#include "render/published.hpp" // who a directory lists, as the site and the email
 #include "render/video.hpp" // the preview says which video, not just "video"
 #include "json.hpp" // block payloads and template bodies are JSON
 
@@ -380,8 +381,9 @@ void HormigaApp::draw_document_canvas(float body_h) {
                 bool ev = n.glyph == "event_grid";
                 std::string q = field_value(n, "query");
                 int hits = 0;
+                const std::string ekind = field_value(n, "kind"); // an event grid may show a dated kind
                 for (const auto& dn : data.nodes) {
-                    if (dn.glyph != (ev ? "event" : "job") ||
+                    if (!(ev ? hormiga::kinds::in_event_grid(dn, ekind) : dn.glyph == "job") ||
                         !hormiga::query_matches(q, data, dn) ||
                         allo_web_hidden(dn.name))
                         continue;
@@ -413,11 +415,7 @@ void HormigaApp::draw_document_canvas(float body_h) {
                 if (kind.empty()) kind = "contact";
                 int listed = 0, withheld = 0;
                 for (const auto& dn : data.nodes) {
-                    const bool is_c = dn.glyph == "contact";
-                    const bool is_o = dn.glyph == "organization";
-                    if (!is_c && !is_o) continue;
-                    if (kind == "contact" && !is_c) continue;
-                    if (kind == "organization" && !is_o) continue;
+                    if (!hormiga::published::in_directory(dn, kind)) continue; // as the site and the email
                     if (!q.empty() && !hormiga::query_matches(q, data, dn)) continue;
                     if (allo_web_hidden(dn.name)) continue;
                     if (!maiz::node_matches("clearance:public", dn)) { ++withheld; continue; }

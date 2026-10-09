@@ -31,6 +31,11 @@ std::string title_of(const maiz::SceneNode& n) {
 /* The one line under a row's title. */
 std::string subtitle_of(const maiz::SceneNode& n) {
     auto f = [&](const char* k) { return hormiga::temper::field_value(n, k); };
+    // a kind the database made says which of its fields goes here (domain/kinds.hpp)
+    if (const auto* kd = hormiga::kinds::current().find(n.glyph); kd && !kd->builtin) {
+        std::string s = kd->subtitle_field.empty() ? std::string() : f(kd->subtitle_field.c_str());
+        return s.empty() ? kd->title : s;
+    }
     if (n.glyph == "contact") {
         std::string r = f("role");
         if (!f("phone").empty()) r += (r.empty() ? "" : "  ·  ") + f("phone");
@@ -60,6 +65,8 @@ ImU32 kind_colour(const std::string& glyph) {
     if (glyph == "organization") return k[1];
     if (glyph == "event") return k[2];
     if (glyph == "note") return k[6];
+    if (const auto* kd = hormiga::kinds::current().find(glyph); kd && (!kd->builtin || kd->defined))
+        return (ImU32)kind_colour_u32(kd->color, k[3]); // a kind of the database's own, in its colour
     unsigned h = 2166136261u;
     for (char c : glyph) h = (h ^ (unsigned char)c) * 16777619u;
     return k[3 + h % 5];
@@ -72,6 +79,8 @@ const char* kind_icon(const std::string& glyph) {
     if (glyph == "incident") return ICON_FA_TRIANGLE_EXCLAMATION;
     if (glyph == "job") return ICON_FA_BRIEFCASE;
     if (glyph == "note") return ICON_FA_NOTE_STICKY;
+    if (const auto* kd = hormiga::kinds::current().find(glyph); kd && (!kd->builtin || kd->defined))
+        return kind_icon_named(kd->icon);
     if (glyph == "image") return ICON_FA_IMAGE;
     return ICON_FA_TAG;
 }
@@ -211,7 +220,8 @@ void HormigaApp::PhoneUi::data(HormigaApp& app, PhoneUi& ph, Frame& f) {
     };
     chip("All", "");
     for (const auto& e : app.palette.entries)
-        if (counts[e.glyph] > 0) chip((e.label + " " + std::to_string(counts[e.glyph])).c_str(), e.glyph);
+        if (counts[e.glyph] > 0) // as the database calls them, many (domain/kinds.hpp)
+            chip((hormiga::kinds::current().plural(e.glyph) + " " + std::to_string(counts[e.glyph])).c_str(), e.glyph);
     ImGui::EndChild();
     ImGui::PopStyleVar();
 

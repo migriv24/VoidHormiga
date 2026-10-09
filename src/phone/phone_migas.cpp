@@ -21,6 +21,7 @@
 #include "phone/phone_ui.hpp"
 
 #include "platform/device_paths.hpp"
+#include "domain/workspaces.hpp"      // what a new database can start as
 
 #include <cfloat>
 #include <ctime>
@@ -150,6 +151,16 @@ void HormigaApp::PhoneUi::migas(HormigaApp& app, PhoneUi& ph, Frame&) {
 
     // ── a new one ────────────────────────────────────────────────────────────
     ImGui::SeparatorText("New database");
+    // as what (okf/concepts/platform/workspaces.md): the ones not built yet are shown, not offered
+    static int workspace = 0;
+    for (int i = 0; i < hormiga::workspaces::kCount; ++i) {
+        const auto& w = hormiga::workspaces::kAll[i];
+        ImGui::BeginDisabled(!w.built);
+        if (ImGui::RadioButton(w.built ? w.title : (std::string(w.title) + "  (not yet)").c_str(), workspace == i))
+            workspace = i;
+        ImGui::EndDisabled();
+    }
+    maiz::dim_wrapped(hormiga::workspaces::kAll[workspace].line);
     ImGui::SetNextItemWidth(-ImGui::CalcTextSize("Create").x - ImGui::GetStyle().FramePadding.x * 2 - 10 * dp);
     const bool go = ImGui::InputTextWithHint("##newdb", "Its name", ph.new_name, sizeof ph.new_name,
                                              ImGuiInputTextFlags_EnterReturnsTrue);
@@ -161,8 +172,9 @@ void HormigaApp::PhoneUi::migas(HormigaApp& app, PhoneUi& ph, Frame&) {
             maiz::show_snackbar(ph.snack, "Give it a name with a letter or a digit in it");
         } else {
             const std::string path = (fs::create_directories(dir, ec), free_path(dir, stem).string());
-            switch_database(app, "Making " + stem, [&app, path] {
-                app.new_database(); // leaves a shared database: a new one is nobody's yet
+            const std::string ws = hormiga::workspaces::kAll[workspace].key;
+            switch_database(app, "Making " + stem, [&app, path, ws] {
+                app.new_database(ws); // leaves a shared database: a new one is nobody's yet
                 app.save_database_as(path);
             });
             ph.new_name[0] = 0;

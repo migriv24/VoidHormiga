@@ -16,6 +16,9 @@
 #include "../src/domain/seed.hpp"
 #include "../src/platform/storage.hpp"
 #include "../src/domain/temper.hpp"
+#include "../src/domain/bestow.hpp"     // regions give categories, per canvas
+#include "../src/domain/workspaces.hpp" // the demos of the kinds release
+#include "../src/domain/date_query.hpp" // date_field_of
 
 #include "voidmaiz/embed.hpp"
 #include "voidmaiz/gesture.hpp"
@@ -467,6 +470,311 @@ int main() {
         maiz::Core c2(d.export_state());
         CHECK(hormiga::glyph_fields(c2, "contact").empty());
     }
+
+    // ── WHY A DATABASE'S KINDS ARE REGISTERED, NOT DECLARED (2026-10-06) ────
+    // Measured: a glyph the document DECLARES shadows the same glyph the app
+    // REGISTERS, so the position channels the app adds for the database's
+    // canvases would be dropped. Kinds are therefore registered from their
+    // `kind` runes (domain/kinds.hpp), as layer channels always were. If Void
+    // Core ever widens a declaration with a registration, this check fails and
+    // the decision is worth revisiting (kinds.md).
+    {
+        maiz::Core k;
+        hormiga::register_glyphs(k);
+        CHECK(hormiga::declare_glyph(k, R"({"glyph":"gadget","label":"Gadget","fields":["title","price"]})").ok);
+        k.register_glyph(R"({"glyph":"gadget","label":"Gadget","fields":["title","price","geo_cv_floor"]})");
+        k.dispatch("mantle new things");
+        k.dispatch("use things");
+        CHECK(k.dispatch("rune new gadget g1").ok);
+        CHECK(k.dispatch("set g1 geo_cv_floor \"2,3\"").ok);
+        const maiz::Scene ts = project(k, "things");
+        const maiz::SceneNode* g1 = ts.find("g1");
+        const std::string pos = g1 ? hormiga::temper::field_value(*g1, "geo_cv_floor") : "";
+        CHECK(pos.empty()); // the declaration wins: see above
+    }
+
+    // ── KINDS ARE DATA: the three demos of the kinds release (2026-10-06) ───
+    // Each demo defines its kinds as `kind` runes, which kinds::apply registers;
+    // nothing about a store, a home or a campaign is in C++. Replayed here
+    // exactly as New database runs them: kinds, registration, data.
+    auto replay = [&](const hormiga::demos::Transcript& t, maiz::Core& core) {
+        hormiga::register_glyphs(core);
+        core.dispatch("mantle new kinds");
+        for (const auto& c : t.kinds) {
+            const auto r = core.dispatch(c);
+            if (!r.ok) std::cerr << "  kind refused: " << c << "\n";
+            CHECK(r.ok);
+        }
+        core.dispatch("mantle new demo-org");
+        hormiga::kinds::apply(core, {});
+        for (const auto& c : t.data) {
+            const auto r = core.dispatch(c);
+            if (!r.ok) std::cerr << "  refused: " << c << "\n";
+            CHECK(r.ok);
+        }
+        // the canvas channel is registered as reproject() would
+        std::vector<std::string> chans;
+        for (const auto& n : project(core, "demo-org").nodes)
+            if (n.glyph == "canvas") chans.push_back("geo_cv_" + n.name);
+        hormiga::register_glyphs(core, chans);
+        hormiga::kinds::apply(core, chans);
+        return project(core, "demo-org");
+    };
+    auto count = [](const maiz::Scene& s, const char* g) {
+        int n = 0;
+        for (const auto& x : s.nodes) n += x.glyph == g;
+        return n;
+    };
+    {
+        maiz::Core core;
+        const maiz::Scene s = replay(hormiga::demos::mart(), core);
+        const auto& reg = hormiga::kinds::current();
+        CHECK(reg.find("vendor") && !reg.find("vendor")->builtin && reg.find("vendor")->listed);
+        CHECK(reg.find("sale") && reg.dated("sale"));
+        CHECK(reg.located("product") && !reg.located("vendor"));
+        CHECK(count(s, "product") == 18 && count(s, "vendor") == 5 && count(s, "customer") == 5);
+        CHECK(count(s, "sale") == 6 && count(s, "purchase_order") == 2);
+        const maiz::SceneNode* milk = s.find("cat-milk");
+        CHECK(milk && hormiga::temper::field_value(*milk, "geo_cv_mart-floor") == "1.7,14");
+        CHECK(milk && hormiga::temper::field_value(*milk, "price") == "3.49"); // a data-defined field projects
+        CHECK(milk && hormiga::temper::field_value(*milk, "geo").empty());     // and is not on Earth
+        if (milk) {
+            bool dairy = false;
+            for (const auto& b : hormiga::bestow::covering(s, *milk)) dairy = dairy || b.tag == "dept:dairy";
+            CHECK(dairy);
+        }
+        const maiz::SceneNode* sale = s.find("sale-0003");
+        CHECK(sale && reg.date_of(*sale) == "2026-10-02");
+        const auto cv = hormiga::canvas::find(s, "mart-floor");
+        CHECK(cv.plan() && cv.w == 24 && cv.h == 16 && cv.unit == "m");
+        // a directory may list a database's own LISTED kind (render/published.hpp
+        // asks domain/kinds.hpp; its consent gates are pinned by the golden render)
+        if (const auto* fish = s.find("big-fish")) {
+            CHECK(hormiga::kinds::in_directory(*fish, "vendor"));
+            CHECK(hormiga::kinds::in_directory(*fish, "both"));
+            CHECK(!hormiga::kinds::in_directory(*fish, "contact"));
+            CHECK(hormiga::kinds::directory_line(*fish) == "Net 15"); // its subtitle field
+        }
+        if (const auto* salmon = s.find("salmon-fillet")) CHECK(!hormiga::kinds::in_directory(*salmon, "")); // not listed
+        // a kind whose subtitle is its notes never shows them in a directory (rule 6)
+        CHECK(core.dispatch("use kinds").ok);
+        core.dispatch("set vendor subtitle_field \"notes\"");
+        core.dispatch("use demo-org");
+        hormiga::kinds::apply(core, {});
+        if (const auto* fish = project(core, "demo-org").find("big-fish"))
+            CHECK(hormiga::kinds::directory_line(*fish).empty());
+        std::cout << "  Whisker Mart: " << count(s, "product") << " products, " << count(s, "vendor")
+                  << " vendors, " << count(s, "sale") << " sales, all of kinds it made itself\n";
+
+        // ── A DATABASE WITH ITS OWN KINDS, SAVED AND OPENED AGAIN ────────────
+        // The document carries the `kind` runes, not the glyphs (those are
+        // registered by the app). Opened by a core that knows only the
+        // built-ins, every rune of the database's own kinds must still be
+        // there, with every field, once its kinds are applied.
+        const std::string saved = core.export_state();
+        maiz::Core back(saved);
+        hormiga::register_glyphs(back);
+        std::vector<std::string> chans = {"geo_cv_mart-floor"};
+        hormiga::register_glyphs(back, chans);
+        hormiga::kinds::apply(back, chans);
+        const maiz::Scene sb = project(back, "demo-org");
+        CHECK(count(sb, "product") == 18 && count(sb, "vendor") == 5 && count(sb, "sale") == 6);
+        if (const auto* m2 = sb.find("cat-milk")) {
+            CHECK(hormiga::temper::field_value(*m2, "price") == "3.49");
+            CHECK(hormiga::temper::field_value(*m2, "geo_cv_mart-floor") == "1.7,14");
+        } else {
+            CHECK(!"cat-milk lost on reload");
+        }
+        // and through the SQLite mirror, which is how the app opens a working copy
+        {
+            fs::path kdb = fs::temp_directory_path() / "hormiga-kinds-reload.db";
+            fs::remove(kdb);
+            {
+                hormiga::Storage st(kdb);
+                CHECK(st.ok());
+                CHECK(st.save(saved, {project(core, "demo-org"), project(core, "kinds")}));
+                maiz::Core again(st.load_state());
+                hormiga::register_glyphs(again, chans);
+                hormiga::kinds::apply(again, chans);
+                const maiz::Scene sa = project(again, "demo-org");
+                CHECK(count(sa, "product") == 18);
+                const maiz::SceneNode* v = sa.find("big-fish");
+                CHECK(v && hormiga::temper::field_value(*v, "terms") == "Net 15");
+            }
+            fs::remove(kdb);
+        }
+        // a rune of an own kind can be EDITED after reload, and undone
+        CHECK(back.dispatch("use demo-org").ok);
+        CHECK(back.dispatch("set cat-milk price \"3.99\"").ok);
+        CHECK(back.dispatch("undo").ok);
+        if (const auto* m3 = project(back, "demo-org").find("cat-milk"))
+            CHECK(hormiga::temper::field_value(*m3, "price") == "3.49");
+        CHECK(back.dispatch("rune new vendor new-vendor").ok); // and made fresh
+
+        // ── ...AND ARRIVING FROM A MEMBER ─────────────────────────────────────
+        // Void Maiz's Network splices a merge with `replace_state` (src/net/
+        // net.cpp, splice_merged): the same state-level door as opening a
+        // file, into a core that may never have seen these kinds. Then the
+        // app re-projects, which applies them.
+        {
+            maiz::Core peer;
+            hormiga::register_glyphs(peer, chans);
+            peer.dispatch("mantle new demo-org");
+            CHECK(peer.replace_state(back.export_state()));
+            hormiga::kinds::apply(peer, chans);
+            const maiz::Scene sp = project(peer, "demo-org");
+            CHECK(count(sp, "product") == 18 && sp.find("new-vendor") != nullptr);
+            CHECK(hormiga::kinds::current().find("vendor") && hormiga::kinds::current().listed("vendor"));
+        }
+    }
+    {
+        maiz::Core core;
+        const maiz::Scene s = replay(hormiga::demos::campaign(), core);
+        const auto& reg = hormiga::kinds::current();
+        CHECK(count(s, "character") == 7 && count(s, "creature") == 7 && count(s, "session") == 4);
+        const maiz::SceneNode* mittens = s.find("mittens");
+        CHECK(mittens && hormiga::temper::field_value(*mittens, "race") == "Tabaxi");
+        CHECK(mittens && hormiga::temper::field_value(*mittens, "dex") == "18");
+        const auto cv = hormiga::canvas::find(s, "whiskerwood");
+        CHECK(cv.unit == "ft" && cv.span() >= 2400); // a forest in feet fits at the first zooms
+        const maiz::SceneNode* q = s.find("q-missing-yarn");
+        CHECK(q && reg.date_of(*q) == "2026-10-24"); // a quest's deadline is its date
+        // an event grid shows a database's own dated kind only when it consents
+        if (const auto* s1 = s.find("session-1")) {
+            CHECK(!hormiga::kinds::in_event_grid(*s1, "session")); // no clearance:public yet
+            CHECK(!hormiga::kinds::in_event_grid(*s1, ""));        // a blank grid shows events
+            CHECK(hormiga::kinds::grid_date(*s1) == "2026-10-03");
+        }
+        CHECK(core.dispatch("tag session-1 +clearance:public").ok);
+        if (const auto* s1 = project(core, "demo-org").find("session-1"))
+            CHECK(hormiga::kinds::in_event_grid(*s1, "session"));
+        if (const auto* item = s.find("bag-of-holding")) CHECK(!hormiga::kinds::in_event_grid(*item, "item")); // undated
+        std::cout << "  the Whiskerwood: " << count(s, "character") << " characters of 5e races, "
+                  << count(s, "creature") << " creatures, on a map in feet\n";
+    }
+    {
+        maiz::Core core;
+        const maiz::Scene s = replay(hormiga::demos::home(), core);
+        const auto& reg = hormiga::kinds::current();
+        CHECK(count(s, "device") == 11 && count(s, "supply") == 8 && count(s, "chore") == 5);
+        const maiz::SceneNode* milk = s.find("cat-milk");
+        CHECK(milk && reg.date_of(*milk) == "2026-10-15"); // an expiration date puts it on the calendar
+        CHECK(milk && hormiga::date_field_of(*milk) == "2026-10-15");
+        // a home's residents and devices never reach a public map without consent
+        if (const auto* g = s.find("garfield")) CHECK(!hormiga::kinds::on_public_map(*g));
+        if (milk) { // every public output withholds an own kind until it consents
+            CHECK(hormiga::kinds::is_own(*milk) && hormiga::kinds::withheld(*milk));
+        }
+        CHECK(core.dispatch("tag cat-milk +clearance:public").ok);
+        if (const auto* m2 = project(core, "demo-org").find("cat-milk")) CHECK(!hormiga::kinds::withheld(*m2));
+        if (const auto* d = s.find("door-sensor")) CHECK(!hormiga::kinds::on_public_map(*d));
+        const maiz::SceneNode* feeder = s.find("feeder");
+        if (feeder) {
+            bool kitchen = false;
+            for (const auto& b : hormiga::bestow::covering(s, *feeder)) kitchen = kitchen || b.tag == "room:kitchen";
+            CHECK(kitchen);
+        }
+        std::cout << "  the House of Cats: " << count(s, "device") << " devices, " << count(s, "supply")
+                  << " supplies with expiration dates, " << count(s, "chore") << " chores\n";
+    }
+    // renaming a built-in kind changes what it is called, never what is stored
+    {
+        maiz::Core core;
+        hormiga::register_glyphs(core);
+        core.dispatch("mantle new kinds");
+        core.dispatch("rune new kind contact");
+        core.dispatch("set contact title \"Customer\"");
+        core.dispatch("set contact icon \"paw\"");
+        core.dispatch("mantle new demo-org");
+        hormiga::kinds::apply(core, {});
+        CHECK(core.dispatch("rune new contact c1").ok); // still glyph contact
+        const auto& reg = hormiga::kinds::current();
+        CHECK(reg.title("contact") == "Customer" && reg.plural("contact") == "Customers");
+        CHECK(reg.find("contact")->builtin && reg.located("contact")); // keeps what it can do
+        if (const auto* c1n = project(core, "demo-org").find("c1"))
+            CHECK(!hormiga::kinds::on_public_map(*c1n)); // a contact never, renamed or not
+        CHECK(hormiga::canvas::config_name("\"x\"\n") == "x");
+
+        // Q109: a built-in's field relabelled, and a field of the database's own
+        core.dispatch("use kinds");
+        core.dispatch("setjson contact fields '[{\"key\":\"role\",\"label\":\"Favourite fish\",\"editor\":\"\"},"
+                      "{\"key\":\"loyalty\",\"label\":\"Loyalty points\",\"editor\":\"\"}]'");
+        core.dispatch("use demo-org");
+        hormiga::kinds::apply(core, {});
+        CHECK(core.dispatch("set c1 loyalty \"42\"").ok);
+        CHECK(core.dispatch("set c1 role \"Sardines\"").ok);
+        const maiz::Scene cs = project(core, "demo-org");
+        const maiz::SceneNode* c1 = cs.find("c1");
+        CHECK(c1 && hormiga::temper::field_value(*c1, "loyalty") == "42"); // the extra field projects
+        CHECK(c1 && hormiga::temper::field_value(*c1, "role") == "Sardines"); // the key never changed
+        const auto gd = core.dispatch("glyphs contact");
+        CHECK(gd.ok && gd.data.find("Favourite fish") != std::string::npos);
+        CHECK(gd.data.find("email") != std::string::npos); // the application's fields are all still there
+        // the database says nothing any more: the application's own again
+        core.dispatch("use kinds");
+        core.dispatch("setjson contact fields '[]'");
+        core.dispatch("use demo-org");
+        hormiga::kinds::apply(core, {});
+        CHECK(core.dispatch("glyphs contact").data.find("Favourite fish") == std::string::npos);
+    }
+    // ── A 0.1.12 GROCERY DATABASE OPENS WHOLE IN 0.2.0 (2026-10-07) ───────────
+    // 0.1.12 registered `product` in C++ (its descriptor is copied here as it
+    // shipped); 0.2.0 does not. Opened by 0.2.0, Corner Market's products
+    // must keep every field: `product` is a legacy kind (domain/kinds.hpp).
+    {
+        maiz::Core old;
+        hormiga::register_glyphs(old);
+        old.register_glyph(
+            R"({"glyph":"product","label":"Product",)"
+            R"("fields":["title","price","unit","sku","stock","notes","image_url","geo","ref","ref_off","geo_cv_store-floor"],)"
+            R"("hints":{"color":"#3f7d3a","face":{"w":190,"h":58},"category":"Store"}})");
+        old.dispatch("mantle new demo-org");
+        CHECK(old.dispatch("rune new product milk").ok);
+        old.dispatch("set milk title \"Whole milk\"");
+        old.dispatch("set milk price \"3.29\"");
+        old.dispatch("set milk geo_cv_store-floor \"1.5,13\"");
+        old.dispatch("tag milk +type:product +located");
+        maiz::Core now(old.export_state()); // 0.2.0: no `product` glyph of its own
+        hormiga::register_glyphs(now, {"geo_cv_store-floor"});
+        hormiga::kinds::apply(now, {"geo_cv_store-floor"});
+        const maiz::SceneNode* m = project(now, "demo-org").find("milk");
+        CHECK(m && hormiga::temper::field_value(*m, "price") == "3.29");
+        CHECK(m && hormiga::temper::field_value(*m, "title") == "Whole milk");
+        CHECK(m && hormiga::temper::field_value(*m, "geo_cv_store-floor") == "1.5,13");
+        const auto* pk = hormiga::kinds::current().find("product");
+        CHECK(pk && pk->legacy && pk->located && !pk->palette); // known, offered only where used
+        CHECK(now.dispatch("rune new product eggs").ok);         // and a new one can still be made
+        CHECK(m && hormiga::kinds::withheld(*m));               // the consent rule applies to it
+    }
+
+    // ── A KIND NAMED LIKE ONE OF THE APPLICATION'S GLYPHS IS NEVER REGISTERED ─
+    // `note` is the application's (the Notes tab), not a kind of thing a
+    // database names. A kind rune called `note` arriving from anywhere must
+    // leave the application's glyph exactly as it was.
+    {
+        maiz::Core core;
+        hormiga::register_glyphs(core);
+        core.dispatch("mantle new kinds");
+        core.dispatch("rune new kind note");
+        core.dispatch("set note title \"Invoice\"");
+        core.dispatch("setjson note fields '[{\"key\":\"amount\",\"label\":\"Amount\",\"editor\":\"\"}]'");
+        core.dispatch("mantle new demo-org");
+        hormiga::kinds::apply(core, {});
+        const auto& reg = hormiga::kinds::current();
+        CHECK(reg.clashes.size() == 1 && reg.clashes[0] == "note");
+        CHECK(!reg.find("note"));                                         // not treated as data
+        const auto gd = core.dispatch("glyphs note");
+        CHECK(gd.ok && gd.data.find("amount") == std::string::npos);      // the application's glyph untouched
+        CHECK(gd.data.find("text") != std::string::npos);
+        // and a database's kind registered by this process is not a clash on the next apply
+        core.dispatch("use kinds");
+        core.dispatch("rune new kind invoice");
+        core.dispatch("use demo-org");
+        hormiga::kinds::apply(core, {});
+        hormiga::kinds::apply(core, {});
+        CHECK(hormiga::kinds::current().find("invoice") != nullptr);
+    }
+    hormiga::kinds::current() = hormiga::kinds::Registry{hormiga::kinds::builtins()};
 
     if (failures == 0) {
         std::cout << "OK — sqlite round-trip + csv import + rescue import + "

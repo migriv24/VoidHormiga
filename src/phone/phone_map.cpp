@@ -43,8 +43,8 @@ using namespace hormiga::phone::mapx;
 
 
 bool HormigaApp::PhoneUi::map_placeable(const maiz::SceneNode& n) {
-    return n.glyph == "contact" || n.glyph == "organization" || n.glyph == "event" || n.glyph == "incident" ||
-           n.glyph == "note";
+    // a kind that can be on a map (trait `located`, domain/kinds.hpp), and notes
+    return n.glyph == "note" || hormiga::kinds::current().located(n.glyph);
 }
 
 void HormigaApp::PhoneUi::map_focus(HormigaApp&, PhoneUi& ph, const std::string& rune) {
@@ -85,7 +85,11 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
      * through its metric; until a source can be georeferenced, haversine is
      * the test, and anything else gets no locate button and no blue dot. */
     const BaseSource& world = kBaseSources[std::clamp(app.basemap_src, 0, kBaseSourceCount - 1)];
-    const bool earth = world.metric == hormiga::gis::Metric::Haversine;
+    // THE CANVAS (2026-10-06, domain/canvas.hpp): Earth, or a drawn plan, which
+    // has no tiles and no latitude for a fix to land on
+    const hormiga::canvas::Canvas cvs = hormiga::canvas::find(app.scene, app.map_canvas);
+    const bool plan = cvs.plan();
+    const bool earth = !plan && world.metric == hormiga::gis::Metric::Haversine;
     maiz::LocationPlatform* loc = earth ? maiz::location() : nullptr;
 
     // the layers, bottom to top (the desktop's own list): the one being edited
@@ -115,6 +119,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
     m.channel = channel;
     m.rules = rules;
     m.field = field;
+    m.plan = plan;
     if (PhoneUi::map_route(app, ph, f)) return;
 
     // ── THE MAP ──────────────────────────────────────────────────────────────
@@ -124,27 +129,45 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
     m.v.w = sz.x;
     m.v.h = sz.y;
     m.v.tile_px = 256.0f * std::max(1.0f, dp * 0.5f); // tiles readable at a phone's density
+    if (m.canvas_shown != app.map_canvas) { // another canvas: its own world, and its own camera
+        m.canvas_shown = app.map_canvas;
+        m.loaded = false;
+        m.v.flat = plan;
+        m.v.span = cvs.span();
+        m.v.min_zoom = plan ? cvs.min_zoom() : 3;
+        m.v.max_zoom = plan ? cvs.max_zoom() : 19;
+    }
+    const std::string cam_key = hormiga::canvas::camera_key(kCamKey, app.map_canvas);
     if (!m.loaded) {
         m.loaded = true;
         maiz::Camera c;
-        if (maiz::parse_camera(app.core.dispatch(std::string("config get ") + kCamKey).data, c) ||
-            maiz::parse_camera(app.core.dispatch("config get view.map.camera").data, c)) {
+        if (maiz::parse_camera(app.core.dispatch("config get " + cam_key).data, c) ||
+            maiz::parse_camera(
+                app.core.dispatch("config get " + hormiga::canvas::camera_key("view.map.camera", app.map_canvas))
+                    .data,
+                c)) {
             m.v.lon = c.x;
             m.v.lat = c.y;
             m.v.zoom = std::clamp((double)c.zoom, m.v.min_zoom, m.v.max_zoom);
+        } else if (plan) { // nothing saved on a floor: the whole floor, centred
+            m.v.lat = cvs.h / 2;
+            m.v.lon = cvs.w / 2;
+            const double fit = std::log2(std::min(sz.x / cvs.w, sz.y / cvs.h) * 0.9 *
+                                         cvs.span() / m.v.tile_px);
+            m.v.zoom = std::clamp(fit, m.v.min_zoom, m.v.max_zoom);
         } else { // nothing saved: fit everything placed, or a whole continent
             double fx0 = 1, fy0 = 1, fx1 = 0, fy1 = 0;
             int nplaced = 0;
             for (const auto& n : app.scene.nodes) {
                 double la, lo;
                 if (!map_placeable(n) || !hormiga::parse_geo(view_geo(n, channel), la, lo)) continue;
-                const double fx = hormiga::gis::merc_x(lo, 0), fy = hormiga::gis::merc_y(la, 0);
+                const double fx = (m.v.wx(lo) / m.v.world()), fy = (m.v.wy(la) / m.v.world());
                 fx0 = std::min(fx0, fx), fy0 = std::min(fy0, fy), fx1 = std::max(fx1, fx), fy1 = std::max(fy1, fy);
                 ++nplaced;
             }
             if (nplaced) {
-                m.v.lon = hormiga::gis::merc_lon((fx0 + fx1) / 2, 0);
-                m.v.lat = hormiga::gis::merc_lat((fy0 + fy1) / 2, 0);
+                m.v.lon = m.v.ux((fx0 + fx1) / 2);
+                m.v.lat = m.v.uy((fy0 + fy1) / 2);
                 m.v.zoom = nplaced == 1 ? 15.0 : fit_zoom(m, fx0, fy0, fx1, fy1);
             } else {
                 m.v.lat = 39.5;
@@ -185,64 +208,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
     };
     auto geo_at = [&](ImVec2 s, double& la, double& lo) { m.v.to_geo(s.x - p0.x, s.y - p0.y, la, lo); };
 
-    // ── tiles, at a continuous zoom: the nearest level, scaled ──────────────
-    {
-        const BaseSource& bsrc = kBaseSources[std::clamp(app.basemap_src, 0, kBaseSourceCount - 1)];
-        const int z = m.v.level();
-        const int n = 1 << z;
-        const double ts = m.v.tile_px * m.v.scale();
-        const double cxw = m.v.wx(m.v.lon), cyw = m.v.wy(m.v.lat);
-        auto tile_tex = [&](int zz, int tx, int ty) -> HostTexture {
-            char rel[96];
-            std::snprintf(rel, sizeof rel, "tiles/%s/%d/%d/%d.png", bsrc.key, zz, tx, ty);
-            if (!std::filesystem::exists(app.base_dir / rel)) return {};
-            return app.texture_for(rel);
-        };
-        const int tx0 = (int)std::floor((cxw - sz.x * 0.5) / ts), tx1 = (int)std::floor((cxw + sz.x * 0.5) / ts);
-        const int ty0 = std::max(0, (int)std::floor((cyw - sz.y * 0.5) / ts));
-        const int ty1 = std::min(n - 1, (int)std::floor((cyw + sz.y * 0.5) / ts));
-        dl->AddRectFilled(p0, p1, IM_COL32(232, 230, 224, 255)); // the ground, under tiles still coming
-        for (int ty = ty0; ty <= ty1; ++ty)
-            for (int txr = tx0; txr <= tx1; ++txr) {
-                int tx = 0;
-                if (!bsrc.tile_column(txr, z, tx)) continue;
-                // edges rounded from the same doubles: neighbouring tiles share a pixel edge, no seams
-                const ImVec2 a((float)std::round(p0.x + sz.x * 0.5 + txr * ts - cxw),
-                               (float)std::round(p0.y + sz.y * 0.5 + ty * ts - cyw));
-                const ImVec2 b((float)std::round(p0.x + sz.x * 0.5 + (txr + 1) * ts - cxw),
-                               (float)std::round(p0.y + sz.y * 0.5 + (ty + 1) * ts - cyw));
-                if (HostTexture t = tile_tex(z, tx, ty); t.id) {
-                    dl->AddImage((ImTextureID)(intptr_t)t.id, a, b);
-                    continue;
-                }
-                {
-                    char url[160], rel[96];
-                    std::snprintf(url, sizeof url, bsrc.url, z, tx, ty);
-                    std::snprintf(rel, sizeof rel, "tiles/%s/%d/%d/%d.png", bsrc.key, z, tx, ty);
-                    app.tiles.want(url, (app.base_dir / rel).string());
-                }
-                bool drew = false;
-                for (int k = 1; k <= 4 && !drew; ++k) { // a cached ancestor's quarter meanwhile
-                    HostTexture pa = tile_tex(z - k, tx >> k, ty >> k);
-                    if (!pa.id) continue;
-                    const float fr = 1.0f / (float)(1 << k);
-                    const ImVec2 uv0((tx & ((1 << k) - 1)) * fr, (ty & ((1 << k) - 1)) * fr);
-                    dl->AddImage((ImTextureID)(intptr_t)pa.id, a, b, uv0, ImVec2(uv0.x + fr, uv0.y + fr));
-                    drew = true;
-                }
-                if (!drew && z < 19)
-                    for (int q = 0; q < 4; ++q) { // or its four children
-                        HostTexture c = tile_tex(z + 1, tx * 2 + (q & 1), ty * 2 + (q >> 1));
-                        if (!c.id) continue;
-                        const float hw = (b.x - a.x) * 0.5f, hh = (b.y - a.y) * 0.5f;
-                        const ImVec2 qa(a.x + (q & 1) * hw, a.y + (q >> 1) * hh);
-                        dl->AddImage((ImTextureID)(intptr_t)c.id, qa, ImVec2(qa.x + hw, qa.y + hh));
-                    }
-            }
-        if (app.basemap_brightness < 0.999f)
-            dl->AddRectFilled(p0, p1, IM_COL32(0, 0, 0, (int)((1.0f - app.basemap_brightness) * 255)));
-        if (app.basemap_fade > 0.001f) dl->AddRectFilled(p0, p1, IM_COL32(150, 150, 150, (int)(app.basemap_fade * 200)));
-    }
+    PhoneUi::map_ground(app, ph, dl, p0, p1); // tiles, or a plan's floor (phone_map_ground.cpp)
 
     /* ── THE OTHER VISIBLE LAYERS, ghosted underneath (the desktop's rule) ──
      * Each draws its own positions in its own colour, at its opacity and
@@ -306,7 +272,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
     // ── regions (drawn shapes), under everything ─────────────────────────────
     const maiz::SceneNode* shape_hit = nullptr;
     for (const auto& n : app.scene.nodes) {
-        if (n.glyph != "mapshape") continue;
+        if (n.glyph != "mapshape" || !hormiga::canvas::on(n, app.map_canvas)) continue;
         double la1, lo1, la2, lo2;
         if (!hormiga::parse_geo(hormiga::temper::field_value(n, "geo1"), la1, lo1) ||
             !hormiga::parse_geo(hormiga::temper::field_value(n, "geo2"), la2, lo2))
@@ -327,7 +293,11 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
             dl->AddRect(mn, mx, line, 4 * dp, 0, (sel ? 3.0f : 1.8f) * dp);
         }
         const std::string lbl = hormiga::temper::field_value(n, "label");
-        if (!lbl.empty()) dl->AddText(ImVec2(mn.x + 6 * dp, mn.y + 4 * dp), line, lbl.c_str());
+        if (!lbl.empty()) { // inside its own region, as on the desktop
+            dl->PushClipRect(ImVec2(mn.x + 2 * dp, mn.y), ImVec2(mx.x - 2 * dp, mx.y), true);
+            dl->AddText(ImVec2(mn.x + 6 * dp, mn.y + 4 * dp), line, lbl.c_str());
+            dl->PopClipRect();
+        }
         if (mouse.x >= mn.x && mouse.x <= mx.x && mouse.y >= mn.y && mouse.y <= mx.y &&
             (hormiga::temper::field_value(n, "kind") != "ellipse" || [&] {
                 const float rx = (mx.x - mn.x) * 0.5f, ry = (mx.y - mn.y) * 0.5f;
@@ -341,7 +311,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
     const maiz::SceneNode* ref_hit = nullptr;
     float ref_hit_d = 1e9f;
     for (const auto& n : app.scene.nodes) {
-        if (n.glyph != "refpoint") continue;
+        if (n.glyph != "refpoint" || !hormiga::canvas::on(n, app.map_canvas)) continue;
         double la, lo;
         if (!hormiga::parse_geo(hormiga::temper::field_value(n, "geo"), la, lo)) continue;
         const bool lifted = active && m.lift == n.name;
@@ -641,7 +611,8 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
                 f.out.push_back(maiz::compile_commit(
                     {"rune new mapshape " + name, std::string("set ") + name + " kind \"" + (m.draw == 2 ? "ellipse" : "rect") + "\"",
                      "set " + name + " geo1 \"" + geo_str(m.d_la, m.d_lo) + "\"",
-                     "set " + name + " geo2 \"" + geo_str(la, lo) + "\"", "tag " + name + " +type:mapshape"}));
+                     "set " + name + " geo2 \"" + geo_str(la, lo) + "\"",
+                     "set " + name + " canvas " + json_str(app.map_canvas), "tag " + name + " +type:mapshape"}));
                 m.draw = 0;
                 m.sel = name;
                 m.set_sheet(MapUi::Shape);
@@ -652,7 +623,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
             if (k >= 0) { // a cluster: open it up
                 double fx0 = 1, fy0 = 1, fx1 = 0, fy1 = 0;
                 for (int i : clusters[k].members) {
-                    const double fx = hormiga::gis::merc_x(placed[i].lo, 0), fy = hormiga::gis::merc_y(placed[i].la, 0);
+                    const double fx = m.v.wx(placed[i].lo) / m.v.world(), fy = m.v.wy(placed[i].la) / m.v.world();
                     fx0 = std::min(fx0, fx), fy0 = std::min(fy0, fy), fx1 = std::max(fx1, fx), fy1 = std::max(fy1, fy);
                 }
                 const double zfit = fit_zoom(m, fx0, fy0, fx1, fy1);
@@ -661,7 +632,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
                     for (int i : clusters[k].members) m.pick.push_back(placed[i].node->name);
                     m.set_sheet(MapUi::Pick);
                 } else {
-                    fly_to(m, hormiga::gis::merc_lat((fy0 + fy1) / 2, 0), hormiga::gis::merc_lon((fx0 + fx1) / 2, 0),
+                    fly_to(m, m.v.uy((fy0 + fy1) / 2), m.v.ux((fx0 + fx1) / 2),
                            std::max(zfit, m.v.zoom + 1.0));
                 }
             } else if (hits.size() >= 2 && hits[1].first - hits[0].first < 10 * dp) {
@@ -755,7 +726,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
         c.x = (float)m.v.lon;
         c.y = (float)m.v.lat;
         c.zoom = (float)m.v.zoom;
-        f.out.push_back(maiz::compile_camera(c, kCamKey));
+        f.out.push_back(maiz::compile_camera(c, cam_key));
     }
 
     // ── the pin dropped by a long press, while "add here" is asked ───────────
@@ -789,7 +760,13 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
             const double metres = nice_metres(mpp, 90 * dp);
             const float len = (float)(metres / mpp);
             const ImVec2 a(p0.x + 12 * dp, y);
-            const std::string t = human_m(metres);
+            // a canvas in feet or squares says so; metres read as they always did
+            const std::string t = plan && cvs.unit != "m" ? [&] {
+                char b[32];
+                std::snprintf(b, sizeof b, "%g %s", metres, cvs.unit.c_str());
+                return std::string(b);
+            }()
+                                                          : human_m(metres);
             dl->AddRectFilled(ImVec2(a.x - 4 * dp, a.y - ImGui::GetFontSize() - 6 * dp), ImVec2(a.x + len + 4 * dp, a.y + 5 * dp),
                               IM_COL32(255, 255, 255, 170), 4 * dp);
             dl->AddLine(a, ImVec2(a.x + len, a.y), IM_COL32(50, 50, 50, 230), 2 * dp);
@@ -797,10 +774,11 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
             dl->AddLine(ImVec2(a.x + len, a.y), ImVec2(a.x + len, a.y - 5 * dp), IM_COL32(50, 50, 50, 230), 2 * dp);
             dl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 0.8f, ImVec2(a.x, a.y - ImGui::GetFontSize() - 3 * dp),
                         IM_COL32(40, 40, 40, 255), t.c_str());
-            const char* credit = kBaseSources[std::clamp(app.basemap_src, 0, kBaseSourceCount - 1)].attribution;
+            // a floor plan draws nobody's tiles, so it credits nobody
+            const char* credit = plan ? "" : kBaseSources[std::clamp(app.basemap_src, 0, kBaseSourceCount - 1)].attribution;
             const float cs = ImGui::GetFontSize() * 0.68f;
             const ImVec2 ts = ImGui::GetFont()->CalcTextSizeA(cs, FLT_MAX, 0, credit);
-            dl->AddRectFilled(ImVec2(p1.x - ts.x - 8 * dp, y - ts.y - 2 * dp), ImVec2(p1.x, y + 3 * dp), IM_COL32(255, 255, 255, 160));
+            if (*credit) dl->AddRectFilled(ImVec2(p1.x - ts.x - 8 * dp, y - ts.y - 2 * dp), ImVec2(p1.x, y + 3 * dp), IM_COL32(255, 255, 255, 160));
             dl->AddText(ImGui::GetFont(), cs, ImVec2(p1.x - ts.x - 4 * dp, y - ts.y), IM_COL32(70, 70, 70, 255), credit);
         }
         if (int pend = app.tiles.pending(); pend > 0) {

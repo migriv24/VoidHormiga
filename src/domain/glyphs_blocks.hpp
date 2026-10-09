@@ -196,13 +196,14 @@ inline void register_block_glyphs(maiz::Core& core) {
           44, false, "Content", R"()",
           R"__("title_en":"Heading (English)","title_es":"Encabezado (espanol)")__");
     block("event_grid", "event grid",
-          R"("query","detail","columns","limit","sort","search","caption_en","caption_es")",
+          R"("query","kind","detail","columns","limit","sort","search","caption_en","caption_es")",
           "#9966cc", 84, false, "Data",
-          R"("query":"hidden","detail":"combo:compact,title,full",)"
+          R"("query":"hidden","kind":"datedkind","detail":"combo:compact,title,full",)"
           R"("search":"combo:auto,on,off","columns":"combo:1,2,3")",
           R"__("query":"Event query: tags with AND/OR/NOT, plus date:future | )__"
           R"__(date:past | date:today | date:recurring | date:undated. Check it )__"
           R"__(with `effect query` - `ls --tag` cannot see the date ones.",)__"
+          R"__("kind":"Which kind it shows",)__"
           R"__("detail":"How much of each event to show",)__"
           R"__("columns":"Cards per row, 1-3 (blank = the site's automatic grid, )__"
           R"__(one card per row in the newsletter; a phone always stacks)",)__"
@@ -333,12 +334,12 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"("query","kind","display","limit","live","rank_up","rank_down",)"
           R"("caption_en","caption_es")",
           "#b3592e", 84, false, "Data",
-          R"("query":"hidden","kind":"combo:contact,organization,both",)"
+          R"("query":"hidden","kind":"listedkind",)"
           R"("live":"combo:off,on",)"
           R"("display":"combo:card,list,carousel","rank_up":"hidden","rank_down":"hidden")",
           R"__("query":"Who to list (tags; AND/OR/NOT). Only runes tagged )__"
           R"__(clearance:public are ever published.",)__"
-          R"__("kind":"People, organizations, or both",)__"
+          R"__("kind":"Which kind it lists",)__"
           R"__("display":"Card wall, compact list, or swipe carousel",)__"
           R"__("limit":"Most entries to show (blank = all)",)__"
           R"__("live":"Refresh from site/index/ on load, so updating a contact )__"

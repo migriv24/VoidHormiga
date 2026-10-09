@@ -100,11 +100,14 @@ unit is "u" on a flat world.
 
 # What the code assumes today, honestly
 
-- **Every shipped source is Earth** (`kBuiltinSources`: OSM, CARTO light, CARTO
-  dark). The flat world exists in the engine and in its tests and has no caller.
-- **The phone's viewport (`gis/view.hpp`, `SlippyView`) is web mercator only.**
-  An authored world on a phone needs the same struct over `flat_x`/`flat_y`;
-  written when a flat world first has a phone, not before.
+- **Every shipped tile source is Earth** (`kBuiltinSources`: OSM, CARTO light,
+  CARTO dark). Since 2026-10-06 the flat world has its first caller: a **plan
+  canvas** ([canvases](/concepts/sections/gis/canvases.md)), drawn with a grid
+  and no tiles, on the desktop and the phone. It has no locate button, its
+  scale bar and distances are metres from its own flat metric, and it credits
+  no tile provider.
+- **The phone's viewport (`gis/view.hpp`, `SlippyView`)** is web mercator, or
+  flat (`flat`, `span`) since a plan canvas first had a phone.
 - **The scale bar and "N m away" on the phone print metres** without asking the
   source. They are only drawn on Earth today because every source is Earth; when
   a flat source exists they must use `distance_unit()` or hide.

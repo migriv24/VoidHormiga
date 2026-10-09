@@ -549,6 +549,7 @@ void HormigaApp::ensure_icon_editor() {
      * difference stated where it is used: these are not this shape's tags, they
      * are what it hands to everything inside it, when "Give" is pressed. */
     if (!widgets.editors.count("bestow"))
+        install_kind_editors(widgets); // "listedkind" (ui/kinds.cpp)
         widgets.editors["bestow"] = [this](maiz::WidgetContext& ctx, const maiz::SceneNode& n,
                                            const maiz::SceneField& f, std::string_view) -> bool {
             static char add_buf[64];
@@ -597,7 +598,9 @@ void HormigaApp::ensure_icon_editor() {
                 for (const auto& en : ctx.scene.nodes) {
                     if (en.glyph == "mapshape" || en.glyph == "map" || en.glyph == "refpoint") continue;
                     double la, lo;
-                    if (!hormiga::parse_geo(view_geo(en, active_channel), la, lo)) continue;
+                    // positions on the shape's own canvas (a store floor's, not Earth's)
+                    const std::string ch = hormiga::canvas::shared_channel(hormiga::canvas::of(n));
+                    if (!hormiga::parse_geo(view_geo(en, ch), la, lo)) continue;
                     if (!hormiga::bestow::shape_contains(n, la, lo)) continue;
                     ++inside;
                     std::string cmd;

@@ -51,6 +51,8 @@
 #include "domain/map_actions.hpp"
 #include "domain/hormiga_allomone.hpp" // the Void Maiz language + merge (`allo-script`)
 #include "domain/temper.hpp"
+#include "domain/canvas.hpp" // canvases with data: Earth, or a drawn plan
+#include "domain/kinds.hpp"  // the kinds of thing, as data: names, looks, traits
 #include "gis/source.hpp"   // the map engine: worlds, projections, metrics
 
 #include "stb_image.h" // decls only (impl lives in main/desktop.cpp) — the
@@ -263,7 +265,21 @@ inline void flow_button(const char* label, float gap = -1.0f) {
  * neutral square rather than to nothing, because a palette where some rows have
  * an icon and some have empty space reads as broken rather than as sparse.
  */
+/* A kind's icon NAME (domain/kinds.hpp) as a glyph: the names a database may
+ * give its kinds, in app_shared.cpp. Unknown names fall back to a tag. */
+const char* kind_icon_named(const std::string& name);
+/* The field editors the kinds release adds to the registry: "listedkind", the
+ * kind a directory block lists (ui/kinds.cpp). */
+void install_kind_editors(maiz::WidgetRegistry& widgets);
+/* The icon names a kind may take, in the order a picker shows them. */
+const std::vector<std::string>& kind_icon_names();
+/* A kind's colour ("#rrggbb") as ImGui's; `fallback` when it does not parse. */
+unsigned kind_colour_u32(const std::string& hex, unsigned fallback);
+
 inline const char* glyph_icon(std::string_view glyph) {
+    // a kind the database made, or renamed with an icon of its own, draws its own
+    if (const auto* k = hormiga::kinds::current().find(std::string(glyph)); k && (!k->builtin || k->defined))
+        return kind_icon_named(k->icon);
     struct Row { const char* glyph; const char* icon; };
     static const Row kRows[] = {
         // ── document blocks (the Builder palette) ───────────────────────────
@@ -296,6 +312,7 @@ inline const char* glyph_icon(std::string_view glyph) {
         {"job", ICON_FA_BRIEFCASE},
         {"image", ICON_FA_IMAGE},
         {"resource", ICON_FA_BOOK_OPEN},
+        {"canvas", ICON_FA_TABLE_CELLS},
         {"role", ICON_FA_BRIEFCASE},
         {"project", ICON_FA_CUBE},
         {"location", ICON_FA_LOCATION_DOT},
@@ -406,6 +423,12 @@ struct MarkerLook {
 unsigned glyph_marker_colour(const std::string& glyph);
 const char* glyph_marker_shape(const std::string& glyph);
 const char* glyph_marker_icon(const std::string& glyph);
+/* A drawn canvas's floor (domain/canvas.hpp): the area outside it dim, the floor
+ * itself paper-white, a grid line every `grid` metres (heavier every five), the
+ * edge, and a scale note. `origin` is where (0,0) is on screen; `px_m` screen
+ * pixels per metre. The desktop canvas and the phone's draw the same floor. */
+void draw_plan_grid(ImDrawList* dl, ImVec2 p0, ImVec2 p1, const hormiga::canvas::Canvas& cv, ImVec2 origin,
+                    float px_m);
 /* A marker's caption: the rune's name, except a note, which has none worth
  * showing ("note-3fa9-1"), so its first line, shortened. */
 std::string marker_caption(const maiz::SceneNode& n);

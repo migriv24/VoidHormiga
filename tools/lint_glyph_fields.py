@@ -100,6 +100,7 @@ EXEMPT = {
 SKIP_GLYPHS = {
     'page', 'document', 'submission', 'deployment', 'map', 'mapshape',
     'refpoint', 'note', 'resource', 'incident', 'org_core',
+    'kind', 'canvas',  # schema and worlds (domain/kinds.hpp, domain/canvas.hpp), never content
 }
 
 
@@ -142,7 +143,12 @@ def main():
         sources[label] = text
     # helpers both renderers share count as "mentioned"
     for extra in ('src/render/text.hpp', 'src/render/theme.cpp',
-                  'src/render/assets.cpp'):
+                  'src/render/assets.cpp',
+                  # who a directory lists, and the line under each name: one
+                  # answer for the website and the newsletter (2026-10-06)
+                  'src/render/published.hpp',
+                  # ...whose rule for the line under a name lives with the kinds
+                  'src/domain/kinds.hpp'):
         p = os.path.join(ROOT, extra)
         if os.path.exists(p):
             shared = open(p, encoding='utf-8', errors='replace').read()

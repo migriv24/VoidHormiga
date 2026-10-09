@@ -155,7 +155,7 @@ BUDGET = {
     # 2300 -> 2305 (2026-09-15): lists in a narrative and ordering by tags. The
     # list markup and the ranking are render/text.hpp's; what stayed is one call
     # per block, which the glyph linter needs to see reading `rank_up`/`rank_down`.
-    'src/render/site.cpp': 2305,
+    'src/render/site.cpp': 2310,  # +5: an event grid may show a database's dated kind (2026-10-06)
     'src/domain/allomone_legacy.hpp': 900,  # unshipped, frozen
     # NEW ENTRY 2026-09-15 (was on the 1000 default): the newsletter's own theme,
     # bands, the hero banner and the preview of images not uploaded yet. The
@@ -254,7 +254,7 @@ BUDGET = {
     # 1269 -> 1272 (2026-10-05): the map as a drawing application's windows
     # (draw_map_panels, map_layers; Manage views' slot reused), its filter,
     # and the per-rune Save check. The panels' code is ui/map_panels.cpp.
-    'src/app/app.hpp': 1272,
+    'src/app/app.hpp': 1280,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because
@@ -315,7 +315,7 @@ BUDGET = {
     # `lan-share`, `lan-join`) -- their catalogue rows and one dispatch branch.
     # Everything they DO is app/lan_cli.cpp; a verb's consequence string has to
     # be written where --allow-effects reads it, which is here.
-    'src/main/headless.cpp': 1480,
+    'src/main/headless.cpp': 1483,  # +3: a database's own kinds, at load, in effects' fresh cores, and the render's (2026-10-07)
     # NEW ENTRY 2026-09-02 (was on the 1000 default): the Data tab lost 168 lines
     # to `ui/widgets.cpp` the same afternoon -- the rune-rename control (shared
     # with the Notes tab, which is why a note could not be renamed at all), the

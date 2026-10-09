@@ -77,6 +77,7 @@
  */
 #pragma once
 
+#include "domain/kinds.hpp"       // a database's own dated kinds (their date field)
 #include "domain/scene_value.hpp" // field_value
 
 #include "voidmaiz/embed.hpp"   // Core::tag_match
@@ -144,6 +145,8 @@ inline long long today_days() {
  * that grows a date later is one line here. */
 inline std::string date_field_of(const maiz::SceneNode& n) {
     if (n.glyph == "job") return field_value(n, "deadline");
+    // a kind the database made says which of its fields is its date (domain/kinds.hpp)
+    if (const auto* k = kinds::current().find(n.glyph); k && !k->builtin) return kinds::current().date_of(n);
     return field_value(n, "date");
 }
 

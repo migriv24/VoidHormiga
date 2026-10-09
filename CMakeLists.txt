@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20)
 # does not produce a missing answer, it produces a confident wrong one. It is
 # also what the running binary reports to the update client, which is the other
 # reason it cannot be a literal typed into a third place.
-project(voidhormiga VERSION 0.1.12 LANGUAGES CXX C)
+project(voidhormiga VERSION 0.2.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -264,7 +264,7 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/databases.cpp
   src/phone/phone.cpp src/phone/nav.cpp src/phone/phone_data.cpp src/phone/phone_more.cpp
   src/phone/phone_migos.cpp src/phone/phone_migas.cpp src/phone/phone_farm.cpp src/phone/phone_map.cpp
-  src/phone/phone_map_sheet.cpp
+  src/phone/phone_map_sheet.cpp src/phone/phone_map_ground.cpp src/ui/kinds.cpp
   src/antfarm/farm_kinds.cpp src/antfarm/farm_graph.cpp src/antfarm/farm_eval.cpp
   src/antfarm/farm_face.cpp src/antfarm/farm_verbs.cpp
   src/app/farm_host.cpp src/app/farm_app.cpp src/app/farm_effects.cpp src/ui/farm.cpp)
