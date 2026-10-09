@@ -561,7 +561,8 @@ int main() {
         core.dispatch("set vendor subtitle_field \"notes\"");
         core.dispatch("use demo-org");
         hormiga::kinds::apply(core, {});
-        if (const auto* fish = project(core, "demo-org").find("big-fish"))
+        const maiz::Scene s_notes = project(core, "demo-org"); // kept alive: find() points into it
+        if (const auto* fish = s_notes.find("big-fish"))
             CHECK(hormiga::kinds::directory_line(*fish).empty());
         std::cout << "  Whisker Mart: " << count(s, "product") << " products, " << count(s, "vendor")
                   << " vendors, " << count(s, "sale") << " sales, all of kinds it made itself\n";
@@ -607,7 +608,8 @@ int main() {
         CHECK(back.dispatch("use demo-org").ok);
         CHECK(back.dispatch("set cat-milk price \"3.99\"").ok);
         CHECK(back.dispatch("undo").ok);
-        if (const auto* m3 = project(back, "demo-org").find("cat-milk"))
+        const maiz::Scene s_undo = project(back, "demo-org");
+        if (const auto* m3 = s_undo.find("cat-milk"))
             CHECK(hormiga::temper::field_value(*m3, "price") == "3.49");
         CHECK(back.dispatch("rune new vendor new-vendor").ok); // and made fresh
 
@@ -646,7 +648,8 @@ int main() {
             CHECK(hormiga::kinds::grid_date(*s1) == "2026-10-03");
         }
         CHECK(core.dispatch("tag session-1 +clearance:public").ok);
-        if (const auto* s1 = project(core, "demo-org").find("session-1"))
+        const maiz::Scene s_tagged = project(core, "demo-org");
+        if (const auto* s1 = s_tagged.find("session-1"))
             CHECK(hormiga::kinds::in_event_grid(*s1, "session"));
         if (const auto* item = s.find("bag-of-holding")) CHECK(!hormiga::kinds::in_event_grid(*item, "item")); // undated
         std::cout << "  the Whiskerwood: " << count(s, "character") << " characters of 5e races, "
@@ -666,7 +669,8 @@ int main() {
             CHECK(hormiga::kinds::is_own(*milk) && hormiga::kinds::withheld(*milk));
         }
         CHECK(core.dispatch("tag cat-milk +clearance:public").ok);
-        if (const auto* m2 = project(core, "demo-org").find("cat-milk")) CHECK(!hormiga::kinds::withheld(*m2));
+        const maiz::Scene s_consent = project(core, "demo-org");
+        if (const auto* m2 = s_consent.find("cat-milk")) CHECK(!hormiga::kinds::withheld(*m2));
         if (const auto* d = s.find("door-sensor")) CHECK(!hormiga::kinds::on_public_map(*d));
         const maiz::SceneNode* feeder = s.find("feeder");
         if (feeder) {
@@ -691,7 +695,8 @@ int main() {
         const auto& reg = hormiga::kinds::current();
         CHECK(reg.title("contact") == "Customer" && reg.plural("contact") == "Customers");
         CHECK(reg.find("contact")->builtin && reg.located("contact")); // keeps what it can do
-        if (const auto* c1n = project(core, "demo-org").find("c1"))
+        const maiz::Scene s_c1 = project(core, "demo-org");
+        if (const auto* c1n = s_c1.find("c1"))
             CHECK(!hormiga::kinds::on_public_map(*c1n)); // a contact never, renamed or not
         CHECK(hormiga::canvas::config_name("\"x\"\n") == "x");
 
@@ -737,7 +742,8 @@ int main() {
         maiz::Core now(old.export_state()); // 0.2.0: no `product` glyph of its own
         hormiga::register_glyphs(now, {"geo_cv_store-floor"});
         hormiga::kinds::apply(now, {"geo_cv_store-floor"});
-        const maiz::SceneNode* m = project(now, "demo-org").find("milk");
+        const maiz::Scene s_now = project(now, "demo-org");
+        const maiz::SceneNode* m = s_now.find("milk");
         CHECK(m && hormiga::temper::field_value(*m, "price") == "3.29");
         CHECK(m && hormiga::temper::field_value(*m, "title") == "Whole milk");
         CHECK(m && hormiga::temper::field_value(*m, "geo_cv_store-floor") == "1.5,13");

@@ -6057,3 +6057,30 @@ descriptor: a product made under it opens in 0.2.0 with its title, price and
 store-floor position, and a new one can still be made. The Data palette is now
 rebuilt on every projection, because whether the legacy kind is listed depends
 on the data, not on the kinds.
+
+## 0.2.0 shipped (2026-10-09)
+
+All three runner legs built (linux-x64, macos-arm64, macos-x64) from Void Maiz
+`9186a10` and Void Palabra `603a7db` (unchanged since 0.1.12). Installer
+16,285,194 bytes; the staged NSIS script is identical to 0.1.12's with versions
+and dates masked. APK 5.43 MB, signed with the Hormiga key (certificate
+`37d0ee24…`). The Linux archive was downloaded into the release folder before
+`mago feed --artifacts`; checked by hand, both feed artifacts hash to what the
+feed says and match its `bytes`, and the Linux digest `07645d68…` equals the
+runner's own. The live feed says `latest 0.2.0`, and the stable
+`VoidHormiga-android-arm64.apk` URL serves the new APK. Release page:
+https://github.com/migriv24/VoidHormiga/releases/tag/v0.2.0
+
+**CI on main found a bug in the new tests, not in the product.** The `ci`
+workflow (red for its two known reasons since 0.1.11) also failed
+`hormiga_spine_smoke` on Linux and macOS, not Windows: six new checks did
+`project(core, ...).find(name)` and read through the pointer, but `project`
+returns a temporary `Scene`, so the pointer dangled at the end of the
+statement. Windows' allocator left the old bytes in place; the others reused
+them, so the checks read garbage. Each now keeps its scene in a local. A search
+found the pattern nowhere in `src/`; the four older test lines with it only
+compare the pointer with null. The shipped binaries are unaffected.
+
+**Still owed:** the main CI's two known reds (MSVC and the vendored MinGW
+libsodium; `hormiga_golden_render` off Windows), two phones running the radios,
+and a person running the macOS archives.
