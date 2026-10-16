@@ -210,44 +210,33 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
 
     PhoneUi::map_ground(app, ph, dl, p0, p1); // tiles, or a plan's floor (phone_map_ground.cpp)
 
-    /* ── THE OTHER VISIBLE LAYERS, ghosted underneath (the desktop's rule) ──
-     * Each draws its own positions in its own colour, at its opacity and
-     * brightness; only the layer being edited answers a finger. */
+    /* ── EVERY VISIBLE LAYER DRAWS WHAT IT HOLDS (2026-10-15, the desktop's
+     * rule, domain/canvas.hpp): each thing in its own layer's positions and
+     * rules; a hidden layer hides only what is on it. */
+    struct PhoneLayer {
+        std::vector<MapRule> rules;
+        std::string channel, filter;
+        bool hidden;
+    };
+    std::map<std::string, PhoneLayer> lays;
     for (auto* v : views) {
-        if (v == view || hormiga::temper::field_value(*v, "visible") == "0") continue;
         std::string vch = hormiga::temper::field_value(*v, "channel");
-        if (vch.empty()) vch = "main";
-        const auto vrules = parse_view_rules_of(*v);
-        const std::string vfilter = hormiga::temper::field_value(*v, "filter");
-        const float lop = app.view_layer_opacity(v), lbr = app.view_layer_brightness(v);
-        auto dim = [&](ImU32 c) {
-            const int r = std::min(255, (int)((c & 0xFF) * lbr)), g = std::min(255, (int)(((c >> 8) & 0xFF) * lbr)),
-                      b = std::min(255, (int)(((c >> 16) & 0xFF) * lbr));
-            return IM_COL32(r, g, b, (int)(lop * 255));
-        };
-        for (const auto& n : app.scene.nodes) {
-            if (!map_placeable(n) || (!vfilter.empty() && !maiz::node_matches(vfilter, n))) continue;
-            double la, lo;
-            if (!hormiga::parse_geo(view_geo(n, vch), la, lo)) continue;
-            const ImVec2 s = scr(la, lo);
-            if (s.x < p0.x - 20 * dp || s.x > p1.x + 20 * dp || s.y < p0.y - 20 * dp || s.y > p1.y + 20 * dp) continue;
-            const MarkerLook L = marker_look(n, vrules, app.allo_style_for("map", n.name));
-            dl->AddCircleFilled(s, 5.5f * dp, dim(L.col));
-            dl->AddCircle(s, 5.5f * dp, IM_COL32(255, 255, 255, (int)(lop * 0.6f * 255)), 0, 1.5f * dp);
-        }
+        lays[v->name] = {parse_view_rules_of(*v), vch.empty() ? "main" : vch, hormiga::temper::field_value(*v, "filter"),
+                         hormiga::temper::field_value(*v, "visible") == "0"};
     }
+    auto layer_for = [&](const maiz::SceneNode& n) -> const PhoneLayer* {
+        const auto it = lays.find(hormiga::canvas::layer_of(n, views));
+        return it == lays.end() ? nullptr : &it->second;
+    };
 
     // ── what is on the map ───────────────────────────────────────────────────
-    /* What THIS layer draws: everything placed, unless its eye is shut or its
-     * own `filter` (a tag query, no UI yet) keeps only what it holds. */
     using Placed = MapUi::Placed;
     const auto fans = app.ref_fans(app.scene, channel);
-    const bool layer_hidden = view && hormiga::temper::field_value(*view, "visible") == "0";
-    const std::string layer_filter = view ? hormiga::temper::field_value(*view, "filter") : std::string();
     std::vector<Placed> placed;
     for (const auto& n : app.scene.nodes) {
         if (!map_placeable(n)) continue;
-        if (layer_hidden || (!layer_filter.empty() && !maiz::node_matches(layer_filter, n))) continue;
+        const PhoneLayer* pl = layer_for(n);
+        if (pl && (pl->hidden || (!pl->filter.empty() && !maiz::node_matches(pl->filter, n)))) continue;
         double la, lo;
         ImVec2 s;
         bool fanned = false;
@@ -259,11 +248,11 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
             s.y += it->second.dy * dp;
             fanned = true;
         } else {
-            if (!hormiga::parse_geo(view_geo(n, channel), la, lo)) continue;
+            if (!hormiga::parse_geo(view_geo(n, pl ? pl->channel : channel), la, lo)) continue;
             s = scr(la, lo);
         }
         if (n.name == m.lift && active) continue; // drawn under the finger instead
-        Placed P{&n, la, lo, s, s, marker_look(n, rules, app.allo_style_for("map", n.name)), fanned};
+        Placed P{&n, la, lo, s, s, marker_look(n, pl ? pl->rules : rules, app.allo_style_for("map", n.name)), fanned};
         const auto o = hormiga::gis::marker_outline(hormiga::gis::marker_form(P.look.shape), 11 * dp);
         P.face = ImVec2(s.x + o.face.x, s.y + o.face.y);
         placed.push_back(P);
@@ -273,6 +262,8 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
     const maiz::SceneNode* shape_hit = nullptr;
     for (const auto& n : app.scene.nodes) {
         if (n.glyph != "mapshape" || !hormiga::canvas::on(n, app.map_canvas)) continue;
+        const PhoneLayer* spl = layer_for(n);
+        if (spl && spl->hidden) continue;
         double la1, lo1, la2, lo2;
         if (!hormiga::parse_geo(hormiga::temper::field_value(n, "geo1"), la1, lo1) ||
             !hormiga::parse_geo(hormiga::temper::field_value(n, "geo2"), la2, lo2))
@@ -280,7 +271,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
         const ImVec2 a = scr(la1, lo1), b = scr(la2, lo2);
         const ImVec2 mn(std::min(a.x, b.x), std::min(a.y, b.y)), mx(std::max(a.x, b.x), std::max(a.y, b.y));
         unsigned col = IM_COL32(46, 107, 79, 255);
-        const MarkerLook sl = marker_look(n, rules, app.allo_style_for("map", n.name));
+        const MarkerLook sl = marker_look(n, spl ? spl->rules : rules, app.allo_style_for("map", n.name));
         if (sl.col != glyph_marker_colour(n.glyph)) col = sl.col;
         const bool sel = m.sheet == MapUi::Shape && m.sel == n.name;
         const ImU32 fill = with_alpha(col, 0x33), line = with_alpha(col, sel ? 0xFF : 0xBB);
@@ -292,12 +283,7 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
             dl->AddRectFilled(mn, mx, fill, 4 * dp);
             dl->AddRect(mn, mx, line, 4 * dp, 0, (sel ? 3.0f : 1.8f) * dp);
         }
-        const std::string lbl = hormiga::temper::field_value(n, "label");
-        if (!lbl.empty()) { // inside its own region, as on the desktop
-            dl->PushClipRect(ImVec2(mn.x + 2 * dp, mn.y), ImVec2(mx.x - 2 * dp, mx.y), true);
-            dl->AddText(ImVec2(mn.x + 6 * dp, mn.y + 4 * dp), line, lbl.c_str());
-            dl->PopClipRect();
-        }
+        draw_shape_label(dl, n, mn, mx, line, ImGui::GetFontSize(), 6 * dp); // inside its own region, as on the desktop
         if (mouse.x >= mn.x && mouse.x <= mx.x && mouse.y >= mn.y && mouse.y <= mx.y &&
             (hormiga::temper::field_value(n, "kind") != "ellipse" || [&] {
                 const float rx = (mx.x - mn.x) * 0.5f, ry = (mx.y - mn.y) * 0.5f;
@@ -608,11 +594,13 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
             geo_at(mouse, la, lo);
             if (m.travel >= slop) {
                 const std::string name = app.mint_name("shape");
-                f.out.push_back(maiz::compile_commit(
-                    {"rune new mapshape " + name, std::string("set ") + name + " kind \"" + (m.draw == 2 ? "ellipse" : "rect") + "\"",
-                     "set " + name + " geo1 \"" + geo_str(m.d_la, m.d_lo) + "\"",
-                     "set " + name + " geo2 \"" + geo_str(la, lo) + "\"",
-                     "set " + name + " canvas " + json_str(app.map_canvas), "tag " + name + " +type:mapshape"}));
+                std::vector<std::string> sc = {
+                    "rune new mapshape " + name, std::string("set ") + name + " kind \"" + (m.draw == 2 ? "ellipse" : "rect") + "\"",
+                    "set " + name + " geo1 \"" + geo_str(m.d_la, m.d_lo) + "\"",
+                    "set " + name + " geo2 \"" + geo_str(la, lo) + "\"",
+                    "set " + name + " canvas " + text_arg(app.map_canvas), "tag " + name + " +type:mapshape"};
+                if (auto t = hormiga::canvas::join_layer(app.scene, views, app.map_sel, name); !t.empty()) sc.push_back(t);
+                f.out.push_back(maiz::compile_commit(sc));
                 m.draw = 0;
                 m.sel = name;
                 m.set_sheet(MapUi::Shape);

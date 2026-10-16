@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -215,45 +215,53 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.2.0",
-    "previous": "0.1.12",
+    "version": "0.2.1",
+    "previous": "0.2.0",
     "change": "compatible",
-    "date": "2026-10-08",
-    "summary": "kinds are yours: call your data what you call it, make kinds of your own, and draw floor plans; new workspaces for a store, a home and a campaign",
+    "date": "2026-10-15",
+    "summary": "names follow titles, the inspector is widgets, layers hold what is on them, and the map is several times faster",
     "adds": [
-      "Data > Edit kinds: rename any kind (Contacts can be Customers), change its icon and colour, relabel its fields and add your own",
-      "Make new kinds of thing with their own fields, and say what they can do: be on a map, be on the calendar, be listed in a directory",
-      "Canvases: besides Earth, draw floor plans in metres or maps in feet, with rooms and aisles that give tags to what is inside them",
-      "New database asks what it is for: an organization, a grocery store (Whisker Mart), a smart home (the House of Cats) or a D&D campaign (the Whiskerwood)",
-      "A directory block can list any listed kind (a store's vendors), and an event grid any dated kind that is tagged clearance:public",
-      "The calendar shows names instead of handles, and a kind's own date (an expiration date, a due date)"
+      "A rune's name follows its title: type a title and the handle becomes its slug (José García → jose-garcia), made unique when it is taken",
+      "Anything new (on the map, in the calendar, + New, a drawn shape) opens a box where you clicked so you type its name at once; double-click a shape or a marker to rename it",
+      "The inspector is a list of widgets in Data, the map and the calendar: dates in words with Edit in calendar view, fields as cards, and + Add a widget for a colour (any colour, with a colour wheel), an icon or a marker shape",
+      "Shapes: drag the eight handles to reshape a rectangle or ellipse, drag inside to move it; labels with size, colour, bold, italic and nine positions, in the app, the PNG and on the website (with optional CSS there)",
+      "A shape can give its colour to everything inside it, live; overlapping shapes give each other their tags",
+      "The calendar is windows like the map: Inspector, Upcoming, Views and Export beside the grid",
+      "12-hour times in the calendar (Settings > Time switches to 24-hour)",
+      "Every map layer holds what was made on it; hide a layer and only its own things hide; the Inspector moves a thing to another layer",
+      "The phone finds other devices on public Wi-Fi hotspots and phone hotspots (every network path, and Android's multicast lock)"
     ],
     "behavior_changes": [
       {
-        "what": "CALENDAR ENTRIES ARE LABELLED BY NAME, not by their internal handle, on the desktop calendar.",
-        "who_is_affected": "Everyone using the calendar."
+        "what": "A RUNE'S NAME NOW FOLLOWS ITS TITLE while the name is generated or still matches the old title. Names you typed yourself stay. Newsletter blocks that point at an event by name are repointed in the same undo step.",
+        "who_is_affected": "Everyone who edits titles."
       },
       {
-        "what": "THE MAP HAS A CANVAS PICKER beside its search. Your existing map is the Earth canvas and is unchanged.",
+        "what": "A TITLE KEEPS TO ONE LINE of letters, digits and ordinary punctuation: markup characters are removed and straight double quotes become curly ones. Descriptions and summaries keep every character, including quotes, which used to be stored wrongly.",
+        "who_is_affected": "Everyone who types titles."
+      },
+      {
+        "what": "MAP LAYERS NOW OWN THEIR THINGS. Everything made before this belongs to the bottom layer, so existing maps look the same; a website map block shows what is on its layer.",
+        "who_is_affected": "Anyone who used more than one map layer."
+      },
+      {
+        "what": "THE CALENDAR'S .ics EXPORT USES TITLES, not internal names.",
+        "who_is_affected": "Anyone who exports or subscribes to a calendar."
+      },
+      {
+        "what": "THE WEBSITE MAP USES OPENSTREETMAP'S OWN TILES (temporarily): the previous tile service now requires an API key. The light and dark no-label looks show the standard map for now.",
+        "who_is_affected": "Anyone with a map on a published website."
+      },
+      {
+        "what": "CLICKING EMPTY MAP DESELECTS, and a click on a marker no longer re-saves its position.",
         "who_is_affected": "Everyone using the map."
-      },
-      {
-        "what": "A DIRECTORY BLOCK'S 'kind' is now picked from the kinds this database lists. Existing blocks keep what they showed.",
-        "who_is_affected": "Anyone with directory blocks."
-      },
-      {
-        "what": "A KIND YOU MAKE STAYS PRIVATE BY DEFAULT. Things of a kind your database made (a store's vendors, a home's devices) reach a website or newsletter only when tagged clearance:public, and then only their name, date and the line under their name; email and phone also need clearance:contact.",
-        "who_is_affected": "Anyone who makes kinds of their own and publishes."
-      },
-      {
-        "what": "THE GROCERY STORE DEMO IS NOW WHISKER MART, built from kinds the database defines itself. The Corner Market demo from 0.1.12 is gone; databases made from it keep their data.",
-        "who_is_affected": "Anyone who made a database from the 0.1.12 grocery workspace."
       }
     ],
     "read_more": [
-      "okf/concepts/foundation/kinds.md",
-      "okf/concepts/sections/gis/canvases.md",
-      "okf/concepts/platform/workspaces.md"
+      "okf/concepts/foundation/data-model.md",
+      "okf/concepts/sections/gis/territory.md",
+      "okf/concepts/sections/calendar.md",
+      "okf/concepts/platform/collaboration.md"
     ]
   },
   "update": {

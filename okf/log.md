@@ -6084,3 +6084,135 @@ compare the pointer with null. The shipped binaries are unaffected.
 **Still owed:** the main CI's two known reds (MSVC and the vendored MinGW
 libsodium; `hormiga_golden_render` off Windows), two phones running the radios,
 and a person running the macOS archives.
+
+# Fourteen things from an afternoon of use (2026-10-15)
+
+The author sent a list after using 0.2.0: networking on a Pixel, a crash, names
+and titles, the inspector, colours, shapes, labels, overlap, the calendar's
+export and layout, and naming a thing the moment it is made. All but the first
+are built here and were driven in the real application on a scratch copy of the
+Cat Dataset (`--script`, `--state`), never on an organization's database. Not
+committed, not released.
+
+**1. The Pixel.** Already in the working tree from 2026-10-14, uncommitted and
+until now unlogged: the beacon sent by every path there is (each interface, the
+subnet broadcasts, the gateway, known members, typed addresses), Android's
+multicast lock held while it runs, and a notice when members exist and none has
+been heard for 20 s. Why each was needed is in
+[collaboration](/concepts/platform/collaboration.md) ("Every path there is").
+It builds and `sync_smoke` passes; **it has not been run on a phone.**
+
+**2. The crash.** Naming a rune what another is called crashed, more often the
+more it was tried. The core refused the rename, correctly; `dispatch_and_reproject`
+re-projects whatever the answer, so the name box's `sel` was freed, and on a
+refusal the box returned "nothing happened" and the Data form went on drawing
+from the freed scene. It now returns "the scene changed" either way, and a taken
+name is made unique before it is sent (`birthday` → `birthday-2`, said in the
+toast).
+
+**3, 13, 14. Names follow titles; a thing is named when it is made.**
+`domain/naming.hpp` and [data model](/concepts/foundation/data-model.md). A
+`set` of a rune's title field gains the `rune rename` it implies in the same
+batch, while the name is minted or still its old title's slug. Measured in the
+GUI: typing "Garfield's Big Birthday" into `garfield-birthday`'s Title sent one
+batch, set and rename, one undo. Every "New X here" (map, calendar, + New, a
+drawn shape) opens a focused box where the pointer is; "Bake sale" made
+`event-081f-1` into `bake-sale-081f`, and the grid now draws it as "Bake sale".
+Found while doing it: a rename never repointed the Builder's featured-event
+blocks, which hold their event's name as a value (measured with the CLI: still
+`"event": "fair"` after `rune rename fair spring-fair`). Every rename now
+carries the `use`/`set`/`use` that repoints them, inside its batch, and undoes
+with it (`spine_smoke`). Opened [Q110](/developer_questions.md) (the device tag
+in a shared database's names; kept, without its counter).
+
+**4, 5, 6, 9. The inspector is widgets** ([workspace](/concepts/sections/workspace-and-sections.md)).
+`ui/inspector.cpp` draws one form for Data, the map and the calendar: When (the
+date in words, *Edit in calendar view*), the fields as cards, style widgets
+(Colour with a wheel, Icon, Marker shape, a shape's Label) and **+ Add a
+widget**, tags, and Advanced properties (closed) holding the raw date and
+times and the node size. `draw_person_detail` is gone; people use the same form
+with their photo on top. A colour is any colour: `color:` takes six hex digits,
+read by one `color_value` where seven copies of a named-colour loop were. Picked
+on the wheel in the GUI: one `tag whiskers-birthday +color:b45d3c` on release.
+
+**7, 8. Shapes** ([territory](/concepts/sections/gis/territory.md)). The size
+box never resized a shape (it was the node size). A selected rectangle or
+ellipse has eight handles and moves when dragged inside; one `geo1`+`geo2` batch
+on release, measured. Labels have a size, colour, bold, italic and nine places,
+drawn by one function on the canvas and the phone, and now in the PNG and on
+the website's map, which drew no shape labels before. `label_css` styles the
+website's label only and is cleaned at the seam (refused whole if anything in it
+could load a resource; `calendar_smoke`). Seen: a red, bold, italic, centred
+"Downtown" in the app, the PNG and Chrome; "RIVER ZONE" letter-spaced by its
+CSS on the website, and a `url(` in Downtown's CSS refused. The canvas field is
+hidden, not removed: it is what puts an aisle on a floor plan.
+
+**10. Overlapping shapes give each other their tags.** `bestow::covers` (and
+`receivers`, now the one list Apply and the tag editor read, which also ends the
+channel asymmetry territory.md had recorded). Pinned in `spine_smoke`,
+including an ellipse whose box touches a rectangle's corner and gives nothing.
+Seen in the GUI: Downtown offered `+ flood-risk (river-zone-081f)`.
+
+**11, 12. The calendar.** The `.ics` export wrote handles for anything untitled;
+it writes the title the grid draws. The calendar is a dockspace like the map:
+the grid, and Inspector (the selection or the focused day), Upcoming, Views and
+Export ([calendar](/concepts/sections/calendar.md)).
+
+**Found, opened, not fixed:** the website map's CARTO tiles now answer "API KEY
+REQUIRED" ([Q111](/developer_questions.md)); `json_str` stores `"` as a
+backslash ([Q112](/developer_questions.md)).
+
+**Measured.** 55 of 56 tests (`reduce_conformance`, the known red); the golden
+render moved only in `app.js` and `style.css` and was re-captured; every linter.
+Budgets: `app.hpp` 1280 → 1304 (+6 of it the 2026-10-14 networking, which had
+already crossed the line) and `site.cpp` 2310 → 2331, both recorded in
+`find_long.py`; `follow_title` went to `ui/widgets.cpp` to keep `app.cpp` inside
+its own. The phone harness boots and draws its Data list and map, but its
+shapes were never brought into view, so the phone's labels are unseen (they are
+one call into the desktop's `draw_shape_label`). Not run: the APK, and a phone.
+
+# Answers, and six more: layers, colour, clicks, the clock, speed (2026-10-15, later)
+
+**Q110** answered ("sounds good"): a shared database's names keep the device
+tag; folded into [data model](/concepts/foundation/data-model.md), cleared.
+**Q111**: a temporary fix, as the author asked: the website's map draws OSM's
+own tiles (CARTO now answers every request with "API KEY REQUIRED"), marked
+TEMPORARY in `render/site.cpp` and `app.js`; the question stays open for the
+real fix. **Q112** answered: names and titles strict, descriptions loose. A
+title is cleaned at the dispatch door (`naming::clean_title`: one line, no
+markup characters, typographic quotes, 120 characters); every `set` of free
+text is single-quoted now (`text_arg`, 64 call sites moved by a script that
+touched only `set` statements; `config set` and JSON results keep `json_str`),
+so a description keeps `"` and `\`. Folded and cleared.
+
+Then the author's six ([territory](/concepts/sections/gis/territory.md),
+[calendar](/concepts/sections/calendar.md)):
+
+1. **A shape's colour is given live** to what it covers, everywhere a colour is
+   drawn, writing nothing; its own colour wins; larger shapes colour smaller ones,
+   never the reverse (`bestow::given_values`; `spine_smoke`).
+2. **A click on empty map selects nothing**; a click on a marker no longer
+   rewrites its position.
+3. **A layer holds what was made on it** (`layer:` tags; the bottom layer holds
+   everything untagged), every visible layer draws its own things, the
+   Inspector moves a thing between layers, and the phone, the PNG and the
+   website's map block follow. Seen in the GUI: hiding either layer hid only its
+   own things.
+4. **The map is faster**, measured: 49 ms a frame at 2,056 places is 6 ms; any
+   tab of the Cat Dataset went from 11-14 ms to under 1.5. Most of it was not
+   the map: two per-frame projections of the Antfarm mantle cost 10.6 ms on
+   every tab. Two causes were Void Maiz's and were fixed there (its log,
+   2026-10-15): an O(n²) presence list, and 16-bit ImGui indices, which on this
+   machine's GL 3.0 driver made a 2,000-marker map unreadable garbage.
+   `HORMIGA_FRAME_TIMING` (the desktop) prints the app's CPU per frame and the
+   GL context's large-mesh support. What is left and worth doing next:
+   clustering on the desktop, tiles decoded off the UI thread, the PNG on a
+   worker; the Data list at 2,000 rows (4 ms) draws every row.
+5. **A double-click on a shape (or a marker) edits its label (or title)** in
+   the namer, pre-filled and selected.
+6. **The calendar says "3 PM"**; Settings > Time has the 24-hour clock.
+
+**Measured**: 55 of 56 tests (the known red), every linter, the golden render
+re-captured (only `app.js` and `style.css` moved); the GUI driven on the
+scratch Cat Dataset and its 2,000-place copy. Budgets: `site.cpp` 2331 → 2334
+(recorded). Not run on a phone; not committed.

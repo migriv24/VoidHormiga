@@ -835,8 +835,8 @@ maiz::HostApp build_app() {
                           << (link.after_publish ? "; the link works after the next publish"
                                                  : "")
                           << ")\n";
-                cmds.push_back("set " + n.name + " url " + json_str(link.url));
-                cmds.push_back("set " + n.name + " hosted_by " + json_str(link.node));
+                cmds.push_back("set " + n.name + " url " + text_arg(link.url));
+                cmds.push_back("set " + n.name + " hosted_by " + text_arg(link.node));
                 ++done;
             }
             if (asked == 0) {

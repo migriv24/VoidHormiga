@@ -284,7 +284,7 @@ static bool rank_list_ui(maiz::Core& core, const maiz::SceneNode& n, const std::
         auto commit = [&](const std::vector<std::string>& ts) {
             std::string v;
             for (size_t i = 0; i < ts.size(); ++i) v += (i ? ", " : "") + ts[i];
-            cmds.push_back("set " + n.name + " " + key + " " + json_str(v));
+            cmds.push_back("set " + n.name + " " + key + " " + text_arg(v));
             committed = true;
         };
 
@@ -515,7 +515,7 @@ void HormigaApp::draw_block_extras(const maiz::SceneNode& sel) {
                 }
                 if (++shown > 300) break;
                 if (ImGui::Selectable((e.label + "##" + e.n->name).c_str(), e.n->name == cur))
-                    pending_cmds.push_back("set " + sel.name + " event " + json_str(e.n->name));
+                    pending_cmds.push_back("set " + sel.name + " event " + text_arg(e.n->name));
             }
             if (shown == 0) ImGui::TextDisabled("no event matches");
             ImGui::EndCombo();
@@ -558,7 +558,7 @@ void HormigaApp::ensure_icon_editor() {
             bool committed = false;
             auto commit = [&](const std::vector<std::string>& ts) {
                 ctx.commands.push_back("set " + n.name + " " + f.key + " " +
-                                       json_str(hormiga::bestow::join_bestowed(ts)));
+                                       text_arg(hormiga::bestow::join_bestowed(ts)));
                 committed = true;
             };
             ImGui::PushID(f.key.c_str());
@@ -595,17 +595,15 @@ void HormigaApp::ensure_icon_editor() {
             if (!tags.empty()) {
                 std::vector<std::string> cmds;
                 int inside = 0;
-                for (const auto& en : ctx.scene.nodes) {
-                    if (en.glyph == "mapshape" || en.glyph == "map" || en.glyph == "refpoint") continue;
-                    double la, lo;
-                    // positions on the shape's own canvas (a store floor's, not Earth's)
-                    const std::string ch = hormiga::canvas::shared_channel(hormiga::canvas::of(n));
-                    if (!hormiga::parse_geo(view_geo(en, ch), la, lo)) continue;
-                    if (!hormiga::bestow::shape_contains(n, la, lo)) continue;
+                // what is inside it on its own canvas, and the shapes it overlaps
+                // (domain/bestow.hpp: the one list the tag editor reads too)
+                for (const maiz::SceneNode* rp : hormiga::bestow::receivers(ctx.scene, n)) {
+                    const maiz::SceneNode& en = *rp;
                     ++inside;
                     std::string cmd;
-                    for (const auto& t : tags)
-                        if (std::find(en.tags.begin(), en.tags.end(), t) == en.tags.end()) cmd += " +" + t;
+                    for (const auto& t : tags) // a colour is given live, never written (bestow.hpp)
+                        if (t.rfind("color:", 0) != 0 && std::find(en.tags.begin(), en.tags.end(), t) == en.tags.end())
+                            cmd += " +" + t;
                     if (!cmd.empty()) cmds.push_back("tag " + en.name + cmd);
                 }
                 ImGui::BeginDisabled(cmds.empty());
@@ -840,7 +838,7 @@ void HormigaApp::draw_tag_expr_editor(const maiz::SceneNode& sel) {
     const bool can_apply = error.empty() && !unbalanced;
     ImGui::BeginDisabled(!can_apply);
     if (ImGui::Button("Apply")) {
-        pending_cmds.push_back("set " + sel.name + " query " + json_str(expr));
+        pending_cmds.push_back("set " + sel.name + " query " + text_arg(expr));
         ImGui::CloseCurrentPopup();
     }
     ImGui::EndDisabled();

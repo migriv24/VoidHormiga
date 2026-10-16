@@ -28,6 +28,7 @@
 
 #include "platform/device_paths.hpp" // where this device keeps its files
 #include "voidmaiz/documents.hpp" // the system picker and save dialog
+#include "voidmaiz/lan.hpp"       // the Wi-Fi multicast lock: the phone hears the LAN beacon
 #include "voidmaiz/location.hpp"  // where the phone is (the map asks, on a tap)
 #include "voidmaiz/radio.hpp"     // Bluetooth LE and Wi-Fi Direct: members with no Wi-Fi in common
 #include "voidmaiz/update.hpp"    // android_http: a phone has no curl
@@ -223,6 +224,18 @@ void backends_up(Shell& s) {
         }
         maiz::install_location(maiz::android_location(aapp->activity));
         maiz::install_radio(maiz::android_radio(aapp->activity)); // off until switched on in Migos
+        /* THE MULTICAST LOCK, held while the LAN beacon runs (2026-10-14).
+         * Without it Android's Wi-Fi drops the broadcast and multicast it
+         * receives: the phone was heard by a desktop but never heard one, which
+         * a home router that turns multicast into unicast happens to hide. */
+        {
+            auto lock = std::make_shared<std::unique_ptr<maiz::lan::MulticastLock>>();
+            app.on_lan_listening = [aapp, lock](bool on) -> std::string {
+                if (!on) { lock->reset(); return {}; }
+                if (!*lock) *lock = std::make_unique<maiz::lan::MulticastLock>(aapp->activity, "voidhormiga-lan");
+                return (*lock)->held() ? std::string() : (*lock)->error();
+            };
+        }
         app.on_load_texture = gl_load_texture;
         app.enable_phone(true, maiz::android_text_input(s.aapp->activity), density);
         const bool first_run = !std::filesystem::exists(app.base_dir / app.state_name); // before init makes it

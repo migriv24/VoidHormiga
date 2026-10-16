@@ -147,6 +147,7 @@ void HormigaApp::PhoneUi::migos(HormigaApp& app, PhoneUi& ph, Frame&) {
                               ? "Nobody else, right now. Members appear here when they open this database on the "
                                 "same network, or near by with a radio on (below)."
                               : "Nobody: this database is not shared yet. Join one below, or share this one.");
+    LanRuntime::draw_network_help(app); // after a while alone: why, and what to do
     for (const auto& [fp, a] : rt.present) {
         ImGui::PushID(fp.c_str());
         const ImVec2 at = ImGui::GetCursorScreenPos();

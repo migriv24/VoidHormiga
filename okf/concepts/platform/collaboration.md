@@ -152,6 +152,53 @@ If interop ever matters — a phone, a third-party tool — `mjansson/mdns` is a
 single-header public-domain implementation and this is a fifty-line swap. It is
 recorded here so the decision is revisitable rather than forgotten.
 
+### Every path there is (2026-10-14)
+
+The author, at a public library: phone and laptop would not find each other,
+and still would not when the laptop made a Mobile hotspot for the phone. Three
+separate causes, each enough by itself:
+
+1. **The venue's Wi-Fi kept devices apart.** Public Wi-Fi (this one was a city
+   network on Aruba access points, a /22) almost always has *client isolation*
+   on: the access point forwards nothing from one guest device to another,
+   unicast included. No application gets past that. The answer is a network
+   both devices own — a hotspot — and the app now **says so** when members
+   exist and none has been heard for 20 s, with this device's networks listed.
+2. **The beacon used only the default interface.** On a hotspot there are two:
+   the laptop's default route is the venue's Wi-Fi and the hotspot is another
+   adapter (`192.168.137.1`); a phone's default is mobile data. The group was
+   joined, and every announcement sent, on the wrong one.
+3. **The phone never held Android's multicast lock**, so its Wi-Fi dropped
+   every broadcast and multicast it received. A home router that turns
+   multicast into unicast hides this, which is why home always worked.
+
+So one announcement now goes, every 3 s, by every path (`sync/peer.hpp`):
+
+| path | gets past |
+|---|---|
+| the group, default interface (as before) | — |
+| the group, out of each of Void Maiz's `lan_interfaces()`, re-read every 10 s | a hotspot, a VPN or WSL adapter taking the default |
+| each interface's subnet broadcast, and 255.255.255.255 | an access point that drops multicast it has no subscriber for |
+| on a /24 or smaller: unicast to this device's default gateway and to `.1` | a phone's hotspot (the gateway *is* the phone, anywhere in the subnet — a Pixel put itself at `.119`); a Windows hotspot (always `.1`) |
+| unicast to every member already heard and proven by the room key | a receiver deaf to multicast: one side hearing the other is enough for both |
+| unicast to addresses a person typed (`lan-addresses.txt` beside the profile) | a network that passes unicast and nothing else |
+
+And the phone holds the multicast lock (`HormigaApp::on_lan_listening`) for
+exactly as long as the beacon runs.
+
+A receiver now gets several copies of one announcement, so `heard` (the
+connection strength) counts a peer once per second at most. Nothing new is
+disclosed: every path carries the same datagram the group always carried, on
+the local link only, and unicast goes only to members or to a person's own
+typing. A gateway that is an ordinary router drops one small datagram every
+3 s on a port it does not serve.
+
+**Not covered:** a phone on a hotspot Wi-Fi that Android judges to have no
+internet may keep mobile data as its default network, and an app socket not
+bound to the Wi-Fi network then cannot reach the laptop. Binding needs
+`ConnectivityManager`, which is Java; the workaround is to switch mobile data
+off for the session.
+
 ## The handshake, and what the short code is actually for
 
 [security](/concepts/platform/security.md) §4 already specified this: "pairing

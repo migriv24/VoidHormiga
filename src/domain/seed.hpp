@@ -378,14 +378,32 @@ inline void register_glyphs(maiz::Core& core,
     // engine as markers). geo1/geo2 are the bounding-box corners (lat,lon),
     // set by the draw tool. A shape can BESTOW a tag on entities inside it
     // (the "spatial tag" — derive-then-materialize; see okf/concepts/sections/gis/territory.md).
+    /* THE LABEL'S LOOK, AND NO CANVAS BOX (2026-10-15). The author: the label
+     * should be "bigger, different colors, bold, italic, or not", at any of nine
+     * positions, with CSS as "a hidden extra setting"; and "the 'canvas it is
+     * drawn' field makes no sense ... it should just be removed". `canvas`
+     * stays a field, because it is what puts an aisle on a store's floor
+     * rather than on Earth, and the draw tool sets it; it is no longer a box
+     * anyone is asked to type in. The label fields are drawn by the Label
+     * widget (ui/inspector.cpp) and read by every surface that draws a shape:
+     *   label_size   a scale, 1 = the map's own label size
+     *   label_color  a colour name or six hex digits; blank = the outline's
+     *   label_bold, label_italic   "1" or blank
+     *   label_pos    tl tc tr cl c cr bl bc br; blank = tl (tc on an ellipse, inside its curve)
+     *   label_css    the website's map only: CSS on the label's element */
     reg(
         R"({"glyph":"mapshape","label":"Map shape",)"
-        R"("fields":["kind","geo1","geo2","label","bestows","canvas"],)"
+        R"("fields":["kind","geo1","geo2","label","label_size","label_color","label_bold",)"
+        R"("label_italic","label_pos","label_css","bestows","canvas"],)"
         R"("hints":{"color":"#2e6b4f","face":{"w":190,"h":52},"category":"Territory",)"
         R"("editors":{"kind":"combo:rect,ellipse","geo1":"hidden","geo2":"hidden",)"
-        R"("bestows":"bestow"},)" // chips, like a tag editor's (2026-10-05)
+        R"("canvas":"hidden","bestows":"bestow"},)" // chips, like a tag editor's (2026-10-05)
         R"__("labels":{"kind":"Shape","geo1":"Corner 1 (lat,lon)",)__"
         R"__("geo2":"Corner 2 (lat,lon)","label":"Label",)__"
+        R"__("label_size":"Label size (1 = normal)","label_color":"Label colour (name or rrggbb)",)__"
+        R"__("label_bold":"Label bold (1 = yes)","label_italic":"Label italic (1 = yes)",)__"
+        R"__("label_pos":"Label position (tl tc tr cl c cr bl bc br)",)__"
+        R"__("label_css":"Label CSS (the website's map only)",)__"
         R"__("bestows":"Gives these tags to everything inside it",)__"
         R"__("canvas":"Canvas it is drawn on (blank = Earth)"}}})__");
     // a REFERENCE POINT (author 2026-07-24): an editor-only gizmo marking a
@@ -397,6 +415,7 @@ inline void register_glyphs(maiz::Core& core,
         R"({"glyph":"refpoint","label":"Reference point",)"
         R"("fields":["geo","label","canvas"],)"
         R"("hints":{"color":"#8a6d3b","face":{"w":180,"h":44},"category":"Territory",)"
+        R"("editors":{"canvas":"hidden"},)" // set by where it was placed (2026-10-15)
         R"__("labels":{"geo":"Location (lat,lon)","label":"Name","canvas":"Canvas (blank = Earth)"}}})__");
     // ── ALLOMONE (okf/concepts/allomone/): a rule rune. Phase A is derive-only:
     // a tag CONDITION (`cond` = compiled tag-grammar; `condjson` = the editable

@@ -283,7 +283,7 @@ void HormigaApp::document_arrived(int request, const std::string& status, const 
             return;
         }
         if (!rune.empty() && !field.empty() && scene.find(rune)) {
-            pending_cmds.push_back("set " + rune + " " + field + " " + json_str(managed));
+            pending_cmds.push_back("set " + rune + " " + field + " " + text_arg(managed));
             toast("photo added");
         }
         return;

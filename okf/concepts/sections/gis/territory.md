@@ -561,11 +561,114 @@ things changed on 2026-09-15.
   on that shape rather than removing the tag. See
   [data model](/concepts/foundation/data-model.md).
 
-**The one asymmetry, stated because it will surprise somebody:** Apply reads a
-rune's position through the map's active **position channel** (a per-view
-position), while the tag editor reads the rune's own `geo`. A database that uses
-channels can therefore have a tag applied by a shape the editor does not consider
-covering. One of the two has to change once channels have a second real user.
+**The one asymmetry, resolved 2026-10-15.** Apply read a rune's position
+through a channel of its own choosing while the tag editor read another, so the
+two could disagree. Both now ask `bestow::covers` (and Apply lists
+`bestow::receivers`): a rune's position on the shape's own canvas.
+
+**Shapes give to the shapes they overlap (2026-10-15).** The author:
+*"overlapping areas DO bestow tags to each other."* A shape is an area, so
+"inside" became "shares some area with", both ways and on one canvas: exact for
+two rectangles, and with an ellipse the shared box is sampled 16 × 16, so a box
+that only touches an ellipse's empty corner gives nothing. Nothing chains: a
+shape gives its own `bestows`, never a tag it was given.
+
+# Shapes reshaped by their handles, and labels with a look (2026-10-15)
+
+- **Handles.** The author: *"editing the size of a rectangle doesn't change its
+  size (in the inspector)"* (the box was Void Maiz's node size, which a map
+  shape does not use), and *"the best way to edit a shape is to be able to
+  change 'verticies' that outline the shape"*. A selected rectangle or ellipse
+  shows eight handles (its box's corners and edge midpoints); dragging one
+  reshapes it and dragging inside it moves it, written on release as one
+  `set geo1` + `set geo2` batch. The corners as numbers are under Advanced; the
+  node size is gone from shapes. Free polygons stay [Q102](/developer_questions.md).
+- **The label** is a widget: its text, a size (0.5 to 4 times), a colour (any,
+  or the outline's), bold, italic, and one of nine places in the shape (top
+  left, as always, by default; top centre on an ellipse, whose corner is outside
+  it). Stored as `label_size`, `label_color`, `label_bold`, `label_italic`,
+  `label_pos`, and drawn alike by the canvas and the phone (`draw_shape_label`),
+  the PNG (which had drawn no shape labels at all) and the website's map (none
+  either, until now).
+- **CSS, the hidden extra.** `label_css`, under Advanced, styles the label on
+  the website's map only, where labels are now elements over the canvas. It is
+  cleaned at the render seam (`render/label_css.hpp`): declarations only,
+  applied with `style.cssText`, and any value that could load something (`url(`,
+  `image(`, `@import`, an escape) is refused whole.
+- **No canvas box.** *"the 'canvas it is drawn' field makes no sense"*: `canvas`
+  is still what puts an aisle on a store's floor rather than on Earth, and the
+  draw tool still sets it, but nobody is asked to type it any more.
+- **Named as drawn.** A new shape opens the namer: its label, typed at once.
+
+# A layer holds what was made on it (2026-10-15)
+
+The author: *"the layers dont work. Anything created on 'layer 2' would be
+something created on that layer. we can hide or show a layer ... its acting
+weird, hiding previously made objects that aren't on that layer."* On
+2026-10-05 a layer was "a way of drawing things, not a box they live in": the
+edited layer drew everything and the others drew grey dots of everything, so
+hiding the edited one hid the map. That is reversed, and the founding line of
+this page ("Layers ARE tags") now holds literally (`domain/canvas.hpp`):
+
+- **Membership is a tag**, `layer:<layer rune>`, written by whatever makes or
+  places a thing while a layer is being edited (the map's "New X here", placing
+  an existing rune, drawing a shape; the same on the phone). The **bottom layer
+  holds everything untagged**, so every map made before draws as it did, and a
+  thing whose layer is deleted falls to the bottom rather than vanishing.
+- **Every visible layer draws what it holds**, with its own rules, positions and
+  filter; the edited one at full strength, the rest at their opacity and
+  brightness. Hiding a layer hides exactly its own things (measured in the GUI:
+  hiding the bottom layer left Layer 2's box; hiding Layer 2 left the rest).
+- **The Inspector says which layer** a thing is on and moves it to another.
+- The PNG leaves out what is on a hidden layer (and, a fix, shapes from another
+  canvas); a website's map block shows what is on its layer.
+
+# A shape gives its colour, live (2026-10-15)
+
+*"colors given should be automatically bestowed onto ... runes that they're
+given to."* A `color:` in a shape's gives list (or the Colour widget's "Give
+this colour to everything inside it") colours what the shape covers at once,
+everywhere a colour is drawn, and writes nothing: a rune moved out loses it.
+A rune's own colour wins; the smallest covering shape gives; between two shapes
+a colour runs only from the larger to the smaller, so a little shape inside a
+neighbourhood cannot repaint it. "Give them now" no longer writes colours.
+
+# Clicks (2026-10-15)
+
+A click on empty map selects nothing. A click on a marker selects it and no
+longer rewrites its position (every click used to send a `move` to where it
+already was). A double-click on a shape or a marker opens the namer holding its
+label or title.
+
+# A faster map (2026-10-15)
+
+Measured with `HORMIGA_FRAME_TIMING` (the app's own CPU time per frame) and
+probes, on the Cat Dataset and on a copy with 2,000 more places:
+
+| what | before | after |
+|---|---|---|
+| the Cat Dataset, Map tab | 14.1 ms | 1.4 ms |
+| the Cat Dataset, Data tab | 11.1 ms | 0.4 ms |
+| 2,056 places, Map tab | 49 ms | 6.0 ms |
+| 2,056 places, Data tab | (not measured) | 4.0 ms |
+
+- **10.6 ms of every frame, on every tab**, was two lookups of the share
+  settings, each projecting the whole Antfarm mantle; now read once per model
+  change (`share_settings_now`, keyed on `model_gen`, which `reproject` counts).
+- **The map's side windows** computed their contents with their tab hidden
+  (12 ms); the Overview drew 2,000 rows (13.6 ms; now cached and clipped); the
+  Layers tab audited every rule against every rune every frame (cached).
+- **Places, marker looks and outlines** are derived once per change, not per
+  frame; labels find their neighbours in a grid instead of checking all of them.
+- **Two were Void Maiz's**, fixed there with the author's standing permission:
+  its presence list deduplicated by scanning (6.9 ms at 2,000 markers), and its
+  ImGui used 16-bit indices, which on this machine's GL 3.0 driver turned a
+  window past 65,535 vertices into garbage: the 2,000-place map was unreadable.
+
+**What would be faster still**, in the order worth doing: cluster markers at
+low zoom on the desktop as the phone already does (draw tens, not thousands);
+decode tiles off the main thread; and the PNG export, still a per-pixel loop on
+the UI thread, moved to a worker.
 
 # The pin redrawn, notes on the map, and the phone (2026-10-04)
 

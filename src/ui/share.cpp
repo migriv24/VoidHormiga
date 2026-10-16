@@ -18,6 +18,9 @@
 #include "platform/device_paths.hpp" // the device's databases folder
 #include "IconsFontAwesome6.h"
 #include "voidmaiz/mobile.hpp" // dim_wrapped: hints that wrap, on a phone and in a narrow window
+#include "voidmaiz/lan.hpp"    // Ipv4::parse: an address a person typed
+
+#include <algorithm>
 
 #include <cstdlib>
 #include <cstring>
@@ -326,6 +329,7 @@ void LanRuntime::draw_share(HormigaApp& app) {
          * -- who was let in, when, by whom -- and it is ours. */
         ImGui::SeparatorText(ICON_FA_SIGNAL "  Here now");
         maiz::draw_member_list(app.roster, app.net_settings.self);
+        draw_network_help(app);
 
         // ── members ──────────────────────────────────────────────────────────
         ImGui::SeparatorText(ICON_FA_USERS "  Members");
@@ -448,6 +452,62 @@ void LanRuntime::draw_discover_body(HormigaApp& app) {
 }
 
 /* ── keeping in sync (lan-sharing.md §3b) ───────────────────────────────────── */
+
+/* Shown while presence is on, other members exist, and none is here. The
+ * warning waits twenty seconds -- about seven missed announcements, long enough
+ * for a member who is merely starting up to appear; the addresses do not. */
+void LanRuntime::draw_network_help(HormigaApp& app) {
+    LanRuntime& rt = of(app);
+    if (rt.alone_since < 0) return;
+    if (rt.alone_seconds >= 20.0) {
+        ImGui::TextColored(ImVec4(0.95f, 0.7f, 0.3f, 1), ICON_FA_TRIANGLE_EXCLAMATION "  No other member can be heard");
+        maiz::dim_wrapped("If they have Hormiga open on this same Wi-Fi, the network is probably keeping devices "
+                          "apart. Public Wi-Fi (libraries, cafes, hotels, campuses) usually does, and no app can get "
+                          "past it. Put both devices on one hotspot instead: a phone's hotspot, or a Windows "
+                          "laptop's Mobile hotspot (Settings > Network & internet). They find each other there on "
+                          "their own.");
+    }
+    if (rt.my_networks.empty()) maiz::dim_wrapped("This device is not on a local network right now.");
+    else {
+        ImGui::TextDisabled("This device is on:");
+        for (const auto& n : rt.my_networks) ImGui::BulletText("%s", n.c_str());
+    }
+
+    /* THE LAST PATH: type the other device's address, as the other device shows
+     * it in this same list. Only a member's announcement is ever opened, so a
+     * wrong address costs one small datagram every 3 s and nothing else. */
+    load_typed_addresses(rt);
+    static char typed[48] = {};
+    ImGui::TextDisabled("Or reach a member's device by its address:");
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 9.0f);
+    const bool enter = ImGui::InputTextWithHint("##lan_addr", "192.168.137.1", typed, sizeof typed,
+                                                ImGuiInputTextFlags_EnterReturnsTrue);
+    ImGui::SameLine();
+    if (ImGui::Button("Add") || enter) {
+        std::string a(typed);
+        while (!a.empty() && a.back() == ' ') a.pop_back();
+        while (!a.empty() && a.front() == ' ') a.erase(a.begin());
+        if (!maiz::lan::Ipv4::parse(a)) app.toast("that is not an address like 192.168.1.23", true);
+        else if (std::find(rt.typed_addresses.begin(), rt.typed_addresses.end(), a) == rt.typed_addresses.end()) {
+            if (rt.typed_addresses.size() >= 8) rt.typed_addresses.erase(rt.typed_addresses.begin());
+            rt.typed_addresses.push_back(a);
+            save_typed_addresses(rt);
+        }
+        typed[0] = 0;
+    }
+    for (std::size_t i = 0; i < rt.typed_addresses.size(); ++i) {
+        ImGui::PushID((int)i);
+        ImGui::BulletText("%s", rt.typed_addresses[i].c_str());
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Forget")) {
+            rt.typed_addresses.erase(rt.typed_addresses.begin() + (std::ptrdiff_t)i);
+            save_typed_addresses(rt);
+            ImGui::PopID();
+            break;
+        }
+        ImGui::PopID();
+    }
+}
 
 void LanRuntime::draw_sync_section(HormigaApp& app) {
     LanRuntime& rt = of(app);

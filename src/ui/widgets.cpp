@@ -7,6 +7,8 @@
 #include "app/lan_share.hpp" // the Save check: who this database is shared with
 #include "app/app_internal.hpp"
 #include "domain/bestow.hpp" // givers: the tag vocabulary and the redirect
+#include "domain/naming.hpp" // unique names; the namer writes the title field
+#include "domain/submission.hpp" // follow_title reads a `set` with Void Core's own decoder
 #include "stb_image_write.h" // decls only - the map exports as a PNG; the ONE implementation lives in app.cpp
 #include "json.hpp" // the position channel is a JSON payload
 
@@ -154,6 +156,27 @@ float HormigaApp::view_label_scale(const maiz::SceneNode* v) const {
  * and it must return immediately. Making that the return value rather than a
  * comment is the only way a third caller cannot get it wrong.
  */
+/* The `use doc` / `set` / `use back` that keep every document's blocks
+ * pointing at a renamed rune (naming::block_repoints says why), for the same
+ * batch as the rename. Empty when nothing points at it. */
+static std::vector<std::string> repoint_documents(maiz::Core& core, const std::vector<std::string>& docs,
+                                                  const std::string& from, const std::string& to,
+                                                  const std::string& back) {
+    std::vector<std::string> out;
+    for (const std::string& doc : docs) {
+        maiz::ProjectOptions po;
+        po.mantle = doc;
+        maiz::Scene ds;
+        try { ds = maiz::project_scene(core, po); } catch (...) { continue; }
+        const auto sets = hormiga::naming::block_repoints(ds, from, to);
+        if (sets.empty()) continue;
+        out.push_back("use " + doc);
+        out.insert(out.end(), sets.begin(), sets.end());
+    }
+    if (!out.empty()) out.push_back("use " + back);
+    return out;
+}
+
 bool HormigaApp::rune_rename_control(const maiz::SceneNode& sel, float width) {
     if (rename_for != sel.name) {
         rename_for = sel.name;
@@ -167,22 +190,140 @@ bool HormigaApp::rune_rename_control(const maiz::SceneNode& sel, float width) {
         ImGui::SetTooltip("edit + Enter to rename (undoable; every link "
                           "and reference repoints)");
     if (!entered) return false;
-    const std::string nn = hormiga::detail::slug(rename_buf);
+    std::string nn = hormiga::detail::slug(rename_buf);
     if (nn.empty() || nn == sel.name) return false;
+    /* A NAME ANOTHER RUNE HOLDS IS MADE UNIQUE, NOT REFUSED (2026-10-15). The
+     * author: *"a crash happens when naming two runes the same name, or trying
+     * that repeatedly causes a crash."* The core refused the rename, as it
+     * should, and the refusal is what crashed: see the return below. Now the
+     * name gets what any other name gets when it is taken (naming.hpp), and
+     * the toast says so, so "birthday" becomes `birthday-2` on purpose. */
+    const std::string asked = nn;
+    nn = hormiga::naming::unique(scene, nn, sel.name);
     /* THE NAME IS COPIED BEFORE THE DISPATCH. `sel` is a reference into the
      * scene the reprojection below replaces, so reading `sel.name` afterwards —
      * which the error path does — is a use-after-free waiting for a failing
      * rename to find it. */
     const std::string was = sel.name;
-    const maiz::Result r = dispatch_and_reproject("rune rename " + was + " " + nn);
-    if (!r.ok) {
-        toast("rename failed: " + r.text(), true);
-        return false;
-    }
+    std::vector<std::string> cmds = {"rune rename " + was + " " + nn};
+    for (auto& c : repoint_documents(core, list_documents(), was, nn, scene.mantle)) cmds.push_back(std::move(c));
+    const maiz::Result r = dispatch_and_reproject(cmds.size() == 1 ? cmds[0] : maiz::compile_commit(cmds));
+    /* TRUE EVEN WHEN IT FAILED. `dispatch_and_reproject` re-projects whatever
+     * the core answered, so `sel` dangles after a refusal exactly as after a
+     * success. This returned false on failure, the caller went on drawing the
+     * form from the freed scene, and a refused rename crashed some of the
+     * time — more often the more it was tried. The caller bails; the typed
+     * name stays in the box (rename_for still matches), and the toast came
+     * from the dispatch. */
+    if (!r.ok) return true;
     ed.selection = {nn};
     rename_for.clear(); // restage from the new name
-    toast("renamed to " + nn + " (references repointed)");
+    toast(nn == asked ? "renamed to " + nn + " (references repointed)"
+                      : "'" + asked + "' is taken, so this is " + nn);
     return true;
+}
+
+/* ── A TITLE EDIT MOVES THE NAME WITH IT (2026-10-15, domain/naming.hpp) ─────
+ *
+ * Every surface that edits a title (the Data form, the map's Inspector, the
+ * phone, the namer that opens after "New event here") ends in one `set`, and
+ * every one of them comes through here. So this is where `set <rune> <its title
+ * field> <text>` gains the `rune rename` it implies, in the SAME batch: one undo
+ * takes back the title and the name together, and a replay does both.
+ *
+ * The statement is read by Void Core's own decoder (submission::review), never
+ * split here: a title is free text, and a hand-rolled split of free text is the
+ * bug class that file exists to end. The cheap prefix test keeps the decoder off
+ * every other command. Returns the command to dispatch; `from`/`to` say what
+ * was renamed, or stay empty. */
+std::string HormigaApp::follow_title(const std::string& cmd, std::string& from, std::string& to) {
+    if (cmd.compare(0, 4, "set ") != 0) return cmd;
+    const size_t a = cmd.find(' ', 4);
+    const size_t b = a == std::string::npos ? a : cmd.find(' ', a + 1);
+    if (b == std::string::npos) return cmd;
+    const maiz::SceneNode* n = scene.find(cmd.substr(4, a - 4));
+    const std::string key = cmd.substr(a + 1, b - a - 1);
+    if (!n || key != hormiga::naming::title_field(n->glyph)) return cmd;
+    const auto rev = hormiga::submission::review(cmd);
+    if (!rev.ok || rev.commands.size() != 1 || rev.commands[0].argv.size() != 4) return cmd;
+    // argv is what `set` stores, already unquoted by the core: nothing to undo.
+    // A title keeps to a title's characters (naming::clean_title, Q112); the
+    // `set` is rewritten when the cleaning changed anything.
+    const std::string& typed = rev.commands[0].argv[3];
+    const std::string title = hormiga::naming::clean_title(typed);
+    const std::string set = title == typed ? cmd : "set " + n->name + " " + key + " " + text_arg(title);
+    if (title != typed) toast("a title keeps to letters, digits and ordinary punctuation");
+    const std::string nn = hormiga::naming::follow(scene, *n, key, title, device_tag());
+    if (nn.empty()) return set;
+    from = n->name;
+    to = nn;
+    std::vector<std::string> cmds = {set, "rune rename " + from + " " + to};
+    for (auto& c : repoint_documents(core, list_documents(), from, to, scene.mantle)) cmds.push_back(std::move(c));
+    return maiz::compile_commit(cmds);
+}
+
+/* ── THE NAMER (2026-10-15) ────────────────────────────────────────────────────
+ *
+ * Opened by whatever just made a rune a person has not named yet (the map's
+ * "New X here", the calendar's new event, + New in Data), where the pointer
+ * is, with the keyboard already in it. Enter writes the TITLE — never the
+ * handle — and `dispatch_and_reproject` renames the minted handle to match
+ * (naming.hpp), so typing "Maria Lopez" makes `maria-lopez`, titled "Maria
+ * Lopez", in one undo frame. A blank Enter, Escape or a click elsewhere keeps
+ * the minted name; the rune is there either way, nothing is lost by walking
+ * away.
+ *
+ * The field it writes is the kind's title field, or for the two runes whose
+ * name never follows (an incident is called by what happened, a reference
+ * point by its label) the field that stands in for one. */
+static std::string namer_field(const std::string& glyph) {
+    std::string f = hormiga::naming::title_field(glyph);
+    if (f.empty() && glyph == "incident") f = "description";
+    if (f.empty() && glyph == "refpoint") f = "label";
+    return f;
+}
+
+void HormigaApp::begin_naming(const std::string& rune, const std::string& glyph, const std::string& now) {
+    if (namer_field(glyph).empty()) return;
+    const ImVec2 m = ImGui::GetMousePos();
+    namer.rune = rune;
+    namer.glyph = glyph;
+    namer.x = m.x;
+    namer.y = m.y;
+    std::snprintf(namer.buf, sizeof namer.buf, "%s", now.c_str()); // a rename starts from what it is
+    namer.open = true;
+}
+
+void HormigaApp::draw_namer() {
+    if (namer.rune.empty()) return;
+    if (namer.open) {
+        ImGui::OpenPopup("##namer");
+        ImGui::SetNextWindowPos(ImVec2(namer.x + 8, namer.y + 8), ImGuiCond_Always);
+    }
+    if (!ImGui::BeginPopup("##namer")) {
+        if (!namer.open) namer.rune.clear(); // dismissed by a click elsewhere
+        namer.open = false;
+        return;
+    }
+    const bool first = namer.open;
+    namer.open = false;
+    const std::string field = namer_field(namer.glyph);
+    if (namer.glyph == "mapshape") ImGui::TextDisabled("Label this shape");
+    else ImGui::TextDisabled("Name this %s", hormiga::kinds::current().title(namer.glyph).c_str());
+    if (first) ImGui::SetKeyboardFocusHere();
+    ImGui::SetNextItemWidth(260);
+    const bool go = ImGui::InputTextWithHint("##namerin", "type its name, then Enter", namer.buf, sizeof namer.buf,
+                                             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+    ImGui::TextDisabled("Enter keeps it  -  Esc leaves it as %s", namer.rune.c_str());
+    if (go || ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        std::string t = namer.buf;
+        while (!t.empty() && t.back() == ' ') t.pop_back();
+        if (go && !t.empty())
+            pending_cmds.push_back("set " + namer.rune + " " + field + " " + json_arg(t)); // keeps a typed " intact
+        namer.rune.clear();
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
 }
 
 /* ── CHOOSING AN IMAGE THE ORGANIZATION ALREADY HAS (2026-09-02) ─────────────
@@ -386,7 +527,7 @@ std::string HormigaApp::adopt_image(const std::string& path, const std::string& 
         name = base;
         for (int i = 2; data.find(name); ++i) name = base + "-" + std::to_string(i);
         if (dispatch_and_reproject("rune new image " + name).ok) {
-            dispatch_and_reproject("set " + name + " path " + json_str(path));
+            dispatch_and_reproject("set " + name + " path " + text_arg(path));
             dispatch_and_reproject("tag " + name + " +type:image");
             toast("added image '" + name + "' to the gallery - taggable and queryable "
                   "like every other image");
@@ -538,7 +679,7 @@ void HormigaApp::register_image_editors() {
             ImGui::OpenPopup("##gallery");
         const std::string chosen = org_image_picker("##gallery", "this organization's images");
         if (!chosen.empty()) {
-            ctx.commands.push_back("set " + n.name + " " + f.key + " " + json_str(chosen));
+            ctx.commands.push_back("set " + n.name + " " + f.key + " " + text_arg(chosen));
             committed = true;
         }
         if (!p.empty()) {

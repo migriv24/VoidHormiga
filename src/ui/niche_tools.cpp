@@ -460,7 +460,7 @@ void HormigaApp::draw_niche_tools_body() {
                     if (rewrite) {
                         std::vector<std::string> cmds;
                         for (const auto& f : g_merge.fixes)
-                            cmds.push_back("set " + f.node + " " + f.field + " " + json_str(f.to));
+                            cmds.push_back("set " + f.node + " " + f.field + " " + text_arg(f.to));
                         pending_cmds.push_back(maiz::compile_commit(cmds));
                         toast("rewrote " + std::to_string(cmds.size()) +
                               " Antfarm path(s) - one undoable step");

@@ -349,7 +349,7 @@ void HormigaApp::draw_publish_body() {
                         vault.set(key, trim_secret(publish_token_paste));
                         vault.save((base_dir / "secrets.miga").string());
                         pending_cmds.push_back("set " + host->name + " token_key " +
-                                               json_str(key));
+                                               text_arg(key));
                         std::memset(publish_token_paste, 0,
                                     sizeof publish_token_paste);
                         toast("token stored in the vault - it now travels with "
@@ -384,7 +384,7 @@ void HormigaApp::draw_publish_body() {
                         } else {
                             pending_cmds.push_back("set " + host->name +
                                                    " token_file " +
-                                                   json_str(picked));
+                                                   text_arg(picked));
                             toast("token file set - press Test to confirm it "
                                   "can reach your account");
                         }

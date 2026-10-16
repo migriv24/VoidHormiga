@@ -84,6 +84,25 @@ struct LanRuntime {
     std::unique_ptr<hormiga::sync::Beacon> beacon;
     bool discovering = false;
     double last_announce = -100.0;
+    bool lan_listening = false;  // what `on_lan_listening` was last told
+
+    /* ── WHEN NOBODY CAN BE HEARD (2026-10-14) ───────────────────────────────
+     * The author, at a library: phone and laptop would not find each other.
+     * Public Wi-Fi usually keeps its devices apart ("client isolation"), and no
+     * application gets past that, so the honest thing is to say so after a
+     * while, and to show which networks this device is on. */
+    double alone_since = -1.0;          // presence on, other members exist, nobody present
+    double alone_seconds = 0.0;         // how long, as of the last tick
+    std::vector<std::string> my_networks;  // "Wi-Fi 192.168.1.23", re-read every few seconds
+    double networks_read_at = -100.0;
+    /* Addresses a person typed ("the laptop is 192.168.137.1"): the last
+     * discovery path, for a network that passes unicast and nothing else. The
+     * beacon goes to each directly. This device's preference, so it is kept
+     * beside the profile (lan-addresses.txt), not in any database. */
+    std::vector<std::string> typed_addresses;
+    bool typed_loaded = false;
+    static void load_typed_addresses(LanRuntime& rt);
+    static void save_typed_addresses(const LanRuntime& rt);
 
     // ── hosting ─────────────────────────────────────────────────────────────
     std::atomic<bool> sharing{false};
@@ -244,6 +263,10 @@ struct LanRuntime {
     static std::set<std::pair<std::string, std::string>> private_keys(HormigaApp& app);
     static void swap_state(HormigaApp& app, const std::string& state);
     static void draw_sync_section(HormigaApp& app);
+    /* What to do when members exist and none can be heard (ui/share.cpp):
+     * nothing until it has gone on a while, then the public-Wi-Fi explanation
+     * and this device's networks. Called by the sync section, so both shells. */
+    static void draw_network_help(HormigaApp& app);
 
     /* The members registry (lan-sharing.md §4), its own small database. */
     static bool add_member(HormigaApp& app, const std::filesystem::path& file,

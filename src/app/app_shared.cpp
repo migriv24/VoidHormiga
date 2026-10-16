@@ -80,6 +80,65 @@ bool slider_field(const char* label, float stored, float mn, float mx,
     return ImGui::IsItemDeactivatedAfterEdit();
 }
 
+bool color_wheel(const char* id, unsigned stored, unsigned& out) {
+    ImGui::PushID(id);
+    ImGuiStorage* st = ImGui::GetStateStorage();
+    const ImGuiID ckey = ImGui::GetID("##col"), akey = ImGui::GetID("##editing");
+    const bool editing = st->GetBool(akey, false);
+    const unsigned shown = editing ? (unsigned)st->GetInt(ckey, (int)stored) : stored;
+    ImVec4 f = ImGui::ColorConvertU32ToFloat4(shown);
+    float rgb[3] = {f.x, f.y, f.z};
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 11.0f);
+    const bool changed = ImGui::ColorPicker3("##wheel", rgb,
+                                             ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview |
+                                                 ImGuiColorEditFlags_DisplayHex | ImGuiColorEditFlags_NoAlpha);
+    const unsigned now = ImGui::ColorConvertFloat4ToU32(ImVec4(rgb[0], rgb[1], rgb[2], 1.0f));
+    if (changed) {
+        st->SetInt(ckey, (int)now);
+        st->SetBool(akey, true);
+    }
+    bool commit = false;
+    // a drag commits on release; typing in the hex box commits on the edit itself
+    if (st->GetBool(akey, false) && !ImGui::IsMouseDown(ImGuiMouseButton_Left) && !ImGui::IsAnyItemActive()) {
+        st->SetBool(akey, false);
+        out = (unsigned)st->GetInt(ckey, (int)now);
+        commit = out != stored;
+    }
+    ImGui::PopID();
+    return commit;
+}
+
+void draw_shape_label(ImDrawList* dl, const maiz::SceneNode& n, ImVec2 mn, ImVec2 mx, unsigned line, float px,
+                      float pad) {
+    const std::string text = hormiga::temper::field_value(n, "label");
+    if (text.empty()) return;
+    float scale = 1.0f;
+    if (const std::string s = hormiga::temper::field_value(n, "label_size"); !s.empty())
+        scale = std::clamp((float)std::atof(s.c_str()), 0.5f, 4.0f);
+    unsigned col = line; // a chosen colour is opaque, whatever the outline's alpha
+    if (color_value(hormiga::temper::field_value(n, "label_color"), col)) col |= 0xFF000000;
+    const bool bold = hormiga::temper::field_value(n, "label_bold") == "1";
+    const bool italic = hormiga::temper::field_value(n, "label_italic") == "1";
+    std::string pos = hormiga::temper::field_value(n, "label_pos");
+    if (pos.empty()) pos = hormiga::temper::field_value(n, "kind") == "ellipse" ? "tc" : "tl"; // inside the curve
+    ImFont* f = ImGui::GetFont();
+    const float size = px * scale;
+    const ImVec2 ts = f->CalcTextSizeA(size, FLT_MAX, 0, text.c_str());
+    const char row = pos[0], colm = pos.size() > 1 ? pos[1] : 'c'; // "c" alone is the centre
+    float x = colm == 'l' ? mn.x + pad : colm == 'r' ? mx.x - pad - ts.x : (mn.x + mx.x - ts.x) * 0.5f;
+    float y = row == 't' ? mn.y + pad * 0.75f : row == 'b' ? mx.y - pad * 0.75f - ts.y : (mn.y + mx.y - ts.y) * 0.5f;
+    if (pos == "c") x = (mn.x + mx.x - ts.x) * 0.5f;
+    dl->PushClipRect(ImVec2(mn.x + 1, mn.y + 1), ImVec2(mx.x - 1, mx.y - 1), true);
+    const int v0 = dl->VtxBuffer.Size;
+    dl->AddText(f, size, ImVec2(x, y), col, text.c_str());
+    if (bold) dl->AddText(f, size, ImVec2(x + std::max(1.0f, size / 16.0f), y), col, text.c_str());
+    if (italic) { // shear what was just drawn about its baseline: ImGui has no italic face
+        const float base = y + size * 0.8f;
+        for (int i = v0; i < dl->VtxBuffer.Size; ++i) dl->VtxBuffer[i].pos.x += (base - dl->VtxBuffer[i].pos.y) * 0.2f;
+    }
+    dl->PopClipRect();
+}
+
 std::string tag_value(const maiz::SceneNode& n, const char* ns) {
     std::string prefix = std::string(ns) + ":";
     for (const auto& t : n.tags)
@@ -215,7 +274,16 @@ ImVec2 draw_marker_shape(ImDrawList* dl, ImVec2 s, float r, ImU32 col,
                          : sh == MShape::Diamond ? MarkerForm::Diamond
                          : sh == MShape::Balloon ? MarkerForm::Balloon
                                                  : MarkerForm::Circle;
-    const hormiga::gis::MarkerOutline o = hormiga::gis::marker_outline(f, r, r > 12 ? 2 : 1);
+    /* One outline per form and size, not per marker per frame (2026-10-15):
+     * the sizes a map uses are a handful, and the outline is all trigonometry. */
+    static std::unordered_map<unsigned long long, hormiga::gis::MarkerOutline> outlines;
+    const unsigned long long key = (unsigned long long)f << 32 | (unsigned)std::lround(r * 64.0f);
+    auto oi = outlines.find(key);
+    if (oi == outlines.end()) {
+        if (outlines.size() > 256) outlines.clear(); // a weight per rune could make many sizes
+        oi = outlines.emplace(key, hormiga::gis::marker_outline(f, r, r > 12 ? 2 : 1)).first;
+    }
+    const hormiga::gis::MarkerOutline& o = oi->second;
     static thread_local std::vector<ImVec2> pts;
     pts.clear();
     for (const auto& p : o.pts) pts.push_back(ImVec2(s.x + p.x, s.y + p.y));
@@ -241,6 +309,16 @@ int cal_dow(int y, int m, int d) { // Zeller; 0 = Sunday
     int k = y % 100, j = y / 100;
     int h = (d + 13 * (m + 1) / 5 + k + k / 4 + j / 4 + 5 * j) % 7; // 0=Sat
     return (h + 6) % 7;
+}
+
+std::string clock_label(const std::string& hhmm, bool h24) {
+    int h = 0, m = 0;
+    if (std::sscanf(hhmm.c_str(), "%d:%d", &h, &m) != 2 || h < 0 || h > 23 || m < 0 || m > 59) return hhmm;
+    char b[16];
+    if (h24) std::snprintf(b, sizeof b, "%02d:%02d", h, m);
+    else if (m) std::snprintf(b, sizeof b, "%d:%02d %s", h % 12 ? h % 12 : 12, m, h < 12 ? "AM" : "PM");
+    else std::snprintf(b, sizeof b, "%d %s", h % 12 ? h % 12 : 12, h < 12 ? "AM" : "PM");
+    return b;
 }
 
 void cal_today(int& y, int& m, int& d) {

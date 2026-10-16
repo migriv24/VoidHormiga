@@ -57,7 +57,7 @@ void install_kind_editors(maiz::WidgetRegistry& widgets) {
             }
             for (const hormiga::kinds::Kind* k : reg.own())
                 if (k->dated && ImGui::Selectable((k->plural + "  (tagged clearance:public)").c_str(), cur == k->glyph)) {
-                    ctx.commands.push_back("set " + n.name + " " + f.key + " " + json_str(k->glyph));
+                    ctx.commands.push_back("set " + n.name + " " + f.key + " " + text_arg(k->glyph));
                     committed = true;
                 }
             ImGui::EndCombo();
@@ -83,7 +83,7 @@ void install_kind_editors(maiz::WidgetRegistry& widgets) {
         if (ImGui::BeginCombo(("##" + f.key).c_str(), name_of(cur).c_str())) {
             for (const auto& k : reg.all)
                 if (k.listed && ImGui::Selectable(k.plural.c_str(), cur == k.glyph)) {
-                    ctx.commands.push_back("set " + n.name + " " + f.key + " " + json_str(k.glyph));
+                    ctx.commands.push_back("set " + n.name + " " + f.key + " " + text_arg(k.glyph));
                     committed = true;
                 }
             if (ImGui::Selectable("All of them", cur == "both")) {
@@ -174,8 +174,8 @@ void HormigaApp::draw_kinds_window() {
                             : "pick another name: '" + std::string(new_title) + "' is taken",
                   true);
         } else {
-            commit({"rune new kind " + g, "set " + g + " title " + json_str(new_title),
-                    "set " + g + " plural " + json_str(std::string(new_title) + "s"), "set " + g + " icon \"tag\"",
+            commit({"rune new kind " + g, "set " + g + " title " + text_arg(new_title),
+                    "set " + g + " plural " + text_arg(std::string(new_title) + "s"), "set " + g + " icon \"tag\"",
                     "set " + g + " category \"Things\"", "setjson " + g + " fields " + json_arg("[]")});
             sel = g;
             new_title[0] = 0;
@@ -208,7 +208,7 @@ void HormigaApp::draw_kinds_window() {
         if (ImGui::IsItemDeactivatedAfterEdit() && buf != cur && !buf.empty()) {
             std::vector<std::string> cmds;
             ensure(*k, cmds);
-            cmds.push_back("set " + k->glyph + " " + key + " " + json_str(buf));
+            cmds.push_back("set " + k->glyph + " " + key + " " + text_arg(buf));
             commit(cmds);
         }
         if (!ImGui::IsItemActive() && buf != cur && !ImGui::IsItemDeactivatedAfterEdit()) buf = cur;
@@ -232,7 +232,7 @@ void HormigaApp::draw_kinds_window() {
             if (ImGui::Button(kind_icon_named(nm), ImVec2(30, 30)) && !on) {
                 std::vector<std::string> cmds;
                 ensure(*k, cmds);
-                cmds.push_back("set " + k->glyph + " icon " + json_str(nm));
+                cmds.push_back("set " + k->glyph + " icon " + text_arg(nm));
                 commit(cmds);
             }
             if (on) ImGui::PopStyleColor();
@@ -249,7 +249,7 @@ void HormigaApp::draw_kinds_window() {
                           (int)(rgb[2] * 255 + 0.5f));
             std::vector<std::string> cmds;
             ensure(*k, cmds);
-            cmds.push_back("set " + k->glyph + " color " + json_str(hex));
+            cmds.push_back("set " + k->glyph + " color " + text_arg(hex));
             commit(cmds);
         }
     }
@@ -374,7 +374,7 @@ void HormigaApp::draw_kinds_window() {
                 if (ImGui::Selectable("(none)", cur.empty())) commit({"set " + k->glyph + " " + key + " \"\""});
                 for (const auto& f : k->fields)
                     if (ImGui::Selectable((f.label + "##" + f.key).c_str(), f.key == cur))
-                        commit({"set " + k->glyph + " " + key + " " + json_str(f.key)});
+                        commit({"set " + k->glyph + " " + key + " " + text_arg(f.key)});
                 ImGui::EndCombo();
             }
         };

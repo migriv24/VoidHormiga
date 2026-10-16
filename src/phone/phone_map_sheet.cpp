@@ -232,7 +232,7 @@ bool HormigaApp::PhoneUi::map_route(HormigaApp& app, PhoneUi& ph, Frame& f) {
             const std::string ch = hormiga::temper::field_value(*view, "channel");
             bool own = !ch.empty() && ch != hormiga::canvas::shared_channel(app.map_canvas);
             if (ImGui::Checkbox("Its own positions", &own))
-                f.out.push_back("set " + view->name + " channel " + json_str(own ? hormiga::canvas::own_channel(app.map_canvas, view->name) : hormiga::canvas::shared_channel(app.map_canvas)));
+                f.out.push_back("set " + view->name + " channel " + text_arg(own ? hormiga::canvas::own_channel(app.map_canvas, view->name) : hormiga::canvas::shared_channel(app.map_canvas)));
             maiz::dim_wrapped(own ? "Moving something on this layer moves it only here."
                                   : "Things sit where they sit on every layer.");
             bool lbl = app.view_show_labels(view);
@@ -409,6 +409,8 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
                 auto cmds = app.map_actions.run("place", app.scene,
                                                 {{"glyph", "note"}, {"name", name}, {"geo", geo_str(la, lo)}, {"field", field}});
                 if (!cmds.empty()) {
+                    if (auto t = hormiga::canvas::join_layer(app.scene, app.map_layers(), app.map_sel, name); !t.empty())
+                        cmds.push_back(t); // on the layer being edited
                     cmds.push_back("setjson " + name + " text " +
                                    json_arg(nlohmann::json("About " + title_of(n) + "\n").dump()));
                     f.out.push_back(maiz::compile_commit(cmds));
@@ -562,7 +564,7 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
                     const std::string name = app.mint_name("refpoint");
                     f.out.push_back(maiz::compile_commit({"rune new refpoint " + name, "set " + name + " geo \"" + g + "\"",
                                                           "set " + name + " label \"Reference\"",
-                                                          "set " + name + " canvas " + json_str(app.map_canvas)}));
+                                                          "set " + name + " canvas " + text_arg(app.map_canvas)}));
                     m.sel = name;
                     m.set_sheet(MapUi::Ref);
                     break;
@@ -571,6 +573,8 @@ void HormigaApp::PhoneUi::map_sheet(HormigaApp& app, PhoneUi& ph, Frame& f) {
                 auto cmds = app.map_actions.run("place", app.scene,
                                                 {{"glyph", k.glyph}, {"name", name}, {"geo", g}, {"field", field}});
                 if (cmds.empty()) break;
+                if (auto t = hormiga::canvas::join_layer(app.scene, app.map_layers(), app.map_sel, name); !t.empty())
+                    cmds.push_back(t); // on the layer being edited
                 f.out.push_back(maiz::compile_commit(cmds));
                 deselect();
                 // straight to what it needs: a name, or the note's words

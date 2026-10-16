@@ -564,12 +564,8 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
             // widgets COLLECT commands; we dispatch once at the end (a
             // re-projection would rebuild `scene` and dangle `sel`).
             std::vector<std::string> out;
-            if (sel->glyph == "contact" || sel->glyph == "organization") {
-                draw_person_detail(*sel, out); // #4: the curated, typed form
-            } else {
-                maiz::CanvasIO iio = maiz::draw_inspector(scene, ed, &widgets);
-                for (const auto& c : iio.commands) out.push_back(c);
-            }
+            // one form for every rune, as widgets (ui/inspector.cpp, 2026-10-15)
+            draw_rune_form(*sel, out, FormAt::Data);
             // #4: connections live at the BOTTOM now, under everything
             ImGui::Spacing();
             ImGui::SeparatorText("Connections");
@@ -578,60 +574,6 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         }
     }
     ImGui::EndChild();
-}
-
-// ── #4: the TYPED person form (contact / organization). Avatar up top (click
-// to set the photo), then the fields that matter through their registered
-// editors (role is a dropdown), then a plain-language LOCATION section —
-// deliberately NONE of the map-display noise (label_scale/"size", per-view geo,
-// ref/ref_off) that made the generic form a wall of text boxes. Commands are
-// collected into `out`; the caller dispatches after the frame. ───────────────
-void HormigaApp::draw_person_detail(const maiz::SceneNode& n,
-                                    std::vector<std::string>& out) {
-    // the avatar — big, click to browse/ingest a photo into assets/
-    ImVec2 c = ImGui::GetCursorScreenPos();
-    float r = 34.0f;
-    draw_avatar(n, ImVec2(c.x + r, c.y + r), r);
-    ImGui::Dummy(ImVec2(2 * r, 2 * r));
-    if (ImGui::IsItemClicked() && browse_ingest) {
-        std::string p =
-            browse_ingest(n, "avatar", hormiga::temper::field_value(n, "avatar"));
-        if (!p.empty()) out.push_back("set " + n.name + " avatar \"" + p + "\"");
-    }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("click to change the photo");
-    ImGui::SameLine();
-    ImGui::BeginGroup();
-    ImGui::TextDisabled("%s", n.label.c_str());
-    ImGui::TextDisabled("click the photo to change it");
-    ImGui::EndGroup();
-    ImGui::Spacing();
-
-    // the curated fields, each through its declared editor (widget protocol)
-    maiz::WidgetContext ctx{scene, out, std::string(filter), 0.0f};
-    auto row = [&](const char* key) {
-        for (const auto& fl : n.fields)
-            if (fl.key == key) {
-                maiz::widget_field(ctx, widgets, n, fl);
-                return;
-            }
-    };
-    if (n.glyph == "contact") {
-        row("role");
-        row("email");
-        row("phone");
-        row("website");
-        row("bio");
-        row("notes");
-    } else { // organization
-        row("abbreviation");
-        row("email");
-        row("url");
-        row("location"); // a text location (distinct from the map)
-        row("bio");
-    }
-
-    draw_tag_editor(n, out); // #1: contacts/orgs can be tagged here again
-    draw_location_section(n, out);
 }
 
 // The LOCATION section: if the entity is on a map, a plain status + jump/remove;

@@ -1,6 +1,7 @@
 /* ui/calendar_toolbar.cpp — the Calendar's chrome: the saved-view picker, the
  * granularity + stride navigation, jump-to-date, the kind/tag filter, and the
- * C1f quick-add bar.
+ * C1f quick-add bar. Since 2026-10-15 the views and the filter are their own
+ * window (`draw_calendar_views`), docked beside the grid.
  *
  * Split out of `calendar.cpp` 2026-09-10, alongside `calendar_export.cpp`, when
  * the 2026-09-10 UX pass pushed that file past its `tools/find_long.py` budget.
@@ -12,88 +13,13 @@
  */
 #include "app/app_internal.hpp"
 #include "domain/quick_add.hpp" // C1f: the one-line creation grammar (pure)
+#include "domain/naming.hpp"    // a saved view's name
+#include "voidmaiz/mobile.hpp"   // dim_wrapped
+
+#include <cfloat>
 
 void HormigaApp::draw_calendar_toolbar() {
     if (cal_year == 0) cal_today(cal_year, cal_month, cal_day);
-    // ── C4d: saved calendar VIEWS (a `calview` = filter + kind + granularity,
-    // named and persistent — so a "Public Events" view bakes the privacy
-    // choice in). Gather them from the data the calendar reads. ──────────────
-    std::vector<const maiz::SceneNode*> calviews;
-    for (const auto& n : scene.nodes)
-        if (n.glyph == "calview") calviews.push_back(&n);
-    // ── C4d: the saved-view picker (ad-hoc + saved calendars) ──────────────
-    ImGui::TextDisabled("view:");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(150);
-    std::string vlabel = cal_view.empty() ? "(ad-hoc)" : cal_view;
-    if (ImGui::BeginCombo("##calview", vlabel.c_str())) {
-        if (ImGui::Selectable("(ad-hoc)", cal_view.empty())) {
-            cal_view.clear();
-            cal_filter[0] = 0; cal_kind = 0;
-        }
-        for (auto* v : calviews) {
-            std::string t = hormiga::temper::field_value(*v, "title");
-            if (t.empty()) t = v->name;
-            if (ImGui::Selectable(t.c_str(), cal_view == v->name))
-                cal_apply_view(*v);
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::SameLine();
-    if (cal_view.empty()) { // ad-hoc → save the current filter as a new view
-        if (ImGui::SmallButton("Save as view")) ImGui::OpenPopup("##savecalview");
-    } else { // a view is active → write current filter/kind/mode back, or delete
-        if (ImGui::SmallButton("Update")) {
-            const char* km = cal_kind == 1 ? "events"
-                             : cal_kind == 2 ? "incidents" : "all";
-            const char* mm = cal_mode == 1 ? "week" : cal_mode == 2 ? "3day"
-                             : cal_mode == 3 ? "agenda" : "month";
-            pending_cmds.push_back(maiz::compile_commit(
-                {"set " + cal_view + " filter " + json_str(cal_filter),
-                 "set " + cal_view + " kind \"" + km + "\"",
-                 "set " + cal_view + " mode \"" + mm + "\""}));
-            toast("updated view '" + cal_view + "'");
-        }
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Delete##cv")) {
-            pending_cmds.push_back("rm " + cal_view);
-            cal_view.clear();
-            cal_filter[0] = 0; cal_kind = 0;
-        }
-    }
-    if (ImGui::BeginPopup("##savecalview")) {
-        ImGui::TextDisabled("save this filter as a named calendar view");
-        ImGui::SetNextItemWidth(180);
-        bool go = ImGui::InputTextWithHint("##cvname", "view name...",
-                                           cal_view_name, sizeof cal_view_name,
-                                           ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::SameLine();
-        if ((ImGui::Button("Save") || go) && cal_view_name[0]) {
-            std::string slug = cal_view_name;
-            for (char& c : slug)
-                if (!std::isalnum((unsigned char)c) && c != '-') c = '-';
-            const char* km = cal_kind == 1 ? "events"
-                             : cal_kind == 2 ? "incidents" : "all";
-            const char* mm = cal_mode == 1 ? "week" : cal_mode == 2 ? "3day"
-                             : cal_mode == 3 ? "agenda" : "month";
-            pending_cmds.push_back(maiz::compile_commit(
-                {"rune new calview " + slug,
-                 "set " + slug + " title " + json_str(cal_view_name),
-                 "set " + slug + " filter " + json_str(cal_filter),
-                 "set " + slug + " kind \"" + km + "\"",
-                 "set " + slug + " mode \"" + mm + "\""}));
-            cal_view = slug;
-            toast("saved calendar view '" + std::string(cal_view_name) + "'");
-            cal_view_name[0] = 0;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("a saved view remembers its filter - a 'Public\n"
-                          "Events' view can exclude incidents by design");
-    ImGui::Separator();
-
     // ── toolbar: granularity, stride navigation, export ────────────────────
     const char* modes[] = {"Month", "Week", "3 days", "Agenda"};
     ImGui::SetNextItemWidth(100);
@@ -171,47 +97,19 @@ void HormigaApp::draw_calendar_toolbar() {
                               "contain anything earlier or later on screen.\n"
                               "on: always the full day.");
     }
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Export PNG")) export_calendar_png();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("the month grid as an image (exports/) - for the\n"
-                          "newsletter, WYSIWYG with what is on screen");
-    ImGui::SameLine();
-    /* C5b: the same view as a FILE ANYBODY CAN IMPORT. Until now the `.ics`
-     * twin existed only inside a rendered website, so handing a partner a
-     * calendar meant deploying a site first. */
-    if (ImGui::SmallButton("Export .ics")) export_calendar_ics();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("this view as an iCalendar file (exports/) -\n"
-                          "import it into Google, Apple, Outlook, Nextcloud.\n"
-                          "It exports what the FILTER shows, so a saved\n"
-                          "'Public Events' view bakes that choice into the file.");
-    // ── C4a: the FILTER row — kind + tag query. Privacy-blocking: a published
-    // calendar shows only what you choose (incidents can be sensitive). ──────
-    ImGui::SetNextItemWidth(130);
-    ImGui::Combo("##calkind", &cal_kind, "All kinds\0Events only\0Incidents only\0");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(150);
-    ImGui::InputTextWithHint("##calfilter", "tag filter (e.g. @summer)",
-                             cal_filter, sizeof cal_filter);
-    ImGui::SameLine();
-    // the reusable tag picker appends to the AND-filter (no hand-typing AND/OR)
-    std::string ftag = tag_picker("##calftag", cal_filter_tag, sizeof cal_filter_tag,
-                                  "+ tag");
-    if (!ftag.empty()) {
-        std::string cur = cal_filter;
-        std::string add = cur.empty() ? ftag : cur + " AND " + ftag;
-        std::snprintf(cal_filter, sizeof cal_filter, "%s", add.c_str());
-    }
-    if (cal_filter[0]) {
+    // what the grid is showing, one click from the window that changes it
+    {
+        std::string what = cal_view.empty() ? std::string() : cal_view;
+        if (const maiz::SceneNode* v = cal_view.empty() ? nullptr : scene.find(cal_view))
+            if (std::string t = hormiga::temper::field_value(*v, "title"); !t.empty()) what = t;
+        if (cal_kind == 1) what += (what.empty() ? "" : ", ") + std::string("events only");
+        if (cal_kind == 2) what += (what.empty() ? "" : ", ") + std::string("incidents only");
+        if (cal_filter[0]) what += (what.empty() ? "" : ", ") + std::string(cal_filter);
         ImGui::SameLine();
-        if (ImGui::SmallButton("clear##calf")) cal_filter[0] = 0;
+        if (ImGui::SmallButton((std::string(ICON_FA_FILTER "  ") + (what.empty() ? "everything" : what)).c_str()))
+            ImGui::SetWindowFocus("Views##cal");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("what the calendar shows - change it in Views");
     }
-    ImGui::SameLine();
-    ImGui::TextDisabled("%s", map_sel.empty()
-                                  ? "(glyph colors)"
-                                  : ("rules: " + map_sel).c_str());
-
     // ── C1f: QUICK-ADD. One line, Enter, done — the gesture the section was
     // missing. Targets the FOCUSED day (the anchor), which clicking a day cell
     // or the arrow keys move, so "where will this land" is always on screen. ──
@@ -246,4 +144,115 @@ void HormigaApp::draw_calendar_toolbar() {
                               "press N anywhere in the calendar to jump here");
     }
     ImGui::Separator();
+}
+
+/* ── VIEWS (2026-10-15): what the calendar shows ─────────────────────────────
+ *
+ * The saved views and the filter were the toolbar's first two rows, above the
+ * grid, where they pushed the month down and could not be torn off. They are a
+ * window now, docked beside the grid like the map's Layers, and the grid keeps
+ * one chip that says what it is showing. */
+void HormigaApp::draw_calendar_views() {
+    if (cal_year == 0) cal_today(cal_year, cal_month, cal_day);
+    // ── C4d: saved calendar VIEWS (a `calview` = filter + kind + granularity,
+    // named and persistent — so a "Public Events" view bakes the privacy
+    // choice in). Gather them from the data the calendar reads. ──────────────
+    std::vector<const maiz::SceneNode*> calviews;
+    for (const auto& n : scene.nodes)
+        if (n.glyph == "calview") calviews.push_back(&n);
+    // ── C4d: the saved-view picker (ad-hoc + saved calendars) ──────────────
+    ImGui::TextDisabled("view:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(150);
+    std::string vlabel = cal_view.empty() ? "(ad-hoc)" : cal_view;
+    if (ImGui::BeginCombo("##calview", vlabel.c_str())) {
+        if (ImGui::Selectable("(ad-hoc)", cal_view.empty())) {
+            cal_view.clear();
+            cal_filter[0] = 0; cal_kind = 0;
+        }
+        for (auto* v : calviews) {
+            std::string t = hormiga::temper::field_value(*v, "title");
+            if (t.empty()) t = v->name;
+            if (ImGui::Selectable(t.c_str(), cal_view == v->name))
+                cal_apply_view(*v);
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    if (cal_view.empty()) { // ad-hoc → save the current filter as a new view
+        if (ImGui::SmallButton("Save as view")) ImGui::OpenPopup("##savecalview");
+    } else { // a view is active → write current filter/kind/mode back, or delete
+        if (ImGui::SmallButton("Update")) {
+            const char* km = cal_kind == 1 ? "events"
+                             : cal_kind == 2 ? "incidents" : "all";
+            const char* mm = cal_mode == 1 ? "week" : cal_mode == 2 ? "3day"
+                             : cal_mode == 3 ? "agenda" : "month";
+            pending_cmds.push_back(maiz::compile_commit(
+                {"set " + cal_view + " filter " + text_arg(cal_filter),
+                 "set " + cal_view + " kind \"" + km + "\"",
+                 "set " + cal_view + " mode \"" + mm + "\""}));
+            toast("updated view '" + cal_view + "'");
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Delete##cv")) {
+            pending_cmds.push_back("rm " + cal_view);
+            cal_view.clear();
+            cal_filter[0] = 0; cal_kind = 0;
+        }
+    }
+    if (ImGui::BeginPopup("##savecalview")) {
+        ImGui::TextDisabled("save this filter as a named calendar view");
+        ImGui::SetNextItemWidth(180);
+        bool go = ImGui::InputTextWithHint("##cvname", "view name...",
+                                           cal_view_name, sizeof cal_view_name,
+                                           ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::SameLine();
+        if ((ImGui::Button("Save") || go) && cal_view_name[0]) {
+            // a taken name (two views called "Public") gets a suffix rather
+            // than failing the batch (naming.hpp, 2026-10-15)
+            std::string slug = hormiga::naming::slug(cal_view_name);
+            slug = hormiga::naming::unique(scene, slug.empty() ? std::string("calview") : slug);
+            const char* km = cal_kind == 1 ? "events"
+                             : cal_kind == 2 ? "incidents" : "all";
+            const char* mm = cal_mode == 1 ? "week" : cal_mode == 2 ? "3day"
+                             : cal_mode == 3 ? "agenda" : "month";
+            pending_cmds.push_back(maiz::compile_commit(
+                {"rune new calview " + slug,
+                 "set " + slug + " title " + text_arg(cal_view_name),
+                 "set " + slug + " filter " + text_arg(cal_filter),
+                 "set " + slug + " kind \"" + km + "\"",
+                 "set " + slug + " mode \"" + mm + "\""}));
+            cal_view = slug;
+            toast("saved calendar view '" + std::string(cal_view_name) + "'");
+            cal_view_name[0] = 0;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("a saved view remembers its filter - a 'Public\n"
+                          "Events' view can exclude incidents by design");
+    ImGui::SeparatorText("Filter");
+
+    // ── C4a: the FILTER row — kind + tag query. Privacy-blocking: a published
+    // calendar shows only what you choose (incidents can be sensitive). ──────
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    ImGui::Combo("##calkind", &cal_kind, "All kinds\0Events only\0Incidents only\0");
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    ImGui::InputTextWithHint("##calfilter", "tag filter (e.g. @summer)",
+                             cal_filter, sizeof cal_filter);
+    // the reusable tag picker appends to the AND-filter (no hand-typing AND/OR)
+    std::string ftag = tag_picker("##calftag", cal_filter_tag, sizeof cal_filter_tag,
+                                  "+ add a tag to the filter");
+    if (!ftag.empty()) {
+        std::string cur = cal_filter;
+        std::string add = cur.empty() ? ftag : cur + " AND " + ftag;
+        std::snprintf(cal_filter, sizeof cal_filter, "%s", add.c_str());
+    }
+    if (cal_filter[0] && ImGui::SmallButton("clear the filter##calf")) cal_filter[0] = 0;
+    ImGui::SeparatorText("Colours");
+    maiz::dim_wrapped(map_sel.empty() ? "Each kind's own colour, then each entry's colour tag."
+                                      : ("The map layer '" + map_sel +
+                                         "' styles the calendar too (its rules), then each entry's colour tag.")
+                                            .c_str());
 }

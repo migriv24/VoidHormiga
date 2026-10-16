@@ -8,6 +8,7 @@
 #include "app/app_internal.hpp"
 #include "domain/quick_add.hpp" // C1f: the one-line creation grammar (pure)
 #include "domain/rrule.hpp"     // C3a: recurrence, expanded for the grid
+#include "domain/naming.hpp"    // a quick-added title is its name
 
 // ── the CALENDAR (okf/concepts/sections/calendar.md): dated runes on a time grid,
 // styled by the SAME rules engine as the map. Model grounds in RFC 5545
@@ -25,14 +26,10 @@ void HormigaApp::cal_new_dated(const char* glyph, int y, int m, int d, float t0,
      * quick-add line already said what the thing is called, so the slug comes
      * from that and the human-readable form goes in the title field the
      * renderers actually print. */
-    std::string name;
-    if (title && *title) name = hormiga::quick::slug(title);
-    // a shared database always mints (`tigger-birthday-3fa9-1`): two members
-    // quick-adding the same title at once must not mint one rune (mint_name)
-    if (name.empty() || scene.find(name) || !device_tag().empty()) {
-        const std::string base = name.empty() ? std::string(glyph) : name;
-        name = mint_name(base, name.empty() || !device_tag().empty() ? 1 : 2);
-    }
+    // the one name rule (domain/naming.hpp): the title's slug, made unique,
+    // with the device tag in a shared database (`tigger-birthday-3fa9`)
+    std::string name = title && *title ? hormiga::naming::slug(title) : std::string();
+    name = name.empty() ? mint_name(glyph) : hormiga::naming::unique(scene, name, {}, device_tag());
     char date[16];
     std::snprintf(date, sizeof date, "%04d-%02d-%02d", y, m, d);
     std::vector<std::string> cmds = {
@@ -43,7 +40,7 @@ void HormigaApp::cal_new_dated(const char* glyph, int y, int m, int d, float t0,
         cmds.push_back("set " + name +                       // `description`
                        (std::string(glyph) == "incident" ? " description "
                                                          : " title_en ") +
-                       json_str(title));
+                       text_arg(title));
     if (t0 >= 0) {
         if (std::string(glyph) == "incident") // a POINT in time, not a span
             cmds.push_back("set " + name + " time \"" + cal_fmt_hhmm(t0) + "\"");
@@ -56,9 +53,11 @@ void HormigaApp::cal_new_dated(const char* glyph, int y, int m, int d, float t0,
     }
     pending_cmds.push_back(maiz::compile_commit(cmds));
     ed.selection = {name};
-    toast("created " + name + " on " + date +
-          (t0 >= 0 ? " " + cal_fmt_hhmm(t0) + "-" + cal_fmt_hhmm(t1) : "") +
-          (title && *title ? "" : " - name it in the inspector"));
+    if (title && *title)
+        toast("created " + name + " on " + date +
+              (t0 >= 0 ? " " + clock_label(cal_fmt_hhmm(t0), clock24) + " - " + clock_label(cal_fmt_hhmm(t1), clock24) : ""));
+    else
+        begin_naming(name, glyph); // no title yet: type it now, not in the inspector
 }
 
 /* Everything dated on one day, styled: the selected map view's rules give
@@ -127,15 +126,14 @@ std::vector<HormigaApp::CalEntry> HormigaApp::cal_entries_on(int y, int m,
         for (const auto& r : rules) {
             if (r.tags.empty() || !maiz::node_matches(rule_expr_of(r), node))
                 continue;
-            for (const auto& c : kMarkerColors)
-                if (r.color == c.tag) e.col = c.col;
+            color_value(r.color, e.col);
             for (const auto& ic : kMarkerIcons)
                 if (r.icon == ic.tag) e.icon = ic.glyph;
             break;
         }
+        if (const std::string* g = hormiga::bestow::given_color(node.name)) color_value(*g, e.col); // a shape's
         std::string ct = tag_value(node, "color"); // explicit tags win
-        for (const auto& c : kMarkerColors)
-            if (ct == c.tag) e.col = c.col;
+        color_value(ct, e.col);
         std::string it = tag_value(node, "icon");
         for (const auto& ic : kMarkerIcons)
             if (it == ic.tag) e.icon = ic.glyph;
@@ -178,6 +176,40 @@ void HormigaApp::cal_apply_view(const maiz::SceneNode& v) {
 }
 
 void HormigaApp::draw_calendar_body() {
+    /* ── THE CALENDAR IS WINDOWS, LIKE THE MAP (2026-10-15) ─────────────────
+     *
+     * The author: *"the calendar tab in general needs a bit of an overhaul,
+     * with tabs, windows, and the other treatment that other tabs currently
+     * have"*. So it hosts its own dockspace, as the map and the Builder do: the
+     * grid, and beside it Inspector (the selection, or the focused day), Upcoming,
+     * Views (saved views and the filter) and Export, docked as tabs the first
+     * time and free to be torn off, floated or re-docked after, the arrangement
+     * remembered in imgui.ini. The grid keeps navigation and quick-add. */
+#ifdef IMGUI_HAS_DOCK
+    {
+        const ImGuiID dock = ImGui::GetID("cal-dock");
+        if (ImGui::DockBuilderGetNode(dock) == nullptr) { // seeded once; a person's own layout wins after
+            ImVec2 size = ImGui::GetContentRegionAvail();
+            if (size.x < 200.0f || size.y < 150.0f) size = ImVec2(1200.0f, 800.0f);
+            ImGui::DockBuilderAddNode(dock, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dock, size);
+            ImGuiID c = dock;
+            const ImGuiID right = ImGui::DockBuilderSplitNode(c, ImGuiDir_Right, 0.30f, nullptr, &c);
+            for (const char* w : {"Inspector##cal", "Upcoming##cal", "Views##cal", "Export##cal"})
+                ImGui::DockBuilderDockWindow(w, right);
+            ImGui::DockBuilderDockWindow("Calendar##grid", c);
+            ImGui::DockBuilderFinish(dock);
+        }
+        ImGui::DockSpace(dock, ImVec2(0, 0));
+    }
+#endif
+    ImGui::Begin("Calendar##grid", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    draw_calendar_grid();
+    ImGui::End();
+    draw_calendar_panels();
+}
+
+void HormigaApp::draw_calendar_grid() {
     draw_calendar_toolbar();
 
 
@@ -222,9 +254,8 @@ void HormigaApp::draw_calendar_body() {
         cal_day = std::clamp(cal_day, 1, cal_dim(cal_year, cal_month));
     }
 
-    // ── the grid + an inspector pane when something is selected ────────────
-    bool have_sel = !ed.selection.empty() && scene.find(ed.selection.front());
-    ImGui::BeginChild("##calgrid", ImVec2(have_sel ? -300.0f : 0.0f, 0));
+    // ── the grid (the selection's form is the Inspector window beside it) ───
+    ImGui::BeginChild("##calgrid", ImVec2(0, 0));
     int ty, tm2, td2;
     cal_today(ty, tm2, td2);
     // one entry widget everywhere (month cells + the all-day lane): select on
@@ -237,7 +268,7 @@ void HormigaApp::draw_calendar_body() {
         else if (e.icon) lbl += std::string(e.icon) + " ";
         if (with_time) {
             std::string st = hormiga::temper::field_value(*e.node, "start_time");
-            if (!st.empty()) lbl += st + " ";
+            if (!st.empty()) lbl += clock_label(st, clock24) + " ";
         }
         lbl += rune_title(*e.node); // its name, as the map shows it
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(e.col));
@@ -263,7 +294,7 @@ void HormigaApp::draw_calendar_body() {
         } else if (ImGui::IsItemHovered()) {
             std::string tip = e.node->glyph + "  (right-click for actions)";
             std::string en = hormiga::temper::field_value(*e.node, "end_time");
-            if (!en.empty()) tip += "  until " + en;
+            if (!en.empty()) tip += "  until " + clock_label(en, clock24);
             ImGui::SetTooltip("%s", tip.c_str());
         }
         ImGui::PopID();
@@ -623,8 +654,9 @@ void HormigaApp::draw_calendar_body() {
             dl->AddLine(ImVec2(p0.x + gutter, y),
                         ImVec2(p0.x + gutter + n * col_w, y),
                         IM_COL32(200, 200, 205, h % 12 == 0 ? 180 : 90));
-            char hl[8];
-            std::snprintf(hl, sizeof hl, "%02d:00", h);
+            char hl[16];
+            if (clock24) std::snprintf(hl, sizeof hl, "%02d:00", h);
+            else std::snprintf(hl, sizeof hl, "%d %s", h % 12 ? h % 12 : 12, h % 24 < 12 ? "AM" : "PM");
             dl->AddText(ImVec2(p0.x + 2, y - 7), IM_COL32(120, 120, 125, 255), hl);
         }
         for (int c = 0; c <= n; ++c)
@@ -743,7 +775,7 @@ void HormigaApp::draw_calendar_body() {
                 if (y1 - y0 > 30)
                     dl->AddText(ImVec2(a.x + 4, a.y + 18),
                                 IM_COL32(90, 90, 95, 255),
-                                (cal_fmt_hhmm(t0) + "-" + cal_fmt_hhmm(t1)).c_str());
+                                (clock_label(cal_fmt_hhmm(t0), clock24) + " - " + clock_label(cal_fmt_hhmm(t1), clock24)).c_str());
                 dl->PopClipRect();
                 // a resize grip on the bottom edge (visual hint on hover)
                 if (hovered && mouse.x >= a.x && mouse.x <= b.x &&
@@ -815,7 +847,7 @@ void HormigaApp::draw_calendar_body() {
             dl->AddRectFilled(ga, gb, IM_COL32(46, 107, 79, 90), 4.0f);
             dl->AddRect(ga, gb, IM_COL32(46, 107, 79, 220), 4.0f);
             dl->AddText(ImVec2(ga.x + 4, ga.y + 2), IM_COL32(20, 50, 35, 255),
-                        (cal_fmt_hhmm(nt0) + "-" + cal_fmt_hhmm(nt1)).c_str());
+                        (clock_label(cal_fmt_hhmm(nt0), clock24) + " - " + clock_label(cal_fmt_hhmm(nt1), clock24)).c_str());
             if (ImGui::IsItemDeactivated() || !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
                 bool changed = cal_resize ? (nt1 != cal_grab_t1)
                                           : (mc != cal_grab_col ||
@@ -853,7 +885,7 @@ void HormigaApp::draw_calendar_body() {
                 dl->AddRectFilled(a, b, IM_COL32(63, 111, 174, 70), 4.0f);
                 dl->AddRect(a, b, IM_COL32(63, 111, 174, 200), 4.0f);
                 dl->AddText(ImVec2(a.x + 4, a.y + 2), IM_COL32(40, 60, 90, 255),
-                            (cal_fmt_hhmm(a0) + " - " + cal_fmt_hhmm(a1) +
+                            (clock_label(cal_fmt_hhmm(a0), clock24) + " - " + clock_label(cal_fmt_hhmm(a1), clock24) +
                              "  new event")
                                 .c_str());
             }
@@ -893,7 +925,7 @@ void HormigaApp::draw_calendar_body() {
         }
         if (ImGui::BeginPopup("##tgdaymenu")) {
             ImGui::TextDisabled("%04d-%02d-%02d at %s", cal_ctx_y, cal_ctx_m,
-                                cal_ctx_d, cal_fmt_hhmm(cal_drag_t0).c_str());
+                                cal_ctx_d, clock_label(cal_fmt_hhmm(cal_drag_t0), clock24).c_str());
             ImGui::Separator();
             if (ImGui::MenuItem("New 1h event here"))
                 cal_new_dated("event", cal_ctx_y, cal_ctx_m, cal_ctx_d,
@@ -907,13 +939,4 @@ void HormigaApp::draw_calendar_body() {
         ImGui::EndChild();
     }
     ImGui::EndChild();
-    if (have_sel) { // the one selection, the one inspector (shared with Data/Map)
-        ImGui::SameLine();
-        ImGui::BeginChild("##caldetail", ImVec2(0, 0), ImGuiChildFlags_Borders);
-        if (ImGui::SmallButton("< back to calendar")) ed.selection.clear();
-        ImGui::Separator();
-        maiz::CanvasIO iio = maiz::draw_inspector(scene, ed, &widgets);
-        for (const auto& cmd : iio.commands) pending_cmds.push_back(cmd);
-        ImGui::EndChild();
-    }
 }

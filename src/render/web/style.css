@@ -578,6 +578,9 @@ nav a.langswitch{margin-left:8px;border:1px solid var(--line);font-weight:600}
 .mapwidget{position:relative;height:440px;margin:14px 0;border:1px solid var(--line);
   border-radius:10px;overflow:hidden;background:#e8e6e1}
 .mapwidget canvas{display:block;width:100%;height:100%;cursor:grab}
+.mapwidget .maplabels{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.mapwidget .maplabel{position:absolute;display:flex;padding:4px;box-sizing:border-box;overflow:hidden}
+.mapwidget .maplabel span{font-size:12px;line-height:1.2;text-shadow:0 0 3px #fff,0 0 2px #fff}
 .mapwidget .attrib{position:absolute;left:6px;bottom:4px;font-size:11px;color:#555;
   background:rgba(255,255,255,.75);padding:1px 6px;border-radius:4px;z-index:2}
 .mapwidget .mappop{position:absolute;background:#fff;border:1px solid var(--line);

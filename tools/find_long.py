@@ -49,7 +49,9 @@ BUDGET = {
     # and one call that draws the source-tree warning in the menu bar -- the one
     # place it would have been seen the day an organization's edits went into
     # the repo. Everything the tools DO is in ui/niche_tools.cpp.
-    'src/app/app.cpp': 2950,
+    # 2950 -> 2951 (2026-10-15): `++model_gen` in reproject, the count every cache of
+    # the model keys on (the share settings, the map's places and looks).
+    'src/app/app.cpp': 2951,
     'src/ui/allomone.cpp': 1950,    # rules editor + canvas + inspector
     'src/ui/map.cpp': 1950,         # draw_map_section is still ~1,200 of it
     # 1600 -> 1620 (2026-08-28): the `video` block's card preview, which resolves
@@ -155,7 +157,13 @@ BUDGET = {
     # 2300 -> 2305 (2026-09-15): lists in a narrative and ordering by tags. The
     # list markup and the ranking are render/text.hpp's; what stayed is one call
     # per block, which the glyph linter needs to see reading `rank_up`/`rank_down`.
-    'src/render/site.cpp': 2310,  # +5: an event grid may show a database's dated kind (2026-10-06)
+    # 2310 -> 2331 (2026-10-15): a map shape's label on the website map, with
+    # its size, colour, weight, slant, place and cleaned CSS. The cleaning is
+    # render/label_css.hpp's (tested in calendar_smoke); what stayed is reading
+    # the six fields, which the glyph linter needs to see here.
+    # 2331 -> 2334 (2026-10-15, later): a map block shows what is ON its layer
+    # (domain/canvas.hpp), and a shape's colour reaches what it covers, live.
+    'src/render/site.cpp': 2334,
     'src/domain/allomone_legacy.hpp': 900,  # unshipped, frozen
     # NEW ENTRY 2026-09-15 (was on the 1000 default): the newsletter's own theme,
     # bands, the hero banner and the preview of images not uploaded yet. The
@@ -254,7 +262,14 @@ BUDGET = {
     # 1269 -> 1272 (2026-10-05): the map as a drawing application's windows
     # (draw_map_panels, map_layers; Manage views' slot reused), its filter,
     # and the per-rune Save check. The panels' code is ui/map_panels.cpp.
-    'src/app/app.hpp': 1280,
+    # 1280 -> 1304 (2026-10-15): +6 the LAN beacon's every-path work (the
+    # multicast lock hook, the "no one heard" notice); +18 names that follow
+    # titles, the namer, the widget form and its state, the shape handles, and
+    # the calendar as windows. Comments here are one-line pointers; the code
+    # is ui/inspector.cpp, ui/widgets.cpp, ui/calendar_panels.cpp, ui/map.cpp.
+    # 1304 -> 1308 (2026-10-15, later): `model_gen` and the share-settings
+    # cache, which took 10.6 ms off every frame on every tab (measured).
+    'src/app/app.hpp': 1308,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

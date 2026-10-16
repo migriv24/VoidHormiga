@@ -19,6 +19,8 @@
 #include "../src/domain/bestow.hpp"     // regions give categories, per canvas
 #include "../src/domain/workspaces.hpp" // the demos of the kinds release
 #include "../src/domain/date_query.hpp" // date_field_of
+#include "../src/domain/naming.hpp"     // names follow titles
+#include "../src/domain/submission.hpp" // the decoder follow_title reads with
 
 #include "voidmaiz/embed.hpp"
 #include "voidmaiz/gesture.hpp"
@@ -781,6 +783,166 @@ int main() {
         CHECK(hormiga::kinds::current().find("invoice") != nullptr);
     }
     hormiga::kinds::current() = hormiga::kinds::Registry{hormiga::kinds::builtins()};
+
+    // ── names follow titles (2026-10-15, domain/naming.hpp) ─────────────────
+    {
+        namespace nm = hormiga::naming;
+        CHECK(nm::slug("José García") == "jose-garcia");
+        CHECK(nm::slug("  Food Drive: 3pm!! ") == "food-drive-3pm");
+        CHECK(nm::slug("Ñandú & Straße") == "nandu-strasse");
+        CHECK(nm::slug("Garfield's Birthday") == "garfields-birthday");
+        // a title keeps to a title's characters; a description is not cleaned (Q112)
+        CHECK(nm::clean_title("Ana's \"big\" day") == "Ana's \xE2\x80\x9C" "big\xE2\x80\x9D day");
+        CHECK(nm::clean_title("  Food\r\n  drive <b>{now}</b>\\ ") == "Food drive bnow/b");
+        CHECK(nm::clean_title("José García - 50% off! (Sat.)") == "José García - 50% off! (Sat.)");
+        CHECK(nm::clean_title(std::string(200, 'a')).size() == 120);
+        CHECK(nm::clean_title("ñ" + std::string(130, 'x')).size() == 121); // 120 characters, one of them two bytes
+        CHECK(nm::slug("Ana’s Day") == "anas-day");
+        CHECK(nm::stem_of("birthday", "birthday"));
+        CHECK(nm::stem_of("birthday-12", "birthday"));
+        CHECK(nm::stem_of("birthday-3fa9-2", "birthday"));
+        CHECK(nm::stem_of("birthday-3fa9", "birthday")); // a device tag alone
+        CHECK(!nm::stem_of("birthdays", "birthday"));
+        CHECK(nm::title_field("event") == "title_en");
+        CHECK(nm::title_field("contact") == "display_name");
+        CHECK(nm::title_field("map").empty() && nm::title_field("refpoint").empty());
+
+        maiz::Core c;
+        hormiga::register_glyphs(c);
+        hormiga::register_block_glyphs(c);
+        c.dispatch("mantle new names");
+        c.dispatch("use names");
+        for (const char* cmd : {"rune new event event-1", "rune new event birthday",
+                                "rune new event party-time", "set party-time title_en \"Retreat\"",
+                                "rune new contact jgarcia", "set jgarcia display_name \"José García\""})
+            CHECK(c.dispatch(cmd).ok);
+        maiz::Scene s = project(c, "names");
+        // a minted name follows; a taken title gets a suffix
+        CHECK(nm::follow(s, *s.find("event-1"), "title_en", "Birthday") == "birthday-2");
+        // in a shared database, the device tag rides along as mint_name does
+        CHECK(nm::follow(s, *s.find("event-1"), "title_en", "Birthday", "3fa9") == "birthday-3fa9");
+        // a name that is its title's slug follows it; no title yet = its own name
+        CHECK(nm::follow(s, *s.find("birthday"), "title_en", "Big Birthday") == "big-birthday");
+        // a hand-typed name that is NOT its title's slug stays
+        CHECK(nm::follow(s, *s.find("party-time"), "title_en", "Spring Retreat").empty());
+        CHECK(nm::follow(s, *s.find("jgarcia"), "display_name", "Jose Garcia Lopez").empty());
+        // the wrong field, or a title that already fits, moves nothing
+        CHECK(nm::follow(s, *s.find("event-1"), "venue", "Birthday").empty());
+        CHECK(nm::follow(s, *s.find("birthday"), "title_en", "birthday!").empty());
+        // uniqueness never counts the rune itself
+        CHECK(nm::unique(s, "birthday", "birthday") == "birthday");
+
+        // what Void Core's decoder hands follow_title is what `set` stores
+        {
+            const std::string cmd = "set event-1 title_en 'Ana\\'s \"big\" day'"; // json_arg's spelling
+            const auto rev = hormiga::submission::review(cmd);
+            CHECK(rev.ok && rev.commands.size() == 1 && rev.commands[0].argv.size() == 4);
+            CHECK(c.dispatch(cmd).ok);
+            s = project(c, "names");
+            if (rev.ok && !rev.commands.empty() && rev.commands[0].argv.size() == 4)
+                CHECK(rev.commands[0].argv[3] == "Ana's \"big\" day" &&
+                      hormiga::temper::field_value(*s.find("event-1"), "title_en") == rev.commands[0].argv[3]);
+            CHECK(c.dispatch("set event-1 title_en \"\"").ok);
+        }
+        // the batch app.cpp sends: one undo takes back the title and the name
+        CHECK(c.dispatch(maiz::compile_commit({"set event-1 title_en \"Birthday\"",
+                                               "rune rename event-1 birthday-2"})).ok);
+        s = project(c, "names");
+        const maiz::SceneNode* b2 = s.find("birthday-2");
+        CHECK(b2 && hormiga::temper::field_value(*b2, "title_en") == "Birthday" && !s.find("event-1"));
+        CHECK(c.dispatch("undo").ok);
+        s = project(c, "names");
+        CHECK(s.find("event-1") && !s.find("birthday-2"));
+        // a featured-event block points at its event by NAME, which a rename
+        // does not repoint; block_repoints writes what does, for the same batch
+        CHECK(c.dispatch("mantle new names-doc").ok);
+        CHECK(c.dispatch("use names-doc").ok);
+        CHECK(c.dispatch("rune new event_feature spot").ok);
+        CHECK(c.dispatch("set spot event \"event-1\"").ok);
+        CHECK(c.dispatch("use names").ok);
+        {
+            std::vector<std::string> b = {"set event-1 title_en \"Fair\"", "rune rename event-1 fair", "use names-doc"};
+            for (auto& x : nm::block_repoints(project(c, "names-doc"), "event-1", "fair")) b.push_back(x);
+            b.push_back("use names");
+            CHECK(b.size() == 5);
+            CHECK(c.dispatch(maiz::compile_commit(b)).ok);
+            maiz::Scene d = project(c, "names-doc");
+            CHECK(d.find("spot") && hormiga::temper::field_value(*d.find("spot"), "event") == "fair");
+            CHECK(c.dispatch("undo").ok); // all of it, in one
+            d = project(c, "names-doc");
+            CHECK(d.find("spot") && hormiga::temper::field_value(*d.find("spot"), "event") == "event-1");
+            CHECK(project(c, "names").find("event-1") != nullptr);
+        }
+        // renaming onto a name another rune holds is refused by the core (the
+        // GUI makes it unique first; widgets.cpp)
+        CHECK(!c.dispatch("rune rename event-1 birthday").ok);
+
+        // ── overlapping shapes give each other their tags (bestow.hpp) ──────
+        for (const char* cmd : {"rune new mapshape north", "set north geo1 \"10,0\"", "set north geo2 \"0,10\"",
+                                "set north bestows \"zone-a\"",
+                                "rune new mapshape east", "set east geo1 \"8,8\"", "set east geo2 \"2,20\"",
+                                "set east bestows \"zone-b\"",
+                                // an ellipse whose BOX touches north's corner, but not its area
+                                "rune new mapshape round", "set round kind \"ellipse\"",
+                                "set round geo1 \"-9,-9\"", "set round geo2 \"0.5,0.5\"",
+                                "set round bestows \"zone-c\"",
+                                "rune new mapshape aisle", "set aisle geo1 \"10,0\"", "set aisle geo2 \"0,10\"",
+                                "set aisle canvas \"store\"", "set aisle bestows \"aisle-1\""})
+            CHECK(c.dispatch(cmd).ok);
+        s = project(c, "names");
+        const maiz::SceneNode *north = s.find("north"), *east = s.find("east"), *round = s.find("round"),
+                              *aisle = s.find("aisle");
+        CHECK(north && east && round && aisle);
+        if (north && east && round && aisle) {
+            namespace bw = hormiga::bestow;
+            CHECK(bw::shapes_overlap(*north, *east) && bw::shapes_overlap(*east, *north));
+            CHECK(!bw::shapes_overlap(*north, *round)); // boxes meet, the ellipse does not reach the corner
+            CHECK(!bw::shapes_overlap(*north, *aisle)); // same numbers, another canvas
+            auto tags_of = [&](const maiz::SceneNode& r) {
+                std::string t;
+                for (const auto& b : bw::covering(s, r)) t += b.tag + " ";
+                return t;
+            };
+            CHECK(tags_of(*north) == "zone-b ");
+            CHECK(tags_of(*east) == "zone-a ");
+            CHECK(tags_of(*round).empty());
+            const auto rec = bw::receivers(s, *north);
+            CHECK(rec.size() == 1 && rec[0]->name == "east"); // never itself
+        }
+        // a colour a shape gives reaches what it covers live; the smallest shape wins
+        for (const char* cmd : {"rune new event picnic", "set picnic geo \"5,5\"",
+                                "set north bestows \"zone-a, color:e07a1f\"",
+                                "rune new mapshape tiny", "set tiny geo1 \"6,4\"", "set tiny geo2 \"4,6\"",
+                                "set tiny bestows \"color:teal\""})
+            CHECK(c.dispatch(cmd).ok);
+        s = project(c, "names");
+        {
+            const auto g = hormiga::bestow::given_values(s, "color");
+            CHECK(g.count("picnic") && g.at("picnic") == "teal");     // inside both: the smaller gives
+            CHECK(g.count("east") && g.at("east") == "e07a1f");       // north overlaps east
+            CHECK(!g.count("north"));  // never itself, and never from a smaller shape inside it
+        }
+        // a layer holds what was made on it (domain/canvas.hpp)
+        for (const char* cmd : {"rune new map base", "set base order \"0\"", "rune new map upper", "set upper order \"1\"",
+                                "rune new map floor-layer", "set floor-layer canvas \"store\"",
+                                "tag east +layer:upper", "tag picnic +layer:gone", "tag tiny +layer:floor-layer"})
+            CHECK(c.dispatch(cmd).ok);
+        s = project(c, "names");
+        {
+            namespace cv = hormiga::canvas;
+            const auto ls = cv::layers(s, "");
+            CHECK(ls.size() == 2 && ls[0]->name == "base" && ls[1]->name == "upper"); // bottom first
+            CHECK(cv::layer_of(*s.find("east"), ls) == "upper");
+            CHECK(cv::layer_of(*s.find("north"), ls) == "base");  // untagged: the bottom layer
+            CHECK(cv::layer_of(*s.find("picnic"), ls) == "base"); // a layer that is gone: the bottom
+            CHECK(cv::layer_of(*s.find("tiny"), ls) == "base");   // another canvas's layer: not this one's
+            CHECK(cv::move_to_layer(*s.find("east"), ls, "base") == "tag east -layer:upper");
+            CHECK(cv::move_to_layer(*s.find("north"), ls, "upper") == "tag north +layer:upper");
+            CHECK(cv::move_to_layer(*s.find("tiny"), ls, "upper") == "tag tiny +layer:upper"); // keeps its floor's
+            CHECK(cv::join_layer(s, ls, "upper", "brand-new") == "tag brand-new +layer:upper");
+            CHECK(cv::join_layer(s, ls, "base", "brand-new").empty());
+        }
+    }
 
     if (failures == 0) {
         std::cout << "OK — sqlite round-trip + csv import + rescue import + "

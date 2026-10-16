@@ -98,7 +98,27 @@ public:
 
     /* Begin announcing `self` and listening for others. Idempotent. An EMPTY
      * `peer_id` listens without announcing -- "Discover databases" looks around
-     * without telling the network it is there. */
+     * without telling the network it is there.
+     *
+     * ON EVERY LAN INTERFACE (2026-10-14). The group is joined, and each
+     * announcement sent, on the default interface AND on each of Void Maiz's
+     * `lan_interfaces()`, re-read every few seconds, with each interface's
+     * subnet broadcast and 255.255.255.255 beside the multicast. The default
+     * interface alone was wrong whenever there are two: a hotspot (a laptop's
+     * default route is the venue's Wi-Fi, a phone's is mobile data), a VPN, a
+     * WSL adapter. Broadcast is there because many access points drop multicast
+     * they have no subscriber list for but must pass broadcast (ARP needs it).
+     * Every copy stays on the local link: TTL 1, and broadcast is not routed.
+     *
+     * So one announcement goes, every 3 s, by every path there is:
+     *   1. the group, out of the default interface (what 0.1 to 0.2 did);
+     *   2. the group, out of each LAN interface;
+     *   3. each LAN interface's subnet broadcast, and 255.255.255.255;
+     *   4. on a /24 or smaller, by unicast to this device's gateway and the
+     *      subnet's .1: where a hotspot's owner sits;
+     *   5. by unicast to whatever `tell_directly` was given: members already
+     *      heard, and addresses a person typed.
+     * A receiver counts it once (`PeerInfo::heard`). */
     bool start(const PeerInfo& self, std::string* error = nullptr);
     void stop();
     bool running() const { return running_; }
@@ -106,6 +126,14 @@ public:
     /* Update what we advertise -- called when the database changes, so peers
      * see a new version name without waiting for a restart. */
     void announce(const PeerInfo& self);
+
+    /* Also send every announcement straight to these addresses (dotted IPv4,
+     * at most 16), on top of the multicast and the broadcasts (2026-10-14).
+     * The application passes the members it has already heard and proven: a
+     * phone without Android's multicast lock, or a Wi-Fi that drops multicast
+     * in one direction, hears nothing from the group, but it hears unicast. So
+     * one side hearing the other is enough for both. Replaces the last list. */
+    void tell_directly(const std::vector<std::string>& addresses);
 
     /* Peers heard from within `stale_seconds`. Sorted by display name so a UI
      * does not reorder under the user. */

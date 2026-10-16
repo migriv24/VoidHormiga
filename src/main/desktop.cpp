@@ -423,6 +423,9 @@ int main(int argc, char** argv) {
 #endif
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version); // the half `gl_context_hints` returned
+    if (std::getenv("HORMIGA_FRAME_TIMING")) // what the screen can take: a map of thousands needs 64k+ vertices
+        std::fprintf(stderr, "[gl] %s, large meshes %s\n", (const char*)glGetString(GL_VERSION),
+                     (ImGui::GetIO().BackendFlags & ImGuiBackendFlags_RendererHasVtxOffset) ? "yes" : "NO");
     lap("imgui init");
 
     HormigaApp app;
@@ -565,7 +568,23 @@ int main(int argc, char** argv) {
             }
         }
 
+        /* HORMIGA_FRAME_TIMING (2026-10-15): the CPU time of the application's
+         * own frame, apart from waiting on the screen, averaged over 120 frames
+         * on stderr. How "the map is slow" is measured rather than guessed. */
+        static const bool frame_timing = std::getenv("HORMIGA_FRAME_TIMING") != nullptr;
+        const auto f0 = std::chrono::steady_clock::now();
         app.frame();
+        if (frame_timing) {
+            static double sum = 0, worst = 0;
+            static int frames = 0;
+            const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - f0).count();
+            sum += ms, worst = std::max(worst, ms);
+            if (++frames == 120) {
+                std::fprintf(stderr, "[frame] %.2f ms average, %.2f ms worst (app.frame, 120 frames)\n", sum / 120,
+                             worst);
+                sum = worst = 0, frames = 0;
+            }
+        }
         if (phone_mode) sim.draw_system_bars();
         for (const auto& [request, path] : sim_picks) { // a played picker answers between frames
             std::error_code ec;

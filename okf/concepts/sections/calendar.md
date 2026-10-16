@@ -104,6 +104,24 @@ Today / Next move by the granularity's stride. Selection is the app's one
 selection: clicking an entry selects the rune (inspector shows it; the same
 entity selected on the map is selected here — one `ed`).
 
+**The calendar is windows (2026-10-15).** The author: *"the calendar tab in
+general needs a bit of an overhaul, with tabs, windows, and the other treatment
+that other tabs currently have."* It hosts its own dockspace like the map: the
+grid (navigation, quick-add, and one chip saying what is shown), and beside it
+**Inspector** (the selection, through the same widget form as Data and the map;
+with nothing selected, the focused day: what is on it, and *New event* / *New
+incident* on it), **Upcoming** (the next two months the filter shows, by day),
+**Views** (saved views and the kind/tag filter, which were two rows above the
+grid) and **Export** (the picture, the `.ics`, and *Add this calendar* to a
+newsletter or website as a calendar block). A new event is named the moment it
+is made: a box opens where the click was ([data model](/concepts/foundation/data-model.md)).
+
+**12-hour time by default (2026-10-15).** *"no military time on the calendar,
+normal time (in settings you can switch to military i guess, but off by
+default)"*: the grid, the hour gutter, drags, the Inspector and the lists say
+"3 PM" and "3:30 PM"; Settings > Time has the 24-hour clock (`ui.clock24`).
+Stored times stay "HH:MM".
+
 # Exports (the author's pair, same as the map)
 
 - **Static PNG** — the newsletter's calendar: the month grid composed
@@ -120,6 +138,11 @@ entity selected on the map is selected here — one `ed`).
   the machine, and internal-notes-class fields never render into any export.
   v1 exports what the grid shows; the filter field is the immediate next
   step and blocks any *published* calendar until it lands.
+- **An entry leaves by its title (2026-10-15).** The `.ics` export wrote
+  `title_en` or, without one, the handle, so `event-3` reached people's
+  calendars and incidents and a database's own dated kinds always left by
+  handle. It writes what the grid draws (`rune_title`), and a rune with no
+  title at all leaves under its humanized name.
 
 # The toolset (the feature inventory, 2026-07-22)
 

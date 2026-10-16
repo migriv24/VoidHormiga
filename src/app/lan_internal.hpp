@@ -196,7 +196,7 @@ inline bool add_member_doc(const RegisterFn& reg, const fs::path& file, const Re
     std::vector<std::string> cmds;
     if (!existing) cmds.push_back("rune new member " + name);
     auto set = [&](const char* f, const std::string& v) {
-        if (!v.empty()) cmds.push_back("set " + name + " " + f + " " + json_str(v));
+        if (!v.empty()) cmds.push_back("set " + name + " " + f + " " + text_arg(v));
     };
     set("username", who.user);
     set("color", who.color);

@@ -180,11 +180,22 @@
     var c0=(w.dataset.center||'44.05,-123.09').split(',');
     var lat=+c0[0],lon=+c0[1],z=Math.max(3,Math.min(18,+(w.dataset.zoom||13)));
     var tmpl=w.dataset.tiles||
-      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png'; // TEMPORARY (Q111): CARTO now wants a key
     var cv=document.createElement('canvas');w.appendChild(cv);
     var pop=document.createElement('div');pop.className='mappop';w.appendChild(pop);
+    // shape LABELS are elements over the canvas, so a label's own CSS applies
+    var lay=document.createElement('div');lay.className='maplabels';w.appendChild(lay);
+    var lbl=shp.map(function(sp){if(!sp.l)return null;
+      var b=document.createElement('div');b.className='maplabel';var t=document.createElement('span');
+      var p=sp.lp||(sp.e?'tc':'tl'),r=p.charAt(0),c=p.length>1?p.charAt(1):'c';
+      b.style.justifyContent=c==='l'?'flex-start':c==='r'?'flex-end':'center';
+      b.style.alignItems=r==='t'?'flex-start':r==='b'?'flex-end':'center';
+      t.textContent=sp.l;t.style.color=sp.lc||sp.c;t.style.fontSize=(12*(sp.ls||1))+'px';
+      if(sp.lb)t.style.fontWeight='700';if(sp.li)t.style.fontStyle='italic';
+      if(sp.lx)t.style.cssText+=';'+sp.lx;
+      b.appendChild(t);lay.appendChild(b);return b;});
     var at=document.createElement('div');at.className='attrib';
-    at.textContent=w.dataset.attrib||'© OpenStreetMap contributors © CARTO';
+    at.textContent=w.dataset.attrib||'© OpenStreetMap contributors';
     w.appendChild(at);
     var ctx=cv.getContext('2d'),tiles={},drag=null;
     function mx(lo,zz){return (lo+180)/360*Math.pow(2,zz);}
@@ -217,11 +228,13 @@
         var im=tile(z,((tx%n)+n)%n,ty);
         if(im)ctx.drawImage(im,Math.round(W/2+(tx-cx)*256),Math.round(H/2+(ty-cy)*256));}
       // #3: drawn map SHAPES (under the markers) — rect/ellipse annotations
-      shp.forEach(function(sp){
+      shp.forEach(function(sp,i){
         var x1=W/2+(mx(sp.o1,z)-cx)*256,y1=H/2+(my(sp.a1,z)-cy)*256;
         var x2=W/2+(mx(sp.o2,z)-cx)*256,y2=H/2+(my(sp.a2,z)-cy)*256;
         var mnx=Math.min(x1,x2),mxx=Math.max(x1,x2);
         var mny=Math.min(y1,y2),mxy=Math.max(y1,y2);
+        var b=lbl[i];if(b){b.style.left=mnx+'px';b.style.top=mny+'px';
+          b.style.width=(mxx-mnx)+'px';b.style.height=(mxy-mny)+'px';}
         ctx.save();ctx.globalAlpha=0.2;ctx.fillStyle=sp.c;
         if(sp.e){ctx.beginPath();
           ctx.ellipse((mnx+mxx)/2,(mny+mxy)/2,(mxx-mnx)/2,(mxy-mny)/2,0,0,7);

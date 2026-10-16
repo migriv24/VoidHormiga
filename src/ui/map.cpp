@@ -13,6 +13,7 @@
  */
 #include "app/app_internal.hpp"
 #include "domain/bestow.hpp" // one inside-the-shape test
+#include "domain/naming.hpp" // a double-click edits a title
 #include "render/mercator.hpp"
 #include "stb_image_write.h" // decls only - the map exports as a PNG; the ONE implementation lives in app.cpp
 #include "json.hpp" // the position channel is a JSON payload
@@ -282,15 +283,15 @@ void HormigaApp::map_new_earth(double lat, double lon, int zoom) {
     // no tile source; Earth's rules (people, places, events) mean nothing there
     const bool plan = hormiga::canvas::find(scene, map_canvas).plan();
     std::vector<std::string> cmds = {
-        "rune new map " + name, "set " + name + " source " + json_str(plan ? "plan" : "osm"),
-        "set " + name + " title " + json_str("Layer " + std::to_string(count + 1)),
+        "rune new map " + name, "set " + name + " source " + text_arg(plan ? "plan" : "osm"),
+        "set " + name + " title " + text_arg("Layer " + std::to_string(count + 1)),
         "set " + name + " order \"" + std::to_string(count ? top + 1 : 0) + "\"",
-        "set " + name + " center " + json_str(center),
+        "set " + name + " center " + text_arg(center),
         "set " + name + " zoom \"" + std::to_string(zoom) + "\"",
-        "set " + name + " channel " + json_str(hormiga::canvas::shared_channel(map_canvas)),
+        "set " + name + " channel " + text_arg(hormiga::canvas::shared_channel(map_canvas)),
         "setjson " + name + " rules " + json_arg(plan ? "[]" : default_rules),
         "tag " + name + " +type:map"};
-    if (!map_canvas.empty()) cmds.push_back("set " + name + " canvas " + json_str(map_canvas));
+    if (!map_canvas.empty()) cmds.push_back("set " + name + " canvas " + text_arg(map_canvas));
     pending_cmds.push_back(maiz::compile_commit(cmds));
     map_sel = name;
     toast("added a layer on top - it is the one you are editing now");
@@ -306,13 +307,13 @@ void HormigaApp::map_new_canvas(const std::string& title, double w, double h) {
     std::snprintf(hs, sizeof hs, "%g", h);
     std::snprintf(center, sizeof center, "%g,%g", h / 2, w / 2);
     pending_cmds.push_back(maiz::compile_commit(
-        {"rune new canvas " + cv, "set " + cv + " title " + json_str(title), "set " + cv + " world \"plan\"",
-         "set " + cv + " width " + json_str(ws), "set " + cv + " height " + json_str(hs),
+        {"rune new canvas " + cv, "set " + cv + " title " + text_arg(title), "set " + cv + " world \"plan\"",
+         "set " + cv + " width " + text_arg(ws), "set " + cv + " height " + text_arg(hs),
          "set " + cv + " grid \"1\"", "tag " + cv + " +type:canvas",
          "rune new map " + layer, "set " + layer + " source \"plan\"", "set " + layer + " title \"Layout\"",
-         "set " + layer + " order \"0\"", "set " + layer + " center " + json_str(center),
-         "set " + layer + " canvas " + json_str(cv),
-         "set " + layer + " channel " + json_str(hormiga::canvas::shared_channel(cv)),
+         "set " + layer + " order \"0\"", "set " + layer + " center " + text_arg(center),
+         "set " + layer + " canvas " + text_arg(cv),
+         "set " + layer + " channel " + text_arg(hormiga::canvas::shared_channel(cv)),
          "setjson " + layer + " rules " + json_arg("[]"), "tag " + layer + " +type:map"}));
     pending_cmds.push_back("config set view.map.canvas " + json_str(cv));
     map_canvas = cv;
@@ -351,14 +352,7 @@ void HormigaApp::map_switch_canvas(const std::string& name) {
 /* The layers, bottom to top: by `order`, then as the scene has them (a layer
  * made before `order` existed sits where it always did). */
 std::vector<const maiz::SceneNode*> HormigaApp::map_layers() const {
-    std::vector<const maiz::SceneNode*> out;
-    for (const auto& n : scene.nodes) // the canvas on screen's layers only
-        if (n.glyph == "map" && hormiga::canvas::on(n, map_canvas)) out.push_back(&n);
-    std::stable_sort(out.begin(), out.end(), [](const maiz::SceneNode* a, const maiz::SceneNode* b) {
-        return std::atoi(hormiga::temper::field_value(*a, "order").c_str()) <
-               std::atoi(hormiga::temper::field_value(*b, "order").c_str());
-    });
-    return out;
+    return hormiga::canvas::layers(scene, map_canvas); // the canvas on screen's (domain/canvas.hpp)
 }
 
 void HormigaApp::map_place_new(const char* glyph) {
@@ -369,9 +363,10 @@ void HormigaApp::map_place_new(const char* glyph) {
                                 {{"glyph", glyph}, {"name", name}, {"geo", geo},
                                  {"field", geo_field_for(active_channel)}});
     if (cmds.empty()) { toast("place declined", true); return; }
+    if (std::string t = hormiga::canvas::join_layer(scene, map_layers(), map_sel, name); !t.empty()) cmds.push_back(t);
     pending_cmds.push_back(maiz::compile_commit(cmds));
     ed.selection = {name};
-    toast("placed " + name + " - fill in its details in the inspector");
+    begin_naming(name, glyph); // type its name now, where it was put
 }
 
 void HormigaApp::map_place_existing(const std::string& name) {
@@ -381,6 +376,7 @@ void HormigaApp::map_place_existing(const std::string& name) {
                                 {{"name", name}, {"geo", geo},
                                  {"field", geo_field_for(active_channel)}});
     if (cmds.empty()) { toast("move declined", true); return; }
+    if (std::string t = hormiga::canvas::join_layer(scene, map_layers(), map_sel, name); !t.empty()) cmds.push_back(t);
     pending_cmds.push_back(maiz::compile_commit(cmds));
     ed.selection = {name};
     toast("placed existing " + name + " on the map");
@@ -815,7 +811,36 @@ void HormigaApp::draw_map_section() {
     const std::string layer_filter = hormiga::temper::field_value(*cur, "filter");
     const bool layer_hidden = hormiga::temper::field_value(*cur, "visible") == "0";
     auto drawn_in = [&](const maiz::SceneNode& n, const std::string& lf) {
-        return search_match(n, map_filter) && (lf.empty() || maiz::node_matches(lf, n));
+        return (!map_filter[0] || search_match(n, map_filter)) && (lf.empty() || maiz::node_matches(lf, n));
+    };
+    /* EVERY VISIBLE LAYER DRAWS WHAT IT HOLDS (2026-10-15, domain/canvas.hpp):
+     * each with its own rules, positions and filter; the edited one at full
+     * strength, the others at their opacity and brightness. This replaces the
+     * edited layer drawing everything and the rest drawing grey dots of
+     * everything, which is why hiding a layer hid things that were not on it. */
+    struct LayerDraw {
+        const maiz::SceneNode* rune;
+        std::vector<MapRule> rules;
+        std::string channel, filter;
+        bool hidden;
+        float op, br;
+    };
+    std::map<std::string, LayerDraw> lay;
+    for (auto* v : maps) {
+        std::string vch = hormiga::temper::field_value(*v, "channel");
+        lay[v->name] = {v, v == cur ? active_rules : parse_view_rules(*v), vch.empty() ? "main" : vch,
+                        hormiga::temper::field_value(*v, "filter"), hormiga::temper::field_value(*v, "visible") == "0",
+                        view_layer_opacity(v), view_layer_brightness(v)};
+    }
+    auto layer_draw = [&](const maiz::SceneNode& n) -> const LayerDraw* {
+        const auto it = lay.find(hormiga::canvas::layer_of(n, maps));
+        return it == lay.end() ? nullptr : &it->second;
+    };
+    auto faded = [&](ImU32 c, const LayerDraw* d) -> ImU32 { // a layer under the edited one
+        if (!d || d->rune == cur) return c;
+        const int r = std::min(255, (int)((c & 0xFF) * d->br)), g = std::min(255, (int)(((c >> 8) & 0xFF) * d->br));
+        const int b = std::min(255, (int)(((c >> 16) & 0xFF) * d->br));
+        return IM_COL32(r, g, b, (int)(((c >> 24) & 0xFF) * d->op));
     };
     bool show_labels = view_show_labels(cur);   // map config (#6)
     float label_scale = view_label_scale(cur);
@@ -831,28 +856,55 @@ void HormigaApp::draw_map_section() {
         double lat, lon;
         ImVec2 s;
         bool on_screen;
+        const LayerDraw* ld; // the layer it is on (nullptr: the canvas has no layers)
     };
-    // #4: ref-children are FANNED around their refpoint (they share coords)
-    auto fans = ref_fans(scene, active_channel);
-    std::vector<Located> located_nodes;
-    for (const auto& node : scene.nodes) {
-        if (node.glyph == "refpoint") continue; // gizmos drawn separately
-        if (layer_hidden || !drawn_in(node, layer_filter)) continue;
+    /* ── WHAT IS PLACED, READ ONCE PER CHANGE (2026-10-15) ─────────────────
+     * Every frame used to find each rune's layer, read its position as text
+     * and parse it, and work out the reference-point fans: 5 ms a frame with
+     * 2,000 places. None of it changes until the model does (`model_gen`), or
+     * the canvas or the edited layer's positions do; the frame only turns the
+     * cached positions into pixels. */
+    struct Place {
+        const maiz::SceneNode* node;
+        std::string layer;
         double la, lo;
-        ImVec2 s;
-        auto fit = fans.find(node.name);
-        if (fit != fans.end()) { // fanned child: refpoint geo + pixel offset
-            la = fit->second.lat; lo = fit->second.lon;
-            s = to_screen(la, lo);
-            s.x += fit->second.dx; s.y += fit->second.dy;
-        } else {
-            std::string g = view_geo(node, active_channel);
-            if (g.empty() || !hormiga::parse_geo(g, la, lo)) continue;
-            s = to_screen(la, lo);
+        float dx, dy; // a fanned child's pixel offset from its reference point
+    };
+    static std::vector<Place> places;
+    static std::map<std::string, RefFan> fans; // #4: ref-children share coords
+    static std::string places_key;
+    if (const std::string key = std::to_string(model_gen) + "|" + map_canvas + "|" + active_channel; key != places_key) {
+        places_key = key;
+        places.clear();
+        fans = ref_fans(scene, active_channel);
+        for (const auto& node : scene.nodes) {
+            if (node.glyph == "refpoint") continue; // gizmos drawn separately
+            const std::string lname = hormiga::canvas::layer_of(node, maps);
+            const auto li = lay.find(lname);
+            Place pl{&node, lname, 0, 0, 0, 0};
+            if (auto fit = fans.find(node.name); fit != fans.end()) {
+                pl.la = fit->second.lat, pl.lo = fit->second.lon, pl.dx = fit->second.dx, pl.dy = fit->second.dy;
+            } else {
+                const std::string g = view_geo(node, li != lay.end() ? li->second.channel : active_channel);
+                if (g.empty() || !hormiga::parse_geo(g, pl.la, pl.lo)) continue;
+            }
+            places.push_back(std::move(pl));
         }
+    }
+    std::vector<Located> located_nodes;
+    located_nodes.reserve(places.size());
+    for (const Place& pl : places) {
+        const maiz::SceneNode& node = *pl.node;
+        const auto li = lay.find(pl.layer);
+        const LayerDraw* ld = li == lay.end() ? nullptr : &li->second;
+        if (ld ? ld->hidden || !drawn_in(node, ld->filter) : !drawn_in(node, layer_filter)) continue;
+        const double la = pl.la, lo = pl.lo;
+        ImVec2 s = to_screen(la, lo);
+        s.x += pl.dx;
+        s.y += pl.dy;
         bool on = !(s.x < p0.x - 30 || s.x > p0.x + sz.x + 30 || s.y < p0.y - 30 ||
                     s.y > p0.y + sz.y + 30);
-        located_nodes.push_back({&node, la, lo, s, on});
+        located_nodes.push_back({&node, la, lo, s, on, ld});
     }
 
     // #4: REFERENCE-POINT gizmos (editor-only — never in exports). A hollow
@@ -909,55 +961,38 @@ void HormigaApp::draw_map_section() {
             }
     }
 
-    // ── LAYERS: other VISIBLE views composite underneath, ghosted (like an
-    // art program's layers — author, 2026-07-23). Each layer renders its own
-    // channel's positions with its own rules; only the ACTIVE view receives
-    // interaction. Toggle visibility in Manage views. ───────────────────────
-    for (auto* v : maps) {
-        if (v == cur) continue;
-        if (hormiga::temper::field_value(*v, "visible") == "0") continue;
-        std::string vch = hormiga::temper::field_value(*v, "channel");
-        if (vch.empty()) vch = "main";
-        auto vrules = parse_view_rules(*v);
-        float lop = view_layer_opacity(v);     // per-view layer treatment (#3)
-        float lbr = view_layer_brightness(v);
-        int la8 = (int)(lop * 255);
-        int ring8 = (int)(lop * 0.6f * 255); // the ring fades with the fill
-        auto dim = [&](ImU32 c) {              // apply layer brightness to RGB
-            int r = (int)((c & 0xFF) * lbr), g = (int)(((c >> 8) & 0xFF) * lbr);
-            int b = (int)(((c >> 16) & 0xFF) * lbr);
-            return IM_COL32(std::min(r, 255), std::min(g, 255), std::min(b, 255),
-                            la8);
-        };
-        const std::string vfilter = hormiga::temper::field_value(*v, "filter");
-        for (const auto& node : scene.nodes) {
-            if (!drawn_in(node, vfilter)) continue;
-            std::string g = view_geo(node, vch);
-            double la, lo;
-            if (g.empty() || !hormiga::parse_geo(g, la, lo)) continue;
-            ImVec2 s = to_screen(la, lo);
-            if (s.x < p0.x - 20 || s.x > p0.x + sz.x + 20 || s.y < p0.y - 20 ||
-                s.y > p0.y + sz.y + 20)
-                continue;
-            ImU32 col = IM_COL32(120, 120, 130, 255); // ghosted default (pre-dim)
-            for (const auto& r : vrules) {
-                if (r.tags.empty() || !maiz::node_matches(rule_filter_expr(r), node))
-                    continue;
-                for (const auto& c : kMarkerColors)
-                    if (r.color == c.tag) col = c.col;
-                break;
-            }
-            dl->AddCircleFilled(s, 5.0f, dim(col));
-            dl->AddCircle(s, 5.0f, IM_COL32(255, 255, 255, ring8), 0, 1.5f);
-        }
-    }
-
     // ── #3 MAP SHAPES (drawn annotations): rect/ellipse runes over the map,
     // colored by the same rules/tags as markers, under the markers. Click a
     // shape to select it; right-click for its menu. ────────────────────────
     const maiz::SceneNode* shape_hit = nullptr;
+    // the shape being reshaped follows the pointer (its handles: see below)
+    const bool reshaping = !map_shape_edit.empty() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if (reshaping) {
+        ImVec2 a = map_shape_mn0, b = map_shape_mx0;
+        switch (map_shape_edit_idx) {
+            case 0: a = mouse; break;
+            case 1: a.y = mouse.y; break;
+            case 2: b.x = mouse.x; a.y = mouse.y; break;
+            case 3: b.x = mouse.x; break;
+            case 4: b = mouse; break;
+            case 5: b.y = mouse.y; break;
+            case 6: a.x = mouse.x; b.y = mouse.y; break;
+            case 7: a.x = mouse.x; break;
+            default: { // 8: the whole shape moves
+                const ImVec2 d(mouse.x - map_shape_grab.x, mouse.y - map_shape_grab.y);
+                a = ImVec2(a.x + d.x, a.y + d.y);
+                b = ImVec2(b.x + d.x, b.y + d.y);
+            }
+        }
+        map_shape_live_mn = ImVec2(std::min(a.x, b.x), std::min(a.y, b.y));
+        map_shape_live_mx = ImVec2(std::max(a.x, b.x), std::max(a.y, b.y));
+    }
+    const maiz::SceneNode* sel_shape = nullptr; // the ONE selected shape: it gets handles
+    ImVec2 sel_mn, sel_mx;
     for (const auto& node : scene.nodes) {
         if (node.glyph != "mapshape" || !hormiga::canvas::on(node, map_canvas)) continue;
+        const LayerDraw* sld = layer_draw(node);
+        if (sld && sld->hidden) continue;
         double la1, lo1, la2, lo2;
         if (!hormiga::parse_geo(hormiga::temper::field_value(node, "geo1"), la1, lo1) ||
             !hormiga::parse_geo(hormiga::temper::field_value(node, "geo2"), la2, lo2))
@@ -965,18 +1000,26 @@ void HormigaApp::draw_map_section() {
         ImVec2 a = to_screen(la1, lo1), b = to_screen(la2, lo2);
         ImVec2 mn(std::min(a.x, b.x), std::min(a.y, b.y));
         ImVec2 mx(std::max(a.x, b.x), std::max(a.y, b.y));
+        if (reshaping && node.name == map_shape_edit) {
+            mn = map_shape_live_mn;
+            mx = map_shape_live_mx;
+        }
+        if (ed.selection.size() == 1 && ed.selection.front() == node.name) {
+            sel_shape = &node;
+            sel_mn = mn;
+            sel_mx = mx;
+        }
         // color: rules → explicit color: tag → a default green
         ImU32 col = IM_COL32(46, 107, 79, 255);
-        for (const auto& r : active_rules) {
+        for (const auto& r : sld ? sld->rules : active_rules) {
             if (r.tags.empty() || !maiz::node_matches(rule_filter_expr(r), node))
                 continue;
-            for (const auto& c : kMarkerColors)
-                if (r.color == c.tag) col = c.col;
+            color_value(r.color, col);
             break;
         }
+        if (const std::string* g = hormiga::bestow::given_color(node.name)) color_value(*g, col); // an overlapping shape's
         std::string ctag = tag_value(node, "color");
-        for (const auto& c : kMarkerColors)
-            if (ctag == c.tag) col = c.col;
+        color_value(ctag, col);
         // ALLOMONE, the `map` surface (roadmap phase F's first step): a derived
         // colour beats the view's own rules and the explicit tag, because it is
         // the only one of the three that COMPOSES — several scripts' opinions
@@ -986,8 +1029,8 @@ void HormigaApp::draw_map_section() {
         if (const AlloStyle* st = allo_style_for("map", node.name))
             if (st->has_color) col = st->rgba;
         bool sel = ed.selected(node.name);
-        ImU32 fill = (col & 0x00FFFFFF) | 0x33000000; // ~20% fill
-        ImU32 line = (col & 0x00FFFFFF) | (sel ? 0xFF000000 : 0xBB000000);
+        ImU32 fill = faded((col & 0x00FFFFFF) | 0x33000000, sld); // ~20% fill
+        ImU32 line = faded((col & 0x00FFFFFF) | (sel ? 0xFF000000 : 0xBB000000), sld);
         bool ellipse = hormiga::temper::field_value(node, "kind") == "ellipse";
         if (ellipse) {
             ImVec2 c((mn.x + mx.x) * 0.5f, (mn.y + mx.y) * 0.5f);
@@ -999,16 +1042,56 @@ void HormigaApp::draw_map_section() {
             dl->AddRectFilled(mn, mx, fill, 4.0f);
             dl->AddRect(mn, mx, line, 4.0f, 0, sel ? 2.5f : 1.5f);
         }
-        std::string lbl = hormiga::temper::field_value(node, "label");
-        if (!lbl.empty()) { // inside its own region: a narrow aisle's name never runs over the next one
-            dl->PushClipRect(ImVec2(mn.x + 2, mn.y), ImVec2(mx.x - 2, mx.y), true);
-            dl->AddText(ImVec2(mn.x + 4, mn.y + 3), line, lbl.c_str());
-            dl->PopClipRect();
-        }
+        // inside its own region: a narrow aisle's name never runs over the next one
+        draw_shape_label(dl, node, mn, mx, line, ImGui::GetFontSize(), 4.0f);
         if (hovered && mouse.x >= mn.x && mouse.x <= mx.x && mouse.y >= mn.y &&
             mouse.y <= mx.y)
             shape_hit = &node;
     }
+
+    /* A MARKER'S LOOK, ONCE PER CHANGE (2026-10-15). `marker_look` matches
+     * every rule's tag expression against the rune, which parses the
+     * expression each time: per marker, per frame. The look depends only on
+     * the model and the layers' rules, so it is kept until either changes
+     * (the edited layer's rules are part of the key, since they are edited
+     * here before they are saved). */
+    static std::unordered_map<const maiz::SceneNode*, MarkerLook> looks;
+    static std::string looks_key;
+    {
+        std::string key = std::to_string(model_gen);
+        for (const auto& [ln, d] : lay) {
+            key += "|" + ln;
+            for (const auto& r : d.rules) key += ";" + rule_filter_expr(r) + "," + r.color + "," + r.icon + "," + r.shape;
+        }
+        for (const auto& r : active_rules) key += "#" + rule_filter_expr(r) + "," + r.color + "," + r.icon + "," + r.shape;
+        if (key != looks_key) looks_key = key, looks.clear();
+    }
+    auto look_of = [&](const maiz::SceneNode& node, const LayerDraw* ld, const AlloStyle* mst) -> const MarkerLook& {
+        auto it = looks.find(&node);
+        if (it == looks.end()) it = looks.emplace(&node, marker_look(node, ld ? ld->rules : active_rules, mst)).first;
+        return it->second;
+    };
+    /* LABELS FIND THEIR NEIGHBOURS IN A GRID (2026-10-15), not by checking
+     * every label already placed, which was n-squared with "no overlap" on. */
+    constexpr float kCell = 96.0f;
+    std::unordered_map<long long, std::vector<int>> label_cells;
+    auto cell_key = [](int gx, int gy) { return ((long long)gx << 32) ^ (long long)(unsigned)gy; };
+    auto label_free = [&](float x0, float y0, float x1, float y1) {
+        for (int gx = (int)std::floor(x0 / kCell); gx <= (int)std::floor(x1 / kCell); ++gx)
+            for (int gy = (int)std::floor(y0 / kCell); gy <= (int)std::floor(y1 / kCell); ++gy)
+                if (auto c = label_cells.find(cell_key(gx, gy)); c != label_cells.end())
+                    for (int i : c->second) {
+                        const ImVec4& pl = placed_labels[(size_t)i];
+                        if (x0 < pl.z && x1 > pl.x && y0 < pl.w && y1 > pl.y) return false;
+                    }
+        return true;
+    };
+    auto label_add = [&](float x0, float y0, float x1, float y1) {
+        placed_labels.push_back({x0, y0, x1, y1});
+        for (int gx = (int)std::floor(x0 / kCell); gx <= (int)std::floor(x1 / kCell); ++gx)
+            for (int gy = (int)std::floor(y0 / kCell); gy <= (int)std::floor(y1 / kCell); ++gy)
+                label_cells[cell_key(gx, gy)].push_back((int)placed_labels.size() - 1);
+    };
 
     // ── markers (click = select, drag = the `move` action) ─────────────────
     const maiz::SceneNode* hit = nullptr;
@@ -1023,8 +1106,8 @@ void HormigaApp::draw_map_section() {
         // winner, so nothing is overridden here that anybody chose). One
         // resolver for the desktop and the phone (marker_look).
         const AlloStyle* mst = allo_style_for("map", node.name);
-        const MarkerLook look = marker_look(node, active_rules, mst);
-        ImU32 col = look.col;
+        const MarkerLook& look = look_of(node, L.ld, mst);
+        ImU32 col = faded(look.col, L.ld);
         const char* icon = look.icon;
         MShape msh = shape_from(look.shape);
         float r = (icon ? 11.0f : 6.5f) + (selected ? 2.5f : 0.0f);
@@ -1065,20 +1148,11 @@ void HormigaApp::draw_map_section() {
                               {lc.x - tsz.x * 0.5f, lc.y - r - 4 - tsz.y},
                               {lc.x - tsz.x * 0.5f, s.y + 4}};
             int pick = no_overlap ? -1 : 0;
-            for (int c = 0; c < 4 && pick < 0; ++c) {
-                bool clear = true;
-                for (const auto& pl : placed_labels)
-                    if (cand[c].x < pl.z && cand[c].x + tsz.x > pl.x &&
-                        cand[c].y < pl.w && cand[c].y + tsz.y > pl.y) {
-                        clear = false;
-                        break;
-                    }
-                if (clear) pick = c;
-            }
+            for (int c = 0; c < 4 && pick < 0; ++c)
+                if (label_free(cand[c].x, cand[c].y, cand[c].x + tsz.x, cand[c].y + tsz.y)) pick = c;
             if (pick >= 0) {
                 ImVec2 tp = cand[pick];
-                placed_labels.push_back(
-                    {tp.x, tp.y, tp.x + tsz.x, tp.y + tsz.y});
+                label_add(tp.x, tp.y, tp.x + tsz.x, tp.y + tsz.y);
                 // a soft halo keeps any label color legible over tiles
                 ImU32 halo = IM_COL32(255, 255, 255, 170);
                 dl->AddText(lf, lsz, ImVec2(tp.x + 1, tp.y + 1), halo,
@@ -1097,7 +1171,72 @@ void HormigaApp::draw_map_section() {
     // creates the mapshape rune (geo1/geo2 = the two corners). Esc cancels.
     // `was_drawing` (captured now) suppresses the marker/pan input this frame,
     // even on the release frame that clears the draw arm. ────────────────────
-    bool was_drawing = (map_draw_shape != 0) || map_shape_dragging;
+    /* ── RESHAPING (2026-10-15) ───────────────────────────────────────────
+     * The author: *"the best way to edit a shape is to be able to change
+     * 'verticies' that outline the shape ... when we are selecting a rectangle
+     * or elipsoid, their defining verticies are present and can be moved
+     * around"*. A rectangle and an ellipse are both defined by their box, so
+     * the handles are the box's: four corners and four edge midpoints. Drag
+     * one to reshape; drag inside the selected shape (not on a marker) to move
+     * it. Drawn over the markers so a handle is never hidden by one. */
+    int handle_hit = -1;
+    bool shape_released = false;
+    if (sel_shape && !map_draw_shape) {
+        const ImVec2 hp[8] = {{sel_mn.x, sel_mn.y}, {(sel_mn.x + sel_mx.x) * 0.5f, sel_mn.y},
+                              {sel_mx.x, sel_mn.y}, {sel_mx.x, (sel_mn.y + sel_mx.y) * 0.5f},
+                              {sel_mx.x, sel_mx.y}, {(sel_mn.x + sel_mx.x) * 0.5f, sel_mx.y},
+                              {sel_mn.x, sel_mx.y}, {sel_mn.x, (sel_mn.y + sel_mx.y) * 0.5f}};
+        for (int i = 0; i < 8; ++i)
+            if (hovered && std::fabs(mouse.x - hp[i].x) <= 7 && std::fabs(mouse.y - hp[i].y) <= 7) handle_hit = i;
+        for (int i = 0; i < 8; ++i) {
+            const bool hot = i == handle_hit || (reshaping && i == map_shape_edit_idx);
+            const float h = hot ? 6.0f : 4.5f;
+            dl->AddRectFilled(ImVec2(hp[i].x - h, hp[i].y - h), ImVec2(hp[i].x + h, hp[i].y + h),
+                              IM_COL32(255, 255, 255, 245), 2.0f);
+            dl->AddRect(ImVec2(hp[i].x - h, hp[i].y - h), ImVec2(hp[i].x + h, hp[i].y + h),
+                        IM_COL32(40, 70, 60, 255), 2.0f, 0, 1.5f);
+        }
+        const bool inside = hovered && mouse.x >= sel_mn.x && mouse.x <= sel_mx.x && mouse.y >= sel_mn.y &&
+                            mouse.y <= sel_mx.y;
+        const int over = handle_hit >= 0 ? handle_hit : (inside && !hit ? 8 : -1);
+        if (over >= 0 || reshaping) {
+            static const ImGuiMouseCursor cur[9] = {
+                ImGuiMouseCursor_ResizeNWSE, ImGuiMouseCursor_ResizeNS,   ImGuiMouseCursor_ResizeNESW,
+                ImGuiMouseCursor_ResizeEW,   ImGuiMouseCursor_ResizeNWSE, ImGuiMouseCursor_ResizeNS,
+                ImGuiMouseCursor_ResizeNESW, ImGuiMouseCursor_ResizeEW,   ImGuiMouseCursor_ResizeAll};
+            ImGui::SetMouseCursor(cur[reshaping ? map_shape_edit_idx : over]);
+        }
+        if (ImGui::IsItemActivated() && over >= 0 && !ImGui::GetIO().KeyShift) {
+            map_shape_edit = sel_shape->name;
+            map_shape_edit_idx = over;
+            map_shape_mn0 = map_shape_live_mn = sel_mn;
+            map_shape_mx0 = map_shape_live_mx = sel_mx;
+            map_shape_grab = mouse;
+        }
+    }
+    if (!map_shape_edit.empty() && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        // released: the new box, written as its two corners in one undo frame
+        const float moved = std::fabs(map_shape_live_mn.x - map_shape_mn0.x) +
+                            std::fabs(map_shape_live_mn.y - map_shape_mn0.y) +
+                            std::fabs(map_shape_live_mx.x - map_shape_mx0.x) +
+                            std::fabs(map_shape_live_mx.y - map_shape_mx0.y);
+        if (moved > 2.0f && map_shape_live_mx.x - map_shape_live_mn.x >= 2 &&
+            map_shape_live_mx.y - map_shape_live_mn.y >= 2) {
+            double la1, lo1, la2, lo2;
+            to_geo(map_shape_live_mn, la1, lo1);
+            to_geo(map_shape_live_mx, la2, lo2);
+            char g1[64], g2[64];
+            std::snprintf(g1, sizeof g1, "%.7g,%.7g", la1, lo1);
+            std::snprintf(g2, sizeof g2, "%.7g,%.7g", la2, lo2);
+            pending_cmds.push_back(maiz::compile_commit({"set " + map_shape_edit + " geo1 " + text_arg(g1),
+                                                         "set " + map_shape_edit + " geo2 " + text_arg(g2)}));
+        }
+        map_shape_edit.clear();
+        map_shape_edit_idx = -1;
+        shape_released = true;
+    }
+
+    bool was_drawing = (map_draw_shape != 0) || map_shape_dragging || !map_shape_edit.empty() || shape_released;
     if (map_draw_shape) {
         if (hovered && ImGui::IsKeyPressed(ImGuiKey_Escape)) map_draw_shape = 0;
         if (ImGui::IsItemActivated() && hovered) {
@@ -1135,9 +1274,11 @@ void HormigaApp::draw_map_section() {
                          (map_draw_shape == 2 ? "ellipse" : "rect") + "\"",
                      "set " + name + " geo1 \"" + g1 + "\"",
                      "set " + name + " geo2 \"" + g2 + "\"",
-                     "set " + name + " canvas " + json_str(map_canvas),
-                     "tag " + name + " +type:mapshape"}));
+                     "set " + name + " canvas " + text_arg(map_canvas),
+                     "tag " + name + " +type:mapshape" +
+                         (hormiga::canvas::join_layer(scene, maps, map_sel, name).empty() ? std::string() : " +layer:" + map_sel)}));
                 ed.selection = {name};
+                begin_naming(name, "mapshape"); // its label, typed now
             }
             map_shape_dragging = false;
             map_draw_shape = 0; // one shape per arm (re-arm from the toolbar)
@@ -1167,7 +1308,19 @@ void HormigaApp::draw_map_section() {
             map_box_start = mouse;
         }
     }
+    /* A CLICK IS NOT A DRAG (2026-10-15): the press and the release within a
+     * few pixels. A click on empty map selects nothing (the author: "i should
+     * be able to click away from something ... and i select nothing"), and a
+     * click on a marker selects it without writing its position again, which
+     * every click used to do (a `move` to where it already was). */
+    const ImVec2 pressed_at = ImGui::GetIO().MouseClickedPos[0];
+    const bool a_click = std::fabs(mouse.x - pressed_at.x) < 4 && std::fabs(mouse.y - pressed_at.y) < 4;
     if (!was_drawing && ImGui::IsItemDeactivated()) {
+        if (a_click && !map_drag_marker.empty()) { // selected, not moved
+            ed.selection = {map_drag_marker};
+            map_drag_marker.clear();
+        }
+        if (a_click && !map_drag_ref.empty()) map_drag_ref.clear();
         if (!map_drag_ref.empty()) { // #4: a reference point was MOVED — its whole
             double la, lo;           // fan follows, since children are relative
             to_geo(mouse, la, lo);
@@ -1198,10 +1351,13 @@ void HormigaApp::draw_map_section() {
                 to_geo(mouse, la, lo);
                 char geo[64];
                 std::snprintf(geo, sizeof geo, "%.7g,%.7g", la, lo);
+                std::string mch = active_channel; // its own layer's positions
+                for (const auto& L : located_nodes)
+                    if (L.node->name == map_drag_marker && L.ld) mch = L.ld->channel;
                 auto cmds = map_actions.run(
                     "move", scene,
                     {{"name", map_drag_marker}, {"geo", geo},
-                     {"field", geo_field_for(active_channel)}}); // this view's chan
+                     {"field", geo_field_for(mch)}});
                 if (!cmds.empty()) pending_cmds.push_back(maiz::compile_commit(cmds));
             }
             map_drag_marker.clear();
@@ -1217,6 +1373,8 @@ void HormigaApp::draw_map_section() {
                     picked.push_back(L.node->name);
             if (!picked.empty()) ed.selection = picked;
             map_box_active = false;
+        } else if (a_click && !hit && !shape_hit && !ref_hit && !shift) {
+            ed.selection.clear(); // clicked away: nothing selected
         } else { // pan ended: flush the viewport (config tier, undo-exempt)
             pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
         }
@@ -1275,6 +1433,18 @@ void HormigaApp::draw_map_section() {
     if (hit && !shift && ImGui::IsItemClicked(ImGuiMouseButton_Left) &&
         map_drag_marker.empty())
         ed.selection = {hit->name}; // plain click = replace; shift handled above
+    /* DOUBLE-CLICK TO RENAME (2026-10-15). The author: "double clicking on a
+     * shape should prompt me to edit the label in it". The namer opens where
+     * the pointer is, holding the label (or a marker's title) to edit; Enter
+     * writes it through the same door as any title, so the name follows. */
+    if (hovered && !map_draw_shape && !shift && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+        const maiz::SceneNode* dn = hit ? hit : shape_hit;
+        if (dn) {
+            ed.selection = {dn->name};
+            const std::string f = dn->glyph == "mapshape" ? std::string("label") : hormiga::naming::title_field(dn->glyph);
+            begin_naming(dn->name, dn->glyph, f.empty() ? rune_title(*dn) : hormiga::temper::field_value(*dn, f.c_str()));
+        }
+    }
 
     // armed placement (from the search bar): a plain click places the chosen
     // rune right here — one `move` action, one undo frame
@@ -1411,7 +1581,7 @@ void HormigaApp::draw_map_section() {
             std::snprintf(geo, sizeof geo, "%.7g,%.7g", map_ctx_lat, map_ctx_lon);
             pending_cmds.push_back(maiz::compile_commit(
                 {"rune new refpoint " + name, "set " + name + " geo \"" + geo + "\"",
-                 "set " + name + " label \"Reference\"", "set " + name + " canvas " + json_str(map_canvas)}));
+                 "set " + name + " label \"Reference\"", "set " + name + " canvas " + text_arg(map_canvas)}));
             ed.selection = {name};
         }
         ImGui::Separator();
@@ -1432,7 +1602,8 @@ void HormigaApp::draw_map_section() {
     }
     if (layer_hidden)
         dl->AddText(ImVec2(p0.x + 60, p0.y + 12), IM_COL32(150, 60, 40, 255),
-                    ICON_FA_EYE_SLASH "  this layer is hidden - its eye is in Layers");
+                    ICON_FA_EYE_SLASH "  the layer you are editing is hidden: what is on it, or added to it, "
+                                      "does not show (its eye is in Layers)");
 
     /* ── ON THE CANVAS: the tools and the zoom (2026-10-05) ─────────────────
      * Where a drawing application keeps them: a strip of tools at the left
@@ -1523,9 +1694,9 @@ unsigned HormigaApp::view_label_color(const maiz::SceneNode* v) const {
     std::string s = hormiga::temper::field_value(*v, "label_color");
     if (s == "white") return IM_COL32(245, 245, 245, 255);
     if (s == "black") return IM_COL32(10, 10, 10, 255);
-    for (const auto& c : kMarkerColors)
-        if (s == c.tag) return c.col;
-    return dark;
+    unsigned c = dark;
+    color_value(s, c);
+    return c;
 }
 
 /* Parse a view rune's style rules — shared by the map canvas, the layer

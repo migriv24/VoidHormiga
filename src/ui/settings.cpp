@@ -52,6 +52,11 @@ void HormigaApp::draw_settings() {
         // expected but costs compute, so each effect is separately opt-out, and
         // "Performance mode" clears them all in one click. Config ui.fx.*;
         // shadows/highlights re-theme immediately (apply_theme). ──────────────
+        ImGui::SeparatorText("Time");
+        if (ImGui::Checkbox("24-hour clock in the calendar", &clock24))
+            dispatch_and_reproject(std::string("config set ui.clock24 \"") + (clock24 ? "1" : "0") + "\"");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("off: 3 PM, 3:30 PM. on: 15:00, 15:30.\nTimes are stored the same way either way.");
         ImGui::SeparatorText("Visual effects");
         auto fx_row = [&](const char* label, bool& val, const char* key,
                           const char* help, bool retheme) {

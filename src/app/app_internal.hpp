@@ -53,6 +53,7 @@
 #include "domain/temper.hpp"
 #include "domain/canvas.hpp" // canvases with data: Earth, or a drawn plan
 #include "domain/kinds.hpp"  // the kinds of thing, as data: names, looks, traits
+#include "domain/bestow.hpp" // the colour a shape gives, live (marker_look)
 #include "gis/source.hpp"   // the map engine: worlds, projections, metrics
 
 #include "stb_image.h" // decls only (impl lives in main/desktop.cpp) — the
@@ -120,6 +121,14 @@ std::string json_str(const std::string& s);
  * literal `'` escapes as `\'`. This is the sanctioned way to pass structured
  * JSON through the command line. */
 std::string json_arg(const std::string& json);
+/* A plain-text VALUE as one dispatcher argument, for `set` (2026-10-15, Q112).
+ * `json_str`'s "..." looked right and was not: Void Core has no escapes inside
+ * double quotes, so `Ana's "big" day` was stored as `Ana's \big\ day`. Single
+ * quotes keep every character but an apostrophe, which `json_arg` escapes, and
+ * a trailing backslash, which it moves outside. So a description can hold any
+ * character at all. A JSON literal (an effect's result, `setjson`, `config
+ * set`) is still `json_str`'s job. */
+inline std::string text_arg(const std::string& s) { return json_arg(s); }
 
 /* A field SET VIA setjson comes back from field_value in its JSON-escaped form
  * (\n, \", …). Decode it to the real text for editing/parsing (multi-line
@@ -137,6 +146,18 @@ std::string unjson_str(const std::string& raw);
  * rest of the time. Returns true on the commit frame with *out = final. */
 bool slider_field(const char* label, float stored, float mn, float mx,
                          const char* fmt, float* out);
+/* The colour wheel (2026-10-15), committing like `slider_field`: the colour
+ * being dragged is held in window storage so it does not snap back, `stored`
+ * shows the rest of the time, and it returns true ONCE, on release, with
+ * `out` = the colour (an IM_COL32). One command per pick, not one per frame. */
+bool color_wheel(const char* id, unsigned stored, unsigned& out);
+/* A map shape's LABEL as its Label widget set it (label_size, label_color,
+ * label_bold, label_italic, label_pos; 2026-10-15), clipped to the shape's box
+ * [mn, mx]. `line` is the outline colour, the label's colour unless it has
+ * its own; `px` the base text size; `pad` the inset from the edge. The desktop
+ * canvas and the phone draw it with this, so they cannot disagree. */
+void draw_shape_label(ImDrawList* dl, const maiz::SceneNode& n, ImVec2 mn, ImVec2 mx, unsigned line, float px,
+                      float pad);
 
 // ── base-map SOURCES: now `gis::MapSource` (2026-08-21) ────────────────────
 //
@@ -386,6 +407,36 @@ inline const MarkerColor kMarkerColors[] = {
     {"purple", IM_COL32(130, 90, 180, 255)}, {"pink", IM_COL32(210, 100, 150, 255)},
     {"brown", IM_COL32(138, 109, 59, 255)}, {"gray", IM_COL32(120, 120, 125, 255)},
 };
+/* A `color:` value as a colour: one of the named ones above or, since
+ * 2026-10-15, six hex digits (`color:e07a1f`), which is what the colour wheel
+ * writes (the author: "give a specific color tag to any kind ... i'd wanna give
+ * more specific colors to rectangles and elipsoids"). No `#`: a tag is a word
+ * in a command line and a tag expression, and `#` is punctuation in both.
+ * Leaves `col` alone and returns false for anything else, so every reader keeps
+ * the colour it had when a value is not a colour. The ONE reader: there were
+ * seven copies of the named-colour loop, which is how a hex tag would have
+ * coloured the map and not the calendar. */
+inline bool color_value(std::string_view v, unsigned& col) {
+    for (const auto& c : kMarkerColors)
+        if (v == c.tag) { col = c.col; return true; }
+    if (v.size() == 7 && v[0] == '#') v.remove_prefix(1); // a hand-typed #rrggbb (a field, a rule)
+    if (v.size() != 6) return false;
+    unsigned rgb = 0;
+    for (char ch : v) {
+        const int d = ch >= '0' && ch <= '9' ? ch - '0' : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
+                      : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10 : -1;
+        if (d < 0) return false;
+        rgb = rgb << 4 | (unsigned)d;
+    }
+    col = IM_COL32((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, 255);
+    return true;
+}
+/* ...and back: the tag the colour wheel writes for a colour. */
+inline std::string color_tag_of(unsigned col) {
+    char b[16];
+    std::snprintf(b, sizeof b, "color:%02x%02x%02x", col & 0xFF, (col >> 8) & 0xFF, (col >> 16) & 0xFF);
+    return b;
+}
 std::string tag_value(const maiz::SceneNode& n, const char* ns);
 
 // ── marker SHAPES (author 2026-07-24): a marker can be a circle (default), a
@@ -445,16 +496,15 @@ MarkerLook marker_look(const maiz::SceneNode& n, const std::vector<Rule>& rules,
         std::string e;
         for (const auto& t : r.tags) e += (e.empty() ? "" : " AND ") + t;
         if (!maiz::node_matches(e, n)) continue;
-        for (const auto& c : kMarkerColors)
-            if (r.color == c.tag) L.col = c.col;
+        color_value(r.color, L.col);
         for (const auto& ic : kMarkerIcons)
             if (r.icon == ic.tag) L.icon = ic.glyph;
         if (!r.shape.empty()) L.shape = r.shape;
         break;
     }
+    if (const std::string* g = hormiga::bestow::given_color(n.name)) color_value(*g, L.col); // a shape's, live
     const std::string ctag = tag_value(n, "color"); // …explicit tags win
-    for (const auto& c : kMarkerColors)
-        if (ctag == c.tag) L.col = c.col;
+    color_value(ctag, L.col);
     const std::string itag = tag_value(n, "icon");
     for (const auto& ic : kMarkerIcons)
         if (itag == ic.tag) L.icon = ic.glyph;
@@ -479,6 +529,11 @@ inline const char* kDowNames[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat
 bool cal_leap(int y);
 int cal_dim(int y, int m);
 int cal_dow(int y, int m, int d);
+/* A stored "HH:MM" as a person reads it (2026-10-15): "3 PM", "3:30 PM", or
+ * "15:30" with the 24-hour clock (Settings, `ui.clock24`, off by default; the
+ * author: "no military time on the calendar ... off by default"). Storage
+ * stays "HH:MM"; anything that is not one passes through untouched. */
+std::string clock_label(const std::string& hhmm, bool h24);
 void cal_today(int& y, int& m, int& d);
 void cal_add_days(int& y, int& m, int& d, int delta);
 float cal_parse_hhmm(const std::string& s);

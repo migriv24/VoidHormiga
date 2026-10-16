@@ -193,8 +193,15 @@ std::string HormigaApp::export_calendar_ics() {
             // the FROZEN id: a UID from the editable name tells a subscriber
             // that renaming an event deleted it
             ie.uid = (n.id.empty() ? n.name : n.id) + "@voidhormiga";
-            std::string t = hormiga::temper::field_value(n, "title_en");
-            ie.summary = t.empty() ? n.name : t;
+            /* ITS TITLE, AS THE GRID SHOWS IT (2026-10-15). This read
+             * `title_en` and fell back to the HANDLE, so every entry nobody had
+             * titled left as `event-3`, and incidents and a database's own
+             * dated kinds (whose titles live elsewhere) always did. The author:
+             * "when exporting a calendar it uses the event names, not the
+             * titles". `rune_title` is what the grid draws; a rune with no
+             * title at all leaves under its name as a person reads it. */
+            std::string t = rune_title(n);
+            ie.summary = t == n.name ? humanize(n.name) : t;
             ie.description = hormiga::temper::field_value(
                 n, n.glyph == "incident" ? "description" : "summary_en");
             ie.location = hormiga::temper::field_value(n, "venue");

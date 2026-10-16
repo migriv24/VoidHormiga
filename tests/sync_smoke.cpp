@@ -28,6 +28,7 @@
 #include "sync/merge.hpp"
 #include "sync/peer.hpp"
 
+#include <chrono>
 #include <cstdio>
 #include <string>
 #include <thread>
@@ -357,6 +358,49 @@ static void test_loopback_session() {
     ok(!dead.send("x", &err), "a session that never opened refuses to send");
 }
 
+/* ── 9. two live beacons, every path at once (2026-10-14) ────────────────
+ * The beacon now sends each announcement by several paths (the group per
+ * interface, broadcasts, unicast to gateways and members), so a receiver gets
+ * several copies. `heard` is the Migos screen's connection strength and must
+ * count announcements, not copies. A machine that delivers no multicast or
+ * broadcast to itself (some CI) cannot run this, and says so rather than
+ * failing. */
+static void test_live_beacons() {
+    std::printf("live beacons\n");
+    PeerInfo a, b;
+    a.peer_id = "smoke-beacon-a";
+    a.display = "A";
+    a.version = "v:a";
+    b.peer_id = "smoke-beacon-b";
+    b.display = "B";
+    b.version = "v:b";
+    Beacon ba, bb;
+    std::string err;
+    if (!ba.start(a, &err) || !bb.start(b, &err)) {
+        std::printf("  skip the beacon port is not available here (%s)\n", err.c_str());
+        return;
+    }
+    // tell_directly takes what it can use and ignores the rest
+    ba.tell_directly({"127.0.0.1", "not an address", "", "999.1.1.1"});
+    std::this_thread::sleep_for(std::chrono::milliseconds(4500)); // announcements at ~0 s and ~3 s
+    auto find = [](const Beacon& at, const char* id) {
+        for (const auto& p : at.peers(30))
+            if (p.peer_id == id) return p;
+        return PeerInfo{};
+    };
+    const PeerInfo heard_a = find(bb, "smoke-beacon-a"), heard_b = find(ba, "smoke-beacon-b");
+    ba.stop();
+    bb.stop();
+    if (heard_a.peer_id.empty() && heard_b.peer_id.empty()) {
+        std::printf("  skip nothing is delivered to this machine's own beacon port\n");
+        return;
+    }
+    ok(!heard_a.peer_id.empty() && !heard_b.peer_id.empty(), "two beacons hear each other");
+    ok(heard_a.heard >= 1 && heard_a.heard <= 2 && heard_b.heard >= 1 && heard_b.heard <= 2,
+       "two announcements, however many copies arrived, count as at most two");
+    ok(find(ba, "smoke-beacon-a").peer_id.empty(), "a beacon does not list itself");
+}
+
 int main() {
     std::printf("sync smoke\n");
     test_version_names();
@@ -370,6 +414,7 @@ int main() {
     test_seal();
     test_beacon_payload();
     test_loopback_session();
+    test_live_beacons();
     std::printf(failures ? "\n%d FAILED\n" : "\nall passed\n", failures);
     return failures ? 1 : 0;
 }

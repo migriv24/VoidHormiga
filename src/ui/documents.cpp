@@ -112,7 +112,7 @@ std::string HormigaApp::capture_doc_json(const std::string& name) {
             std::string v = f.value_json;
             if (f.is_string && v.size() >= 2) v = v.substr(1, v.size() - 2);
             if (v.empty() || v == "null") continue;
-            cmds.push_back("set " + n.name + " " + f.key + " " + json_str(v));
+            cmds.push_back("set " + n.name + " " + f.key + " " + text_arg(v));
         }
     }
     j["commands"] = cmds;
@@ -276,7 +276,7 @@ void HormigaApp::new_document(const std::string& name) {
     if (scene.find(mantle)) { toast("a document named that exists", true); return; }
     pending_cmds.push_back("mantle new " + mantle); // creates + makes active
     pending_cmds.push_back("rune new hero doc-hero");
-    pending_cmds.push_back("set doc-hero title_en " + json_str(name));
+    pending_cmds.push_back("set doc-hero title_en " + text_arg(name));
     pending_cmds.push_back("set doc-hero row \"0\"");
     pending_cmds.push_back(std::string("use ") + kDataMantle);
     cur_doc = mantle;

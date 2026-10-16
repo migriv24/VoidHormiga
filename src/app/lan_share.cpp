@@ -101,8 +101,24 @@ void LanRuntime::refresh_self(HormigaApp& app) {
  * Maiz, stage A: the two cannot disagree if they call the same function). The
  * private tags come from the Antfarm's hol_lan_share node, so the Antfarm still
  * decides; what changed is that no view checks a tag itself. */
+/* ── ONCE PER CHANGE, NOT ONCE PER FRAME (2026-10-15) ────────────────────────
+ *
+ * `share_filter` and `device_tag` run every frame, from frame_prelude, and each
+ * projected the whole Antfarm mantle to read these settings: 5.4 and 5.3 ms, so
+ * 10.6 of the 14 ms every frame took, on every tab, measured with
+ * HORMIGA_FRAME_TIMING and a probe around each call. The settings only change
+ * when the model does, and every change ends in `reproject`, which counts. */
+const hormiga::collab::ShareSettings& HormigaApp::share_settings_now() {
+    if (!share_cache || share_gen != model_gen) {
+        share_cache = std::make_shared<hormiga::collab::ShareSettings>(
+            hormiga::collab::share_settings(project(core, kAntfarmMantle)));
+        share_gen = model_gen;
+    }
+    return *share_cache;
+}
+
 maiz::ShareFilter HormigaApp::share_filter() {
-    const auto share = hormiga::collab::share_settings(project(core, kAntfarmMantle));
+    const auto share = share_settings_now();
     return [share](const maiz::SceneNode& n) { return !hormiga::collab::is_private(n, share); };
 }
 
@@ -121,7 +137,7 @@ maiz::ShareFilter HormigaApp::share_filter() {
  * identity for a rune that is not its name -- belongs upstream (Void Core /
  * Palabra), and is asked for in MESSAGE_FOR_VOIDMAIZ_hormiga-networking-*. */
 std::string HormigaApp::device_tag() {
-    if (hormiga::collab::share_settings(project(core, kAntfarmMantle)).node.empty()) return {};
+    if (share_settings_now().node.empty()) return {};
     const std::string fp = LanRuntime::fingerprint(LanRuntime::of(*this));
     return fp.size() >= 4 ? fp.substr(0, 4) : std::string();
 }
@@ -199,7 +215,7 @@ Plan LanRuntime::build_plan(HormigaApp& app, std::string* state_out) {
                 p.items.push_back({"key", rel, n.name + "." + f + " names it, but it is not on this computer (looked for " + tried + ")", {}, 0, false});
                 continue;
             }
-            if (fs::path(v).is_absolute()) fixups.push_back("set " + n.name + " " + f + " " + json_str(rel));
+            if (fs::path(v).is_absolute()) fixups.push_back("set " + n.name + " " + f + " " + text_arg(rel));
             if (key_names.insert(rel).second)
                 p.items.push_back({"key", rel, "the key " + n.name + "." + f + " names", at, (long long)fs::file_size(at, ec), true});
         }
@@ -224,7 +240,7 @@ Plan LanRuntime::build_plan(HormigaApp& app, std::string* state_out) {
             if (fs::equivalent(at, app.db_file(), ec)) {
                 p.items.push_back({"store", u8(at.filename()), "the working copy's SQLite - rebuilt from the database when it opens", {}, 0, false});
             } else if (fs::is_regular_file(at, ec)) {
-                if (fs::path(v).is_absolute()) fixups.push_back("set " + n.name + " file " + json_str(u8(at.filename())));
+                if (fs::path(v).is_absolute()) fixups.push_back("set " + n.name + " file " + text_arg(u8(at.filename())));
                 p.items.push_back({"store", u8(at.filename()), "the SQLite store " + n.name + " uses - somebody's only copy", at, (long long)fs::file_size(at, ec), true});
             }
         }

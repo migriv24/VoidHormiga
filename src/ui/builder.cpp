@@ -130,7 +130,7 @@ void HormigaApp::draw_document_canvas(float body_h) {
         }
         if (done || ImGui::IsItemDeactivatedAfterEdit()) { // commit
             pending_cmds.push_back("set " + n.name + " " + base + suf + " " +
-                                   json_str(doc_edit_buf));
+                                   text_arg(doc_edit_buf));
             doc_edit_node.clear();
         }
     };
@@ -1336,7 +1336,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
                     for (size_t i = 0; i < ts.size(); ++i)
                         nq += (i ? j : "") + ts[i];
                     pending_cmds.push_back("set " + sel->name + " query " +
-                                           json_str(nq));
+                                           text_arg(nq));
                 };
                 if (complex || filter_raw) {
                     char qbuf[256];
@@ -1345,7 +1345,7 @@ void HormigaApp::draw_builder_section(float /*avail_h*/) {
                     if (ImGui::InputText("##rawq", qbuf, sizeof qbuf,
                                          ImGuiInputTextFlags_EnterReturnsTrue))
                         pending_cmds.push_back("set " + sel->name + " query " +
-                                               json_str(qbuf));
+                                               text_arg(qbuf));
                     ImGui::Checkbox("advanced (raw tag expression)", &filter_raw);
                 } else {
                     for (size_t i = 0; i < terms.size(); ++i) {

@@ -27,6 +27,7 @@
 
 #include "voidmaiz/scene.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
@@ -136,6 +137,68 @@ inline std::string config_name(std::string v) {
 /* Where the camera of each canvas is remembered (config tier, undo-exempt). */
 inline std::string camera_key(const std::string& base, const std::string& canvas) {
     return canvas.empty() ? base : base + "." + canvas;
+}
+
+/* ── A LAYER HOLDS WHAT WAS MADE ON IT (2026-10-15) ─────────────────────────
+ *
+ * The author: *"Anything created on 'layer 2' would be something created on
+ * that layer. we can hide or show a layer ... its acting weird, hiding
+ * previously made objects that aren't on that layer."* It was: a layer was a
+ * way of drawing EVERYTHING, so only the edited layer drew real markers (of
+ * everything), the others drew grey dots (of everything), and hiding the
+ * edited layer hid the whole map. Now a layer is a drawing application's
+ * layer, and territory.md's founding line holds literally: layers ARE tags.
+ *
+ *   - a thing belongs to the layer its `layer:<layer rune>` tag names, on that
+ *     layer's canvas; a thing with no such tag, or naming a layer that is gone
+ *     or on another canvas, belongs to the canvas's BOTTOM layer, so every map
+ *     made before this draws exactly as it did and deleting a layer never
+ *     loses what was on it;
+ *   - a rune on two canvases (a contact on Earth and on a store's floor) may
+ *     carry one tag per canvas;
+ *   - every visible layer draws its own things, with its own rules.
+ *
+ * Bottom = lowest `order`, then scene order: the same sort as map_layers(). */
+inline std::vector<const maiz::SceneNode*> layers(const maiz::Scene& s, const std::string& canvas) {
+    std::vector<const maiz::SceneNode*> out;
+    for (const auto& n : s.nodes)
+        if (n.glyph == "map" && on(n, canvas)) out.push_back(&n);
+    std::stable_sort(out.begin(), out.end(), [](const maiz::SceneNode* a, const maiz::SceneNode* b) {
+        return std::atoi(field_value(*a, "order").c_str()) < std::atoi(field_value(*b, "order").c_str());
+    });
+    return out;
+}
+
+/* The layer `n` belongs to among `ls` (one canvas's layers, bottom first);
+ * "" when the canvas has none. */
+inline std::string layer_of(const maiz::SceneNode& n, const std::vector<const maiz::SceneNode*>& ls) {
+    if (ls.empty()) return {};
+    for (const auto& t : n.tags)
+        if (t.size() > 6 && t.compare(0, 6, "layer:") == 0)
+            for (const auto* l : ls)
+                if (t.compare(6, std::string::npos, l->name) == 0) return l->name;
+    return ls.front()->name;
+}
+
+/* The tag commands that move `n` to `to` on this canvas (its other canvases'
+ * memberships untouched). The bottom layer needs no tag. */
+inline std::string move_to_layer(const maiz::SceneNode& n, const std::vector<const maiz::SceneNode*>& ls,
+                                 const std::string& to) {
+    std::string cmd;
+    for (const auto& t : n.tags)
+        if (t.size() > 6 && t.compare(0, 6, "layer:") == 0)
+            for (const auto* l : ls)
+                if (t.compare(6, std::string::npos, l->name) == 0) cmd += " -" + t;
+    if (!ls.empty() && to != ls.front()->name) cmd += " +layer:" + to;
+    return cmd.empty() ? std::string() : "tag " + n.name + cmd;
+}
+
+/* The tag that puts a new or placed thing on `layer` (none for the bottom
+ * layer, which holds everything untagged). For a rune that exists, the move. */
+inline std::string join_layer(const maiz::Scene& s, const std::vector<const maiz::SceneNode*>& ls,
+                              const std::string& layer, const std::string& rune) {
+    if (const maiz::SceneNode* n = s.find(rune)) return move_to_layer(*n, ls, layer);
+    return ls.empty() || layer.empty() || layer == ls.front()->name ? std::string() : "tag " + rune + " +layer:" + layer;
 }
 
 } // namespace hormiga::canvas

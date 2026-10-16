@@ -426,6 +426,8 @@ dockspace**, and its panels are ordinary windows docked into it
 |---|---|
 | Builder | Document options (the toolbar), Blocks, Document, Inspector |
 | Antfarm | Node graph, Inspector |
+| Map (2026-10-05) | Map, Inspector, Overview, Layers, Actions |
+| Calendar (2026-10-15) | Calendar (navigation, quick-add, the grid), Inspector, Upcoming, Views, Export |
 
 - **What this replaces:** hand-managed `BeginChild` panes, a splitter fraction
   saved in config, and a palette fixed at 150px. That was this application
@@ -451,6 +453,39 @@ name was the author's own uncertainty - *"maybe a better word would be
 and a picture in a newsletter, and an event grid gets a search box too. What
 separates the group is that the block IS a widget rather than a rendering of
 rows, and the heading's tooltip says so.
+
+## The inspector is a list of widgets (2026-10-15)
+
+The author: *"'size (w,h)' does not need to be a visible property of an
+event"*; *"the date should just be plainly written as text, with a button to
+'edit in calendar view'"*; *"the list of field entries ... should be a list of
+widgets (a vertical list, auto adjust stuff so it looks good). And we can add a
+widget for different style tags, such as adding a color wheel"*; and *"I really
+want this in the inspector in the map tab as well"*.
+
+So the Data tab's detail pane, the map's Inspector and the calendar's Inspector
+draw **one form** (`ui/inspector.cpp`, `draw_rune_form`), top to bottom:
+
+1. **When**, for anything dated: the date as words (*Monday, September 14,
+   2026*), the times or *All day*, a recurrence in words, the venue, and **Edit
+   in calendar view**, which opens the calendar on that day with it selected
+   (a week, when it has a time, so dragging changes it).
+2. **The everyday fields**, each a card with its name above a full-width editor,
+   the title first.
+3. **Style widgets**, each a card that can be removed: **Colour** (ten swatches
+   and a colour wheel that writes `color:rrggbb`), **Icon**, **Marker shape**,
+   and for a map shape its **Label**. Each is a tag (or, for the label, its
+   fields), so rules and searches see it. **+ Add a widget** at the end offers
+   the ones a rune does not have.
+4. **Tags** (the tag editor, with what a covering shape gives).
+5. **Advanced properties**, closed: every stored value the cards above present
+   (the date, the times, positions, the legacy fields), still editable, and the
+   node-canvas size nobody needed to see.
+
+A colour is any colour now: `color:` takes a name or six hex digits, read by
+one function (`color_value`) where there had been seven copies of a loop over
+the named ones; the map, the phone, the calendar, the PNG and the website all
+draw it.
 
 # Precedents
 

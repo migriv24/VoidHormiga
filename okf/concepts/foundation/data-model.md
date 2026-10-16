@@ -247,3 +247,63 @@ is for a person typing, so it forgives prefixes and partial words.
 title, a note's own name or first line, a shape's label, an incident's
 description, else its handle. A note gained a `title` field the same day
 ("notes have names i should be able to assign in inspector").
+
+# A name follows its title (2026-10-15)
+
+The author: *"i'd like for the 'name' and the 'title' of a rune to be the same
+if possible ... if multiple events were just titled 'birthday' then the actual
+name should at least have the title in it, plus something to make it unique. the
+name reacts to the title."* The "linked to" search, the calendar's export and
+the map all read titles, so a handle that drifts from its title shows up as a
+mismatch everywhere.
+
+They stay two things: the **name** is the command-safe handle that links, the
+CLI and the transcript use; the **title** is prose. What changed is that the
+name is **derived** from the title for as long as nobody has said otherwise
+(`domain/naming.hpp`):
+
+| the name is... | when the title changes, the name... |
+|---|---|
+| minted (`event-3`, `shape-2`, `event-081f-1`) | follows: `bake-sale` |
+| the old title's slug (`birthday`, `birthday-2`) | follows |
+| anything, on a rune with no title yet | follows (it is read as its humanized name) |
+| typed by hand, and not its title's slug | stays |
+
+- **Which field is the title**: `display_name` for contacts and organizations,
+  `title_en` for events and jobs, `title` for notes and every kind a database
+  made, `label` for a map shape. Not view runes (layers, canvases, saved
+  calendar views: their names are also keys in view config), not reference
+  points (their name is a value in their children's `ref`), not blocks.
+- **The slug** folds Latin accents (`José García` → `jose-garcia`) and drops
+  apostrophes (`Garfield's` → `garfields`). A taken name gets `-2`, `-3`; in a
+  database with a share node it carries four hex of the device instead
+  (`bake-sale-081f`), so two members naming two things alike before they sync
+  do not mint one name (decided 2026-10-15, Q110: "sounds good").
+- **What a title may hold, and what a description may** (Q112, the author:
+  *"names and titles should be a bit more strict on what characters can go in
+  them. However descriptions and summaries should be more loose"*). A name is a
+  slug. A title is one line (`naming::clean_title`): every letter in every
+  script, digits, spaces and ordinary punctuation; line breaks become spaces;
+  the backslash, the backtick and < > { } [ ] | ^ ~ go; a straight `"` becomes
+  “ or ”; 120 characters.
+  Cleaned at the same door as the rename, with a toast when anything changed. A
+  description or summary is not cleaned at all, and now keeps every character:
+  `set` values are single-quoted (`text_arg`), because Void Core reads no
+  escapes inside double quotes and `json_str` had been storing `"big"` as
+  `\big\`.
+- **One door.** `dispatch_and_reproject` reads every single `set` with Void
+  Core's own decoder; a `set` of a rune's title field gains the `rune rename` it
+  implies **in the same batch**, so one undo takes back both and a replay does
+  both. The Data form, the map's Inspector, the phone and the namer all arrive
+  there.
+- **What a rename cannot repoint**: a value that happens to be a name. The
+  Builder's featured-event blocks keep their event's name in `event`, in a
+  document's mantle; measured, a rename left them pointing at nothing. Every
+  rename (following a title, or typed in the name box) now carries the `set`s
+  that repoint them, inside the same batch (`naming::block_repoints`).
+- **A taken name is made unique, not refused.** The name box used to send the
+  rename and let the core refuse it, and the refusal crashed the application
+  (see the [log](/log.md), 2026-10-15).
+- **A new rune is named at once.** Every "New X here" (the map, the calendar,
+  + New in Data, a shape just drawn) opens a box where the pointer is, already
+  focused: Enter sets the title, and so the name; Escape keeps the minted one.

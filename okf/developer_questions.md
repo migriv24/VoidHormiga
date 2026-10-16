@@ -11,6 +11,20 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q111 — the website map's tiles now ask for an API key.** (Opened
+  2026-10-15, found rendering a site to check shape labels.) The map widget
+  draws CARTO's `rastertiles/voyager` (and the two `nolabels` styles); today
+  every tile comes back as an image saying "API KEY REQUIRED", so a published
+  map shows that watermark instead of streets. The desktop's own tiles are
+  unaffected. **Lean: make the website's tile source an Antfarm choice, like the
+  image host**, defaulting to a keyless source whose terms allow it, and say on
+  the Publish panel which one a site uses. A key, if a source needs one, is a
+  vault credential like every other.
+  **Temporary fix in place (2026-10-15)**, the author's word: the widget draws
+  OSM's own tiles for every style, marked TEMPORARY in `render/site.cpp` and
+  `render/web/app.js`; the no-label looks draw the standard map meanwhile. The
+  lean stands for the real fix; the website map is not a priority now.
+
 - **Q104 — should Palabra send a member only what it lacks?** (Opened
   2026-10-05, [radios](/concepts/platform/radios.md) §3.) Measured: when two
   members meet, Palabra's session sends each one's shareable state **whole**

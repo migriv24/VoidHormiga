@@ -10,7 +10,8 @@
  *
  * A GIVER is a rune that hands a tag to others by a rule rather than by hand.
  * Today there is one kind, a `mapshape` with `bestows` set, and its rule is
- * "everything whose location is inside me". The shape does not carry the tag;
+ * "everything whose location is inside me, and every shape I overlap"
+ * (shapes since 2026-10-15). The shape does not carry the tag;
  * the tag exists because the shape can give it, and a tag that exists that way
  * belongs in the vocabulary a person searches before anyone carries it.
  *
@@ -39,6 +40,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -117,21 +120,117 @@ inline std::vector<Bestower> bestowers(const maiz::Scene& data) {
     return out;
 }
 
-/* The givers whose rule covers this rune right now: the shapes its position
- * falls inside, each on its own canvas (an aisle tests the rune's place on the
- * store floor, a neighbourhood its place on Earth). A rune with no location on
- * a shape's canvas is not covered by it. */
+/* DO TWO SHAPES OVERLAP? (2026-10-15) The author: *"overlapping areas DO
+ * bestow tags to each other."* A shape is an area, not a point, so "inside"
+ * becomes "shares some area with", and it runs both ways: each gives the other
+ * what it gives. Same canvas only (an aisle and a neighbourhood are never on
+ * one plane). Exact for two rectangles; with an ellipse, the shared box is
+ * sampled on a 16 x 16 grid and a point inside both decides it, which misses
+ * only a sliver thinner than a sixteenth of the box. */
+inline bool shapes_overlap(const maiz::SceneNode& a, const maiz::SceneNode& b) {
+    if (a.name == b.name || canvas::of(a) != canvas::of(b)) return false;
+    double a1, o1, a2, o2, b1, p1, b2, p2;
+    if (!parse_geo(temper::field_value(a, "geo1"), a1, o1) || !parse_geo(temper::field_value(a, "geo2"), a2, o2) ||
+        !parse_geo(temper::field_value(b, "geo1"), b1, p1) || !parse_geo(temper::field_value(b, "geo2"), b2, p2))
+        return false;
+    const double laL = std::max(std::min(a1, a2), std::min(b1, b2)), laH = std::min(std::max(a1, a2), std::max(b1, b2));
+    const double loL = std::max(std::min(o1, o2), std::min(p1, p2)), loH = std::min(std::max(o1, o2), std::max(p1, p2));
+    if (laL >= laH || loL >= loH) return false; // the boxes do not even touch
+    if (temper::field_value(a, "kind") != "ellipse" && temper::field_value(b, "kind") != "ellipse") return true;
+    constexpr int N = 16;
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j) {
+            const double la = laL + (laH - laL) * (i + 0.5) / N, lo = loL + (loH - loL) * (j + 0.5) / N;
+            if (shape_contains(a, la, lo) && shape_contains(b, la, lo)) return true;
+        }
+    return false;
+}
+
+/* Does this giver's rule cover this rune? A shape covers what is placed inside
+ * it on its own canvas (an aisle tests a rune's place on the store floor, a
+ * neighbourhood its place on Earth) and every shape it overlaps. A rune with no
+ * location on a shape's canvas is not covered by it. */
+inline bool covers(const maiz::SceneNode& shape, const maiz::SceneNode& rune) {
+    if (shape.glyph != "mapshape" || rune.name == shape.name) return false;
+    if (rune.glyph == "mapshape") return shapes_overlap(shape, rune);
+    if (rune.glyph == "map" || rune.glyph == "canvas" || rune.glyph == "refpoint") return false;
+    const std::string field = canvas::geo_field(canvas::shared_channel(canvas::of(shape)));
+    double lat, lon;
+    return parse_geo(temper::field_value(rune, field.c_str()), lat, lon) && shape_contains(shape, lat, lon);
+}
+
+/* Everything a shape gives its tags to right now: the ONE list both the
+ * "give them now" action and the tag editor's "given by" read. */
+inline std::vector<const maiz::SceneNode*> receivers(const maiz::Scene& data, const maiz::SceneNode& shape) {
+    std::vector<const maiz::SceneNode*> out;
+    for (const auto& n : data.nodes)
+        if (covers(shape, n)) out.push_back(&n);
+    return out;
+}
+
+/* A COLOUR IS GIVEN LIVE (2026-10-15). The author: *"colors given should be
+ * automatically bestowed onto ... runes that they're given to."* A tag in a
+ * shape's gives list waits for "Give them now" to be written onto what is
+ * inside. A colour does not wait: a `color:` a shape gives colours everything
+ * it covers at once, and writes nothing, so a rune moved out loses it and a
+ * shape given another colour recolours its contents. A rune's own colour tag
+ * still wins. Where several shapes give one rune a colour, the smallest gives
+ * it (the aisle, over the store). Between two shapes a colour runs only from
+ * the larger to the smaller (tags run both ways): a small shape drawn inside a
+ * neighbourhood must not repaint the neighbourhood. `ns` is the tag's
+ * namespace ("color"). Rune name -> value. */
+inline std::map<std::string, std::string> given_values(const maiz::Scene& data, const std::string& ns) {
+    std::map<std::string, std::pair<double, std::string>> best;
+    for (const auto& s : data.nodes) {
+        if (s.glyph != "mapshape") continue;
+        std::string v;
+        for (const auto& t : bestowed_tags(s))
+            if (t.size() > ns.size() + 1 && t.compare(0, ns.size() + 1, ns + ":") == 0) {
+                v = t.substr(ns.size() + 1);
+                break;
+            }
+        double a1, o1, a2, o2;
+        if (v.empty() || !parse_geo(temper::field_value(s, "geo1"), a1, o1) ||
+            !parse_geo(temper::field_value(s, "geo2"), a2, o2))
+            continue;
+        const double area = std::abs((a2 - a1) * (o2 - o1));
+        for (const maiz::SceneNode* r : receivers(data, s)) {
+            if (r->glyph == "mapshape") {
+                double b1, p1, b2, p2;
+                if (!parse_geo(temper::field_value(*r, "geo1"), b1, p1) ||
+                    !parse_geo(temper::field_value(*r, "geo2"), b2, p2) || std::abs((b2 - b1) * (p2 - p1)) >= area)
+                    continue;
+            }
+            auto it = best.find(r->name);
+            if (it == best.end() || area < it->second.first) best[r->name] = {area, v};
+        }
+    }
+    std::map<std::string, std::string> out;
+    for (auto& [k, p] : best) out[k] = p.second;
+    return out;
+}
+
+/* The colours given right now, for the surfaces that draw from the GUI's
+ * projection (the canvas, the phone, the calendar, the PNG): rebuilt by
+ * `reproject`, like kinds::current(); read on the thread that owns the core.
+ * A renderer that projects for itself calls `given_values` on its own scene. */
+inline std::map<std::string, std::string>& given_colors() {
+    static std::map<std::string, std::string> m;
+    return m;
+}
+inline const std::string* given_color(const std::string& rune) {
+    const auto& m = given_colors();
+    const auto it = m.find(rune);
+    return it == m.end() ? nullptr : &it->second;
+}
+
+/* The givers whose rule covers this rune right now (see `covers`). */
 inline std::vector<Bestower> covering(const maiz::Scene& data, const maiz::SceneNode& rune) {
     std::vector<Bestower> out;
-    if (rune.glyph == "mapshape" || rune.glyph == "map" || rune.glyph == "canvas") return out;
-    for (const auto& n : data.nodes) {
-        if (n.glyph != "mapshape") continue;
-        const std::string field = canvas::geo_field(canvas::shared_channel(canvas::of(n)));
-        double lat, lon;
-        if (!parse_geo(temper::field_value(rune, field.c_str()), lat, lon)) continue;
-        if (shape_contains(n, lat, lon))
+    if (rune.glyph == "map" || rune.glyph == "canvas") return out;
+    for (const auto& n : data.nodes)
+        if (covers(n, rune))
             for (auto& b : shape_givers(n)) out.push_back(std::move(b));
-    }
     return out;
 }
 

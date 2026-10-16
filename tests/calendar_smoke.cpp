@@ -26,6 +26,7 @@
  * Links no renderer, no view, no Void Core. All three are pure by construction
  * and this file is the evidence.
  */
+#include "../src/render/label_css.hpp" // a shape label's CSS, cleaned at the seam
 #include "../src/domain/ical.hpp"
 #include "../src/domain/quick_add.hpp"
 #include "../src/domain/rrule.hpp"
@@ -556,6 +557,19 @@ int main() {
         CHECK(days_in_month(2024, 2) == 29);
         CHECK(days_in_month(1900, 2) == 28); // not a leap year
         CHECK(days_in_month(2000, 2) == 29); // but this one is
+    }
+
+    // ── a map shape's label CSS, as the website may carry it (2026-10-15) ───
+    {
+        using hormiga::shape_label_css;
+        CHECK(shape_label_css("letter-spacing: 2px; text-transform: uppercase") ==
+              "letter-spacing: 2px; text-transform: uppercase");
+        CHECK(shape_label_css("color: red\"><script>") == "color: redscript"); // markup characters go
+        CHECK(shape_label_css("background: URL(https://x.example/t.png)").empty()); // nothing loads
+        CHECK(shape_label_css("background: image('t.png')").empty());
+        CHECK(shape_label_css("background: \\75 rl(t.png)").empty()); // an escape could spell url(
+        CHECK(shape_label_css("@import 'x.css'; color: red").empty());
+        CHECK(shape_label_css(std::string(500, 'a')).empty());
     }
 
     if (failures == 0) std::cout << "calendar smoke: ok\n";

@@ -24,6 +24,13 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
     // rules for coloring (shared parser; independent of the active view)
     std::vector<MapRule> vrules;
     if (view) vrules = parse_view_rules_of(*view);
+    // what is on a hidden layer is not in the picture either (domain/canvas.hpp)
+    const std::string ex_canvas = view ? hormiga::canvas::of(*view) : std::string();
+    const auto ex_layers = hormiga::canvas::layers(scene, ex_canvas);
+    auto on_hidden_layer = [&](const maiz::SceneNode& node) {
+        const maiz::SceneNode* l = scene.find(hormiga::canvas::layer_of(node, ex_layers));
+        return l && hormiga::temper::field_value(*l, "visible") == "0";
+    };
     bool show_labels = view_show_labels(view); // map config (#6)
     float label_scale = view_label_scale(view);
     bool no_overlap = view_no_overlap(view);
@@ -155,11 +162,16 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
             atlas_bpp = tex->BytesPerPixel; // 4 (RGBA32) or 1 (Alpha8)
         }
     }
-    // stamp one string's glyph coverage at an integer offset, in one color
+    // stamp one string's glyph coverage at an integer offset, in one color.
+    // `mul` scales it past the map's label size, `shear` slants it (a shape's
+    // italic label), and nothing lands outside [clip_l, clip_r) x [clip_t, clip_b)
+    int clip_l = 0, clip_t = 0, clip_r = W, clip_b = H;
     auto stamp_text = [&](int px, int py, int ox, int oy, const std::string& text,
-                          unsigned char tr, unsigned char tg, unsigned char tb) {
+                          unsigned char tr, unsigned char tg, unsigned char tb, float mul = 1.0f,
+                          float shear = 0.0f) {
         if (!font) return;
-        float scale = label_scale * 1.15f; // 1.0 == the baked font size
+        float scale = label_scale * 1.15f * mul; // 1.0 == the baked font size
+        const float base = py + font_px * scale * 0.8f;
         float penx = (float)px;
         for (unsigned char ch2 : text) {
             const ImFontGlyph* gl = font->FindGlyph((ImWchar)ch2);
@@ -171,13 +183,14 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
                 int ix1 = (int)std::ceil(gx1), iy1 = (int)std::ceil(gy1);
                 for (int yy = iy0; yy < iy1; ++yy) {
                     int dy = yy + oy;
-                    if (dy < 0 || dy >= H) continue;
+                    if (dy < 0 || dy >= H || dy < clip_t || dy >= clip_b) continue;
+                    const int sh = (int)std::lround((base - yy) * shear);
                     float v = (yy + 0.5f - gy0) / (gy1 - gy0);
                     int ay = std::clamp((int)((gl->V0 + v * (gl->V1 - gl->V0)) *
                                               atlas_h), 0, atlas_h - 1);
                     for (int xx = ix0; xx < ix1; ++xx) {
-                        int dx = xx + ox;
-                        if (dx < 0 || dx >= W) continue;
+                        int dx = xx + ox + sh;
+                        if (dx < 0 || dx >= W || dx < clip_l || dx >= clip_r) continue;
                         float u = (xx + 0.5f - gx0) / (gx1 - gx0);
                         int ax = std::clamp((int)((gl->U0 + u * (gl->U1 - gl->U0)) *
                                                   atlas_w), 0, atlas_w - 1);
@@ -229,7 +242,7 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
         p[2] = (unsigned char)(p[2] * (1 - a) + ((c >> 16) & 0xFF) * a);
     };
     for (const auto& node : scene.nodes) {
-        if (node.glyph != "mapshape") continue;
+        if (node.glyph != "mapshape" || !hormiga::canvas::on(node, ex_canvas) || on_hidden_layer(node)) continue;
         double la1, lo1, la2, lo2;
         if (!hormiga::parse_geo(hormiga::temper::field_value(node, "geo1"), la1, lo1) ||
             !hormiga::parse_geo(hormiga::temper::field_value(node, "geo2"), la2, lo2))
@@ -242,13 +255,12 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
         unsigned scol = IM_COL32(46, 107, 79, 255);
         for (const auto& r : vrules) {
             if (r.tags.empty() || !maiz::node_matches(rule_expr(r), node)) continue;
-            for (const auto& c : kMarkerColors)
-                if (r.color == c.tag) scol = c.col;
+            color_value(r.color, scol);
             break;
         }
+        if (const std::string* g = hormiga::bestow::given_color(node.name)) color_value(*g, scol);
         std::string ct = tag_value(node, "color");
-        for (const auto& c : kMarkerColors)
-            if (ct == c.tag) scol = c.col;
+        color_value(ct, scol);
         bool ell = hormiga::temper::field_value(node, "kind") == "ellipse";
         float rx = (mxx - mnx) * 0.5f, ry = (mxy - mny) * 0.5f;
         float ccx = (mnx + mxx) * 0.5f, ccy = (mny + mxy) * 0.5f;
@@ -268,12 +280,42 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
                 if (edge) blend_px(x, y, scol, 0.9f);
                 else if (inside) blend_px(x, y, scol, 0.2f);
             }
+        /* ITS LABEL, as its Label widget set it (2026-10-15): the size, colour,
+         * weight, slant and one of nine places, inside its own box, as the
+         * canvas draws it (app_shared.cpp, draw_shape_label). */
+        const std::string sl = hormiga::temper::field_value(node, "label");
+        if (!sl.empty() && atlas) {
+            float mul = 1.0f;
+            if (const std::string v = hormiga::temper::field_value(node, "label_size"); !v.empty())
+                mul = std::clamp((float)std::atof(v.c_str()), 0.5f, 4.0f);
+            unsigned lc = scol;
+            color_value(hormiga::temper::field_value(node, "label_color"), lc);
+            const bool bold = hormiga::temper::field_value(node, "label_bold") == "1";
+            const float shear = hormiga::temper::field_value(node, "label_italic") == "1" ? 0.2f : 0.0f;
+            std::string pos = hormiga::temper::field_value(node, "label_pos");
+            if (pos.empty()) pos = ell ? "tc" : "tl"; // an ellipse's corner is outside it
+            const char row = pos[0], col = pos.size() > 1 ? pos[1] : 'c';
+            const float tw = text_w(sl) * mul, th = font_px * label_scale * 1.15f * mul;
+            const int pad = 4;
+            const int tx = col == 'l' ? mnx + pad : col == 'r' ? mxx - pad - (int)tw : (mnx + mxx - (int)tw) / 2;
+            const int ty = row == 't' ? mny + pad : row == 'b' ? mxy - pad - (int)th : (mny + mxy - (int)th) / 2;
+            clip_l = std::max(0, mnx + 1), clip_t = std::max(0, mny + 1);
+            clip_r = std::min(W, mxx - 1), clip_b = std::min(H, mxy - 1);
+            for (int d = 0; d < 4; ++d) { // the same white halo the markers' labels get
+                static const int ox[4] = {-1, 1, 0, 0}, oy[4] = {0, 0, -1, 1};
+                stamp_text(tx, ty, ox[d], oy[d], sl, 255, 255, 255, mul, shear);
+            }
+            for (int b = 0; b <= (bold ? 1 : 0); ++b)
+                stamp_text(tx + b, ty, 0, 0, sl, lc & 0xFF, (lc >> 8) & 0xFF, (lc >> 16) & 0xFF, mul, shear);
+            clip_l = 0, clip_t = 0, clip_r = W, clip_b = H;
+        }
     }
     auto ex_fans = ref_fans(scene, ch); // #4: fan ref-children in the export too
     int placed = 0;
     for (const auto& node : scene.nodes) {
         if (node.glyph == "refpoint") continue; // gizmos never export
         if (node.glyph == "note") continue;     // a note is internal: it never leaves through a picture
+        if (on_hidden_layer(node)) continue;
         double la, lo;
         int sx, sy;
         auto ff = ex_fans.find(node.name);

@@ -89,6 +89,7 @@ inline std::string site_langs_str() {
 
 } // namespace hormiga
 
+namespace hormiga::collab { struct ShareSettings; }
 struct HormigaApp {
     // ── platform seams (set before init) ────────────────────────────────────
     std::filesystem::path base_dir; // the org file lives here for now
@@ -175,6 +176,12 @@ struct HormigaApp {
     std::function<std::string(const std::string& cmd)> on_shell_capture;
     // GET a URL into a file (a phone has no curl: Android's HttpURLConnection); else curl
     std::function<bool(const std::string& url, const std::string& to)> on_http_get;
+    /* The LAN beacon started (true) or stopped (false). A phone holds Android's
+     * Wi-Fi multicast lock for exactly that long: without it the Wi-Fi drops
+     * every broadcast and multicast it receives, so the phone never hears a
+     * desktop's beacon (voidmaiz/lan.hpp). Returns why it could not, or "".
+     * Absent on a desktop. */
+    std::function<std::string(bool listening)> on_lan_listening;
 
     /* ── WHY A MERGED DOCUMENT IS NOT APPLIED WHERE IT IS COMPUTED ───────────
      *
@@ -414,6 +421,9 @@ private:
     maiz::WidgetRegistry widgets = maiz::WidgetRegistry::defaults();
     std::vector<maiz::LogEntry> log;
     int undo_depth = 0;
+    // the Antfarm's share settings, once per model change (lan_share.cpp); model_gen: +1 per reproject
+    const hormiga::collab::ShareSettings& share_settings_now();
+    std::shared_ptr<hormiga::collab::ShareSettings> share_cache; unsigned share_gen = ~0u, model_gen = 0;
 
     // ── user feedback (toasts: dispatch errors, saves, renders) ─────────────
     struct Toast {
@@ -479,12 +489,21 @@ private:
     // a conditional location section, and connections moved to the bottom.
     // Widgets collect commands into `out`; the caller dispatches once at frame
     // end (re-projection would dangle `n`, so never dispatch mid-render). ────
-    void draw_person_detail(const maiz::SceneNode& n, std::vector<std::string>& out);
     void draw_location_section(const maiz::SceneNode& n, std::vector<std::string>& out);
     void draw_relations(const maiz::SceneNode& n, std::vector<std::string>& out);
     // a reusable Tags editor (chips + a type-ahead to add) — appends `tag …`
     // commands to `out`; used by the contact/org form and the script editor.
     void draw_tag_editor(const maiz::SceneNode& n, std::vector<std::string>& out);
+    // a rune's form as widgets, for Data, the map and the calendar (ui/inspector.cpp)
+    enum class FormAt { Data, Map, Calendar };
+    void draw_rune_form(const maiz::SceneNode& n, std::vector<std::string>& out, FormAt at);
+    void draw_when_card(const maiz::SceneNode& n, FormAt at);
+    void draw_style_widgets(const maiz::SceneNode& n, std::vector<std::string>& out);
+    void draw_label_widget(const maiz::SceneNode& n, std::vector<std::string>& out);
+    void open_in_calendar(const std::string& rune, const std::string& iso_date, bool timed);
+    std::string form_adding, form_size_for; // a widget added, no value yet; the size box's rune
+    bool form_wheel_open = false, form_label_wheel_open = false, cal_focus_next = false;
+    char form_size_buf[48] = {};
     void draw_save_check(const maiz::SceneNode& n, std::vector<std::string>& out); // Save, and what it confirmed
     char detail_tag_buf[96] = {}; // the tag editor's add picker buffer
     // Tag RECOMMENDER (okf/concepts/allomone/tag-recommender.md): suggest tags
@@ -699,6 +718,10 @@ private:
     // #3 drawable map SHAPES: a draw mode + the in-progress drag
     int map_draw_shape = 0;      // 0 off, 1 rect, 2 ellipse (arm to draw)
     bool map_shape_dragging = false;
+    // reshaping a shape by its handles, 0..7 clockwise from top left, 8 = move (ui/map.cpp)
+    std::string map_shape_edit;
+    int map_shape_edit_idx = -1;
+    ImVec2 map_shape_mn0, map_shape_mx0, map_shape_grab, map_shape_live_mn, map_shape_live_mx;
     double map_shape_la0 = 0, map_shape_lo0 = 0; // drag-start geo corner
     std::string map_ctx_shape;   // mapshape under the right-click menu
     std::string map_ctx_ref;     // refpoint under the right-click menu
@@ -717,6 +740,11 @@ private:
     bool rune_rename_control(const maiz::SceneNode& sel, float width);
     char rename_buf[96] = {};    // staged name edit (detail pane)
     std::string rename_for;      // which rune the buffer is staged for
+    // a title `set` gains the rename it implies; the namer (both ui/widgets.cpp)
+    std::string follow_title(const std::string& cmd, std::string& from, std::string& to);
+    struct Namer { std::string rune, glyph; float x = 0, y = 0; bool open = false; char buf[160] = {}; } namer;
+    void begin_naming(const std::string& rune, const std::string& glyph, const std::string& now = {});
+    void draw_namer();
 
     // ── the reusable SEARCH PICKER (author: "the search bar is crucial") ────
     // one component: input + type-ahead results; returns the picked name.
@@ -786,7 +814,7 @@ private:
     void draw_settings();        //                              by default)
     bool time_prox = false;      // config ui.time_proximity — derived TEMPORAL
     float time_prox_days = 14;   // config ui.time_proximity_d  links (physics)
-    bool gui_anim = true;        // config ui.animations — drag-grow &c (advanced)
+    bool gui_anim = true, clock24 = false; // config ui.clock24: the calendar's 24-hour clock; ui.animations — drag-grow &c (advanced)
     // ── visual-effects toggles (author 2026-08-03: granular + opt-out; the
     // UI/UX phase's 2026-feel polish is expected but costs compute, so each
     // effect is separately switchable — "Performance mode" clears them all) ──
@@ -964,7 +992,9 @@ private:
     char cal_view_name[48] = {}; // "Save as view" name buffer
     void cal_apply_view(const maiz::SceneNode& v); // load a calview's settings
     void draw_calendar_toolbar();                 // views, nav, filter, quick-add
-    void draw_calendar_body();                    // the grid + selection
+    void draw_calendar_body(), draw_calendar_grid(), draw_calendar_views(); // a dockspace (2026-10-15)
+    void draw_calendar_panels(); // Inspector, Upcoming, Views, Export (ui/calendar_panels.cpp)
+    int cal_doc_pick = 0;        // Export: the document a calendar block goes into                    // the grid + selection
     void export_calendar_png();                   // static export (newsletter)
     /* C5b: this view as an iCalendar file. Returns the path written ("" on
      * failure) so the headless front-end can report it — unlike the PNG, which
@@ -1228,7 +1258,7 @@ private:
     void read_view_config();
     void flush_panels();
     void reproject();
-    maiz::Result dispatch_and_reproject(const std::string& cmd);
+    maiz::Result dispatch_and_reproject(const std::string& cmd_in);
     void do_save();
     // ── the .miga v3 DATABASE bundle (okf/concepts/platform/miga-format.md) ──────────
     std::string cur_miga;        // the active database bundle path ("" = none yet)

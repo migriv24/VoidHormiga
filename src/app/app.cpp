@@ -587,8 +587,9 @@ void HormigaApp::rebuild_kind_palette() {
 
 void HormigaApp::reproject() {
     // the database's own KINDS first, so projection keeps their fields
-    const std::string kinds_sig = hormiga::kinds::apply(core, channel_fields);
+    hormiga::kinds::apply(core, channel_fields);
     scene = maiz::project_scene(core);
+    ++model_gen;
     // per-view position channels: projection only fills DECLARED glyph
     // fields, so every unlocked view's geo_<channel> must be registered on
     // the placeable glyphs. Detect channel changes here (the one seam all
@@ -612,7 +613,7 @@ void HormigaApp::reproject() {
         hormiga::kinds::apply(core, channel_fields); // a located kind carries every channel too
         scene = maiz::project_scene(core);
     }
-    (void)kinds_sig;
+    if (scene.mantle == kDataMantle) hormiga::bestow::given_colors() = hormiga::bestow::given_values(scene, "color");
     rebuild_kind_palette(); // every time: a legacy kind is listed only while the data has some
     maiz::Result h = core.dispatch("history");
     undo_depth = (h.lines.size() == 1 && h.lines[0] == "(no history)")
@@ -887,8 +888,17 @@ void HormigaApp::allo_cmd(const std::string& c) {
         pending_cmds.push_back(std::string("use ") + prev);
 }
 
-maiz::Result HormigaApp::dispatch_and_reproject(const std::string& cmd) {
+maiz::Result HormigaApp::dispatch_and_reproject(const std::string& cmd_in) {
+    std::string renamed_from, renamed_to;
+    const std::string cmd = follow_title(cmd_in, renamed_from, renamed_to);
     maiz::Result r = core.dispatch(cmd);
+    if (r.ok && !renamed_from.empty()) {
+        // whatever pointed at the old handle now points at the new one
+        for (auto& s : ed.selection)
+            if (s == renamed_from) s = renamed_to;
+        if (rename_for == renamed_from) rename_for.clear();
+        if (namer.rune == renamed_from) namer.rune = renamed_to;
+    }
     if (!r.ok) {
         /* THE STRIP GETS IT TOO (2026-09-16). A toast is gone in four seconds and
          * was the ONLY trace of a failure: the author hit "no host effect handler"
@@ -1132,6 +1142,7 @@ void HormigaApp::init() {
         v = core.dispatch("config get ui.time_proximity_d").data;
         f = (float)std::atof(v.c_str() + (v.empty() ? 0 : (v[0] == '"' ? 1 : 0)));
         if (f >= 1.0f && f <= 365.0f) time_prox_days = f;
+        clock24 = core.dispatch("config get ui.clock24").data.find('1') != std::string::npos; // 12-hour unless "1"
         // animations default ON; only an explicit "0" turns them off
         v = core.dispatch("config get ui.animations").data;
         if (v.find('0') != std::string::npos && v.find('1') == std::string::npos)
@@ -1750,7 +1761,7 @@ void HormigaApp::new_rune(const std::string& glyph) {
     ed.selection = {name};
     kind_sel = glyph;
     search[0] = 0;
-    toast("added " + name + " - fill in its details");
+    begin_naming(name, glyph); // type its name first; the details can wait
 }
 
 // ── asset ingestion + CSV import (phase C) ──────────────────────────────────
@@ -1921,7 +1932,7 @@ void HormigaApp::mirror_images_effect() {
             auto rn = url_rune.find(url);
             if (!local.empty() && rn != url_rune.end())
                 jp->results.push_back("set " + rn->second + " path " +
-                                      json_str(local));
+                                      text_arg(local));
             jp->done = ++idx;
         }
         { std::ofstream out(mpath, std::ios::binary | std::ios::trunc);
@@ -2870,7 +2881,8 @@ void HormigaApp::frame() {
         ImGui::End();
     }
     if (win_calendar) {
-        if (boot_focus_cal && boot_focus_frames > 0) ImGui::SetNextWindowFocus();
+        if ((boot_focus_cal && boot_focus_frames > 0) || cal_focus_next) ImGui::SetNextWindowFocus();
+        cal_focus_next = false; // "Edit in calendar view" (ui/inspector.cpp)
         if (ImGui::Begin("Calendar", &win_calendar)) draw_calendar_body();
         ImGui::End();
     }
@@ -2919,6 +2931,7 @@ void HormigaApp::frame() {
     draw_data_tools_window();
     draw_templates_window();
     draw_rule_editor();
+    draw_namer(); // names a rune the moment it is made (ui/widgets.cpp)
     if (win_console) {
         if (ImGui::Begin("Console", &win_console)) draw_console();
         ImGui::End();

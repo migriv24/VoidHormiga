@@ -98,11 +98,6 @@ void HormigaApp::draw_tag_editor(const maiz::SceneNode& n,
             if (g.tag == t) return &g;
         return nullptr;
     };
-    auto color_of = [](const std::string& v) -> const MarkerColor* {
-        for (const auto& c : kMarkerColors)
-            if (v == c.tag) return &c;
-        return nullptr;
-    };
     auto icon_of = [](const std::string& v) -> const MarkerIcon* {
         for (const auto& ic : kMarkerIcons)
             if (v == ic.tag) return &ic;
@@ -180,8 +175,9 @@ void HormigaApp::draw_tag_editor(const maiz::SceneNode& n,
             } else {
                 const bool widget = ns == "color" || ns == "icon";
                 place(label + "  x");
-                const MarkerColor* mc = ns == "color" ? color_of(val) : nullptr;
-                if (mc) push_fill(ImGui::ColorConvertU32ToFloat4(mc->col));
+                unsigned mcol = 0;
+                const bool mc = ns == "color" && color_value(val, mcol);
+                if (mc) push_fill(ImGui::ColorConvertU32ToFloat4(mcol));
                 else if (k == Kind::Namespaced) push_fill(teal);
                 else if (k == Kind::Clearance) push_fill(amber);
                 const bool pressed = ImGui::SmallButton(label.c_str());
@@ -211,6 +207,9 @@ void HormigaApp::draw_tag_editor(const maiz::SceneNode& n,
                                 swap_to(std::string("color:") + c.tag);
                             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", c.tag);
                         }
+                        // any colour at all (2026-10-15): the wheel writes `color:rrggbb`
+                        if (color_wheel("##tagwheel", mc ? mcol : IM_COL32(60, 110, 180, 255), mcol))
+                            swap_to(color_tag_of(mcol));
                     } else {
                         ImGui::TextDisabled("icon");
                         int i = 0;
@@ -270,12 +269,24 @@ void HormigaApp::draw_tag_editor(const maiz::SceneNode& n,
     }
 
     // 5. WHAT A GIVER COVERING THIS RUNE WOULD GIVE, not carried yet
+    // a COLOUR a shape gives is already given, live (bestow.hpp, 2026-10-15)
+    if (const std::string* gc = scene.mantle == kDataMantle ? hormiga::bestow::given_color(n.name) : nullptr) {
+        unsigned c = 0;
+        if (color_value(*gc, c)) {
+            ImGui::ColorButton("##given", ImGui::ColorConvertU32ToFloat4(c), ImGuiColorEditFlags_NoTooltip,
+                               ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize()));
+            ImGui::SameLine();
+        }
+        ImGui::TextColored(indigo, tag_value(n, "color").empty() ? "coloured by a map shape it is inside"
+                                                                  : "a map shape gives a colour; its own wins");
+    }
     std::vector<const Bestower*> ungiven;
     for (const auto& g : givers)
-        if (std::find(n.tags.begin(), n.tags.end(), g.tag) == n.tags.end())
+        if (g.tag.rfind("color:", 0) != 0 && // given live, never written
+            std::find(n.tags.begin(), n.tags.end(), g.tag) == n.tags.end())
             ungiven.push_back(&g);
     if (!ungiven.empty()) {
-        ImGui::TextColored(indigo, "could be given - this is inside a map shape:");
+        ImGui::TextColored(indigo, "could be given - this is inside (or overlaps) a map shape:");
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
         ImGui::PushStyleColor(ImGuiCol_Border, indigo);
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(indigo.x, indigo.y, indigo.z, 0.10f));

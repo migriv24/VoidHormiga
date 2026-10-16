@@ -267,7 +267,7 @@ int HormigaApp::translation_report(const std::string& state_json,
         for (const Gap& g : list)
             o << "# " << g.rune << "." << g.field << " (" << g.source_lang << ")\n"
               << "set " << g.rune << " " << g.field << "_" << target << " "
-              << json_str(g.source_text) << "\n";
+              << text_arg(g.source_text) << "\n";
     }
     o.close();
 

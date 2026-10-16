@@ -2,6 +2,8 @@
  * payload each second, sealed presence in and out, and the colour rule. */
 #include "app/lan_internal.hpp"
 
+#include "voidmaiz/lan.hpp"  // this device's networks, for the Migos screen's diagnosis
+
 namespace fs = std::filesystem;
 using namespace lan_detail;
 
@@ -22,6 +24,26 @@ std::vector<const hormiga::lan::Activity*> LanRuntime::on_rune(const LanRuntime&
     return out;
 }
 
+/* ── typed addresses ────────────────────────────────────────────────────────── */
+
+static fs::path typed_addresses_file() { return hormiga::profile::dir() / "lan-addresses.txt"; }
+
+void LanRuntime::load_typed_addresses(LanRuntime& rt) {
+    if (rt.typed_loaded) return;
+    rt.typed_loaded = true;
+    std::istringstream in(slurp(typed_addresses_file()));
+    for (std::string line; std::getline(in, line);) {
+        while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
+        if (maiz::lan::Ipv4::parse(line) && rt.typed_addresses.size() < 8) rt.typed_addresses.push_back(line);
+    }
+}
+
+void LanRuntime::save_typed_addresses(const LanRuntime& rt) {
+    std::string out;
+    for (const auto& a : rt.typed_addresses) out += a + "\n";
+    write_atomic(typed_addresses_file(), out);
+}
+
 std::string LanRuntime::color_of(const LanRuntime& rt, const std::string& fp) {
     auto it = rt.shown_color.find(fp);
     return it != rt.shown_color.end() ? it->second : std::string("#888888");
@@ -34,7 +56,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
     if (!app.lan) {
         if (now - last_probe < 2.0) return;
         last_probe = now;
-        const auto share = hormiga::collab::share_settings(project(app.core, kAntfarmMantle));
+        const auto& share = app.share_settings_now();
         if (!share.presence || share.node.empty()) return;
         if (slurp(hormiga::find_key_file(share.key_file, app.key_dirs())).size() != 32) return;
     }
@@ -73,10 +95,21 @@ void LanRuntime::tick(HormigaApp& app, double now) {
     }
     const bool presence = share.presence && !rt.room_key.empty() && !rt.me.username.empty();
     const bool want = rt.sharing || rt.discovering || presence;
+    auto lan_listening = [&](bool on) {
+        if (rt.lan_listening == on) return;
+        rt.lan_listening = on;
+        if (!app.on_lan_listening) return;  // a phone's multicast lock
+        if (const std::string why = app.on_lan_listening(on); !why.empty())
+            app.log.push_back({"warn", "share", "no Wi-Fi multicast lock (" + why +
+                                                    "): this phone may not hear other devices"});
+    };
     if (!want) {
         if (rt.beacon) rt.beacon->stop();
         rt.beacon.reset();
+        lan_listening(false);
         rt.present.clear();
+        rt.alone_since = -1.0;
+        rt.alone_seconds = 0.0;
         rt.listening = false;  // the member-sync listener stops with presence
         return;
     }
@@ -139,6 +172,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
             rt.beacon.reset();
             return;
         }
+        lan_listening(true);
     } else {
         rt.beacon->announce(self);
     }
@@ -172,6 +206,42 @@ void LanRuntime::tick(HormigaApp& app, double now) {
     const std::int64_t cut = (std::int64_t)std::time(nullptr) - 12;
     for (auto it = rt.present.begin(); it != rt.present.end();)
         it = it->second.seen < cut ? rt.present.erase(it) : std::next(it);
+
+    /* ANSWER WHO WE HEARD, BY UNICAST (2026-10-14). Only members: an entry in
+     * `present` opened with the room key. If this device hears another's beacon
+     * and that one cannot hear ours (a phone, or a Wi-Fi that drops multicast
+     * one way), ours now reaches it directly, and both are present. */
+    if (rt.beacon) {
+        load_typed_addresses(rt);
+        std::vector<std::string> direct = rt.typed_addresses;
+        for (const auto& [k, a] : rt.present)
+            if (!a.address.empty()) direct.push_back(a.address);
+        rt.beacon->tell_directly(direct);
+    }
+
+    // nobody here although others are members: the network may be keeping us apart
+    bool others = false;
+    for (const auto& row : rt.member_rows)
+        if (auto f = row.find("fingerprint"), l = row.find("left");
+            f != row.end() && f->second != fp && (l == row.end() || l->second.empty()))
+            others = true;
+    if (presence && others && rt.present.empty()) {
+        if (rt.alone_since < 0) rt.alone_since = now;
+        rt.alone_seconds = now - rt.alone_since;
+    } else {
+        rt.alone_since = -1.0;
+        rt.alone_seconds = 0.0;
+    }
+    if (now - rt.networks_read_at > 5.0) {
+        rt.networks_read_at = now;
+        rt.my_networks.clear();
+        for (const auto& i : maiz::lan::lan_interfaces()) {
+            if (i.virtual_guess) continue;  // WSL, a VPN: not where a phone is
+            std::string line = i.name + "  " + i.address.text();
+            if (const std::string hint = maiz::lan::network_hint(i.address); !hint.empty()) line += "  (" + hint + ")";
+            rt.my_networks.push_back(line);
+        }
+    }
 
     /* ── THE ROSTER IS WHAT THE VIEWS READ (Void Maiz, stage A) ──────────────
      * A peer that sends Maiz presence is taken at its word about surfaces and

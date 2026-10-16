@@ -47,8 +47,11 @@ void HormigaApp::draw_map_panels() {
     auto rule_filter_expr = [](const MapRule& r) { return rule_expr_of(r); };
 
     // ── INSPECTOR: the thing last clicked ─────────────────────────────────────
-    ImGui::Begin("Inspector##map");
-    {
+    /* A TAB THAT IS NOT SHOWING DRAWS NOTHING (2026-10-15). These four ran
+     * their whole bodies every frame whichever tab was in front; with 2,000
+     * places on the map that was 29 ms a frame, more than the map itself
+     * (measured with HORMIGA_FRAME_TIMING). `Begin` says whether to draw. */
+    if (ImGui::Begin("Inspector##map")) {
         const bool have_sel = !ed.selection.empty() && scene.find(ed.selection.front());
         if (ed.selection.size() > 1) {
         // ── MULTI-SELECT (box/shift, author #2): act on the whole set at once ─
@@ -134,9 +137,27 @@ void HormigaApp::draw_map_panels() {
                 draw_save_check(*sn, out);
                 for (auto& c : out) pending_cmds.push_back(std::move(c));
             }
+            // WHICH LAYER it is on (2026-10-15, domain/canvas.hpp): a layer holds
+            // what was made on it; this moves it to another
+            std::vector<std::string> out;
+            if (layers.size() > 1 && sn->glyph != "map" && sn->glyph != "refpoint" && sn->glyph != "canvas") {
+                const std::string on = hormiga::canvas::layer_of(*sn, layers);
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                if (ImGui::BeginCombo("##onlayer", (ICON_FA_LAYER_GROUP "  on " + rune_title(*scene.find(on))).c_str())) {
+                    for (const auto* l : layers)
+                        if (ImGui::Selectable(rune_title(*l).c_str(), l->name == on) && l->name != on)
+                            if (std::string t = hormiga::canvas::move_to_layer(*sn, layers, l->name); !t.empty())
+                                out.push_back(t);
+                    ImGui::EndCombo();
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("the layer this is on: hiding that layer hides it");
+            }
             ImGui::Separator();
-            maiz::CanvasIO iio = maiz::draw_inspector(scene, ed, &widgets);
-            for (const auto& cmd : iio.commands) pending_cmds.push_back(cmd);
+            // the same form as Data's, as widgets (ui/inspector.cpp, 2026-10-15)
+            draw_rune_form(*sn, out, FormAt::Map);
+            for (auto& c : out) pending_cmds.push_back(std::move(c));
+            if (sn->glyph == "mapshape")
+                maiz::dim_wrapped("Drag the white handles on the map to reshape it, or drag inside it to move it.");
         } else {
             maiz::dim_wrapped("Click something on the map to see it here, or pick it in Overview. "
                               "Shift-drag on the map selects several.");
@@ -145,8 +166,7 @@ void HormigaApp::draw_map_panels() {
     ImGui::End();
 
     // ── OVERVIEW: everything on the map ───────────────────────────────────────
-    ImGui::Begin("Overview##map");
-    {
+    if (ImGui::Begin("Overview##map")) {
         std::string picked = search_picker(
             "##mapoverviewsearch", panel_search, sizeof panel_search,
             [](const maiz::SceneNode& n) { return n.glyph != "map" && n.glyph != "image"; },
@@ -165,50 +185,64 @@ void HormigaApp::draw_map_panels() {
                 map_place_arm = picked; // click the map to place it
             }
         }
-        // grouped by kind, each with its count; filtered like the map
+        /* grouped by kind, each with its count; filtered like the map. Built
+         * once per change and filter, and only the rows on screen are drawn
+         * (2026-10-15): with 2,000 places this tab was 13.6 ms a frame. */
         struct Row {
             const maiz::SceneNode* n;
             double la, lo;
+            std::string title;
         };
-        std::map<std::string, std::vector<Row>> by_kind;
-        int total = 0;
-        for (const auto& n : scene.nodes) {
-            if (n.glyph == "map" || n.glyph == "image" || n.glyph == "canvas") continue;
-            if ((n.glyph == "mapshape" || n.glyph == "refpoint") && !hormiga::canvas::on(n, map_canvas)) continue;
-            double la, lo;
-            const std::string g = n.glyph == "mapshape" ? hormiga::temper::field_value(n, "geo1")
-                                  : n.glyph == "refpoint" ? hormiga::temper::field_value(n, "geo")
-                                                          : view_geo(n, active_channel);
-            if (g.empty() || !hormiga::parse_geo(g, la, lo)) continue;
-            if (!search_match(n, map_filter)) continue;
-            by_kind[n.glyph].push_back({&n, la, lo});
-            ++total;
+        static std::map<std::string, std::vector<Row>> by_kind;
+        static std::string by_kind_key;
+        static int total = 0;
+        if (const std::string key = std::to_string(model_gen) + "|" + map_canvas + "|" + active_channel + "|" + map_filter;
+            key != by_kind_key) {
+            by_kind_key = key;
+            by_kind.clear();
+            total = 0;
+            for (const auto& n : scene.nodes) {
+                if (n.glyph == "map" || n.glyph == "image" || n.glyph == "canvas") continue;
+                if ((n.glyph == "mapshape" || n.glyph == "refpoint") && !hormiga::canvas::on(n, map_canvas)) continue;
+                double la, lo;
+                const std::string g = n.glyph == "mapshape" ? hormiga::temper::field_value(n, "geo1")
+                                      : n.glyph == "refpoint" ? hormiga::temper::field_value(n, "geo")
+                                                              : view_geo(n, active_channel);
+                if (g.empty() || !hormiga::parse_geo(g, la, lo)) continue;
+                if (map_filter[0] && !search_match(n, map_filter)) continue;
+                by_kind[n.glyph].push_back({&n, la, lo, rune_title(n)});
+                ++total;
+            }
+            for (auto& [kind, rows] : by_kind)
+                std::sort(rows.begin(), rows.end(), [](const Row& x, const Row& y) { return x.title < y.title; });
         }
         ImGui::SeparatorText(("On the map (" + std::to_string(total) + ")").c_str());
         if (map_filter[0]) ImGui::TextDisabled("filtered: %s", map_filter);
         ImGui::BeginChild("##overview-list");
         for (auto& [kind, rows] : by_kind) {
-            std::sort(rows.begin(), rows.end(),
-                      [](const Row& a, const Row& b) { return rune_title(*a.n) < rune_title(*b.n); });
             const std::string kname = kind == "mapshape" ? "Regions" : kind == "refpoint" ? "Reference points"
                                                                                     : humanize(kind);
             const std::string head = std::string(glyph_icon(kind)) + "  " + kname + "  (" +
                                      std::to_string(rows.size()) + ")";
             if (!ImGui::CollapsingHeader((head + "##" + kind).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) continue;
-            for (const auto& r : rows) {
-                ImGui::PushID(r.n->name.c_str());
-                if (ImGui::Selectable(rune_title(*r.n).c_str(), ed.selected(r.n->name))) {
-                    map_cam.x = (float)r.lo;
-                    map_cam.y = (float)r.la;
-                    pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
-                    ed.selection = {r.n->name};
+            ImGuiListClipper clip;
+            clip.Begin((int)rows.size());
+            while (clip.Step())
+                for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i) {
+                    const Row& r = rows[(size_t)i];
+                    ImGui::PushID(r.n->name.c_str());
+                    if (ImGui::Selectable(r.title.c_str(), ed.selected(r.n->name))) {
+                        map_cam.x = (float)r.lo;
+                        map_cam.y = (float)r.la;
+                        pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
+                        ed.selection = {r.n->name};
+                    }
+                    if (kind != "mapshape" && kind != "refpoint" && ImGui::BeginPopupContextItem("##rowmenu")) {
+                        marker_menu_items(*r.n); // the same menu as the marker on the map
+                        ImGui::EndPopup();
+                    }
+                    ImGui::PopID();
                 }
-                if (kind != "mapshape" && kind != "refpoint" && ImGui::BeginPopupContextItem("##rowmenu")) {
-                    marker_menu_items(*r.n); // the same menu as the marker on the map
-                    ImGui::EndPopup();
-                }
-                ImGui::PopID();
-            }
         }
         if (total == 0)
             ImGui::TextDisabled(map_filter[0] ? "nothing on the map matches the filter"
@@ -222,8 +256,7 @@ void HormigaApp::draw_map_panels() {
         ImGui::SetNextWindowFocus();
         show_manage_views = false;
     }
-    ImGui::Begin("Layers##map");
-    {
+    if (ImGui::Begin("Layers##map")) {
         // the stack's own toolbar: new, duplicate, delete
         if (ImGui::Button(ICON_FA_PLUS "  Layer")) map_new_earth(map_cam.y, map_cam.x, (int)map_cam.zoom);
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("a new layer on top: its own colours and rules");
@@ -234,14 +267,14 @@ void HormigaApp::draw_map_panels() {
             int top = 0;
             for (auto* l : layers) top = std::max(top, std::atoi(hormiga::temper::field_value(*l, "order").c_str()));
             std::vector<std::string> cmds = {"rune new map " + name,
-                                             "set " + name + " title " + json_str(rune_title(*cur) + " copy"),
+                                             "set " + name + " title " + text_arg(rune_title(*cur) + " copy"),
                                              "set " + name + " order \"" + std::to_string(top + 1) + "\"",
                                              "tag " + name + " +type:map"};
             for (const char* k : {"source", "center", "zoom", "channel", "visible", "label_scale", "show_labels",
                                   "layer_opacity", "layer_brightness", "no_overlap", "label_color", "filter",
                                   "canvas"}) {
                 const std::string v = hormiga::temper::field_value(*cur, k);
-                if (!v.empty()) cmds.push_back("set " + name + " " + k + " " + json_str(v));
+                if (!v.empty()) cmds.push_back("set " + name + " " + k + " " + text_arg(v));
             }
             const std::string rj = hormiga::temper::field_value(*cur, "rules");
             if (!rj.empty()) cmds.push_back("setjson " + name + " rules " + json_arg(rj));
@@ -286,7 +319,7 @@ void HormigaApp::draw_map_panels() {
                 if (ImGui::MenuItem("Edit this layer")) map_sel = l.name;
                 if (ImGui::MenuItem(own ? "Share positions with the other layers" : "Give it its own positions"))
                     pending_cmds.push_back("set " + l.name + " channel " +
-                                           json_str(own ? hormiga::canvas::shared_channel(map_canvas)
+                                           text_arg(own ? hormiga::canvas::shared_channel(map_canvas)
                                                         : hormiga::canvas::own_channel(map_canvas, l.name)));
                 if (ImGui::MenuItem("Delete")) {
                     pending_cmds.push_back("rm " + l.name);
@@ -386,7 +419,7 @@ void HormigaApp::draw_map_panels() {
             bool own = !ch.empty() && ch != hormiga::canvas::shared_channel(map_canvas);
             if (ImGui::Checkbox("Its own positions", &own))
                 pending_cmds.push_back("set " + cur->name + " channel " +
-                                       json_str(own ? hormiga::canvas::own_channel(map_canvas, cur->name)
+                                       text_arg(own ? hormiga::canvas::own_channel(map_canvas, cur->name)
                                                     : hormiga::canvas::shared_channel(map_canvas)));
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("off: things sit where they sit on every layer.\n"
@@ -417,8 +450,16 @@ void HormigaApp::draw_map_panels() {
             };
             // live audit: for each data entity, the FIRST matching rule wins;
             // a later rule that also matches is SHADOWED (never styles it).
-            std::vector<int> match_count(active_rules.size(), 0);
-            std::vector<int> shadowed_by(active_rules.size(), -1);
+            // kept until the model or the rules change (2026-10-15): it matched
+            // every rule against every rune, every frame the tab was open
+            static std::vector<int> match_count, shadowed_by;
+            static std::string audit_key;
+            std::string akey = std::to_string(model_gen) + "|" + (cur ? cur->name : std::string());
+            for (const auto& r : active_rules) akey += "|" + rule_filter_expr(r);
+            if (akey != audit_key) {
+            audit_key = akey;
+            match_count.assign(active_rules.size(), 0);
+            shadowed_by.assign(active_rules.size(), -1);
             for (const auto& node : scene.nodes) {
                 if (node.glyph == "map" || node.glyph == "image" ||
                     node.glyph == "note")
@@ -431,6 +472,7 @@ void HormigaApp::draw_map_panels() {
                     if (first < 0) { first = (int)i; ++match_count[i]; }
                     else if (shadowed_by[i] < 0) shadowed_by[i] = first;
                 }
+            }
             }
             for (size_t i = 0; i < active_rules.size(); ++i) {
                 ImGui::PushID((int)i);
@@ -446,8 +488,7 @@ void HormigaApp::draw_map_panels() {
                 for (const auto& ic : kMarkerIcons)
                     if (r.icon == ic.tag) ig = ic.glyph;
                 ImU32 rc = IM_COL32(60, 60, 60, 255);
-                for (const auto& c : kMarkerColors)
-                    if (r.color == c.tag) rc = c.col;
+                color_value(r.color, rc);
                 std::string lbl = std::string(ig ? ig : "") + " " + r.name + "  [" +
                                   rule_filter_expr(r) + "]  (" +
                                   std::to_string(match_count[i]) + ")";
@@ -566,7 +607,7 @@ void HormigaApp::draw_map_panels() {
     ImGui::End(); // Layers
 
     // ── ACTIONS: the map, out of the application ──────────────────────────────
-    ImGui::Begin("Actions##map");
+    if (ImGui::Begin("Actions##map")) {
     if (!cur) {
         maiz::dim_wrapped("Add a layer first (Layers, + Layer).");
     } else if (cvs.plan()) {
@@ -595,7 +636,7 @@ void HormigaApp::draw_map_panels() {
             char c[64];
             std::snprintf(c, sizeof c, "%.6f,%.6f", (double)map_cam.y, (double)map_cam.x);
             pending_cmds.push_back(maiz::compile_commit(
-                {"set " + cur->name + " center " + json_str(c),
+                {"set " + cur->name + " center " + text_arg(c),
                  "set " + cur->name + " zoom \"" + std::to_string((int)std::lround(map_cam.zoom)) + "\""}));
         }
         const std::vector<std::string> docs = list_documents();
@@ -620,11 +661,12 @@ void HormigaApp::draw_map_panels() {
                 const std::string name = mint_name("map-block");
                 pending_cmds.push_back("use " + doc);
                 pending_cmds.push_back("doc place map_embed " + name + " " + std::to_string(maxrow + 1));
-                pending_cmds.push_back("set " + name + " view " + json_str(cur->name));
+                pending_cmds.push_back("set " + name + " view " + text_arg(cur->name));
                 pending_cmds.push_back(std::string("use ") + kDataMantle);
                 toast("added this map to " + doc + ", at the end - move it in the Builder");
             }
         }
     }
+    } // Actions
     ImGui::End();
 }

@@ -6,9 +6,12 @@
  */
 #include "sync/peer.hpp"
 
+#include "voidmaiz/lan.hpp"  // which interfaces are the LAN: the beacon goes out on each
+
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <iphlpapi.h>  // the default gateways: on a phone's hotspot, the phone
 using socket_t = SOCKET;
 #define HZ_BAD_SOCKET INVALID_SOCKET
 #define hz_close closesocket
@@ -27,6 +30,7 @@ using socket_t = int;
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <map>
 #include <mutex>
@@ -153,12 +157,112 @@ bool decode_beacon(const std::string& d, PeerInfo& out) {
 struct Beacon::Impl {
     std::thread rx, tx;
     std::atomic<bool> stop{false};
-    socket_t listen_sock = HZ_BAD_SOCKET;
+    socket_t listen_sock = HZ_BAD_SOCKET;  // under `mu` once running: the tx thread joins groups on it
     mutable std::mutex mu;
     std::map<std::string, PeerInfo> seen;  // peer_id -> latest
     std::string payload;                   // what we announce
     std::string self_id;
+    std::vector<std::uint32_t> direct;     // tell_directly, network byte order
+    /* ONE ANNOUNCEMENT ARRIVES SEVERAL TIMES now (the group, a broadcast, a
+     * unicast, per interface). `heard` is the Migos screen's connection
+     * strength, so it counts announcements, not copies: a datagram from a peer
+     * counted less than a second ago is the same one. A peer announces every 3 s. */
+    std::map<std::string, std::chrono::steady_clock::time_point> counted;
 };
+
+namespace {
+
+/* This device's default gateways, network byte order. On a phone's hotspot the
+ * gateway IS the phone, and Android puts it anywhere in the subnet (a Pixel:
+ * 10.97.116.119, measured 2026-10-14), so it is read rather than guessed.
+ * Windows asks the adapters; Linux reads /proc/net/route, which Android 10+
+ * refuses an app -- a phone falls back on the .1 guess below. */
+std::vector<std::uint32_t> default_gateways() {
+    std::vector<std::uint32_t> out;
+#ifdef _WIN32
+    ULONG size = 16 * 1024;
+    std::vector<unsigned char> buf;
+    ULONG rc = ERROR_BUFFER_OVERFLOW;
+    for (int tries = 0; tries < 3 && rc == ERROR_BUFFER_OVERFLOW; ++tries) {
+        buf.resize(size);
+        rc = GetAdaptersAddresses(AF_INET, GAA_FLAG_INCLUDE_GATEWAYS | GAA_FLAG_SKIP_ANYCAST |
+                                               GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+                                  nullptr, reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buf.data()), &size);
+    }
+    if (rc != NO_ERROR) return out;
+    for (auto* ad = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buf.data()); ad; ad = ad->Next) {
+        if (ad->OperStatus != IfOperStatusUp) continue;
+        for (auto* g = ad->FirstGatewayAddress; g; g = g->Next)
+            if (g->Address.lpSockaddr && g->Address.lpSockaddr->sa_family == AF_INET)
+                out.push_back(reinterpret_cast<sockaddr_in*>(g->Address.lpSockaddr)->sin_addr.s_addr);
+    }
+#else
+    std::FILE* f = std::fopen("/proc/net/route", "r");
+    if (!f) return out;
+    char line[256];
+    std::fgets(line, sizeof line, f);  // the header
+    while (std::fgets(line, sizeof line, f)) {
+        char ifname[64];
+        unsigned dest = 0, gw = 0;
+        if (std::sscanf(line, "%63s %x %x", ifname, &dest, &gw) == 3 && dest == 0 && gw != 0)
+            out.push_back(gw);  // already network byte order, as the kernel prints it
+    }
+    std::fclose(f);
+#endif
+    return out;
+}
+
+/* One interface to announce on, in network byte order. Void Maiz's ranking:
+ * up, private, not loopback or link-local.
+ *
+ * `hosts` are where a hotspot's owner sits, on a /24 or smaller (a venue's
+ * network is larger and its gateway is a router): this device's gateway on that
+ * subnet, and the subnet's .1 -- a Windows laptop's Mobile hotspot is always
+ * 192.168.137.1. Unicast reaches them when the multicast and broadcast do not,
+ * and on an ordinary home network the gateway is the router, which drops one
+ * small datagram every 3 s on a port it does not serve. */
+struct LanIf {
+    std::uint32_t address = 0, broadcast = 0;
+    std::vector<std::uint32_t> hosts;
+};
+
+std::vector<LanIf> lan_addresses() {
+    std::vector<LanIf> out;
+    const std::vector<std::uint32_t> gateways = default_gateways();
+    for (const auto& i : maiz::lan::lan_interfaces()) {
+        LanIf l{htonl(i.address.host), htonl(i.broadcast().host), {}};
+        if (i.prefix() >= 24) {
+            auto add = [&](std::uint32_t host_order) {
+                const std::uint32_t n = htonl(host_order);
+                if (host_order != i.address.host && std::find(l.hosts.begin(), l.hosts.end(), n) == l.hosts.end())
+                    l.hosts.push_back(n);
+            };
+            for (const std::uint32_t g : gateways)
+                if ((ntohl(g) & i.netmask.host) == (i.address.host & i.netmask.host)) add(ntohl(g));
+            add((i.address.host & i.netmask.host) | 1u);
+        }
+        out.push_back(std::move(l));
+    }
+    return out;
+}
+
+/* Join the group on each interface not joined yet. A membership dies with its
+ * interface, so `joined` is trimmed to the interfaces that exist, and one that
+ * comes back is joined again. A refusal (already a member) is harmless. */
+void join_groups(socket_t s, const std::vector<LanIf>& ifs, std::vector<std::uint32_t>& joined) {
+    std::vector<std::uint32_t> now;
+    for (const auto& i : ifs) {
+        now.push_back(i.address);
+        if (std::find(joined.begin(), joined.end(), i.address) != joined.end()) continue;
+        ip_mreq m{};
+        m.imr_multiaddr.s_addr = inet_addr(kBeaconGroup);
+        m.imr_interface.s_addr = i.address;
+        setsockopt(s, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char*)&m, sizeof m);
+    }
+    joined = std::move(now);
+}
+
+}  // namespace
 
 Beacon::Beacon() : p_(new Impl) {}
 Beacon::~Beacon() {
@@ -196,14 +300,14 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
         if (error) *error = "another process holds the beacon port";
         return false;
     }
+    /* The default interface first, as before; then each LAN interface. Neither
+     * is fatal any more: with no group at all, broadcast and unicast still
+     * arrive on this port, and an interface that appears later is joined by the
+     * tx thread. */
     ip_mreq mreq{};
     mreq.imr_multiaddr.s_addr = inet_addr(kBeaconGroup);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    if (setsockopt(s, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char*)&mreq, sizeof mreq) != 0) {
-        hz_close(s);
-        if (error) *error = "could not join the multicast group (no LAN interface?)";
-        return false;
-    }
+    setsockopt(s, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char*)&mreq, sizeof mreq);
     p_->listen_sock = s;
 
     p_->rx = std::thread([this] {
@@ -227,9 +331,13 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
             char ip[INET_ADDRSTRLEN] = {0};
             inet_ntop(AF_INET, &from.sin_addr, ip, sizeof ip);
             peer.address = ip;
+            const auto t = std::chrono::steady_clock::now();
             std::lock_guard<std::mutex> lk(p_->mu);
             auto was = p_->seen.find(peer.peer_id);
-            peer.heard = was == p_->seen.end() ? 1 : was->second.heard + 1;
+            auto& last = p_->counted[peer.peer_id];
+            const bool fresh = was == p_->seen.end() || t - last >= std::chrono::milliseconds(1000);
+            if (fresh) last = t;
+            peer.heard = was == p_->seen.end() ? 1 : was->second.heard + (fresh ? 1u : 0u);
             p_->seen[peer.peer_id] = peer;
         }
     });
@@ -239,18 +347,53 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
         if (o == HZ_BAD_SOCKET) return;
         unsigned char ttl = 1;  // this subnet only; never routed outward
         setsockopt(o, IPPROTO_IP, IP_MULTICAST_TTL, (const char*)&ttl, sizeof ttl);
-        sockaddr_in to{};
-        to.sin_family = AF_INET;
-        to.sin_addr.s_addr = inet_addr(kBeaconGroup);
-        to.sin_port = htons(kBeaconPort);
+        int yes = 1;
+        setsockopt(o, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof yes);
+        auto send_to = [&](std::uint32_t addr, const std::string& msg) {
+            sockaddr_in to{};
+            to.sin_family = AF_INET;
+            to.sin_addr.s_addr = addr;
+            to.sin_port = htons(kBeaconPort);
+            sendto(o, msg.data(), (int)msg.size(), 0, (sockaddr*)&to, sizeof to);
+        };
+        auto multicast_from = [&](std::uint32_t iface) {  // INADDR_ANY: the default interface
+            in_addr a{};
+            a.s_addr = iface;
+            setsockopt(o, IPPROTO_IP, IP_MULTICAST_IF, (const char*)&a, sizeof a);
+        };
+        const std::uint32_t group = inet_addr(kBeaconGroup);
+        std::vector<LanIf> ifs;
+        std::vector<std::uint32_t> joined;
+        auto read_at = std::chrono::steady_clock::now() - std::chrono::hours(1);
         while (!p_->stop) {
+            /* A hotspot switched on, a cable plugged in: interfaces come and go
+             * while the application runs, so they are re-read every 10 s. */
+            if (std::chrono::steady_clock::now() - read_at >= std::chrono::seconds(10)) {
+                read_at = std::chrono::steady_clock::now();
+                ifs = lan_addresses();
+                std::lock_guard<std::mutex> lk(p_->mu);
+                if (p_->listen_sock != HZ_BAD_SOCKET) join_groups(p_->listen_sock, ifs, joined);
+            }
             std::string msg;
+            std::vector<std::uint32_t> direct;
             {
                 std::lock_guard<std::mutex> lk(p_->mu);
                 msg = p_->payload;
+                direct = p_->direct;
             }
-            if (!msg.empty() && msg.size() <= kMaxBeacon)  // empty = listening only
-                sendto(o, msg.data(), (int)msg.size(), 0, (sockaddr*)&to, sizeof to);
+            if (!msg.empty() && msg.size() <= kMaxBeacon) {  // empty = listening only
+                multicast_from(htonl(INADDR_ANY));
+                send_to(group, msg);
+                for (const auto& i : ifs) {
+                    multicast_from(i.address);
+                    send_to(group, msg);
+                    send_to(i.broadcast, msg);
+                    for (const std::uint32_t h : i.hosts)
+                        if (std::find(direct.begin(), direct.end(), h) == direct.end()) send_to(h, msg);
+                }
+                send_to(htonl(INADDR_BROADCAST), msg);
+                for (const std::uint32_t d : direct) send_to(d, msg);
+            }
             for (int i = 0; i < 30 && !p_->stop; i++)
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
@@ -264,9 +407,12 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
 void Beacon::stop() {
     if (!running_) return;
     p_->stop = true;
-    if (p_->listen_sock != HZ_BAD_SOCKET) {
-        hz_close(p_->listen_sock);  // unblocks recvfrom
-        p_->listen_sock = HZ_BAD_SOCKET;
+    {
+        std::lock_guard<std::mutex> lk(p_->mu);  // the tx thread joins groups on it
+        if (p_->listen_sock != HZ_BAD_SOCKET) {
+            hz_close(p_->listen_sock);  // unblocks recvfrom
+            p_->listen_sock = HZ_BAD_SOCKET;
+        }
     }
     if (p_->rx.joinable()) p_->rx.join();
     if (p_->tx.joinable()) p_->tx.join();
@@ -277,6 +423,17 @@ void Beacon::announce(const PeerInfo& self) {
     std::lock_guard<std::mutex> lk(p_->mu);
     p_->payload = self.peer_id.empty() ? std::string() : encode_beacon(self);
     p_->self_id = self.peer_id;
+}
+
+void Beacon::tell_directly(const std::vector<std::string>& addresses) {
+    std::vector<std::uint32_t> out;
+    for (const auto& a : addresses) {
+        in_addr v{};
+        if (out.size() >= 16 || inet_pton(AF_INET, a.c_str(), &v) != 1) continue;
+        if (std::find(out.begin(), out.end(), (std::uint32_t)v.s_addr) == out.end()) out.push_back(v.s_addr);
+    }
+    std::lock_guard<std::mutex> lk(p_->mu);
+    p_->direct = std::move(out);
 }
 
 std::vector<PeerInfo> Beacon::peers(int stale_seconds) const {

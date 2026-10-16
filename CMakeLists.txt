@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20)
 # does not produce a missing answer, it produces a confident wrong one. It is
 # also what the running binary reports to the update client, which is the other
 # reason it cannot be a literal typed into a third place.
-project(voidhormiga VERSION 0.2.0 LANGUAGES CXX C)
+project(voidhormiga VERSION 0.2.1 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -98,6 +98,8 @@ target_include_directories(voidpalabra PUBLIC ${VOIDMAIZ_ROOT}/vendor)
 add_library(hormiga_sync STATIC src/sync/merge.cpp src/sync/peer.cpp src/sync/replica.cpp)
 target_include_directories(hormiga_sync PUBLIC src PRIVATE ${VOIDMAIZ_ROOT}/vendor)
 target_link_libraries(hormiga_sync PUBLIC voidpalabra sodium)
+# the beacon goes out on every LAN interface, and Void Maiz knows which they are
+target_link_libraries(hormiga_sync PRIVATE voidmaiz_lan)
 
 # ── STAGE C: Void Maiz's networking module (2026-09-19) ──────────────────────
 # `voidmaiz_net` is the ONLY target that links Void Palabra's session, and Void
@@ -111,7 +113,7 @@ else()
   message(WARNING "voidmaiz_net not built (is ../VoidPalabra/include/voidpalabra/sync.hpp there?) -- members sync the 0.1.4 way")
 endif()
 if(WIN32)
-  target_link_libraries(hormiga_sync PUBLIC ws2_32) # the LAN beacon + stream
+  target_link_libraries(hormiga_sync PUBLIC ws2_32 iphlpapi) # the LAN beacon + stream; the gateways
 endif()
 if(NOT MSVC)
   target_compile_options(hormiga_sync PRIVATE -Wall -Wextra)
@@ -247,7 +249,7 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
-  src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/map_panels.cpp src/ui/calendar.cpp
+  src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/map_panels.cpp src/ui/inspector.cpp src/ui/calendar.cpp src/ui/calendar_panels.cpp
   src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
   src/ui/tags.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp

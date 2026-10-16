@@ -11,6 +11,7 @@
 #include "render/theme.hpp"
 #include "render/published.hpp" // the shared clearance gate
 #include "render/text.hpp" // the helpers both output domains share
+#include "render/label_css.hpp" // a shape label's CSS, cleaned at the seam
 #include "domain/date_query.hpp" // date: predicates in the block grammar
 #include "domain/ical.hpp"       // THE PIVOT: VEVENT <-> dated rune
 #include "render/download.hpp" // a file a visitor can keep
@@ -32,6 +33,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
     dio.mantle = kDataMantle;
     maiz::Scene issue = maiz::project_scene(core, io);
     maiz::Scene data = maiz::project_scene(core, dio);
+    const auto given_col = hormiga::bestow::given_values(data, "color"); // shapes' colours, live
     hormiga::farmhost::apply_grant(data, fv2.grant.get()); // Antfarm v2: only what this document is granted
     warn_if_data_is_elsewhere(data); // field report D6: the silent empty render
     std::string suf = std::string("_") + std::string(lang);
@@ -235,13 +237,12 @@ std::string HormigaApp::render_site(std::string_view lang) {
         for (const auto& r : rules) {
             if (r.tags.empty() || !maiz::node_matches(rule_expr_of(r), dn))
                 continue;
-            for (const auto& c : kMarkerColors)
-                if (r.color == c.tag) col = c.col;
+            color_value(r.color, col);
             break;
         }
+        if (auto g = given_col.find(dn.name); g != given_col.end()) color_value(g->second, col); // a shape's
         std::string ct = tag_value(dn, "color");
-        for (const auto& c : kMarkerColors)
-            if (ct == c.tag) col = c.col;
+        color_value(ct, col);
         char hex[10];
         std::snprintf(hex, sizeof hex, "#%02x%02x%02x", col & 0xFF,
                       (col >> 8) & 0xFF, (col >> 16) & 0xFF);
@@ -1782,10 +1783,13 @@ std::string HormigaApp::render_site(std::string_view lang) {
             };
             auto web_fans = ref_fans(data, ch); // #4: fan ref-children
             nlohmann::json mj = nlohmann::json::array();
-            // a FLOOR PLAN's positions are metres, not latitude: never on this Earth map
+            // a FLOOR PLAN's positions are metres, not latitude: never on this Earth map;
+            // and a layer shows what is ON it (domain/canvas.hpp, 2026-10-15)
             const bool drawn_canvas = view && !hormiga::canvas::of(*view).empty();
+            const auto web_layers = hormiga::canvas::layers(data, "");
             for (const auto& dn : data.nodes) {
-                if (drawn_canvas || !hormiga::kinds::on_public_map(dn)) continue; // the seam (domain/kinds.hpp)
+                if (drawn_canvas || !hormiga::kinds::on_public_map(dn) || // the seam (domain/kinds.hpp)
+                    (view && hormiga::canvas::layer_of(dn, web_layers) != view->name)) continue;
                 double la, lo;
                 float dx = 0, dy = 0;
                 auto ff = web_fans.find(dn.name);
@@ -1817,29 +1821,49 @@ std::string HormigaApp::render_site(std::string_view lang) {
             // #3: shapes (rect/ellipse annotations) into the widget too
             nlohmann::json sj = nlohmann::json::array();
             for (const auto& dn : data.nodes) {
-                if (dn.glyph != "mapshape" || drawn_canvas || !hormiga::canvas::on(dn, "")) continue; // Earth's only
+                if (dn.glyph != "mapshape" || drawn_canvas || !hormiga::canvas::on(dn, "") || // Earth's only
+                    (view && hormiga::canvas::layer_of(dn, web_layers) != view->name)) continue;
                 double a1, o1, a2, o2;
                 if (!hormiga::parse_geo(field_value(dn, "geo1"), a1, o1) ||
                     !hormiga::parse_geo(field_value(dn, "geo2"), a2, o2))
                     continue;
-                sj.push_back({{"a1", a1}, {"o1", o1}, {"a2", a2}, {"o2", o2},
-                              {"e", field_value(dn, "kind") == "ellipse"},
-                              {"c", style_hex(dn, vrules)}});
+                nlohmann::json shp = {{"a1", a1}, {"o1", o1}, {"a2", a2}, {"o2", o2},
+                                      {"e", field_value(dn, "kind") == "ellipse"},
+                                      {"c", style_hex(dn, vrules)}};
+                /* ITS LABEL (2026-10-15), published like the shape: text, size,
+                 * colour, weight, slant, place, and CSS cleaned at this seam. */
+                if (const std::string sl = field_value(dn, "label"); !sl.empty()) {
+                    shp["l"] = sl;
+                    const std::string sz = field_value(dn, "label_size");
+                    if (!sz.empty()) shp["ls"] = std::clamp(std::atof(sz.c_str()), 0.5, 4.0);
+                    unsigned lc = 0;
+                    if (color_value(field_value(dn, "label_color"), lc)) {
+                        char hx[10];
+                        std::snprintf(hx, sizeof hx, "#%02x%02x%02x", lc & 0xFF, (lc >> 8) & 0xFF, (lc >> 16) & 0xFF);
+                        shp["lc"] = hx;
+                    }
+                    if (field_value(dn, "label_bold") == "1") shp["lb"] = true;
+                    if (field_value(dn, "label_italic") == "1") shp["li"] = true;
+                    if (const std::string lp = field_value(dn, "label_pos"); !lp.empty()) shp["lp"] = lp;
+                    if (const std::string css = hormiga::shape_label_css(field_value(dn, "label_css")); !css.empty())
+                        shp["lx"] = css;
+                }
+                sj.push_back(shp);
             }
-            // tiles for the BROWSER: OSM's servers 403 referer-less requests
-            // (file:// previews, some deploys), so the widget rides CARTO —
-            // voyager stands in for the labeled OSM style; the no-labels
-            // choices carry through. Attribution covers both projects.
-            const char* tile_tmpl =
-                basemap_src == 1
-                    ? "https://basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
-                : basemap_src == 2
-                    ? "https://basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png"
-                    : "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png";
+            /* TEMPORARY FIX (2026-10-15, Q111 in okf/developer_questions.md).
+             * The widget rode CARTO, because OSM's servers once refused
+             * referer-less requests (file:// previews). CARTO now answers every
+             * style, with or without a referer, with an "API KEY REQUIRED"
+             * picture, so published maps showed that instead of streets. OSM's
+             * own tiles answer today, with or without a referer (measured with
+             * curl), so every style uses them until the tile source becomes an
+             * Antfarm choice (Q111's lean); the light/dark no-label looks have
+             * no keyless twin and draw the standard map meanwhile. */
+            const char* tile_tmpl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
             h << "<div class=\"mapwidget\" data-center=\""
               << html_escape(center) << "\" data-zoom=\"" << html_escape(zoom)
               << "\" data-tiles=\"" << tile_tmpl
-              << "\" data-attrib=\"(c) OpenStreetMap contributors (c) CARTO\""
+              << "\" data-attrib=\"(c) OpenStreetMap contributors\""
               << " data-shapes=\"" << html_escape(sj.dump()) << "\""
               << " data-markers=\"" << html_escape(mj.dump()) << "\"></div>\n";
             std::string cap = text(*n, "caption");
