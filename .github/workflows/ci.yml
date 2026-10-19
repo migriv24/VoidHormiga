@@ -66,6 +66,10 @@ jobs:
           git clone --depth 1 https://github.com/migriv24/VoidMaiz.git VoidMaiz
           git clone --depth 1 https://github.com/migriv24/VoidAllomone.git VoidAllomone
           git clone --depth 1 https://github.com/migriv24/VoidPalabra.git VoidPalabra
+          # VoidHammer (the family's networking since 2026-10-17) has no public
+          # repository yet. This build therefore has networking absent; CMake
+          # warns. Add the clone here when the remote exists, so the five
+          # networking tests run in CI instead of being silently skipped.
 
       # GLFW 3.4 builds BOTH an X11 and a Wayland backend on Linux by default, so
       # configure needs both sets of development headers even though a runner

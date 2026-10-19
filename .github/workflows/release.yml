@@ -68,6 +68,11 @@ jobs:
           git clone --depth 1 https://github.com/migriv24/VoidMaiz.git     VoidMaiz
           git clone --depth 1 https://github.com/migriv24/VoidAllomone.git VoidAllomone
           git clone --depth 1 https://github.com/migriv24/VoidPalabra.git  VoidPalabra
+          # VoidHammer (networking since 2026-10-17) has no public repository
+          # yet. While Void Maiz's main predates the move (0.2.2: 8cd88ef), the
+          # networking these binaries carry is Maiz's own; once main carries the
+          # move they lose it until Hammer is cloned here too. Add it when the
+          # remote exists; the five networking tests must pass first.
 
       # GLFW 3.4 builds both an X11 and a Wayland backend by default, so
       # configure needs both sets of headers even on a machine with no display.
