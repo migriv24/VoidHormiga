@@ -6366,3 +6366,37 @@ identical to 0.2.1's with versions and dates masked.
 **Not done:** no commit, tag, push, Linux/macOS runner legs, feed or GitHub
 release. The feed is what offers an update to every installed copy, and 0.2.2
 cannot sync with 0.2.1, so publishing is the author's call.
+
+## 0.2.2 shipped (2026-10-19)
+
+The author: *"you can make the release, let mago know about us too and an
+update as well."*
+
+- **Commit `8de1bee`, tag `v0.2.2`.** The first push was refused: the token
+  on this machine has no `workflow` scope, and the commit carried comment-only
+  edits to `ci.yml` and `release.yml`. The unpushed commit was rebuilt without
+  them; they stay in the working tree for a push with a token that may touch
+  workflows.
+- **All three runner legs built** (linux-x64, macos-arm64, macos-x64) against
+  Void Maiz `main` `8cd88ef`, which predates the move to Void Hammer and so
+  carries networking of its own (`maiz_net_smoke` built). The Windows installer
+  and the APK were built here against Void Maiz's local `ios` branch
+  (`5ea6720`, the move) with Void Hammer. One wire protocol, two code paths: the
+  release workflow's comment now says so.
+- **Assets:** the installer and the APK with their version-free copies and
+  `SHA256SUMS.txt`, uploaded beside the runners' archives (15 assets, as 0.2.1).
+  The Linux archive was downloaded into the release folder before `mago feed
+  --artifacts`, and its digest `088f6cbe…` equals the runner's own. Checked by
+  hand: both feed artifacts hash to what the feed says and match its `bytes`.
+- **Live:** `releases/latest/download/void-updates.json` says `latest 0.2.2`;
+  the stable `VoidHormiga-android-arm64.apk` and
+  `VoidHormiga-windows-x64-setup.exe` URLs serve the new files (`ecab7c9f…`,
+  `90fc795d…`). The release notes lead with *update every device*.
+- **Void Mago told**: `MESSAGE_FOR_VOIDMAGO_hormiga-0.2.2-shipped-and-three-findings-2026-10-18.md`,
+  delivered to its root as earlier Hormiga messages were. The stale `mago.exe`
+  that brings back the 2026-09-08 slash bug; Void Hammer having no manifest, so
+  Mago cannot see our networking; and the missing word for "old installs
+  cannot sync with new ones" (lean: a `peers` field the update prompt renders).
+
+**Still owed:** two phones on 0.2.2 (the radio change has not met hardware),
+the new buttons seen in a window, and a person running the macOS archives.
