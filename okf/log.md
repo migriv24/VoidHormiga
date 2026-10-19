@@ -6216,3 +6216,153 @@ Then the author's six ([territory](/concepts/sections/gis/territory.md),
 re-captured (only `app.js` and `style.css` moved); the GUI driven on the
 scratch Cat Dataset and its 2,000-place copy. Budgets: `site.cpp` 2331 → 2334
 (recorded). Not run on a phone; not committed.
+
+# The networking stack, audited (2026-10-18)
+
+Void Maiz moved its networking engine to **Void Hammer** on 2026-10-17, and
+several adjacent surfaces landed with it. The author asked for an investigation
+before any update, and for the current behaviour of each library to be written
+down because several are still moving.
+
+**Measured on 2026-10-18.** Sibling versions: Void Core `859ef17`, Void Maiz
+`5ea6720`, Void Palabra `603a7db`, Void Allomone `327732d`, Void Verguenza
+`ce2db3a`, Void Chisme `d200eeb`, Hormiga `80881fd`. **Void Hammer has no Git
+repository and no public remote.** The existing build configured with
+`VOIDHAMMER_ROOT` built clean. `ctest` under `cmd.exe`: **53 of 56**, with all
+five networking tests green — `lan_smoke`, `net_smoke`, `lanlink_smoke`,
+`radio_smoke`, `rnslink_smoke`. The reds were `reduce_conformance` at its known
+17/25 and two shell tests that need Unix tools and a working `/tmp`; neither
+touches networking.
+
+**What the audit found.** Hormiga still links `voidmaiz_lan` / `voidmaiz_net`
+and includes `voidmaiz/lan.hpp`, `net.hpp`, `radio.hpp` and `rnsradio.hpp`; the
+Void Maiz aliases and forwarding headers are why the move did not break it. The
+default LAN sync is still Hormiga's sealed session (`sync/peer.*`,
+`app/lan_wire.*`), not Reticulum. The radios drive `voidpalabra::reticulum::Node`
+and `maiz::RadioBridge` directly with an HZP1 room proof, not `RnsSession`.
+`members.json` has a libsodium key but no Reticulum identity. `RnsSession`'s
+announces carry the person's name, colour and the database's name in the clear
+(Q98), so moving LAN sync to it as-is would undo the sealed presence.
+
+**Written:** [the networking stack](/concepts/platform/networking-stack.md) (the
+durable map) and
+[the audit report](/reports/networking-stack-audit-2026-10-18.md) (the
+measurements, inventory and delta ledger). Corrected the stale ownership in
+[LAN sharing](/concepts/platform/lan-sharing.md), [radios](/concepts/platform/radios.md),
+[Antfarm collaboration](/concepts/platform/antfarm/collaboration.md),
+[mobile](/concepts/sections/mobile.md), the [project index](/concepts/projects/index.md),
+[Void Maiz uptake](/concepts/projects/void-maiz-uptake.md), [Void Snape](/concepts/projects/void-snape.md),
+[Void Chisme](/concepts/projects/void-chisme.md) and [Void Verguenza](/concepts/projects/void-verguenza.md).
+README, AGENT-GUIDE, CI, release and the Android notes now name Void Hammer and
+state that CI builds without networking until it has a public remote. Opened
+Q113–Q118: direct Hammer adoption, the Reticulum transport gate, the navigation
+bar, the CI gap, the members registry's Reticulum identity, and the portable
+shell's timing. Nothing in `src/`, `CMakeLists.txt`, the Android build or the
+workflows changed behaviour.
+
+# A database is its own room (2026-10-18, later)
+
+The author: a test networking database, devices connected to it, the tests
+ended, and *"even if i switch to another database, the transfer of data from the
+previous device is still there and it attempts to transfer everything over"*.
+They want a temporary trip from a volunteer group's database to a family one to
+carry no fear of leaking, and they did not want a "log off" button to be the
+answer.
+
+**The cause was in the code, not in a habit.** The room key and the members
+registry were found by file name beside the `.miga`, then in the working copy's
+folder, which every database searches; a phone keeps every database in one
+folder. Presence defaults to on. A member link was let in on its fingerprint
+alone, and Palabra's session has no notion of a database, so two databases in
+one room merged. The radios kept their Reticulum links across a switch and, in
+a branch commented *"a new database: carry again"*, gave them the new database's
+frames.
+
+**The author decided** (same day): a copy is a new database (*"a copy is a copy
+… effectively an entirely new database"*); Save as makes a new one; and the
+Antfarm, which *"decides where data lives (including the folder … on a device
+itself)"*, should hold networking nodes from Void Hammer, Palabra, Verguenza and
+Chisme.
+
+**Built** ([a database is its own room](/concepts/platform/database-separation.md)):
+- the room key and the registry in this device's keyring under the database's
+  sync id, with a one-time copy-in of the old files for a database shared before
+  (never from the working copy's folder);
+- the key in use is the file bound to the id (`database_room`), so one file in
+  two databases is two rooms;
+- an `HZL1` room proof on every LAN member link, both ways, before any frame;
+  the radios' `HZP1` proof now proves the same per-database room;
+- `leave_database` forgets the room at once; a radio room change closes every
+  link and brings the radios back in the new room only; a radio link whose
+  device leaves the registry closes;
+- Save as gives a new id (and gives it back if the save fails); opening a file
+  copy of a database whose file this device knows gives a new id and saves it;
+  a join is never taken for a copy.
+
+**Found on the way:** `effect open-database` / `save-database` / `new-database`
+replaced the core inside a dispatch, mid-frame, and `open-database` crashed the
+desktop every time, on the unchanged build too. They now go through
+`run_busy` like the File menu, and `run_busy` keeps every action asked for in
+one frame, in order, instead of only the last.
+
+**Measured:** two profiles on loopback with the CLI: same-database members
+connect and sync through the new proof; the author's bug staged on purpose
+(test key and registry loose beside `family`, `family` given an id) gives
+`present: 0` on both sides and unchanged databases. The desktop through
+`HORMIGA_BOOT_CMD`: open keeps an id, Save as and a file copy each get a new
+one. `hormiga_lan_smoke` gained the room and proof checks. 55/56
+(`reduce_conformance`, upstream's known red); layering, budgets, host seams,
+glyph fields, i18n and OKF links pass. **Not on two real devices yet**, and no
+test switches databases while a radio link is up.
+
+**Every device must update**: an older Hormiga derives no room and sends no
+proof. A member list that sat beside several databases is copied into each,
+with a warning; the rooms keep them apart, and removing a member is Q121.
+
+**Designed, not built:** [the networking nodes](/concepts/platform/antfarm/v2/networking-nodes.md),
+node families by owner (home, reach, room and sync, members and join, keys,
+observer), and the rule that every networking node belongs to one database.
+Opened Q119–Q122: those families, whether restoring a backup is a copy,
+removing a member and leaving a database, and one Reticulum identity per device
+or per database.
+
+## 0.2.2 built, not published (2026-10-18)
+
+The author: *"make new build of hormiga with these edits and changes, go with
+what your leaning towards for now"*. The leans became decisions (Q119–Q121;
+Q122's lean is to decide it with Q98/Q114, so it stays open), and two were
+built before the build:
+
+- **Remove and Leave (Q121).** `LanRuntime::remove_member` (an admin; by
+  fingerprint or username) marks the row `left`, drops the member from
+  `member_fps` and erases its link queue, so the link thread closes now.
+  `leave_for_good` marks this device's row, leaves the database, and deletes its
+  room key from the keyring; the data stays. Desktop: a Remove button per member
+  row and *Leave this database...* with a confirmation, in Share database.
+  Phone: *Leave this database* on Migos. CLI: `effect lan-remove-member <who>`,
+  `effect lan-leave`.
+- **Where this database lives (Q119's first step).** `LanRuntime::home_lines`
+  (file, working copy, identity, network files, room), shown in Share database,
+  on Migas, and by `effect home`.
+- `effect open-database`/`save-database`/`new-database` deferred (the crash in
+  the entry above) and `run_busy` chaining are in this build.
+- `headless.cpp` budget 1483 → 1489 for the three verbs' catalogue rows.
+
+**Measured:** a removed member's edit did not arrive, a second removal and a
+second leave are refused, and `home` reads as intended. 55/56
+(`reduce_conformance`), every linter. **Not looked at in a window**: the new
+buttons were built and driven through the CLI only.
+
+**Built:** `mago stage` (the 2026-09-18 `build/bin/mago.exe`; the older
+`build-desktop` one still writes `vendor/fonts` with a forward slash, the
+2026-09-08 bug, so it must not be used), then `makensis`: the staged script is
+identical to 0.2.1's with versions and dates masked.
+`VoidHormiga-0.2.2-windows-x64-setup.exe`, 16,549,155 bytes, SHA-256
+`90fc795d…67960a` (restaged once so the bundled OKF holds this entry); the staged CLI reports `Void Hormiga 0.2.2 (windows-x64)`.
+`VoidHormiga-0.2.2.apk`, 5,817,024 bytes, SHA-256 `ecab7c9f…d3ff4d`, version code
+202, signed with the Hormiga key (certificate `37d0ee24…`), so it installs over
+0.2.1. Both, with their version-free copies, in `../VoidMago/stage/release-0.2.2/`.
+
+**Not done:** no commit, tag, push, Linux/macOS runner legs, feed or GitHub
+release. The feed is what offers an update to every installed copy, and 0.2.2
+cannot sync with 0.2.1, so publishing is the author's call.

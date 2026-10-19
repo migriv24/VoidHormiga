@@ -64,7 +64,22 @@ Four rows have moved and one piece was never on the table:
 | the update client | Q86's trigger was "when the phone build starts", and the first Android build shipped as 0.1.7 (2026-09-24) | **still not migrated**; two clients now exist ([Q86](/developer_questions.md)) |
 | wires as runes | the Antfarm redesign answered A2 (wiring is read), but v2 took **named relations through `WireWriter`**, not `wires.hpp` | decided by building, never written down; [Q99](/developer_questions.md) |
 | rules of a mantle | v2's **placement** (`farm place <node> on <profile>\|each\|any`) answers "which device performs a synced node's effects" without mantle rules | overtaken by placement |
-| the navigation bar (not in the table) | offered to Void Maiz on 2026-09-23 as `src/phone/nav.*`, "written to be lifted"; the author placed it with Maiz in so many words | **still ours**: `voidmaiz/mobile.hpp` has no navigation bar, and the message is not in Maiz's repository |
+| the navigation bar (not in the table) | offered to Void Maiz on 2026-09-23 as `src/phone/nav.*`, "written to be lifted"; the author placed it with Maiz in so many words | **lifted upstream 2026-10-17** as `voidmaiz/nav.hpp` (`CentreFace`, `back_pressed` claims Back, `Stack(root)`). **Adoption pending here** (2026-10-18) |
+
+## Since 2026-10-17 (checked 2026-10-18)
+
+Three things moved after the 09-29 table:
+
+| piece | what changed | state (2026-10-18) |
+|---|---|---|
+| the networking engine | `Network`, `LanSession`, `RnsSession`, the radio bridge and the transports moved from Void Maiz to **Void Hammer** (`../VoidHammer/net`), with forwarding headers and alias targets | Hormiga still links `voidmaiz_lan` / `voidmaiz_net`; direct adoption is pending |
+| the navigation bar | `voidmaiz/nav.hpp` now carries Hormiga's bar, app bar, Back and `Stack` | **adoption pending**; our `src/phone/nav.*` is ready to delete |
+| the HTTP seam | `voidmaiz/http.hpp` lifts `android_http` out of the updater; desktop `curl`, Android `HttpURLConnection`, iOS `NSURLSession` | Hormiga still shells out to `curl`; adoption pending |
+
+The portable `maiz::App` shell and the update client are adjacent and
+separately decided. The full map and evidence are
+[the networking stack](/concepts/platform/networking-stack.md) and
+[the 2026-10-18 audit](/reports/networking-stack-audit-2026-10-18.md).
 
 # Updates: proven compatible, migration staged
 

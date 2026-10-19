@@ -181,6 +181,20 @@ with it.
   before the application you actually wanted. The rule the whole design turns
   on: *a check is a network request a person did not make*, so the preference
   starts at "unasked" and lives beside the install rather than in the org.
+- [The networking stack](/concepts/platform/networking-stack.md) — **the map,
+  dated 2026-10-18.** Void Hammer now reaches devices and runs the sync engine;
+  Void Maiz owns what networking looks like; Void Palabra owns what crosses;
+  Hormiga owns who may join and what may leave. The current APIs, what Hormiga
+  still uses by compatibility, the Reticulum announce privacy gate, and the
+  approved order of work. Evidence: [the audit](/reports/networking-stack-audit-2026-10-18.md).
+- [A database is its own room](/concepts/platform/database-separation.md) —
+  **built 2026-10-18**, after the author's test colony kept syncing into the
+  next database opened. Joining is the only way two files are the same
+  database; every copy is a new one. A database's room key and member list live
+  in this device's keyring under its id, its room is bound to that id, every
+  link proves it, and switching ends every link. Where it goes next is the
+  Antfarm: [the networking nodes](/concepts/platform/antfarm/v2/networking-nodes.md),
+  which say where a database lives on a device and whom it speaks to.
 - [LAN sharing](/concepts/platform/lan-sharing.md) — **opened 2026-09-16**: a
   profile that belongs to the person at the computer; sharing a database as the
   sealed, approved provisioning of another device (the database, the files the
@@ -236,9 +250,10 @@ with it.
   we take up, piece by piece. Hormiga builds against it unchanged.
 - [Void Verguenza](/concepts/projects/void-verguenza.md) and
   [Void Chisme](/concepts/projects/void-chisme.md) — **sibling applications
-  founded 2026-10-01, design only**, each with its own OKF: shared secrets (which
-  the Antfarm's Key node will reference instead of holding values) and seeing a
-  network one owns as a graph (which will measure Hormiga's LAN collaboration).
+  founded 2026-10-01**, each with its own OKF. Both have phase-0 code as of
+  early October: a single-device vault, and a network library with a CLI and a
+  window. Their Hormiga-facing seams (the client protocol and the observer
+  role) are later phases, so neither is integrated today.
 - [The Cat Dataset](/concepts/projects/cat-dataset.md) — a public, synthetic
   test colony (50 tag-rich fictional cats + linked birthday events) built by a
   C++ generator through the real dispatcher; replaces testing Allomone on the
@@ -278,6 +293,11 @@ with it.
   reply 2026-07-21), not the message files.
 
 # Status
+
+**2026-10-18: databases are separate by construction.** A test database can no
+longer reach a real one: rooms belong to databases, not folders, every link
+proves its room, a switch ends every link, and a copy is a new database. Not
+yet on two real devices. See [a database is its own room](/concepts/platform/database-separation.md).
 
 **2026-10-04: the map is on the phone.** A Map screen with the gestures every
 phone map has (Void Maiz's touch gate learned long press, double tap, two-finger

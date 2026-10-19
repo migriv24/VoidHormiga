@@ -310,12 +310,18 @@ bool LanRuntime::start_sharing(HormigaApp& app, std::string& error) {
     const std::vector<fs::path> dirs = app.key_dirs();
     std::error_code ec;
 
-    // the room key: this database's, made the first time it is shared
-    fs::path rk = hormiga::find_key_file(share.key_file, dirs);
+    // the room key: this database's, made the first time it is shared, kept in
+    // this device's keyring for it and nowhere a second database could find it
+    const std::string id = database_id(app, false); // sync_prepare made it
+    const fs::path rk = database_file(app, share.key_file);
+    if (rk.empty()) {
+        error = "this database has no sync id, so it has no room - see the log";
+        return false;
+    }
     std::string key = slurp(rk);
     if (key.size() != 32) {
-        rk = fs::path(share.key_file).is_absolute() ? fs::path(share.key_file) : dirs.front() / share.key_file;
         key = hormiga::lan::new_room_key();
+        fs::create_directories(rk.parent_path(), ec);
         if (key.size() != 32 || !write_atomic(rk, key)) {
             error = "cannot write the room key to " + u8(rk);
             return false;
@@ -323,13 +329,16 @@ bool LanRuntime::start_sharing(HormigaApp& app, std::string& error) {
         owner_only(rk);
         app.log.push_back({"info", "share", "made this database's room key: " + u8(rk)});
     }
-    rt.room_key = key;
+    rt.room_key = hormiga::lan::database_room(key, id);
     rt.room_for.clear();
+    {
+        std::lock_guard<std::mutex> lk(rt.mu);
+        rt.link_room = rt.room_key;
+    }
 
     // the members registry, with the host as its first member
     const auto ms = hormiga::collab::membership_settings(farm);
-    fs::path mf = hormiga::find_key_file(ms.file, dirs);
-    if (!fs::is_regular_file(mf, ec)) mf = fs::path(ms.file).is_absolute() ? fs::path(ms.file) : dirs.front() / ms.file;
+    const fs::path mf = database_file(app, ms.file);
     rt.members_file = mf;
     std::string merr;
     if (!add_member_doc(app.on_register_glyphs, mf, request_from(rt.me), "admin", "", merr))
@@ -422,6 +431,11 @@ void LanRuntime::leave_database(HormigaApp& app) {
     rt.replica.reset();
     rt.replica_for.clear();
     rt.room_for.clear();
+    /* THE ROOM GOES NOW, not when the next database's is read a second later:
+     * the radios compare rooms every frame, and in that second they carried the
+     * new database's frames to members of the old one (2026-10-18). */
+    rt.room_key.clear();
+    rt.members_file.clear();
     rt.present.clear();
     rt.member_rows.clear();
     rt.members_read_at = -100.0;
@@ -429,6 +443,7 @@ void LanRuntime::leave_database(HormigaApp& app) {
     rt.synced_note.clear();
     {
         std::lock_guard<std::mutex> lk(rt.mu);
+        rt.link_room.clear();
         rt.member_fps.clear();
         rt.incoming.clear();
         rt.progress.clear();
@@ -525,7 +540,14 @@ void LanRuntime::finish_join(HormigaApp& app) {
                            r.ok ? "backed up the database that was open: " + u8(out)
                                 : "could not back up the database that was open: " + r.error});
     }
+    {
+        std::error_code aec;
+        rt.arrived = fs::absolute(miga, aec);
+    }
     app.open_database(u8(miga));
+    // the room key and the registry arrived beside it: they are this database's, not that folder's
+    LanRuntime::keep_arrived_files(app, miga.parent_path());
+    rt.room_for.clear();
 
     if (!secrets.empty()) {
         if (app.vault.unlocked()) {
@@ -586,6 +608,105 @@ void LanRuntime::finish_join(HormigaApp& app) {
 bool LanRuntime::add_member(HormigaApp& app, const fs::path& file, const Request& who,
                             const std::string& role, const std::string& invited_by, std::string& error) {
     return add_member_doc(app.on_register_glyphs, file, who, role, invited_by, error);
+}
+
+/* ── LEAVING (Q121, the lean taken 2026-10-18) ─────────────────────────────
+ *
+ * The registry could be added to and never taken from. A row is never deleted:
+ * it is marked `left`, which sync already honours (`member_fps` skips it), so
+ * the record of who was let in stays. Removing someone is an admin's, on the
+ * device that holds the registry; their links end now, not when they next
+ * reconnect. Leaving is this device's own: its row is marked, the room is
+ * forgotten, and only a new invitation brings it back. */
+namespace {
+
+bool mark_left(HormigaApp& app, const fs::path& file, const std::string& fp, std::string& error) {
+    const std::string doc = slurp(file);
+    if (doc.empty()) {
+        error = "this database has no member list on this device";
+        return false;
+    }
+    maiz::Core c(doc);
+    if (app.on_register_glyphs) app.on_register_glyphs(c);
+    c.dispatch("use members");
+    std::string name;
+    for (const auto& n : project(c, "members").nodes)
+        if (n.glyph == "member" && unquote(hormiga::field_value(n, "fingerprint")) == fp) name = n.name;
+    if (name.empty()) {
+        error = "nobody with that key is in this database's member list";
+        return false;
+    }
+    const maiz::Result r = c.dispatch("set " + name + " left " + today());
+    if (!r.ok || !write_atomic(file, c.export_state())) {
+        error = r.ok ? "cannot write " + u8(file) : "the member list refused it: " + r.text();
+        return false;
+    }
+    return true;
+}
+
+}  // namespace
+
+bool LanRuntime::remove_member(HormigaApp& app, const std::string& who, std::string& error) {
+    LanRuntime& rt = of(app);
+    const fs::path file = database_file(app, hormiga::collab::membership_settings(project(app.core, kAntfarmMantle)).file);
+    const std::string mine = fingerprint(rt);
+    std::string fp, role, name, left;
+    for (const auto& row : members(app, file)) {
+        auto get = [&row](const char* k) {
+            auto i = row.find(k);
+            return i == row.end() ? std::string() : i->second;
+        };
+        if (get("fingerprint") == mine) role = get("role");
+        if (get("fingerprint") == who || get("username") == who)
+            fp = get("fingerprint"), name = get("username"), left = get("left");
+    }
+    if (fp.empty()) {
+        error = "nobody called " + who + " is in this database's member list";
+        return false;
+    }
+    if (fp == mine) {
+        error = "that is this device: use Leave this database instead";
+        return false;
+    }
+    if (!left.empty()) {
+        error = name + " already left this database (" + left + ")";
+        return false;
+    }
+    if (role != "admin") {
+        error = "only an admin can remove a member";
+        return false;
+    }
+    if (!mark_left(app, file, fp, error)) return false;
+    {
+        std::lock_guard<std::mutex> lk(rt.mu);
+        rt.member_fps.erase(fp);
+        rt.link_io.erase(fp); // the link thread sees its queue gone and closes
+    }
+    rt.present.erase(fp);
+    rt.members_read_at = -100.0;
+    app.log.push_back({"info", "share", "removed " + name + " from this database; they can no longer connect"});
+    return true;
+}
+
+bool LanRuntime::leave_for_good(HormigaApp& app, std::string& error) {
+    LanRuntime& rt = of(app);
+    const auto farm = project(app.core, kAntfarmMantle);
+    const fs::path file = database_file(app, hormiga::collab::membership_settings(farm).file);
+    const fs::path key = database_file(app, hormiga::collab::share_settings(farm).key_file);
+    if (key.empty() || slurp(key).size() != 32) {
+        error = "this database is not shared on this device: there is nothing to leave";
+        return false;
+    }
+    std::string why;
+    if (!mark_left(app, file, fingerprint(rt), why))
+        app.log.push_back({"warn", "share", "leaving: " + why}); // the room still goes
+    leave_database(app);
+    std::error_code ec;
+    if (!fs::path(hormiga::collab::share_settings(farm).key_file).is_absolute()) fs::remove(key, ec);
+    rt.room_for.clear();
+    app.log.push_back({"info", "share", "left this database on this device: its room key is gone, so it needs a "
+                                        "new invitation to sync again. Its data stays here."});
+    return true;
 }
 
 std::vector<std::map<std::string, std::string>> LanRuntime::members(HormigaApp& app, const fs::path& file) {

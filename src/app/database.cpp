@@ -83,13 +83,24 @@ void HormigaApp::save_database_as(const std::string& path) {
     if (path.empty()) return;
     fs::path out = path;
     if (out.extension() != ".miga") out += ".miga";
+    /* SAVE AS MAKES A NEW DATABASE (the author, 2026-10-18: "'save as new'
+     * effectively creates a new database. it's separate from whatever was being
+     * used before"). It leaves the old one's room and takes an identity of its
+     * own, before it is packed, so the new file never carries the old id. The
+     * first save of a database that had no file yet is naming it, not copying. */
+    std::error_code sec;
+    const bool copying = !cur_miga.empty() && !(fs::exists(out, sec) && fs::equivalent(out, cur_miga, sec));
+    const std::string was = copying ? LanRuntime::fork_identity(*this) : std::string();
     do_save(); // flush live state into the working .db first
     auto r = hormiga::miga::pack(core.export_state(), base_dir, out,
                                  out.stem().string(), assets_dir(),
                                  referenced_files(core.export_state()));
+    // no new file, no new database: the open one is still the original, with its identity
+    if (!r.ok && !was.empty()) core.dispatch("config set sync.database " + was);
     if (r.ok) {
         cur_miga = out.string();
         remember_bundle(cur_miga);
+        LanRuntime::claim_home(*this);
         toast("saved database to " + out.string() + " (" +
               std::to_string(r.assets) + " assets, " +
               std::to_string(r.bytes / 1024) + " KB)");
@@ -257,6 +268,7 @@ void HormigaApp::open_database(const std::string& path) {
     reload_from_state(r.state);
     cur_miga = path;
     remember_bundle(path);
+    LanRuntime::claim_home(*this); // a copy of a database this device knows is a database of its own
     load_secrets(); // an imgbb.key beside THIS bundle
     toast("opened database " + fs::path(path).filename().string() + " (" +
           std::to_string(r.assets) + " assets restored)");

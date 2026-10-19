@@ -110,7 +110,7 @@ struct LanRuntime {
     hormiga::lan::Plan plan;           // what the host will send; built before sharing
     std::filesystem::path plan_miga;   // the prepared bundle (a temp file)
     std::filesystem::path members_file;
-    std::string room_key;              // 32 raw bytes, "" when this database has none
+    std::string room_key;              // 32 bytes, database_room() of the key file; "" when none
     enum class Answer { Waiting, Allow, Deny };
     struct Pending {
         hormiga::lan::Request req;
@@ -129,6 +129,7 @@ struct LanRuntime {
     std::filesystem::path joined_miga;  // set by the join thread when files are written
     std::map<std::string, std::string> joined_vault;
     std::vector<std::pair<std::string, std::string>> thread_log;  // level, message
+    std::string link_room;  // `room_key` as the link threads see it: what a member link proves
 
     // ── presence ────────────────────────────────────────────────────────────
     std::map<std::string, hormiga::lan::Activity> present;  // fingerprint -> latest
@@ -138,6 +139,7 @@ struct LanRuntime {
     double members_read_at = -100.0, checked_at = -100.0;
     std::string room_for;  // which database `room_key` was read for
     bool finishing = false;  // finish_join is queued
+    std::filesystem::path arrived;  // the bundle a join is opening: the same database, never a copy
 
     // ── keeping members in sync (lan-sharing.md §3b; Palabra's replica) ──────
     struct Progress {
@@ -256,6 +258,35 @@ struct LanRuntime {
 
     /* Member sync (app/lan_sync.cpp). */
     static std::string database_id(HormigaApp& app, bool create);
+
+    /* ── A DATABASE'S NETWORK FILES ON THIS DEVICE (2026-10-18) ─────────────
+     * The room key and the members registry used to be found by name in the
+     * folder beside the .miga, then in the working copy's folder, which every
+     * database searches. Every database a phone keeps in its one folder held
+     * one room and one member list, and a test colony reached a real one. They
+     * are now this database's, in the profile, under its sync id:
+     * `<profile>/databases/<id>/<name>`. `name` is the Antfarm's (hol_lan_share
+     * key_file, hol_membership file); an absolute name is used as it is.
+     *
+     * A database shared before this version keeps its room: the first time its
+     * id has no folder here, the files beside its bundle (never the working
+     * copy's folder) are copied in. "" when the database has no id, which is
+     * every database that was never shared, and so has no room. */
+    static std::filesystem::path database_file(HormigaApp& app, const std::string& name);
+    /* The files a join just wrote beside the new bundle, into its keyring. */
+    static void keep_arrived_files(HormigaApp& app, const std::filesystem::path& folder);
+    /* A COPY IS A NEW DATABASE (the author, 2026-10-18). Called after a bundle
+     * opens: if this id's home on this device is another file that still
+     * exists, this file is a copy of it and is given an id of its own. Joining
+     * is the only way two files are the same database. */
+    static void claim_home(HormigaApp& app);
+    /* Save as...: the working copy becomes a database of its own. Returns the
+     * id it had ("" if none), so a save that fails can give it back. */
+    static std::string fork_identity(HormigaApp& app);
+    /* Where the open database lives on this device: its file, its working copy,
+     * its identity, its keyring and whether it has a room. Label, value. */
+    static std::vector<std::pair<std::string, std::string>> home_lines(HormigaApp& app);
+    static void draw_home(HormigaApp& app); // ui/share.cpp
     static bool sync_prepare(HormigaApp& app, double now, bool force);
     static void sync_tick(HormigaApp& app, double now, bool presence);
     static void apply_incoming(HormigaApp& app);  // start of a frame
@@ -274,6 +305,11 @@ struct LanRuntime {
                            const std::string& invited_by, std::string& error);
     static std::vector<std::map<std::string, std::string>> members(
         HormigaApp& app, const std::filesystem::path& file);
+    /* Q121: an admin marks a member `left` (by fingerprint or username) and
+     * their links end; a device leaves for good (its row marked, its room key
+     * deleted, the data kept). False with `error` when refused. */
+    static bool remove_member(HormigaApp& app, const std::string& who, std::string& error);
+    static bool leave_for_good(HormigaApp& app, std::string& error);
 
     /* Presence, for highlighting: the present members whose selection holds
      * `rune` (by id when the peer sent ids). The VIEWS no longer call this --

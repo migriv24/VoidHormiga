@@ -38,9 +38,11 @@ overhaul. **Not measured:** two members editing one Antfarm across two machines.
 
 # Before 2026-09-25: the Antfarm stayed home
 
-Members sync their databases automatically since 0.1.5, through Void Maiz's
-`voidmaiz_net` over Void Palabra's session ([LAN sharing](/concepts/platform/lan-sharing.md)
-§3b). **The `antfarm` mantle is excluded**: `share_mantle` in
+Members sync their databases automatically since 0.1.5, through Void Hammer's
+`Network` over Void Palabra's session (it was Void Maiz's `voidmaiz_net` until
+the 2026-10-17 move; see [the networking stack](/concepts/platform/networking-stack.md)
+and [LAN sharing](/concepts/platform/lan-sharing.md) §3b). **The `antfarm`
+mantle is excluded**: `share_mantle` in
 `app/lan_net.cpp` refuses it, and the splice puts this device's own Antfarm
 back. Three reasons, all from 2026-09-16:
 

@@ -20,7 +20,7 @@ of ths, just re-implementing things."* The plan is Void Palabra's:
 |---|---|
 | the sealed UDP beacon, the join code, the short authentication string, `secretstream` (`sync/peer.cpp`, `app/lan_wire.cpp`) | **Reticulum**, through Palabra's `voidpalabra_reticulum`: announces for discovery, links for the sealed stream, Reticulum identities for who is who |
 | the profile's device key (`platform/profile.cpp`) | a Reticulum identity (Ed25519 + X25519) |
-| `app/lan_net.cpp` driving `voidmaiz_net` over our own sealed session | the same `voidmaiz_net`, over Reticulum links |
+| `app/lan_net.cpp` driving `Network` over our own sealed session | the same `Network`, over Reticulum links (`RnsSession`, in Void Hammer since 2026-10-17) |
 | **who may join, the members registry, private tags, what a join carries** | **unchanged, Hormiga's** |
 | publishing, object stores, image hosts, the update feed | unchanged: HTTPS, not Reticulum |
 | the credential vault and encrypted backups (Argon2id + XChaCha20-Poly1305) | **not Reticulum's to hold**: [Q88](/developer_questions.md) |

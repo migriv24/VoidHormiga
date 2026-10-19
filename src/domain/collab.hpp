@@ -70,7 +70,7 @@ struct ShareSettings {
     bool allow = false;
     bool presence = true;
     int port = kShareStreamPort;
-    std::string key_file = "lan-room.key";   // the room key, beside the .miga
+    std::string key_file = "lan-room.key";   // the room key, in this database's keyring (database_file)
     std::vector<std::string> private_tags{"private"};
     bool send_hosted = false;                // send files that are already online
 };

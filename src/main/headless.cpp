@@ -729,7 +729,7 @@ maiz::HostApp build_app() {
             return std::to_string(worst);
         }
         if (op == "profile" || op == "lan-offers" || op == "lan-share" || op == "lan-join" ||
-            op == "lan-stay") {
+            op == "lan-stay" || op == "home" || op == "lan-remove-member" || op == "lan-leave") {
             // LAN sharing: the windows' own runtime (app/lan_cli.cpp; lan-sharing.md)
             if (!g_core) return {};
             HormigaApp app;
@@ -1099,6 +1099,12 @@ maiz::HostApp build_app() {
         {"lan-stay", "Stay present and keep in sync with the members here. Args: [seconds].",
          false, "announces presence sealed to the room and exchanges this database with members "
          "who are present; writes their changes into it"},
+        {"home", "Where this database lives here: file, working copy, identity, network files, room.",
+         true, "reads; writes nothing and sends nothing"},
+        {"lan-remove-member", "An admin marks a member left; their links end. Args: <fingerprint|username>.",
+         false, "rewrites this database's member list on this device; sends nothing"},
+        {"lan-leave", "Leave this database for good here: row marked left, room key deleted, data kept.",
+         false, "deletes this database's room key on this device; rejoining needs a new invitation"},
         {"lan-join", "Join a shared database. Args: <address> <port> <folder>.", false,
          "sends your username, colour, picture and public key, and writes what the "
          "host sends into the folder - check the host shows the same code"},

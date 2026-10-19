@@ -84,6 +84,23 @@ int LanRuntime::cli(HormigaApp& app, std::string_view op, const std::vector<std:
         value = app.core.export_state();
         return 0;
     }
+    if (op == "home") {
+        for (const auto& [k, v] : home_lines(app)) std::cerr << "  " << k << ": " << v << "\n";
+        value = database_id(app, false);
+        return 0;
+    }
+    if (op == "lan-remove-member" || op == "lan-leave") {
+        std::string err;
+        const bool ok = op == "lan-leave" ? leave_for_good(app, err) : remove_member(app, arg(0), err);
+        for (const auto& e : app.log) std::cerr << "  [" << e.level << "] " << e.op << ": " << e.msg << "\n";
+        app.log.clear();
+        if (!ok) {
+            std::cerr << "  [error] " << err << "\n";
+            return 1;
+        }
+        value = "ok";
+        return 0;
+    }
     if (op == "lan-offers") {
         rt.discovering = true;
         const double end = now() + seconds(0, 5);

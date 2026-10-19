@@ -324,6 +324,8 @@ void LanRuntime::draw_share(HormigaApp& app) {
 
         draw_sync_section(app);
 
+        if (ImGui::CollapsingHeader(ICON_FA_HOUSE "  Where this database lives")) draw_home(app);
+
         /* WHO IS HERE, drawn by Void Maiz from the roster: the live half, with
          * what each person is working in. The registry below is the other half
          * -- who was let in, when, by whom -- and it is ours. */
@@ -337,12 +339,18 @@ void LanRuntime::draw_share(HormigaApp& app) {
             ImGui::TextDisabled("Nobody yet. You become the first member the first time you share.");
         } else {
             ImGui::TextDisabled("Everyone is an admin for now (lan-sharing.md §4).");
+            bool admin = false; // may this device remove someone (Q121)?
+            for (const auto& row : rt.member_rows)
+                if (auto f = row.find("fingerprint"), r = row.find("role");
+                    f != row.end() && f->second == fingerprint(rt) && r != row.end())
+                    admin = r->second == "admin";
             for (const auto& row : rt.member_rows) {
                 auto get = [&row](const char* k) {
                     auto i = row.find(k);
                     return i == row.end() ? std::string() : i->second;
                 };
                 const std::string fp = get("fingerprint");
+                ImGui::PushID(fp.c_str());
                 const ImVec2 at = ImGui::GetCursorScreenPos();
                 auto av = rt.member_avatar.find(fp);
                 draw_avatar(app, av != rt.member_avatar.end() ? av->second : "", get("username"),
@@ -355,14 +363,62 @@ void LanRuntime::draw_share(HormigaApp& app) {
                 ImGui::TextDisabled("%s, joined %s%s%s", get("role").c_str(), get("joined").c_str(),
                                     get("invited_by").empty() ? "" : ", let in by ",
                                     get("invited_by").c_str());
-                if (here) {
+                if (!get("left").empty()) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("- left %s", get("left").c_str());
+                } else if (here) {
                     ImGui::SameLine();
                     ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.5f, 1), "here");
                 }
+                if (admin && fp != fingerprint(rt) && get("left").empty()) {
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("Remove")) {
+                        std::string err;
+                        if (!remove_member(app, fp, err)) app.toast(err, true);
+                        else app.toast("removed " + get("username"));
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("They stay in the record as having left, and can no longer connect.");
+                }
+                ImGui::PopID();
             }
+        }
+        // ── leaving for good (Q121): the permanent kind of "log off" ─────────
+        ImGui::Spacing();
+        static bool confirm_leave = false;
+        if (!confirm_leave) {
+            if (ImGui::Button(ICON_FA_RIGHT_FROM_BRACKET "  Leave this database..."))
+                confirm_leave = true;
+        } else {
+            ImGui::TextWrapped("This device stops syncing this database for good: its room key is deleted, "
+                               "and only a new invitation brings it back. The data stays on this device.");
+            if (ImGui::Button("Leave")) {
+                std::string err;
+                if (!leave_for_good(app, err)) app.toast(err, true);
+                else app.toast("left this database on this device");
+                confirm_leave = false;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) confirm_leave = false;
         }
     }
     ImGui::End();
+}
+
+/* ── where this database lives (Q119's `home`, read-only) ────────────────────── */
+
+void LanRuntime::draw_home(HormigaApp& app) {
+    if (!ImGui::BeginTable("##home", 2, ImGuiTableFlags_SizingStretchProp)) return;
+    for (const auto& [k, v] : home_lines(app)) {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::TextDisabled("%s", k.c_str());
+        ImGui::TableNextColumn();
+        ImGui::PushTextWrapPos(0);
+        ImGui::TextUnformatted(v.c_str());
+        ImGui::PopTextWrapPos();
+    }
+    ImGui::EndTable();
 }
 
 /* ── Discover databases ─────────────────────────────────────────────────────── */

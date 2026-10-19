@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -215,53 +215,44 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.2.1",
-    "previous": "0.2.0",
+    "version": "0.2.2",
+    "previous": "0.2.1",
     "change": "compatible",
-    "date": "2026-10-15",
-    "summary": "names follow titles, the inspector is widgets, layers hold what is on them, and the map is several times faster",
+    "date": "2026-10-18",
+    "summary": "every database is its own room: a test database can no longer reach a real one, a copy is a new database, and a member can be removed or a database left",
     "adds": [
-      "A rune's name follows its title: type a title and the handle becomes its slug (José García → jose-garcia), made unique when it is taken",
-      "Anything new (on the map, in the calendar, + New, a drawn shape) opens a box where you clicked so you type its name at once; double-click a shape or a marker to rename it",
-      "The inspector is a list of widgets in Data, the map and the calendar: dates in words with Edit in calendar view, fields as cards, and + Add a widget for a colour (any colour, with a colour wheel), an icon or a marker shape",
-      "Shapes: drag the eight handles to reshape a rectangle or ellipse, drag inside to move it; labels with size, colour, bold, italic and nine positions, in the app, the PNG and on the website (with optional CSS there)",
-      "A shape can give its colour to everything inside it, live; overlapping shapes give each other their tags",
-      "The calendar is windows like the map: Inspector, Upcoming, Views and Export beside the grid",
-      "12-hour times in the calendar (Settings > Time switches to 24-hour)",
-      "Every map layer holds what was made on it; hide a layer and only its own things hide; the Inspector moves a thing to another layer",
-      "The phone finds other devices on public Wi-Fi hotspots and phone hotspots (every network path, and Android's multicast lock)"
+      "A database's room key and member list live on this device under the database's own identity, never in a folder another database can see",
+      "Every member connection proves which database it is for before anything crosses; a device in another database is refused, and the log says so",
+      "Opening another database ends every connection of the last one, on the local network, Bluetooth and Wi-Fi Direct",
+      "Save as makes a new database, and opening a file copy of a database this device knows makes it one too: joining is the only way two files are the same database",
+      "Remove a member (admins, in Share database) and Leave this database (Share database on a computer, Migos on a phone): they stay in the record as having left and can no longer sync",
+      "Where this database lives: its file, its working copy, its identity and its network files, in Share database and on the phone's Migas screen, and `effect home` in the CLI"
     ],
     "behavior_changes": [
       {
-        "what": "A RUNE'S NAME NOW FOLLOWS ITS TITLE while the name is generated or still matches the old title. Names you typed yourself stay. Newsletter blocks that point at an event by name are repointed in the same undo step.",
-        "who_is_affected": "Everyone who edits titles."
+        "what": "UPDATE EVERY DEVICE. A device on 0.2.1 or older cannot see or sync with a device on 0.2.2, and the reverse: the room is now bound to the database and every connection proves it.",
+        "who_is_affected": "Everyone who shares a database between devices."
       },
       {
-        "what": "A TITLE KEEPS TO ONE LINE of letters, digits and ordinary punctuation: markup characters are removed and straight double quotes become curly ones. Descriptions and summaries keep every character, including quotes, which used to be stored wrongly.",
-        "who_is_affected": "Everyone who types titles."
+        "what": "SAVE AS GIVES THE DATABASE A NEW IDENTITY. The new file is a separate database that shares nothing with the one it was saved from; to keep syncing, keep using the original file or share the new one again.",
+        "who_is_affected": "Anyone who used Save as on a shared database."
       },
       {
-        "what": "MAP LAYERS NOW OWN THEIR THINGS. Everything made before this belongs to the bottom layer, so existing maps look the same; a website map block shows what is on its layer.",
-        "who_is_affected": "Anyone who used more than one map layer."
+        "what": "A COPIED .miga IS A NEW DATABASE when this device already knows the original: opening it gives it its own identity and saves that into the file. A backup opened while the original exists is a copy too.",
+        "who_is_affected": "Anyone who copies database files by hand, or opens backups."
       },
       {
-        "what": "THE CALENDAR'S .ics EXPORT USES TITLES, not internal names.",
-        "who_is_affected": "Anyone who exports or subscribes to a calendar."
+        "what": "A MEMBER LIST THAT SAT BESIDE SEVERAL DATABASES (every database in one phone folder shared one) is copied into each on the first open; the log names it. The rooms are separate, so nobody from another database can connect, but such a list can show their names: remove them.",
+        "who_is_affected": "Phones, and anyone who kept several shared databases in one folder."
       },
       {
-        "what": "THE WEBSITE MAP USES OPENSTREETMAP'S OWN TILES (temporarily): the previous tile service now requires an API key. The light and dark no-label looks show the standard map for now.",
-        "who_is_affected": "Anyone with a map on a published website."
-      },
-      {
-        "what": "CLICKING EMPTY MAP DESELECTS, and a click on a marker no longer re-saves its position.",
-        "who_is_affected": "Everyone using the map."
+        "what": "A DATABASE MADE BY COPYING ANOTHER BEFORE 0.2.2 may still carry the original's identity. Compare `config get sync.database` in both; if they match, Save as a new file and share that one.",
+        "who_is_affected": "Anyone whose real database began as a copy of a test one."
       }
     ],
     "read_more": [
-      "okf/concepts/foundation/data-model.md",
-      "okf/concepts/sections/gis/territory.md",
-      "okf/concepts/sections/calendar.md",
-      "okf/concepts/platform/collaboration.md"
+      "okf/concepts/platform/database-separation.md",
+      "okf/concepts/platform/antfarm/v2/networking-nodes.md"
     ]
   },
   "update": {

@@ -38,8 +38,8 @@ is shared and with whom. So the code sits in three repositories:
 
 | layer | where | does |
 |---|---|---|
-| the radio holiday | Void Maiz `voidmaiz/radio.hpp` | bytes between nearby devices. LE: advertise a short tag, scan, connect, one byte stream each way over two GATT characteristics. Wi-Fi Direct: a DNS-SD service with the tag, a group, an IP address. Android half in `MaizRadio.java`; a desktop stand-in (`loopback_radio`) that is a throttled local TCP stream |
-| the bridge | Void Maiz `voidmaiz/rnsradio.hpp` | a connected LE peer becomes a Reticulum *pipe* (`ble:<peer>`, HDLC-framed, declared at LE's real speed so Reticulum waits as long as LE needs); a Wi-Fi Direct group becomes a UDP interface (`p2p`) |
+| the radio holiday | Void Hammer `voidhammer/radio.hpp` (moved from Void Maiz on 2026-10-17) | bytes between nearby devices. LE: advertise a short tag, scan, connect, one byte stream each way over two GATT characteristics. Wi-Fi Direct: a DNS-SD service with the tag, a group, an IP address. Android half in `MaizRadio.java`; a desktop stand-in (`loopback_radio`) that is a throttled local TCP stream |
+| the bridge | Void Hammer `voidhammer/rnsradio.hpp` (moved from Void Maiz) | a connected LE peer becomes a Reticulum *pipe* (`ble:<peer>`, HDLC-framed, declared at LE's real speed so Reticulum waits as long as LE needs); a Wi-Fi Direct group becomes a UDP interface (`p2p`) |
 | Reticulum | Void Palabra `voidpalabra/reticulum.hpp` | one node per process: announces, encrypted links, large messages as Resources (with progress). Gained pipes, interfaces added and removed while running, and `transfers()` for this |
 | membership and frames | Hormiga `app/lan_radio.cpp` | who may connect, and handing `maiz::Network`'s frames to a Reticulum link and back |
 

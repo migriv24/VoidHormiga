@@ -235,4 +235,22 @@ void HormigaApp::PhoneUi::migos(HormigaApp& app, PhoneUi& ph, Frame&) {
 
     ImGui::SeparatorText("Join a shared database");
     LanRuntime::draw_discover_body(app);
+
+    // ── leaving for good (Q121): only for a database this phone is in ───────
+    if (rt.room_key.empty()) return;
+    ImGui::SeparatorText("Leave this database");
+    static bool confirm = false;
+    maiz::dim_wrapped(confirm ? "This phone stops syncing this database for good. Its room key is deleted, and only "
+                                "a new invitation brings it back. The data stays on this phone."
+                              : "Stop syncing this database on this phone, for good.");
+    if (!confirm) {
+        if (ImGui::Button(ICON_FA_RIGHT_FROM_BRACKET "  Leave this database...", ImVec2(-FLT_MIN, 0))) confirm = true;
+        return;
+    }
+    if (ImGui::Button("Leave", ImVec2(-FLT_MIN, 0))) {
+        std::string err;
+        maiz::show_snackbar(ph.snack, LanRuntime::leave_for_good(app, err) ? "Left this database on this phone" : err);
+        confirm = false;
+    }
+    if (ImGui::Button("Cancel", ImVec2(-FLT_MIN, 0))) confirm = false;
 }

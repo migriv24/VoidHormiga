@@ -386,23 +386,21 @@ void HormigaApp::install_host() {
                 if (aj.contains("args") && !aj["args"].empty()) ws = aj["args"][0].get<std::string>();
             } catch (...) {
             }
-            new_database(ws);
+            run_busy("Making a new database…", [this, ws] { new_database(ws); });
             return {};
         }
-        if (op == "save-database") { // save the bundle to a path (args = path)
+        /* THESE THREE REPLACE THE DATABASE, so they wait for the next frame like the
+         * File menu's: run inside a dispatch they swapped the core under the frame
+         * drawing it, and `effect open-database` crashed the desktop (2026-10-18). */
+        if (op == "save-database" || op == "open-database") { // args = path
+            std::string p;
             try {
                 auto aj = nlohmann::json::parse(args);
-                if (aj.contains("args") && !aj["args"].empty())
-                    save_database_as(aj["args"][0].get<std::string>());
+                if (aj.contains("args") && !aj["args"].empty()) p = aj["args"][0].get<std::string>();
             } catch (...) {}
-            return {};
-        }
-        if (op == "open-database") { // open a .miga bundle (args = path)
-            try {
-                auto aj = nlohmann::json::parse(args);
-                if (aj.contains("args") && !aj["args"].empty())
-                    open_database(aj["args"][0].get<std::string>());
-            } catch (...) {}
+            if (p.empty()) return {};
+            if (op == "save-database") run_busy("Saving database…", [this, p] { save_database_as(p); });
+            else run_busy("Opening database…", [this, p] { open_database(p); });
             return {};
         }
         if (op == "apply-template") { // apply a built-in template by index
@@ -2492,6 +2490,8 @@ void HormigaApp::section_window(const char* title, int which) {
 void HormigaApp::run_busy(const std::string& label, std::function<void()> action) {
     busy_label = label;
     busy_progress = -1.0f;
+    if (busy_action) // two asked for in one frame (a script): both, in order
+        action = [first = std::move(busy_action), then = std::move(action)] { first(); then(); };
     busy_action = std::move(action);
 }
 

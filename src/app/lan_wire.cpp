@@ -90,6 +90,30 @@ std::string room_id(const std::string& room_key) {
     return o;
 }
 
+std::string database_room(const std::string& file_key, const std::string& database_id) {
+    if (sodium_init() < 0 || file_key.size() != 32 || database_id.empty()) return {};
+    const std::string msg = "hormiga-database-room|" + database_id;
+    std::string k(32, '\0');
+    crypto_generichash((unsigned char*)&k[0], k.size(), (const unsigned char*)msg.data(), msg.size(),
+                       (const unsigned char*)file_key.data(), file_key.size());
+    return k;
+}
+
+std::string room_proof(const std::string& room_key, const std::string& session_code,
+                       const std::string& fingerprint) {
+    if (sodium_init() < 0 || room_key.size() != 32) return {};
+    const std::string msg = "hormiga-lan-member|" + session_code + "|" + fingerprint;
+    unsigned char mac[crypto_auth_BYTES];
+    crypto_auth(mac, (const unsigned char*)msg.data(), msg.size(), (const unsigned char*)room_key.data());
+    static const char* d = "0123456789abcdef";
+    std::string o;
+    for (unsigned char c : mac) {
+        o += d[c >> 4];
+        o += d[c & 15];
+    }
+    return o;
+}
+
 std::string beacon_extra(const Offer* offer, const std::string& room,
                          const std::string& sealed_activity) {
     nlohmann::json j = nlohmann::json::object();

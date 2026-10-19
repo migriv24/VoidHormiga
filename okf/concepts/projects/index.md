@@ -25,26 +25,32 @@ itself.
   dataset generator does not.
 - [Void Snape (archived)](/concepts/projects/void-snape.md) — founded and
   archived 2026-09-23. **All device-to-device networking runs over Reticulum,
-  with Void Palabra as its Void translation.** Hormiga re-implements its member
-  sharing on that. Who may join and what stays private remain Hormiga's, and
-  at-rest encryption is Q88.
+  with Void Palabra as its Void translation.** Void Hammer now owns the reaching
+  and sync engine that implements the family side of that decision; who may join
+  and what stays private remain Hormiga's, and at-rest encryption is Q88.
 - [Void Maiz, September 2026 — what we take up](/concepts/projects/void-maiz-uptake.md)
-  — **2026-09-22.** Void Maiz absorbed networking, updates and tag suggestions
-  from Hormiga and proved a collaborative canvas and a mobile kit on
-  Interaction Combinators. Piece by piece: adopted, proven compatible, waiting,
-  or declined, with why. Hormiga builds against it unchanged, and Void Maiz's
-  update client already reads Hormiga's live feed.
+  — **2026-09-22, with a 2026-10-18 update.** Void Maiz absorbed networking,
+  updates and tag suggestions from Hormiga and proved a collaborative canvas and
+  a mobile kit on Interaction Combinators. On 2026-10-17 its networking engine
+  moved to Void Hammer, and its navigation bar and HTTP seam were lifted. Piece
+  by piece: adopted, proven compatible, waiting, or declined, with why.
+- **Void Hammer** (`../VoidHammer`, founded 2026-10-17) — the family's
+  **networking** since 2026-10-17: reaching devices (sockets, LAN facts, the
+  multicast lock, the radios) and the sync engine over Void Palabra (`Network`,
+  `LanSession`, `RnsSession`, `RadioBridge`), plus hardware documentation and the
+  field kit. See [the networking stack](/concepts/platform/networking-stack.md)
+  and `VoidHammer:/concepts/networking.md`.
 - [Void Verguenza](/concepts/projects/void-verguenza.md) — **a sibling
-  application founded 2026-10-01 at `../VoidVerguenza`, design only.** Secrets
-  several people share, sealed per device, with actions several devices must
-  approve. Hormiga's Antfarm Key node will name a Verguenza secret instead of
-  holding a value; this answers Q88's condition (a second application wanting
-  the vault format).
+  application founded 2026-10-01 at `../VoidVerguenza`.** Secrets several people
+  share, sealed per device, with actions several devices must approve. A
+  single-device vault runs; the client seam Hormiga needs is phase 2, so the
+  Antfarm Key node still uses Hormiga's vault. This answers Q88's condition (a
+  second application wanting the vault format).
 - [Void Chisme](/concepts/projects/void-chisme.md) — **a sibling application
-  founded 2026-10-01 at `../VoidChisme`, design only.** Seeing and managing a
-  network one owns, as a graph. It would measure a Hormiga database's members
-  through an observer role (Q99), and it found that Void Maiz's Reticulum
-  announces carry names in the clear (Q98).
+  founded 2026-10-01 at `../VoidChisme`.** Seeing and managing a network one
+  owns, as a graph. A phase-0 library, CLI and window exist; the observer role
+  Hormiga would offer (Q99) and the Reticulum adapter are later phases. It found
+  that the Reticulum announces carry names in the clear (Q98).
 - [The Cat Dataset](/concepts/projects/cat-dataset.md) — a public, synthetic
   test colony: 50 tag-rich fictional cats and linked birthday events, built by
   a C++ generator through the real dispatcher. **This is what the pipeline is

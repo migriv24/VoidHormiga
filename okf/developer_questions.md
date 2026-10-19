@@ -11,6 +11,57 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q113 — adopt Void Hammer's names directly, or keep the aliases?** (Opened
+  2026-10-18, after the networking audit.) Void Hammer owns `voidhammer_reach`
+  and `voidhammer_net`; Hormiga still includes `voidmaiz/*` and links
+  `voidmaiz_lan` / `voidmaiz_net`. The aliases are compatibility and are
+  scheduled to disappear once both hosts move. **Lean: adopt
+  `voidhammer/*.hpp` and the `voidhammer_*` targets, measured, and keep the
+  aliases until the build and the five networking tests are green.**
+  ([the networking stack](/concepts/platform/networking-stack.md))
+
+- **Q114 — is `RnsSession` Hormiga's default transport?** (Opened 2026-10-18.)
+  Reticulum seals a link, but `RnsSession::about_json` puts the person's name,
+  colour and the database's name into public announces. Hormiga's sealed LAN
+  session hides presence behind the room key, and its radios use a room proof
+  `RnsSession` does not have. **Lean: no, not until Q98 is answered and the
+  members registry can prove who a peer is. Keep the sealed LAN session as the
+  default; add Reticulum behind an explicit transport choice only after that.**
+  ([the audit](/reports/networking-stack-audit-2026-10-18.md))
+
+- **Q115 — adopt `voidmaiz/nav.hpp` now?** (Opened 2026-10-18.) The library now
+  has Hormiga's navigation bar, app bar, Back and per-destination `Stack`.
+  Hormiga still ships `src/phone/nav.*`. **Lean: yes, in its own change, passing
+  `draw_ant_button` as the `CentreFace`.** The phone harness is the measure.
+
+- **Q116 — what does green CI mean while Void Hammer has no public
+  repository?** (Opened 2026-10-18.) CI clones four siblings and no Hammer, so
+  it configures without networking; the result is green but untested on the
+  network. **Lean: an explicit configure warning and a documented gap, never a
+  silent green. Add the Hammer clone when it has a public remote, and run the
+  five networking tests there.** ([the audit](/reports/networking-stack-audit-2026-10-18.md))
+
+- **Q117 — does the members registry gain a Reticulum identity?** (Opened
+  2026-10-18.) `members.json` holds a libsodium `crypto_kx` key and a
+  fingerprint. `RnsSession` re-admits a peer by its proven Reticulum identity,
+  which is a different value. **Lean: add a `rns_identity` field when Q114 is
+  yes; keep the libsodium key for the sealed LAN path.**
+
+- **Q118 — when does the portable `maiz::App` migration start?** (Opened
+  2026-10-18.) It is the iOS path and deletes Hormiga's Android shell, but it is
+  larger than the networking update and changes lifecycle, HTTP, textures and
+  the frame loop. **Lean: after Q113–Q115, and only when iOS work begins.**
+  Document it now, do not bundle it.
+
+- **Q122 — one Reticulum identity per device, or per database?** (Opened
+  2026-10-18.) The radios' Reticulum node keeps one identity in
+  `<profile>/rns`, and its announces carry this device's fingerprint. Rooms are
+  now per database, but an observer near two of a device's rooms can tell it is
+  the same device. **Lean: per database, under the database's keyring, decided
+  together with Q98 and Q114, since all three are about what an announce
+  reveals.** (The author, 2026-10-18: *"go with what your leaning towards for
+  now"* — so it stays open, to be decided with those two.)
+
 - **Q111 — the website map's tiles now ask for an API key.** (Opened
   2026-10-15, found rendering a site to check shape labels.) The map widget
   draws CARTO's `rastertiles/voyager` (and the two `nolabels` styles); today
@@ -115,15 +166,18 @@ fold into concepts and clear from here.
   Hormiga's vault working, and move its format onto Verguenza's library when that
   library exists**. ([Void Verguenza](/concepts/projects/void-verguenza.md))
 
-- **Q98 — Void Maiz's Reticulum announces carry names in the clear.** (Opened
-  2026-10-01, found while designing Void Chisme.) `RnsSession::about_json` puts
-  the person's display name, colour and the database's name in every announce,
-  and Reticulum announces are public. Hormiga's LAN path seals presence to the
-  room key for exactly this reason. **Lean: before Hormiga moves its sharing to
-  Reticulum, ask Void Maiz for announces that carry only the application and an
-  opaque id, with names inside sealed presence.** (The author allows direct Void
-  Maiz edits; this one changes what every Maiz application tells strangers, so it
-  is the author's call.) ([Void Chisme](/concepts/projects/void-chisme.md))
+- **Q98 — Reticulum announces carry names in the clear.** (Opened
+  2026-10-01, found while designing Void Chisme; the code moved to Void Hammer on
+  2026-10-17.) `RnsSession::about_json` puts the person's display name, colour,
+  the host flag and the database's name in every announce, and Reticulum
+  announces are public. Hormiga's LAN path seals presence to the room key for
+  exactly this reason. **Lean: before Hormiga moves its sharing to Reticulum,
+  ask Void Hammer for announces that carry only the application and an opaque
+  room id, with names inside sealed presence.** This is the gate on Q114.
+  (The author allows direct sibling edits; this one changes what every Maiz and
+  Hammer application tells strangers, so it is the author's call.)
+  ([Void Chisme](/concepts/projects/void-chisme.md),
+  [the networking stack](/concepts/platform/networking-stack.md))
 
 - **Q99 — An observer member, for Void Chisme?** (Opened 2026-10-01.) Chisme
   would measure a Hormiga database's activity (who is present, sync volume per
@@ -268,7 +322,10 @@ fold into concepts and clear from here.
   *Never*: our preference file must be read once and carried over, or the
   migration performs a check nobody asked for. **What settles it:** when the
   phone build starts. **It has** (0.1.7, 2026-09-24), and ours is still the
-  one that ships; see [Q99](/developer_questions.md).
+  one that ships. **2026-10-18: still not migrated.** The client lives in
+  `voidmaiz_update`, which Hormiga already links; the general HTTP seam it uses
+  is `voidmaiz/http.hpp`. The lean is to migrate after Q113 and carry the
+  consent file over. See [the audit](/reports/networking-stack-audit-2026-10-18.md).
 
 - **Q79 — the database needs a profile of its own, and today it is three
   config keys.** (Opened 2026-09-20.) **Lean: a dedicated structure, minted
@@ -2292,6 +2349,25 @@ settled it named. They are not a place to think out loud forever.
   structure does not depend on the words.
 
 # Decided
+
+## By the author, 2026-10-18 ("go with what your leaning towards for now")
+
+- **Q119 — the networking nodes: the families stand, as leans.** Home, reach
+  (Void Hammer), room and sync (Void Palabra), members and join (Hormiga), keys
+  (Void Verguenza), observer (Void Chisme); every networking node belongs to one
+  database. **Built in 0.2.2:** `home`'s read-only first step, *Where this
+  database lives* in Share database and on the phone's Migas screen, and
+  `effect home`. Splitting `hol_lan_share` waits for the v2 migration.
+  [The networking nodes](/concepts/platform/antfarm/v2/networking-nodes.md).
+- **Q120 — restoring a backup is a copy.** Opening a backup while the original
+  exists makes a separate database, the safe direction. A *Restore over the
+  original* verb is for when restoring is wanted; not built.
+- **Q121 — Remove and Leave, built in 0.2.2.** An admin's *Remove* marks a member
+  `left` (they stay in the record) and ends their links at once; *Leave this
+  database* marks this device `left`, deletes its room key and keeps the data,
+  so only a new invitation brings it back. Desktop: Share database. Phone: Leave
+  on Migos (Remove is desktop-only for now). CLI: `effect lan-remove-member`,
+  `effect lan-leave`. [A database is its own room](/concepts/platform/database-separation.md).
 
 ## By the author, 2026-09-25
 

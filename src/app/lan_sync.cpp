@@ -169,13 +169,156 @@ void listen_loop(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPair keys, in
 
 /* ── the database's identity, and its replica ───────────────────────────────── */
 
+namespace {
+
+fs::path keyring(const std::string& database) {
+    return hormiga::profile::dir() / "databases" / database;
+}
+
+/* Where this id's bundle lives on this device, as the last open or save left it. */
+fs::path home_note(const std::string& database) { return keyring(database) / "home.txt"; }
+
+/* "Nothing beside a bundle belongs to this keyring": written when an id is born
+ * here, forks, arrives by joining, or has had its one look at the old folder. */
+void settle(const std::string& database) {
+    std::error_code ec;
+    fs::create_directories(keyring(database), ec);
+    write_atomic(keyring(database) / "settled", "this database's network files live here, and only here\n");
+}
+
+void note_home(const std::string& miga, const std::string& database) {
+    if (database.empty() || miga.empty()) return;
+    std::error_code ec;
+    fs::create_directories(keyring(database), ec);
+    write_atomic(home_note(database), u8(fs::absolute(from_u8(miga), ec)));
+}
+
+}  // namespace
+
 std::string LanRuntime::database_id(HormigaApp& app, bool create) {
     std::string id = config(app.core, "sync.database");
     if (id.empty() && create) {
         id = hormiga::lan::random_id("db-");
         app.core.dispatch("config set sync.database " + id);
+        settle(id); // a keyring from birth: nothing beside the bundle is ever adopted into it
+        note_home(app.cur_miga, id);
     }
     return id;
+}
+
+fs::path LanRuntime::database_file(HormigaApp& app, const std::string& raw) {
+    std::string name = unquote(raw);
+    if (name.empty()) return {};
+    if (fs::path(name).is_absolute()) return fs::path(name); // the Antfarm said exactly where
+    const std::string id = database_id(app, false);
+    if (id.empty()) return {};
+    const fs::path ring = keyring(id), at = ring / from_u8(name);
+    std::error_code ec;
+    if (fs::exists(ring / "settled", ec)) return at;
+
+    /* A DATABASE SHARED BEFORE 2026-10-18: its room key and registry are beside
+     * its bundle. Copied in once, so it keeps its room and its members. Never
+     * from the working copy's folder (every database searches that one), unless
+     * this database has no bundle and that folder is the only home it had. */
+    fs::create_directories(ring, ec);
+    note_home(app.cur_miga, id);
+    std::vector<fs::path> dirs = app.key_dirs();
+    if (!app.cur_miga.empty() && dirs.size() > 1) dirs.pop_back(); // base_dir is always last
+    const auto farm = project(app.core, kAntfarmMantle);
+    for (const std::string& raw_name : {hormiga::collab::share_settings(farm).key_file,
+                                        hormiga::collab::membership_settings(farm).file}) {
+        const std::string want = unquote(raw_name);
+        if (want.empty() || fs::path(want).is_absolute()) continue;
+        for (const auto& d : dirs) {
+            const fs::path old = d / from_u8(want);
+            if (!fs::is_regular_file(old, ec)) continue;
+            int others = 0; // a working copy with no bundle cannot tell its own .miga from another's
+            if (!app.cur_miga.empty())
+                for (const auto& e : fs::directory_iterator(d, ec))
+                    if (e.path().extension() == ".miga" && !fs::equivalent(e.path(), from_u8(app.cur_miga), ec))
+                        ++others;
+            fs::copy_file(old, ring / from_u8(want), fs::copy_options::overwrite_existing, ec);
+            owner_only(ring / from_u8(want));
+            app.log.push_back({"info", "share", "kept " + want + " for this database only, on this device (from " +
+                                                    u8(d) + ")"});
+            if (others > 0)
+                app.log.push_back({"warn", "share", u8(old) + " sat beside " + std::to_string(others) +
+                                                        " other database(s), which all used it. This database has "
+                                                        "its own copy now; check who it lists as members."});
+            break;
+        }
+    }
+    settle(id);
+    return at;
+}
+
+void LanRuntime::keep_arrived_files(HormigaApp& app, const fs::path& folder) {
+    const std::string id = database_id(app, false);
+    if (id.empty()) return;
+    const auto farm = project(app.core, kAntfarmMantle);
+    std::error_code ec;
+    settle(id);
+    note_home(app.cur_miga, id);
+    for (const std::string& raw : {hormiga::collab::share_settings(farm).key_file,
+                                   hormiga::collab::membership_settings(farm).file}) {
+        const std::string name = unquote(raw);
+        if (name.empty() || fs::path(name).is_absolute()) continue;
+        const fs::path in = folder / from_u8(name), out = keyring(id) / from_u8(name);
+        if (!fs::is_regular_file(in, ec)) continue;
+        fs::copy_file(in, out, fs::copy_options::overwrite_existing, ec);
+        owner_only(out);
+        fs::remove(in, ec); // one place for a database's secrets, and it is not a folder
+    }
+}
+
+void LanRuntime::claim_home(HormigaApp& app) {
+    const std::string id = database_id(app, false);
+    if (id.empty() || app.cur_miga.empty()) return;
+    std::error_code ec;
+    const fs::path here = fs::absolute(from_u8(app.cur_miga), ec);
+    const fs::path home = from_u8(slurp(home_note(id)));
+    const bool joined = app.lan && !app.lan->arrived.empty() && app.lan->arrived == here;
+    if (app.lan) app.lan->arrived.clear();
+    if (!joined && !home.empty() && home != here && fs::is_regular_file(home, ec) && !fs::equivalent(home, here, ec)) {
+        fork_identity(app);
+        note_home(app.cur_miga, database_id(app, false));
+        app.save_database(); // the file carries its own identity from now on, not a new one per open
+        app.log.push_back({"info", "share", "this file is a copy of " + u8(home) +
+                                                ", so it is a database of its own: it shares nothing with that one"});
+        app.toast("a copy of " + home.filename().string() + ": a separate database now");
+        return;
+    }
+    note_home(app.cur_miga, id);
+}
+
+/* THE HOME OF THIS DATABASE ON THIS DEVICE (Q119's first step, 2026-10-18):
+ * read-only, the networking nodes' `home` before it is a node. One list, so the
+ * Share window, the phone's Migas screen and `effect home` say the same thing. */
+std::vector<std::pair<std::string, std::string>> LanRuntime::home_lines(HormigaApp& app) {
+    std::vector<std::pair<std::string, std::string>> out;
+    const std::string id = database_id(app, false);
+    const auto farm = project(app.core, kAntfarmMantle);
+    std::error_code ec;
+    out.push_back({"File", app.cur_miga.empty() ? std::string("(not saved to a file yet)") : app.cur_miga});
+    out.push_back({"Working copy", u8(fs::absolute(app.base_dir, ec).make_preferred())});
+    out.push_back({"Identity", id.empty() ? std::string("none: never shared, so it is in no room") : id});
+    if (id.empty()) return out;
+    out.push_back({"Network files", u8(fs::path(keyring(id)).make_preferred())});
+    const fs::path key = database_file(app, hormiga::collab::share_settings(farm).key_file);
+    out.push_back({"Room", slurp(key).size() == 32 ? "this database's own, kept in the folder above"
+                                                   : "none on this device (not shared here, or left)"});
+    return out;
+}
+
+std::string LanRuntime::fork_identity(HormigaApp& app) {
+    const std::string was = database_id(app, false);
+    if (was.empty()) return was; // never shared: it has no identity to part from
+    leave_database(app);
+    const std::string id = hormiga::lan::random_id("db-");
+    app.core.dispatch("config set sync.database " + id);
+    settle(id); // empty: no room, no members, until it is shared
+    // its home is noted by whoever places it (claim_home), never the original's path
+    return was;
 }
 
 /* What a splice puts back from this device: its private runes, and its

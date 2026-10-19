@@ -6,6 +6,12 @@ tags: [status:current, audience:dev, confidence:asserted]
 timestamp: 2026-09-16T00:00:00Z
 ---
 
+> **2026-10-18: the engine is Void Hammer's.** `Network`, `LanSession` and
+> `RnsSession` moved from Void Maiz to `../VoidHammer/net` on 2026-10-17. This
+> page's “the sync seam is Void Maiz's” is now history; the current map is
+> [the networking stack](/concepts/platform/networking-stack.md). The sealed LAN
+> session described below is still what carries Hormiga's frames.
+
 Opened 2026-09-16 on the author's brief, which is long and exact and is quoted
 where a decision turns on it. It builds on
 [collaboration](/concepts/platform/collaboration.md) (the beacon, the short
@@ -144,6 +150,10 @@ before anything is written. An Antfarm path that was **absolute** on the host is
 rewritten to the plain file name **in the copy the host sends**, with dispatcher
 `set`s on a throwaway core, so the host's own database is untouched and the
 joiner opens a document that already points at the files beside it.
+**Since 2026-10-18 the room key and the members registry do not stay there:**
+once the database opens, the app moves them into this device's keyring for
+that database (`<profile>/databases/<id>/`), so no other database in the folder
+can find them ([a database is its own room](/concepts/platform/database-separation.md)).
 
 # 3a. The host's Antfarm wins, and keys are meant to go stale
 
@@ -188,13 +198,15 @@ today such secrets are reported and not kept.
 
 # 3b. After joining, syncing is automatic — once it is correct
 
-**From 0.1.5 the sync seam is Void Maiz's** (`voidmaiz_net` over Void Palabra's
-session; their 2026-09-19 message). What travels is a DELTA, not the whole
-document, and the splice, the conflicts and the files come with it. What stays
-ours: where the replica is saved, what may leave (the share filter below, which
-presence reads too), which fields name files, and the sealed LAN session that
-carries the frames. The author decided on 2026-09-19 that Palabra frames may
-ride that session before Palabra's trust model lands, **on the LAN only**.
+**From 0.1.5 the sync seam is Void Hammer's `Network`** (it was `voidmaiz_net`
+until the 2026-10-17 move; see
+[the networking stack](/concepts/platform/networking-stack.md)). What travels
+is a DELTA, not the whole document, and the splice, the conflicts and the files
+come with it. What stays ours: where the replica is saved, what may leave (the
+share filter below, which presence reads too), which fields name files, and the
+sealed LAN session that carries the frames. The author decided on 2026-09-19
+that Palabra frames may ride that session before Palabra's trust model lands,
+**on the LAN only**. That session is still Hormiga's, and still the default.
 
 **A device announces where to reach it**, as `sync_port` in its presence
 (`share.port + 1`). It used to be one constant for everyone, which is right on
@@ -290,8 +302,9 @@ host run side by side. Without it, the second device dialled its own listener.
 > database, it'll be a separate local mini database. This database is only able
 > to be edited by admins.
 
-A **Void Core document of its own**, `members.json` by default, beside the
-`.miga`: one `member` rune per profile that has joined — public key,
+A **Void Core document of its own**, `members.json` by default, in this
+device's keyring for the database (`<profile>/databases/<id>/`; beside the
+`.miga` until 2026-10-18, when every database in one folder shared it): one `member` rune per profile that has joined — public key,
 fingerprint, username, colour, a small picture, role, joined, invited by, last
 seen. Its own dispatcher, so every change to it is a logged command like any
 other; its own file, so a routine data sync does not carry it and an admin-only
@@ -331,8 +344,12 @@ the resolve-by-seniority the Allomone lattice was arranged to refuse.
 > see each other active on the same database. similar to how google docs …
 
 **The room key.** When a database is first shared, the host generates 32 random
-bytes — the room key — kept as a key file beside the `.miga` and handed to every
-member at join. Presence is a beacon whose body is **sealed with the room key**
+bytes — the room key — kept as a key file and handed to every member at join.
+**Since 2026-10-18 the file lives in this device's keyring for the database,
+and the key a device uses is that file bound to the database's sync id**
+(`database_room`), so one key file in two databases is two rooms, and every
+member link proves the room before its first frame
+([a database is its own room](/concepts/platform/database-separation.md)). Presence is a beacon whose body is **sealed with the room key**
 (XChaCha20-Poly1305, libsodium), carrying: which member, which section, which
 mantle, and which runes are selected. Everyone on the network can see that *a*
 Hormiga is present; only members can read *who* or *what*. A beacon in the clear

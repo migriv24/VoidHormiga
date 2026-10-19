@@ -137,6 +137,10 @@ void HormigaApp::PhoneUi::migas(HormigaApp& app, PhoneUi& ph, Frame&) {
     ImGui::SeparatorText("Open now");
     ImGui::TextUnformatted(open_now.empty() ? "An unsaved database" : fs::path(open_now).stem().string().c_str());
     if (!open_now.empty()) ImGui::TextDisabled("%s", human_bytes((long long)fs::file_size(open_now, ec)).c_str());
+    if (ImGui::TreeNode("Where it lives on this phone")) { // Q119's `home`, read-only
+        LanRuntime::draw_home(app);
+        ImGui::TreePop();
+    }
     if (ImGui::Button(ICON_FA_FLOPPY_DISK "  Save")) {
         PhoneUi::keep_current(app);
         ph.listed_at = -100.0;

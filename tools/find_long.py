@@ -330,7 +330,7 @@ BUDGET = {
     # `lan-share`, `lan-join`) -- their catalogue rows and one dispatch branch.
     # Everything they DO is app/lan_cli.cpp; a verb's consequence string has to
     # be written where --allow-effects reads it, which is here.
-    'src/main/headless.cpp': 1483,  # +3: a database's own kinds, at load, in effects' fresh cores, and the render's (2026-10-07)
+    'src/main/headless.cpp': 1489,  # +3: a database's own kinds, at load, in effects' fresh cores, and the render's (2026-10-07); +6: the catalogue rows of home, lan-remove-member and lan-leave (2026-10-18)
     # NEW ENTRY 2026-09-02 (was on the 1000 default): the Data tab lost 168 lines
     # to `ui/widgets.cpp` the same afternoon -- the rune-rename control (shared
     # with the Notes tab, which is why a note could not be renamed at all), the

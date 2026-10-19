@@ -382,9 +382,10 @@ than carried.
 | action bar that never clips, the ⋮ overflow menu | `mobile.hpp` | app bars |
 | **the phone's own keyboard** (2026-09-23), as a holiday: the platform keyboard's editing state becomes keystrokes every field accepts, and registration picks the layout (a `phone` field gets a dial pad) | `textinput.hpp`, `textinputview.hpp`, `MaizActivity.java` | every text field. The drawn keyboard (`mobile.hpp`) is now only the fallback |
 | layout classes in dp (phone / tablet, portrait / landscape, compact, narrow) | `touch.hpp` | phone vs tablet arrangements |
-| presence, the roster, marks, member list, networking settings | `presence.hpp`, `netview.hpp` | already adopted on the desktop |
-| `voidmaiz_net` over Palabra | `net.hpp` | already adopted |
-| LAN sockets, interfaces, join code, **Android's multicast lock** | `lan.hpp`, `lanlink.hpp` | discovery on a phone (Android drops broadcast without the lock) |
+| presence, the roster, marks, member list, networking settings | `presence.hpp`, `netview.hpp` | already adopted on the desktop; still Void Maiz's |
+| `voidhammer_net` over Palabra (it was `voidmaiz_net` until 2026-10-17) | `VoidHammer/net` | already adopted through the compatibility alias |
+| LAN sockets, interfaces, join code, **Android's multicast lock** | `VoidHammer/net` (`lan.hpp`, `lanlink.hpp`) | discovery on a phone (Android drops broadcast without the lock) |
+| the navigation bar, app bar, Back, and a stack per destination | `nav.hpp` | **the library's since 2026-10-17**; Hormiga's own copy is ready to delete |
 | the update client, including applying an `.apk` through `PackageInstaller` | `update.hpp`, `updateview.hpp` | the phone updating itself |
 | an Android host (NativeActivity, GLES3), proven by Interaction Combinators' APK | the IC `android/` build | the template |
 
@@ -404,10 +405,10 @@ than carried.
 | gap | why it blocks or hurts | severity |
 |---|---|---|
 | ~~accented letters on the drawn keyboard~~ | **resolved 2026-09-23 by not drawing one.** The author: *"Custom keyboard is too much of a hassle ... we should focus on the integration of the keyboard."* The phone's own keyboard has every accent, and emoji now survive typing too (`IMGUI_USE_WCHAR32`). Not yet typed on a device | resolved, unwitnessed |
-| **a navigation stack**, and ~~the system Back button~~ | Back is **done in Void Maiz** (2026-09-23): ImGui's android backend mapped no `AKEYCODE_BACK`, and `maiz::android_system_key` now turns it into `ImGuiKey_AppBack`, which Hormiga's phone already reads. The stack itself is still Hormiga's (`phone/nav.hpp`), offered upstream | Back resolved, unwitnessed; the stack is still asked |
+| ~~**a navigation stack**~~, and ~~the system Back button~~ | Back is **done in Void Maiz** (2026-09-23). The stack was lifted upstream too: `voidmaiz/nav.hpp` now has `Stack(root)`, `nav_bar_centred` with a `CentreFace`, and a `back_pressed()` that claims Back from every platform. **Hormiga still ships its own `phone/nav.hpp`; adoption is pending (2026-10-18).** | resolved upstream; adoption pending |
 | **platform intents**: open a URL, share, `tel:` and `mailto:`, the photo picker, the camera, ~~location~~ (location **built 2026-10-04** as Void Maiz's location holiday, `voidmaiz/location.hpp`) | "tap to call", "photograph a flier", "drop a pin where I am" and the Builder preview all need one. Each is a JNI call into the Java runtime, the same shape as the update client's `PackageInstaller` path | **blocking for jobs 1, 3, 5, 6** |
 | **app lifecycle**: pause, resume, low memory | a backgrounded phone must save its replica and drop links cleanly, then come back. `idle_ms` already makes a silent link honest, and saving on pause is the other half | high |
-| **a general HTTP seam** | `update.hpp` has `android_http` (`HttpURLConnection` through JNI) *inside* the update client. Hormiga's HTTP shells out to `curl`, which a phone does not have. Publishing, tiles and `.ics` feeds need the seam, not the updater | high, for publish and the map |
+| ~~**a general HTTP seam**~~ | **built 2026-10-17** as `voidmaiz/http.hpp`: desktop `curl`, Android `HttpURLConnection`, iOS `NSURLSession`. Hormiga still shells out to `curl` directly for publishing, tiles and `.ics` feeds; adoption is pending (2026-10-18) | resolved upstream; adoption pending |
 | text selection and copy | copying a phone number out of a note | medium; the touch page says "not planned without a client", and Hormiga is that client |
 | ~~the Storage Access Framework (open or save a file)~~ | **built 2026-09-25**: `voidmaiz/documents.hpp` (the photo picker, open a document, save a copy to, "Open with"), which is how `.miga` files and photos get on and off a phone | resolved |
 
@@ -416,7 +417,7 @@ than carried.
 | blocker | why | fix |
 |---|---|---|
 | **libsodium is vendored as a Windows binary** ([Q67](/developer_questions.md)) | the LAN transport is sealed with it, and the room key and presence beacon need it. **A phone that cannot build libsodium cannot join.** | re-vendor the C sources (the question's own lean); they build with the NDK |
-| HTTP through `curl` | as above | move behind the HTTP seam once Void Maiz exposes it; keep `curl` as the desktop's implementation |
+| HTTP through `curl` | as above | move behind `voidmaiz/http.hpp`; keep `curl` as the desktop's implementation |
 | packaging | Void Mago's wizard emits NSIS only | Interaction Combinators' `build_apk.ps1` is the working pattern; the update feed already understands `.apk` |
 | the signing key | Android requires the same key for every update, and losing it means every phone uninstalls | minted once, kept out of the repository, and **backed up**, as IC's `updates.md` warns |
 | `HormigaApp` is desktop-shaped | see the architecture above | `src/phone/`, and the layering rule |
@@ -425,7 +426,7 @@ than carried.
 
 SQLite (the vendored amalgamation), `stb` image decoding, the vendored fonts,
 nlohmann/json, Void Core (Void Maiz compiles it from source on Android), and
-Void Palabra (Interaction Combinators links `voidmaiz_net` on Android, so
+Void Palabra (Interaction Combinators links `voidhammer_net` on Android, so
 Palabra already builds there).
 
 # A staged path

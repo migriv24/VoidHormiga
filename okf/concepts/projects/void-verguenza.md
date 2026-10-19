@@ -62,3 +62,13 @@ same words.
 The Antfarm, its graph and its wiring; which node uses which key; the effect
 gate and its consequence sentences; the decision to ask. Verguenza decides
 whether the ask is allowed, and keeps the value.
+
+# Current state (2026-10-18)
+
+Verguenza's foundation library `voidverguenza` and a single-device desktop vault
+run; the vault file is a Void Palabra Archive. **The client seam Hormiga needs
+(`describe` and `use`) is phase 2 and is not built**, and there is no client
+library target yet. The Antfarm Key node therefore keeps using Hormiga's own
+vault, and the Q88 migration of the sealed-secret format waits on that phase.
+See `VoidVerguenza:/roadmap.md` and
+[the networking stack](/concepts/platform/networking-stack.md).

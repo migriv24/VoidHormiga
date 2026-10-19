@@ -29,7 +29,7 @@ network (assuming like a single admin)."*
 |---|---|---|
 | from outside | which devices run Hormiga, Reticulum paths, link volumes if it relays | nothing |
 | **as an observer member** (Chisme's lean) | who is present and where, sync exchanges and bytes per member, conflicts, devices that fell behind | a new **observer** role: a member that receives presence and sync statistics and never the database |
-| from Hormiga's own report | per-peer sync counters | Void Maiz's `voidmaiz_net` to expose counters |
+| from Hormiga's own report | per-peer sync counters | Void Hammer's `Network` (`NetStats`, `LinkStatus`) to expose counters |
 
 The observer role is [Q99](/developer_questions.md). It fits Hormiga's existing
 membership and approval flow: a person allows the observer, as any join.
@@ -54,3 +54,13 @@ stands would undo that. [Q98](/developer_questions.md).
   runes describe overlapping things from different sides: Hormiga knows who a
   device belongs to in a database; Chisme knows where it is on the network.
   Nothing joins them yet, deliberately.
+
+# Current state (2026-10-18)
+
+Chisme's phase 0 is built: the `voidchisme` foundation, `chisme_app`, a CLI and
+a window. The Reticulum adapter and the observer member are later phases
+(`VoidChisme:/roadmap.md`). **No Hormiga integration exists today**, and none is
+proposed until the observer role is designed. The announce privacy finding above
+is now Q98 in this bundle and is the gate on moving Hormiga's LAN sharing to
+`RnsSession`; see
+[the networking stack](/concepts/platform/networking-stack.md).

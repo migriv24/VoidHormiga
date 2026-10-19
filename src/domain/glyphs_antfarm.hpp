@@ -208,7 +208,7 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
         R"__("labels":{"allow":"Allow sharing this database over the local network",)__"
         R"__("presence":"Show who else is working in it (sealed to members)",)__"
         R"__("port":"TCP port for joining (default 47733)",)__"
-        R"__("key_file":"Room key file, beside the database (gitignored)",)__"
+        R"__("key_file":"Room key file, kept in this device's keyring for this database",)__"
         R"__("private_tags":"Tags that keep a rune on this device (space-separated)",)__"
         R"__("send_hosted":"Also send files that are already hosted online"},)__"
         R"("ports":[{"name":"plug","dir":"in","type":"records"}]}})");

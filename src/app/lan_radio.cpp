@@ -160,6 +160,7 @@ struct LanRuntime::RadioState {
     std::unique_ptr<maiz::RadioBridge> bridge;
     bool on[2] = {false, false};
     bool asked[2] = {false, false}; // a prompt is up for it: switch it on when it is granted
+    bool resume[2] = {false, false}; // was on when its database closed: on again in the next room
     double asked_check = 0;
     bool node_up = false;
     std::string status;            // the last thing worth telling a person
@@ -248,6 +249,7 @@ bool LanRuntime::radio_switch(HormigaApp& app, int kind, bool on, std::string* w
         if (r && rs.on[kind]) r->stop(k);
         rs.on[kind] = false;
         rs.asked[kind] = false;
+        rs.resume[kind] = false; // the person said off: not on again in the next database
         if (!rs.on[0] && !rs.on[1]) {
             if (rs.bridge) rs.bridge->clear();
             rns::Node& node = rns::Node::instance();
@@ -319,22 +321,54 @@ void LanRuntime::radio_tick(HormigaApp& app, double now) {
     }
     if (!rt.radio->radio || !rt.radio->node_up) return;
     RadioState& rs = *rt.radio;
-    if (!rs.on[0] && !rs.on[1]) return;
     maiz::RadioPlatform& radio = *rs.radio;
     rns::Node& node = rns::Node::instance();
-    const std::string mine = fingerprint(rt);
-    const double wall = now_seconds();
-    static const bool trace = std::getenv("HORMIGA_SYNC_TRACE") != nullptr; // a harness reads it
 
-    if (room6(rt.room_key) != rs.room) { // another database opened: start over in its room
+    /* ── ANOTHER DATABASE OPENED: EVERY LINK OF THE OLD ONE ENDS (2026-10-18) ──
+     * This used to restart the radios and keep the Reticulum links, and the
+     * "carry again" branch below then handed the new database's frames to a
+     * device that had only ever proven the OLD room: the author's test colony
+     * kept pouring into the next database opened. A link proves one room; a new
+     * room is new links, proven again. The radios that were on come back on in
+     * the new room if it has one, and stay off if it has none. */
+    if ((rs.on[0] || rs.on[1]) && room6(rt.room_key) != rs.room) {
+        for (const auto& [link, l] : rs.links) node.close(link);
+        {
+            std::lock_guard<std::mutex> lk(rt.mu);
+            for (const auto& [link, l] : rs.links)
+                if (l.carrying) rt.link_io.erase(l.fp);
+        }
+        rs.links.clear();
+        rs.dest_fp.clear();
+        rs.opened.clear();
+        rs.dialled.clear();
+        rs.near.clear();
+        rs.transfer_started.clear();
+        rs.announced.clear();
+        node.set_announce_data(std::string());
+        if (rs.bridge) rs.bridge->clear();
         for (int k = 0; k < 2; ++k)
             if (rs.on[k]) {
                 radio.stop((maiz::RadioKind)k);
                 rs.on[k] = false;
-                radio_switch(app, k, true, nullptr);
+                rs.resume[k] = true;
+            }
+        rs.room.clear();
+        rs.status = "The database closed; its members' links ended";
+        app.log.push_back({"info", "share", "radio: the database closed, so every link made for it ended"});
+    }
+    if (!rs.on[0] && !rs.on[1]) {
+        if (rt.room_key.empty() || (!rs.resume[0] && !rs.resume[1])) return;
+        for (int k = 0; k < 2; ++k)
+            if (rs.resume[k]) {
+                rs.resume[k] = false;
+                radio_switch(app, k, true, nullptr); // in this database's room
             }
         if (!rs.on[0] && !rs.on[1]) return;
     }
+    const std::string mine = fingerprint(rt);
+    const double wall = now_seconds();
+    static const bool trace = std::getenv("HORMIGA_SYNC_TRACE") != nullptr; // a harness reads it
 
     // ── the radio: who is near, and whom to connect ──────────────────────────
     std::vector<maiz::RadioEvent> rev;
@@ -486,6 +520,10 @@ void LanRuntime::radio_tick(HormigaApp& app, double now) {
             }
             continue;
         }
+        if (!members.count(l.fp)) { // proven once, and no longer in this database's registry
+            unproven.push_back(link);
+            continue;
+        }
         std::lock_guard<std::mutex> lk(rt.mu);
         auto io = rt.link_io.find(l.fp);
         if (!l.carrying && io == rt.link_io.end()) { // the LAN is not carrying them: we are
@@ -494,7 +532,7 @@ void LanRuntime::radio_tick(HormigaApp& app, double now) {
             rt.thread_log.push_back({"info", "sync: reached " + l.user + " over the radio, carrying frames"});
             io = rt.link_io.find(l.fp);
         } else if (l.carrying && io == rt.link_io.end()) {
-            rt.link_io[l.fp].carrying = true; // closed under us (a new database): carry again
+            rt.link_io[l.fp].carrying = true; // the network reopened in this same room: carry again
             io = rt.link_io.find(l.fp);
         }
         if (!l.carrying) continue;

@@ -41,6 +41,12 @@ Read in this order the first time:
 - [The web platform](/concepts/platform/web-platform.md) — what is hosted and
   on which vendor; what a visitor is allowed to do; the AWS mapping and the
   order to build it.
+- [A database is its own room](/concepts/platform/database-separation.md) —
+  **built 2026-10-18.** Separation by construction, after a test colony kept
+  syncing into the next database opened: joining is the only way two files are
+  the same database and every copy is a new one; a database's room key and
+  member list live in this device's keyring under its id; its room is bound to
+  the id; every link proves it; a switch ends every link.
 - [LAN sharing](/concepts/platform/lan-sharing.md) — **opened 2026-09-16.**
   Profiles, joining a database over the local network, the members registry,
   presence and private data, and the Antfarm nodes that decide them.
@@ -75,6 +81,12 @@ Read in this order the first time:
   One database, several devices: the merge (Void Palabra's, and correct now),
   the transport (LAN first, S3 as a rendezvous), and the honest statement of
   which half is built.
+- [The networking stack](/concepts/platform/networking-stack.md) — **the map,
+  dated 2026-10-18.** After Void Maiz moved its engine to Void Hammer: who owns
+  reaching a device, the sync engine, what crosses, what networking looks like,
+  and who may join; the current APIs; what Hormiga still uses by compatibility;
+  the Reticulum announce privacy gate; and the approved order of work. Evidence
+  is [the audit](/reports/networking-stack-audit-2026-10-18.md).
 
 # The rule this folder exists to protect
 

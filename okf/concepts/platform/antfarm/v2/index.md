@@ -122,6 +122,7 @@ with two changes:
 | [Rivers](/concepts/platform/antfarm/v2/rivers.md) | Where data rests: rivers, reservoirs, reach, the S3 mapping, local-first, Reticulum, and the management nodes |
 | [Keys](/concepts/platform/antfarm/v2/keys.md) | Shared credentials: storage, sharing, compatibility, monitors, and the reversal of "keys stay home" |
 | [Network](/concepts/platform/antfarm/v2/network.md) | Profiles and devices as runes, linking profiles, and placement ("where does this node run?") |
+| [Networking nodes](/concepts/platform/antfarm/v2/networking-nodes.md) | Where a database lives on this device and whom it speaks to: node families for Void Hammer, Palabra, Verguenza and Chisme, and the rule that makes separation a property of the graph (2026-10-18) |
 | [Documents](/concepts/platform/antfarm/v2/documents.md) | Newsletters, websites, calendars and maps as one kind; preview and publish; domains; how Antfarm filters and Builder filters cannot conflict |
 | [The canvas](/concepts/platform/antfarm/v2/canvas.md) | Strata and the surface line, gates, live faces, strands, the dashboard, the palette, the phone |
 | [The CLI](/concepts/platform/antfarm/v2/cli.md) | The `farm` grammar: every verb, what it compiles to, and transcripts to build against |

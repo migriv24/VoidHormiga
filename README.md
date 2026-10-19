@@ -1,10 +1,12 @@
 # Void Hormiga
 
 **The outreach organization's application.** Native C++20 desktop, founded
-2026-07-15, built on four sibling projects: **Void Core** (the engine, C ABI),
+2026-07-15, built on five sibling projects: **Void Core** (the engine, C ABI),
 **Void Maiz** (the view and node-graph library — we are its client #2),
-**Void Allomone** (the rules language) and **Void Palabra** (the system layer:
-history, versions, merge, persistence and device-to-device sync).
+**Void Allomone** (the rules language), **Void Palabra** (the system layer:
+history, versions, merge, persistence and device-to-device sync) and **Void
+Hammer** (the family's networking since 2026-10-17: reaching devices and the
+sync engine over Palabra).
 
 Void Hormiga keeps a community-outreach organization's people, events, images,
 and resources as **tagged runes** — and composes newsletters and static
@@ -69,9 +71,12 @@ The development history is [okf/log.md](okf/log.md); open design questions are
 
 Needs a C++20 compiler, CMake and Ninja. The sibling projects are expected
 beside this one — `../VoidCore`, `../VoidMaiz`, `../VoidAllomone`,
-`../VoidPalabra` — which is the Void family's host pattern:
-`add_subdirectory(../VoidMaiz)`, and it locates the rest. A missing sibling
-fails configuration with a message naming the variable to set.
+`../VoidPalabra` and `../VoidHammer` — which is the Void family's host pattern:
+`add_subdirectory(../VoidMaiz)`, and it locates the rest. A missing required
+sibling fails configuration with a message naming the variable to set.
+**Void Hammer is optional for a build**: without it, the application and its
+tests build with networking absent, and CMake says so. Void Hammer has no public
+repository yet, so CI currently builds without networking.
 
 ```
 cmake -S . -B build -G Ninja

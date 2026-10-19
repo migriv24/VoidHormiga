@@ -77,6 +77,22 @@ std::string unb64(const std::string& text);  // "" on malformed input
 std::string new_room_key();
 std::string room_id(const std::string& room_key);
 
+/* A DATABASE IS ITS OWN ROOM (2026-10-18). The key a device uses is never the
+ * 32 bytes of the key file: it is those bytes bound to the database's sync id,
+ * so two databases that ended up holding one key file -- every database a
+ * phone keeps in its one folder did -- are still two rooms that cannot hear
+ * each other. "" unless the key is 32 bytes and the id is not empty. */
+std::string database_room(const std::string& file_key, const std::string& database_id);
+
+/* What a member link proves before its first frame: that the device on the
+ * other end holds THIS database's room. `session_code` is the handshake's
+ * short authentication string, which both ends compute from the pair of device
+ * keys, so a proof names the pair it was made for; it travels inside the
+ * stream sealed to those keys, so nobody else can see it or speak it. 64 hex
+ * characters. */
+std::string room_proof(const std::string& room_key, const std::string& session_code,
+                       const std::string& fingerprint);
+
 /* The beacon's opaque `extra`: an optional offer, an optional room id with its
  * sealed presence. Trimmed to fit one datagram (sync::kMaxBeacon). */
 std::string beacon_extra(const Offer* offer, const std::string& room,

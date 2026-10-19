@@ -58,7 +58,7 @@ void LanRuntime::tick(HormigaApp& app, double now) {
         last_probe = now;
         const auto& share = app.share_settings_now();
         if (!share.presence || share.node.empty()) return;
-        if (slurp(hormiga::find_key_file(share.key_file, app.key_dirs())).size() != 32) return;
+        if (slurp(database_file(app, share.key_file)).size() != 32) return;
     }
     LanRuntime& rt = of(app);
 
@@ -83,13 +83,18 @@ void LanRuntime::tick(HormigaApp& app, double now) {
     const maiz::Scene farm = project(app.core, kAntfarmMantle);
     const auto share = hormiga::collab::share_settings(farm);
     const std::vector<fs::path> dirs = app.key_dirs();
-    const std::string which = u8(dirs.front()) + "|" + app.state_name + "|" + share.key_file;
+    const std::string id = database_id(app, false);
+    const std::string which = u8(dirs.front()) + "|" + app.state_name + "|" + share.key_file + "|" + id;
     if (rt.room_for != which) {
         rt.room_for = which;
-        const std::string k = slurp(hormiga::find_key_file(share.key_file, dirs));
-        rt.room_key = k.size() == 32 ? k : std::string();
+        // this database's room, from this database's keyring (lan_share.hpp, database_file)
+        rt.room_key = hormiga::lan::database_room(slurp(database_file(app, share.key_file)), id);
+        {
+            std::lock_guard<std::mutex> lk(rt.mu);
+            rt.link_room = rt.room_key;
+        }
         const auto ms = hormiga::collab::membership_settings(farm);
-        rt.members_file = hormiga::find_key_file(ms.file, dirs);
+        rt.members_file = database_file(app, ms.file);
         rt.members_read_at = -100.0;
         rt.present.clear();
     }

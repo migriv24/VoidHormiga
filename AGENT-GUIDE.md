@@ -1576,6 +1576,23 @@ joined database is opened). Runes tagged `private` never leave the host.
 `HORMIGA_PROFILE_DIR` selects a different profile folder — two profiles on one
 machine is how the whole flow is tested.
 
+**A database is its own room (2026-10-18).** The room key and the members
+registry are not beside the database any more. They live in the profile, under
+the database's sync id: `<profile>/databases/<id>/lan-room.key` and
+`members.json`. A database that was never shared has no id and no room. Two
+rules follow for an agent:
+
+- **A copy is a new database.** In the app, Save as gives the open database a
+  new id, and opening a file copy of a database this device already knows does
+  the same. (The CLI works on state documents and has no Save as; a state file
+  you copy by hand keeps its id, so do not share both.) Joining is the only way two files are the same
+  database. Never copy a `.miga` to make a second member; join instead.
+- **Every device must run the same version.** A member link proves the room
+  before any frame, and a 0.2.1 device cannot.
+
+`config get sync.database` shows a database's id. Design:
+`okf/concepts/platform/database-separation.md`.
+
 ## 9c. Is there a newer Hormiga?
 
 New 2026-09-04. Full design in `okf/concepts/platform/distribution.md`.
@@ -1701,6 +1718,9 @@ that layout, not the usual one-repo-one-folder shape:
     git clone https://github.com/migriv24/VoidMaiz.git     VoidMaiz
     git clone https://github.com/migriv24/VoidAllomone.git VoidAllomone
     git clone https://github.com/migriv24/VoidPalabra.git  VoidPalabra
+    # VoidHammer is the family's networking since 2026-10-17. It has no public
+    # repository yet; place a checkout at ../VoidHammer for a networking build.
+    # Without it CMake builds the application without networking and says so.
     git clone https://github.com/migriv24/VoidHormiga.git  VoidHormiga
 
 **On Linux, install the window-system headers first.** GLFW 3.4 builds both an

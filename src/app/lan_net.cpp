@@ -25,6 +25,8 @@
 
 #include "voidpalabra/references.hpp"
 
+#include <sodium.h>
+
 namespace fs = std::filesystem;
 using namespace lan_detail;
 
@@ -232,6 +234,40 @@ std::string frame_what(const std::string& bytes) {
 /* Frames smaller than this come and go faster than a bar could be read. */
 constexpr std::size_t kWatchBytes = 128 * 1024;
 
+/* ── THE ROOM, PROVEN ON THE LINK (2026-10-18) ──────────────────────────────
+ *
+ * A member link used to be let in on its fingerprint alone: the listener
+ * checked `member_fps` and nothing else, so it never asked WHICH database the
+ * device dialling it had open. A device that was a member of a test database
+ * and is now in a real one, or the reverse, was still "a member", and
+ * Palabra's session, which has no notion of a database, merged one into the
+ * other. Now each side's first message proves it holds this database's room
+ * (`database_room`, bound to the sync id), for this pair of devices (the SAS),
+ * before any frame. A device in another database, or an older Hormiga, is
+ * refused. */
+bool prove_room(LanRuntime& rt, hormiga::sync::Session& s, const std::string& sas, const std::string& mine,
+                const std::string& theirs, std::string& why) {
+    std::string room;
+    {
+        std::lock_guard<std::mutex> lk(rt.mu);
+        room = rt.link_room;
+    }
+    if (room.size() != 32) {
+        why = "this device has no database's room open";
+        return false;
+    }
+    s.set_timeout_ms(5000);
+    if (!s.send("HZL1	" + hormiga::lan::room_proof(room, sas, mine), &why)) return false;
+    std::string in;
+    if (!s.receive(in, &why, 256)) return false;
+    const std::string want = "HZL1	" + hormiga::lan::room_proof(room, sas, theirs);
+    if (in.size() != want.size() || sodium_memcmp(in.data(), want.data(), in.size()) != 0) {
+        why = "it is not in this database (another database is open there, or an older Hormiga)";
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 void LanRuntime::net_pump(std::shared_ptr<LanRuntime> rt, hormiga::sync::Session* session,
@@ -422,6 +458,13 @@ void LanRuntime::net_dial(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPair
         rt->link_io.erase(link);
         return;
     }
+    if (std::string why; !prove_room(*rt, s, sas, hormiga::sync::fingerprint_of(keys.public_key), link, why)) {
+        s.close();
+        std::lock_guard<std::mutex> lk(rt->mu);
+        rt->thread_log.push_back({"warn", "sync: " + peer.user + " was not let in: " + why + " - nothing sent"});
+        rt->link_io.erase(link);
+        return;
+    }
     {
         std::lock_guard<std::mutex> lk(rt->mu);
         rt->thread_log.push_back({"info", "sync: reached " + peer.user + ", carrying frames"});
@@ -444,13 +487,25 @@ void LanRuntime::net_listen(std::shared_ptr<LanRuntime> rt, hormiga::sync::KeyPa
             std::lock_guard<std::mutex> lk(rt->mu);
             if (!rt->member_fps.count(link) || rt->link_io.count(link)) continue;
             rt->link_io[link].carrying = true;
-            rt->thread_log.push_back({"info", "sync: a member connected, carrying frames"});
         }
         /* THE LISTENER KEEPS LISTENING. Pumping here would mean nobody is bound
          * for as long as one link lives, so a second member -- or the same one
          * reconnecting -- would dial a closed port and the failure would look
-         * like a network problem. The session moves into its own thread. */
-        std::thread([rt, carried, link] {
+         * like a network problem. The session moves into its own thread, and
+         * proves the room there, so a slow proof does not hold the port. */
+        const std::string mine = hormiga::sync::fingerprint_of(keys.public_key);
+        std::thread([rt, carried, link, sas, mine] {
+            if (std::string why; !prove_room(*rt, *carried, sas, mine, link, why)) {
+                carried->close();
+                std::lock_guard<std::mutex> lk(rt->mu);
+                rt->thread_log.push_back({"warn", "sync: a member's device was not let in: " + why});
+                rt->link_io.erase(link);
+                return;
+            }
+            {
+                std::lock_guard<std::mutex> lk(rt->mu);
+                rt->thread_log.push_back({"info", "sync: a member connected, carrying frames"});
+            }
             net_pump(rt, carried.get(), link, now_seconds() + 600.0);
         }).detach();
     }

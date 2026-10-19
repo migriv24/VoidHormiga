@@ -6,6 +6,7 @@
  *
  *   - a file name from the other device is refused unless it is plainly relative
  *   - presence opens only with the right room key, and a tampered body is refused
+ *   - one key file in two databases is two rooms, and a link proof names its room
  *   - an offer survives the beacon round trip and fits one datagram
  *   - no two present people are shown in the same colour, whatever they prefer
  */
@@ -71,6 +72,23 @@ int main() {
     std::string tampered = sealed;
     tampered[tampered.size() / 2] ^= 0x01;
     CHECK(!lan::open_activity(tampered, key, back));
+
+    // ── a database is its own room (2026-10-18) ──────────────────────────────
+    // One key file, two databases (every database in one phone folder shared
+    // one): two rooms, and neither opens the other's presence.
+    const std::string test_room = lan::database_room(key, "db-test"), real_room = lan::database_room(key, "db-real");
+    CHECK(test_room.size() == 32 && real_room.size() == 32 && test_room != real_room);
+    CHECK(test_room != key && lan::database_room(key, "db-test") == test_room);  // members derive the same room
+    CHECK(lan::database_room(key, "").empty() && lan::database_room("short", "db-test").empty());
+    CHECK(lan::room_id(test_room) != lan::room_id(real_room));
+    CHECK(!lan::open_activity(lan::seal_activity(a, test_room), real_room, back));
+    // a member link's proof: bound to the room, the pair of devices and the sender
+    const std::string proof = lan::room_proof(test_room, "K7XQ2M", "fp-a");
+    CHECK(proof.size() == 64 && proof == lan::room_proof(test_room, "K7XQ2M", "fp-a"));
+    CHECK(proof != lan::room_proof(real_room, "K7XQ2M", "fp-a"));
+    CHECK(proof != lan::room_proof(test_room, "K7XQ2N", "fp-a"));
+    CHECK(proof != lan::room_proof(test_room, "K7XQ2M", "fp-b"));
+    CHECK(lan::room_proof("", "K7XQ2M", "fp-a").empty());
 
     // ── the beacon carries an offer and presence in one datagram ─────────────
     lan::Offer o;
