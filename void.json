@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -249,44 +249,41 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.2.2",
-    "previous": "0.2.1",
+    "version": "0.2.3",
+    "previous": "0.2.2",
     "change": "compatible",
-    "date": "2026-10-18",
-    "summary": "every database is its own room: a test database can no longer reach a real one, a copy is a new database, and a member can be removed or a database left",
+    "date": "2026-10-26",
+    "summary": "one Antfarm for every database, large databases that open and stay responsive, and a way to report a problem",
     "adds": [
-      "A database's room key and member list live on this device under the database's own identity, never in a folder another database can see",
-      "Every member connection proves which database it is for before anything crosses; a device in another database is refused, and the log says so",
-      "Opening another database ends every connection of the last one, on the local network, Bluetooth and Wi-Fi Direct",
-      "Save as makes a new database, and opening a file copy of a database this device knows makes it one too: joining is the only way two files are the same database",
-      "Remove a member (admins, in Share database) and Leave this database (Share database on a computer, Migos on a phone): they stay in the record as having left and can no longer sync",
-      "Where this database lives: its file, its working copy, its identity and its network files, in Share database and on the phone's Migas screen, and `effect home` in the CLI"
+      "Every database gets the current Antfarm when it opens, as one undo step; the old graph and its palette are gone, and the farm commands are the one way to build it",
+      "farm rollback puts a web domain's previous deployment back; Cloudflare Pages publishing works from the Antfarm, and a web domain can carry its own deploy and rollback commands",
+      "Hosting images online uses the Antfarm's image hosts, buckets and web domains",
+      "Opening and saving a database run in the background with a progress bar that says what it is doing and, once it can tell, how long is left",
+      "Large databases: the Data tab, the calendar, the map's filters and the Antfarm stay responsive at hundreds of thousands of records, and saving no longer stops the window",
+      "Report a problem, in Settings > About and on the phone's Me screen, writes what the people who help you need to know (which Hormiga, which system) and nothing about your database; voidhormiga-cli report does the same"
     ],
     "behavior_changes": [
       {
-        "what": "UPDATE EVERY DEVICE. A device on 0.2.1 or older cannot see or sync with a device on 0.2.2, and the reverse: the room is now bound to the database and every connection proves it.",
-        "who_is_affected": "Everyone who shares a database between devices."
+        "what": "THE ANTFARM'S MAP NO LONGER PUBLISHES PEOPLE. A map built with farm preview or farm publish now holds only what may appear on a public map, as the website's map always did; before, every rune with a place went into it, contacts included, with names and tags.",
+        "who_is_affected": "Anyone who published a site with a map through the Antfarm: publish again to replace it."
       },
       {
-        "what": "SAVE AS GIVES THE DATABASE A NEW IDENTITY. The new file is a separate database that shares nothing with the one it was saved from; to keep syncing, keep using the original file or share the new one again.",
-        "who_is_affected": "Anyone who used Save as on a shared database."
+        "what": "EVERY DATABASE IS CONVERTED TO THE CURRENT ANTFARM WHEN IT OPENS. The conversion is one undo step and the log says it happened; the old Antfarm tab is gone.",
+        "who_is_affected": "Every database that still had an Antfarm in the format before 2026-09-28."
       },
       {
-        "what": "A COPIED .miga IS A NEW DATABASE when this device already knows the original: opening it gives it its own identity and saves that into the file. A backup opened while the original exists is a copy too.",
-        "who_is_affected": "Anyone who copies database files by hand, or opens backups."
+        "what": "SAVING HAPPENS IN THE BACKGROUND. The window keeps working while the database is written; a save that fails says so afterwards, in a message and in the console. Quitting waits until the last save is on disk, which for a very large database can take minutes.",
+        "who_is_affected": "Everyone; noticeable on large databases."
       },
       {
-        "what": "A MEMBER LIST THAT SAT BESIDE SEVERAL DATABASES (every database in one phone folder shared one) is copied into each on the first open; the log names it. The rooms are separate, so nobody from another database can connect, but such a list can show their names: remove them.",
-        "who_is_affected": "Phones, and anyone who kept several shared databases in one folder."
-      },
-      {
-        "what": "A DATABASE MADE BY COPYING ANOTHER BEFORE 0.2.2 may still carry the original's identity. Compare `config get sync.database` in both; if they match, Save as a new file and share that one.",
-        "who_is_affected": "Anyone whose real database began as a copy of a test one."
+        "what": "SWITCHING OFF AN ALLOMONE SCRIPT REMOVES ITS COLOURS, LABELS AND HIDES AT ONCE. Before, they stayed on the cards until Hormiga restarted.",
+        "who_is_affected": "Anyone who uses Allomone scripts."
       }
     ],
     "read_more": [
-      "okf/concepts/platform/database-separation.md",
-      "okf/concepts/platform/antfarm/v2/networking-nodes.md"
+      "okf/concepts/platform/scale.md",
+      "okf/concepts/platform/antfarm/v2/index.md",
+      "okf/concepts/contributing/index.md"
     ]
   },
   "update": {

@@ -6707,3 +6707,41 @@ dynamic-frontier updates.
 
 **The test file is not the fixture.** The bundle is in the author's own folder
 and is never committed. It is made of public records and invented people.
+
+## 0.2.3 (2026-10-26)
+
+The author: *"push a new release"*. This is everything since 0.2.2:
+- one Antfarm;
+- nothing private in the repository, or in the installer that ships its OKF;
+- a way in for contributors;
+- issues #1 and #2;
+- the 5×10^5 stress work.
+
+`void.json`'s release block says it to users: one Antfarm, large databases,
+and Report a problem. It also has four behaviour changes, the first of which
+is that the Antfarm's map no longer publishes people. `change` is
+`compatible`: the sync protocol is untouched, so 0.2.3 and 0.2.2 sync.
+
+**Built:**
+- **Windows installer.** Staged with `mago stage`, compiled with `makensis`.
+  Staging found a Void Mago bug, fixed in Mago the same day. The OKF has
+  shipped by its parts since the privacy work (`okf/index.md`, not `okf/`), and
+  a file declared inside a folder was staged flat while the script still read
+  it from the folder. It would also have installed it at the root. Mago now
+  keeps the folder in both, and its toy family carries a file inside a folder.
+  Against 0.2.2, the script differs only in the OKF's lines.
+- **The APK**, version code 203, signed with the Hormiga key (certificate
+  `37d0ee24…`, as 0.2.2), so it installs over it.
+- **The Linux and macOS archives** are the release runners', built against Void
+  Maiz `main` `5be4c3c`. That commit carries this release's fixes ported onto
+  the networking it had for 0.2.2. The installer and the APK are built here
+  against Void Maiz's local `ios` branch, with Void Hammer, as 0.2.2 was.
+
+**Tests:** 59/60 (`reduce_conformance`), against both Void Maiz branches. CI's
+`hormiga_golden_render` drifts on Linux and macOS, where fonts and calendar
+files hash differently than on Windows. That drift predates this release: it
+failed on macOS for 0.2.2 too. CI's MSVC leg still fails to link libsodium, as
+before; the Windows release is built with MinGW.
+
+**Not done:** two phones on 0.2.3, and the large-database work on a weak device.
+The stress database was opened on this laptop only (scale.md).
