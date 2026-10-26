@@ -6745,3 +6745,17 @@ before; the Windows release is built with MinGW.
 
 **Not done:** two phones on 0.2.3, and the large-database work on a weak device.
 The stress database was opened on this laptop only (scale.md).
+
+## 0.2.3 shipped (2026-10-26)
+
+- **Commit `9ae8124`, tag `v0.2.3`.** All three runner legs built (linux-x64,
+  macos-arm64, macos-x64) against Void Maiz `main` `5be4c3c`.
+- **Assets** (15, as 0.2.2): the installer `ec5febc9…` and the APK `7c5f9fd6…`,
+  each with its version-free copy, `SHA256SUMS.txt`, and the runners' archives.
+  The Linux archive was downloaded into the release folder before `mago feed
+  --artifacts`. Its digest `3acd832e…` equals the runner's own, and both feed
+  artifacts hash to what the feed says and match its `bytes`.
+- **Live:** `releases/latest/download/void-updates.json` says `latest 0.2.3`, and
+  the stable installer and APK URLs serve the files above.
+- The intake and privacy workflows are still unpushed: the token cannot write
+  workflow files.
