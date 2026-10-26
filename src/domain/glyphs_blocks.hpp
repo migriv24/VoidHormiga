@@ -114,10 +114,9 @@ inline void register_block_glyphs(maiz::Core& core) {
         R"__("meta_desc":"SEO description (search + social preview)",)__"
         R"__("social_title_en":"Share title (English; blank = the page title)",)__"
         R"__("social_title_es":"Titulo al compartir (espanol)"}}})__");
-    /* `portrait` joined the banner on 2026-09-03. The author of a portfolio,
-     * on their own built site: *"the header image of my face doesn't look good,
-     * i would like my face to be in a circle thing, with maybe a separate
-     * background banner thing."*
+    /* `portrait` joined the banner on 2026-09-03, asked for by a portfolio
+     * client: a person's photo as a round inset, with a separate background
+     * banner behind it.
      *
      * Every image slot a `hero` had — `image`, `band_image`, plus the filter
      * and dim that style them — is the BACKGROUND, so a portrait put there is
@@ -374,9 +373,9 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
     /* ── AUDIO: the organization's own recording, on its own page ────────────
      *
-     * The Click LaFont report's A1, first rung, and the sentence that carried
-     * it: *"a music artist's website cannot play the artist's music."* Thirty-six
-     * songs sitting in the folder beside the database, and a site full of
+     * A client field report's A1, first rung, and the sentence that carried
+     * it: *"a music artist's website cannot play the artist's music."* The
+     * songs sat in the folder beside the database, and the site was full of
      * buttons pointing at somebody else's player.
      *
      * **Not a niche of one**, which is why it is a built-in block rather than a

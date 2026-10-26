@@ -154,12 +154,12 @@ recorded here so the decision is revisitable rather than forgotten.
 
 ### Every path there is (2026-10-14)
 
-The author, at a public library: phone and laptop would not find each other,
+The author, on a public network: phone and laptop would not find each other,
 and still would not when the laptop made a Mobile hotspot for the phone. Three
 separate causes, each enough by itself:
 
-1. **The venue's Wi-Fi kept devices apart.** Public Wi-Fi (this one was a city
-   network on Aruba access points, a /22) almost always has *client isolation*
+1. **The venue's Wi-Fi kept devices apart.** Public Wi-Fi (this one was a municipal
+   network, a /22) almost always has *client isolation*
    on: the access point forwards nothing from one guest device to another,
    unicast included. No application gets past that. The answer is a network
    both devices own — a hotspot — and the app now **says so** when members

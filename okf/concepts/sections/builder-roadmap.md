@@ -393,7 +393,7 @@ cannot witness.
   cannot hold a gap). A `cell_px` width reaches every `width=` attribute,
   because Outlook obeys that over CSS and a 572px image in a half-width cell
   breaks the 620px frame. Verified in the rendered HTML: RSVP in one 50% cell,
-  Donate in the other, one row. It is the same shape as Click LaFont's report
+  Donate in the other, one row. It is the same shape as a client's report
   that week that `col` orders blocks rather than positioning them, and that
   field's label now says so.
 - ✅ **9. An even more compact job listing, with icons.** `detail: line` gives

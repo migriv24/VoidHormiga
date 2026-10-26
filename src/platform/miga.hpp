@@ -19,12 +19,23 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
 
 namespace hormiga::miga {
+
+/* PROGRESS THROUGH A BUNDLE (2026-10-24, okf/concepts/platform/scale.md).
+ * `fraction` in [0, 1], never decreasing, and proportional to the BYTES of
+ * work done rather than to the number of files or phases: a bundle is one
+ * 40 MB state document and four hundred pictures, and a bar that advanced per
+ * file would race through the small ones and stall on the state. `phase` is a
+ * short human sentence ("Reading the file", "Restoring pictures"). Called from
+ * the thread that called open/pack, never from a worker, so a caller may write
+ * plain fields from it; it is cheap to call often. */
+using ProgressFn = std::function<void(double fraction, const char* phase)>;
 
 struct PackResult {
     bool ok = false;
@@ -43,8 +54,20 @@ struct OpenResult {
     std::string error;
     std::string state;   // the core state document to replay (v3), or "" (legacy)
     int version = 0;     // 3 = full bundle; 2 = legacy secrets-only vault
-    int assets = 0;      // assets extracted
+    int assets = 0;      // assets written
+    int assets_kept = 0; // assets already on disk with the same bytes, left alone
+    int assets_removed = 0; // files in the assets folder the bundle does not have (mirror)
     std::string name;    // meta.name if present
+};
+
+struct OpenOptions {
+    ProgressFn progress;
+    /* Make the assets folder EXACTLY the bundle's: write what differs, keep what
+     * is identical, delete what the bundle does not have. This replaces "delete
+     * the folder, then write everything" for a database switch, with the same
+     * end state (databases never bleed, author 2026-07-24) and none of the cost
+     * when most pictures are already there. */
+    bool mirror_assets = false;
 };
 
 /* Pack the working copy (state_json + everything under base_dir/assets/, plus
@@ -63,14 +86,26 @@ PackResult pack(const std::string& state_json, const std::filesystem::path& base
                 const std::filesystem::path& out_path, const std::string& name,
                 const std::filesystem::path& assets_dir,
                 const std::map<std::string, std::filesystem::path>& extra = {},
-                const std::set<std::string>& skip = {});
+                const std::set<std::string>& skip = {},
+                const ProgressFn& progress = {});
 
-/* Open a .miga: parse it, and for a v3 bundle EXTRACT its assets into
- * base_dir/assets/ (overwriting) and return its state document. A v2 legacy
- * file is detected (version=2, no state) so the caller can migrate. */
+/* Open a .miga: read it, and for a v3 bundle EXTRACT its assets into
+ * base_dir/assets/ and return its state document. A v2 legacy file is detected
+ * (version=2, no state) so the caller can migrate.
+ *
+ * Touches nothing but the filesystem, so it may run on a worker thread while
+ * the window keeps drawing (issue #1). */
 OpenResult open(const std::filesystem::path& miga_path,
                 const std::filesystem::path& base_dir,
-                const std::filesystem::path& assets_dir);
+                const std::filesystem::path& assets_dir,
+                const OpenOptions& options = {});
+inline OpenResult open(const std::filesystem::path& miga_path,
+                       const std::filesystem::path& base_dir,
+                       const std::filesystem::path& assets_dir, const ProgressFn& progress) {
+    OpenOptions o;
+    o.progress = progress;
+    return open(miga_path, base_dir, assets_dir, o);
+}
 
 /* True if the file looks like any .miga (v2 or v3) — cheap magic/JSON peek. */
 bool looks_like_miga(const std::filesystem::path& p);

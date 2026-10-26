@@ -143,7 +143,7 @@ static bool host_said_ok(const std::string& resp) {
  * script path did, which is what left the operator staring at:
  *
  *     [error] deploy: python: can't open file
- *             'C:\Users\migri\Documents\Projects\VoidHormiga\deploy_pages.py'
+ *             'C:\Users\<name>\Documents\Projects\VoidHormiga\deploy_pages.py'
  *
  * The script is beside his database. He launched the app from somewhere else.
  * Nothing in that message is wrong and nothing in it is actionable.

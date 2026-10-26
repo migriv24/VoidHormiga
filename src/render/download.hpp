@@ -101,7 +101,7 @@ inline std::string download_refusal(const std::string& path) {
  * The author's request, verbatim: *"it should detect the system (linux,
  * windows, mac), and then provide the correct download for hormiga."*
  *
- * The Click LaFont agent refused to build it and was right to, and their report
+ * The client's agent refused to build it and was right to, and their report
  * is the design this implements. Three walls stood in front of the obvious
  * version, and only the third is about us:
  *

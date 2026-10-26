@@ -48,7 +48,7 @@ Face Evaluator::face(const std::string& name) {
     Face f;
     const Node* n = g_.find(name);
     if (!n || !n->kind) {
-        f.ready = {"failing", "not a v2 node"};
+        f.ready = {"failing", "not an Antfarm node kind"};
         return f;
     }
     const Kind& kd = *n->kind;
@@ -78,7 +78,7 @@ Face Evaluator::face(const std::string& name) {
     if (k == "miga") {
         long long total = 0;
         for (const char* c : {"data", "assets", "network", "documents"}) {
-            const auto rs = chamber(c);
+            const auto& rs = chamber(c);
             long long b = 0;
             for (const auto& r : rs) b += r.bytes;
             total += b;
@@ -120,10 +120,10 @@ Face Evaluator::face(const std::string& name) {
         std::set<std::string> reg_files, reg_shas, referenced;
         std::map<std::string, std::string> asset_file; // rune -> file
         for (const auto& r : input(*n, "assets", "mantle").runes) {
-            const std::string file = farm::field_of(r.node, "file"), sha = farm::field_of(r.node, "sha256");
+            const std::string file = farm::field_of(r.node(), "file"), sha = farm::field_of(r.node(), "sha256");
             if (!file.empty()) reg_files.insert(file);
             if (!sha.empty()) reg_shas.insert(sha);
-            asset_file[r.node.name] = file;
+            asset_file[r.node().name] = file;
         }
         auto sha_in = [](const std::string& p) {
             int run = 0;
@@ -135,9 +135,9 @@ Face Evaluator::face(const std::string& name) {
         };
         long long refd = 0, missing = 0, remote = 0, unregistered = 0;
         for (const auto& r : input(*n, "data", "mantle").runes)
-            for (const auto& fl : r.node.fields) {
-                if (fl.editor != "image" && !(r.node.glyph == "image" && fl.key == "path")) continue;
-                const std::string v = farm::field_of(r.node, fl.key);
+            for (const auto& fl : r.node().fields) {
+                if (fl.editor != "image" && !(r.node().glyph == "image" && fl.key == "path")) continue;
+                const std::string v = farm::field_of(r.node(), fl.key);
                 if (v.empty()) continue;
                 ++refd;
                 if (is_url(v)) { ++remote; continue; }

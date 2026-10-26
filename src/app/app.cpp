@@ -193,16 +193,23 @@ void HormigaApp::draw_vault_modal() {
 
 /* Every mantle's projection (the `mantles` verb enumerates; lines may carry
  * an active marker — strip decorations, keep the name). */
-std::vector<maiz::Scene> HormigaApp::project_all_mantles() {
-    std::vector<maiz::Scene> out;
+std::vector<std::string> HormigaApp::mantle_names() {
+    std::vector<std::string> out;
     for (std::string line : core.dispatch("mantles").lines) {
         while (!line.empty() && (line.front() == '*' || line.front() == ' '))
             line.erase(line.begin());
         if (auto p = line.find(" ("); p != std::string::npos) line.resize(p);
         while (!line.empty() && line.back() == ' ') line.pop_back();
-        if (line.empty() || line == "(no mantles)") continue;
+        if (!line.empty() && line != "(no mantles)") out.push_back(std::move(line));
+    }
+    return out;
+}
+
+std::vector<maiz::Scene> HormigaApp::project_all_mantles() {
+    std::vector<maiz::Scene> out;
+    for (const std::string& name : mantle_names()) {
         maiz::ProjectOptions po;
-        po.mantle = line;
+        po.mantle = name;
         out.push_back(maiz::project_scene(core, po));
     }
     return out;
@@ -230,18 +237,16 @@ void HormigaApp::install_host() {
                                 -> std::string {
         if (op == "save") {
             // primary: the SQLite Data holiday (state + normalized rows);
-            // beside it: the JSON snapshot mirror (fallback principle)
-            bool db_ok = storage && storage->ok() &&
-                         storage->save(std::string(args), project_all_mantles());
-            if (storage && !db_ok)
-                log.push_back({"error", "save", "db: " + storage->error()});
-            std::ofstream out(org_file(), std::ios::binary | std::ios::trunc);
-            out << args;
-            if (!out) {
-                log.push_back({"error", "save", "write failed: " + org_file().string()});
-                return {};
-            }
-            return json_str(db_ok ? db_file().string() : org_file().string());
+            // beside it: the JSON snapshot mirror (fallback principle). Both
+            // written by the saver, off this thread (app/save_writer.hpp);
+            // what failed comes back through frame_prelude.
+            hormiga::SaveWriter::Job job;
+            job.state = std::make_shared<const std::string>(args);
+            job.glyphs = core.glyphs_text();
+            job.mantles = mantle_names();
+            job.snapshot = org_file();
+            saver.submit(std::move(job));
+            return json_str(storage && storage->ok() ? db_file().string() : org_file().string());
         }
         if (op.rfind("farm-", 0) == 0) return farm_effect_gui(op, args); // Antfarm v2 (app/farm_effects.cpp)
         if (op == "render") {
@@ -399,8 +404,8 @@ void HormigaApp::install_host() {
                 if (aj.contains("args") && !aj["args"].empty()) p = aj["args"][0].get<std::string>();
             } catch (...) {}
             if (p.empty()) return {};
-            if (op == "save-database") run_busy("Saving database…", [this, p] { save_database_as(p); });
-            else run_busy("Opening database…", [this, p] { open_database(p); });
+            if (op == "save-database") run_busy("Saving database…", [this, p] { save_database_as(p, true); });
+            else begin_open_database(p);
             return {};
         }
         if (op == "apply-template") { // apply a built-in template by index
@@ -583,16 +588,35 @@ void HormigaApp::rebuild_kind_palette() {
     }
 }
 
-void HormigaApp::reproject() {
-    // the database's own KINDS first, so projection keeps their fields
-    hormiga::kinds::apply(core, channel_fields);
-    scene = maiz::project_scene(core);
+void HormigaApp::reproject(bool reuse) {
+    /* A SWITCH OF MANTLE IS NOT A CHANGE (2026-10-24). With two section windows
+     * visible, each claims the context every frame (section_window), and every
+     * claim was a `use` and a full projection: at 10^5 runes, two per frame,
+     * gigabytes a minute. Nothing about the data had changed. So a projection is
+     * kept per mantle while nothing changes (scenes_idle), a switch swaps one in
+     * (dispatch_and_reproject), and only a real change projects. */
+    if (!reuse) {
+        scenes_idle.clear(); // anything else may have changed anything: forget them all
+        // the database's own KINDS first, so projection keeps their fields
+        hormiga::kinds::apply(core, channel_fields);
+        /* A CHANGE TO ANOTHER MANTLE IS NOT A CHANGE TO THIS ONE (2026-10-25).
+         * The Antfarm's verbs, a document's blocks, the rules: each change
+         * re-projected the mantle on screen, which is usually the data — seconds
+         * at 5×10^5 runes, for a scene that came out the same. The digest says so
+         * with a scan instead (Void Maiz, mantle_digest). */
+        const std::uint64_t now = scene.source ? maiz::mantle_digest(core) : 0;
+        if (!now || now != scene.source) scene = maiz::project_scene(core);
+    }
     ++model_gen;
     // per-view position channels: projection only fills DECLARED glyph
     // fields, so every unlocked view's geo_<channel> must be registered on
     // the placeable glyphs. Detect channel changes here (the one seam all
     // model changes pass through) and re-register + re-project when the set
     // moves — unlocking a view makes its positions visible the same frame.
+    /* Only the DATA mantle holds maps and canvases, so only its projection may
+     * say what the channels are. Read from every mantle, a document with none
+     * emptied the list and the data mantle refilled it: with two sections
+     * visible that was a glyph re-registration, a real change, every frame. */
     std::vector<std::string> chans;
     for (const auto& n : scene.nodes) {
         if (n.glyph == "canvas") { // a drawn canvas's shared positions, even before it has a layer
@@ -605,8 +629,9 @@ void HormigaApp::reproject() {
     }
     std::sort(chans.begin(), chans.end());
     chans.erase(std::unique(chans.begin(), chans.end()), chans.end());
-    if (chans != channel_fields) {
+    if (scene.mantle == kDataMantle && chans != channel_fields) {
         channel_fields = chans;
+        scenes_idle.clear(); // a re-registration changes every projection
         hormiga::register_glyphs(core, channel_fields);
         hormiga::kinds::apply(core, channel_fields); // a located kind carries every channel too
         scene = maiz::project_scene(core);
@@ -756,6 +781,7 @@ allo_legacy_sources(const maiz::Scene& scripts, const maiz::Scene& data,
 void HormigaApp::refresh_allo_rules() {
     allo_colors.clear();
     allo_errors.clear();
+    allo_style.clear(); // a script switched off takes its styles with it (it kept them until a restart)
     maiz::ProjectOptions po;
     po.mantle = kAlloMantle;
     maiz::Scene rs;
@@ -765,12 +791,27 @@ void HormigaApp::refresh_allo_rules() {
         allo_derived = {}; // mantle not present yet
         return;
     }
-    maiz::ProjectOptions dp;
-    dp.mantle = kDataMantle;
-    maiz::Scene ds;
-    try {
-        ds = maiz::project_scene(core, dp);
-    } catch (...) {}
+    /* NO SCRIPT, NO DERIVATION (2026-10-25). The frame is a second copy of every
+     * subject — fields, tags, links, centrality — and the legacy producer builds
+     * a third; at 5×10^5 runes that was seconds and gigabytes on every change,
+     * for a database with no rule that could read any of it. */
+    bool any_script = false;
+    for (const auto& n : rs.nodes)
+        any_script = any_script || n.glyph == hormiga::allomone::kScriptGlyph || n.glyph == "script";
+    if (!any_script) {
+        allo_derived = {};
+        return;
+    }
+    // the data mantle is usually the scene on screen: take it rather than project it again
+    maiz::Scene projected;
+    if (scene.mantle != kDataMantle) {
+        maiz::ProjectOptions dp;
+        dp.mantle = kDataMantle;
+        try {
+            projected = maiz::project_scene(core, dp);
+        } catch (...) {}
+    }
+    const maiz::Scene& ds = scene.mantle == kDataMantle ? scene : projected;
 
     hormiga::allomone::Options o;
     { // `today` is read ONCE, here, and frozen into the frame. A predicate that
@@ -889,7 +930,26 @@ void HormigaApp::allo_cmd(const std::string& c) {
 maiz::Result HormigaApp::dispatch_and_reproject(const std::string& cmd_in) {
     std::string renamed_from, renamed_to;
     const std::string cmd = follow_title(cmd_in, renamed_from, renamed_to);
+    /* `use <mantle>` changes which mantle is projected and nothing else: keep
+     * the scene being left, and take the one being entered if nothing has
+     * changed since it was last projected (reproject's note). */
+    const bool switching = cmd.rfind("use ", 0) == 0 && cmd.find(' ', 4) == std::string::npos;
+    const std::string leaving = scene.mantle;
     maiz::Result r = core.dispatch(cmd);
+    if (switching && r.ok) {
+        const std::string entering = cmd.substr(4);
+        if (entering == leaving) return r; // already there
+        auto kept = scenes_idle.find(entering);
+        if (!leaving.empty()) scenes_idle[leaving] = std::move(scene);
+        if (kept != scenes_idle.end()) {
+            scene = std::move(kept->second);
+            scenes_idle.erase(kept);
+        } else {
+            scene = maiz::project_scene(core); // its kinds were applied by the last real change
+        }
+        reproject(/*reuse=*/true);
+        return r;
+    }
     if (r.ok && !renamed_from.empty()) {
         // whatever pointed at the old handle now points at the new one
         for (auto& s : ed.selection)
@@ -906,7 +966,10 @@ maiz::Result HormigaApp::dispatch_and_reproject(const std::string& cmd_in) {
         toast(why == "failed" ? "failed: " + cmd : why, true);
         log.push_back({"error", cmd.substr(0, cmd.find(0x20)), why + "  (" + cmd + ")"});
     }
-    reproject();
+    /* A save writes the document and changes nothing in it, so nothing on
+     * screen is re-projected for one: at 5×10^5 runes that was a projection of
+     * every rune on every Ctrl+S (okf/concepts/platform/scale.md). */
+    if (!(r.ok && cmd == "save")) reproject();
     if (r.ok && preview_live) { // live preview: any landed edit re-renders
         preview_dirty = true;   // (debounced in frame(); render is VIEW-side,
         preview_edit_t = ImGui::GetTime(); // not a logged effect)
@@ -1028,7 +1091,9 @@ void HormigaApp::init() {
         toast("another session holds this database - your changes may be "
               "overwritten by it", true);
 
+    saver.set_storage(nullptr); // a save in flight finishes against the old connection
     storage = std::make_unique<hormiga::Storage>(db_file());
+    saver.set_storage(storage.get());
     std::string state;
     if (storage->ok()) state = storage->load_state();
     else toast("database unavailable (" + storage->error() + ") - using snapshot", true);
@@ -1420,38 +1485,9 @@ void HormigaApp::init() {
                      [&](const auto& a, const auto& b) {
                          return cat_rank(a.category) < cat_rank(b.category);
                      });
-    // grouped by PAYLOAD (Records / Assets / Publish), each entry local or cloud
-    palette_antfarm.entries = {{"hol_sqlite", "SQLite - local store", "Records"},
-                               {"hol_csv", "CSV - local source", "Records"},
-                               {"hol_supabase", "Supabase - cloud store", "Records"},
-                               {"hol_sheets", "Google Sheets - cloud source", "Records"},
-                               {"hol_fs_assets", "Local files - asset store", "Assets"},
-                               {"hol_imgbb", "ImgBB - cloud image host", "Assets"},
-                               {"hol_html", "HTML site - publisher", "Publish"},
-                               {"hol_localhost", "Localhost - local server", "Publish"},
-                               {"hol_github", "GitHub Pages - cloud deploy", "Publish"},
-                               /* registered for weeks and missing here, so they
-                                * could not be placed from the GUI (2026-09-15) */
-                               {"hol_static_host", "Static host - cloud deploy", "Publish"},
-                               {"hol_dns", "Domain / DNS - registrar", "Publish"},
-                               {"hol_object_store", "Object store - S3 or R2", "Assets"},
-                               {"hol_uploads", "Uploads - visitor object store", "Assets"},
-                               {"hol_lan_peer", "LAN peer - another device", "Records"},
-                               {"hol_lan_share", "Share over LAN", "Records"},
-                               {"hol_membership", "Members", "Records"},
-                               {"hol_device", "This device", "Device"},
-                               {"hol_device_paths", "Device paths", "Device"},
-                               // test nodes (2026-09-25): stress the synced graph between devices
-                               {"math_number", "Number", "Test"},
-                               {"math_add", "Add", "Test"},
-                               {"math_multiply", "Multiply", "Test"},
-                               {"str_text", "Text", "Test"},
-                               {"str_join", "Join", "Test"},
-                               {"str_upper", "Upper case", "Test"},
-                               {"poly_router", "Polygon router", "Test"},
-                               {"hol_auth", "Sign-in - identity provider", "Visitors"},
-                               {"hol_accounts", "Accounts + submissions", "Visitors"}};
-    register_farm_faces(); // Antfarm v2: palette + faces, from farm::kinds()
+    /* The old Antfarm format's palette was removed with its screen (2026-10-19):
+     * nothing offers its glyphs any more; they stay registered so old logs replay. */
+    register_farm_faces(); // the Antfarm: palette + faces, from farm::kinds()
     palette_allomone.entries = {{"allo_when", "When (a rule)", "Allomone"},
                                 {"allo_hastag", "has tag", "Allomone"},
                                 {"allo_setcolor", "set card color", "Allomone"}};
@@ -1545,7 +1581,9 @@ void HormigaApp::init() {
         face_status(ctx, "profile: " + d.profile.string(), "databases: " + d.databases.string());
     };
     faces.by_glyph["hol_sqlite"] = [this, face_status](maiz::FaceContext& ctx) {
-        if (storage && storage->ok()) {
+        if (storage && storage->ok() && saver.busy()) {
+            face_status(ctx, "saving...", "the working copy is being written");
+        } else if (storage && storage->ok()) {
             auto s = storage->stats();
             face_status(ctx,
                         std::to_string(s.runes) + " runes, " +
@@ -1743,6 +1781,9 @@ void HormigaApp::init() {
 
 void HormigaApp::shutdown() {
     do_save();
+    saver.flush(); // on disk before the floor is released
+    for (const auto& r : saver.take_reports())
+        if (r.error) std::fprintf(stderr, "save failed: %s\n", r.message.c_str());
     // Release the floor AFTER the save, so an agent waiting to start cannot
     // begin against a half-written document.
     if (g_floor) { g_floor->close(); g_floor.reset(); }
@@ -2484,67 +2525,17 @@ void HormigaApp::section_window(const char* title, int which) {
 
 // ── frame ────────────────────────────────────────────────────────────────────
 
-/* Defer a heavy, blocking operation by ONE frame so the "working…" overlay
- * paints before the main thread stalls on it. The label shows immediately;
- * the action runs at the start of the next frame, then the overlay clears. */
-void HormigaApp::run_busy(const std::string& label, std::function<void()> action) {
-    busy_label = label;
-    busy_progress = -1.0f;
-    if (busy_action) // two asked for in one frame (a script): both, in order
-        action = [first = std::move(busy_action), then = std::move(action)] { first(); then(); };
-    busy_action = std::move(action);
-}
-
-/* The blocking-op overlay: a label + a spinner (busy_progress < 0) or a
- * progress bar, over a dimmed screen. Shown for deferred heavy ops (save /
- * open / new database). Async work (tile downloads, import jobs) shows its own
- * indicators in place; this is the modal "the app is working" curtain. */
-void HormigaApp::draw_busy_overlay() {
-    if (busy_label.empty()) return;
-    const ImGuiViewport* vp = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(vp->WorkPos);
-    ImGui::SetNextWindowSize(vp->WorkSize);
-    ImGui::SetNextWindowBgAlpha(0.55f);
-    if (ImGui::Begin("##busydim", nullptr,
-                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
-                         ImGuiWindowFlags_NoSavedSettings |
-                         ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-        ImVec2 c(vp->WorkPos.x + vp->WorkSize.x * 0.5f,
-                 vp->WorkPos.y + vp->WorkSize.y * 0.5f);
-        ImDrawList* dl = ImGui::GetForegroundDrawList();
-        dl->AddRectFilled(ImVec2(c.x - 170, c.y - 40), ImVec2(c.x + 170, c.y + 40),
-                          IM_COL32(30, 30, 34, 240), 10.0f);
-        // a spinning arc for the indeterminate case
-        if (busy_progress < 0) {
-            float t = (float)ImGui::GetTime() * 6.0f;
-            for (int i = 0; i < 12; ++i) {
-                float a = t + i * 0.5236f;
-                int alpha = 40 + (i * 215 / 12);
-                dl->AddCircleFilled(ImVec2(c.x - 130 + std::cos(a) * 14,
-                                           c.y + std::sin(a) * 14),
-                                    2.6f, IM_COL32(255, 255, 255, alpha));
-            }
-        } else {
-            dl->AddRect(ImVec2(c.x - 148, c.y + 14), ImVec2(c.x + 148, c.y + 26),
-                        IM_COL32(255, 255, 255, 160), 3.0f);
-            dl->AddRectFilled(
-                ImVec2(c.x - 146, c.y + 16),
-                ImVec2(c.x - 146 + 292 * std::clamp(busy_progress, 0.0f, 1.0f),
-                       c.y + 24),
-                IM_COL32(120, 190, 140, 230), 2.0f);
-        }
-        ImVec2 ts = ImGui::CalcTextSize(busy_label.c_str());
-        dl->AddText(ImVec2(c.x - 100, c.y - 22), IM_COL32(240, 240, 245, 255),
-                    busy_label.c_str());
-        (void)ts;
-    }
-    ImGui::End();
-}
-
 /* THE HALF OF A FRAME BOTH FRONT-ENDS NEED: merged documents land, finished
  * jobs report, deferred commands dispatch. Nothing here draws, which is why the
  * phone (src/phone/) can run it and then draw something entirely different. */
 void HormigaApp::frame_prelude() {
+    // work off the UI thread (app/busy.hpp): nothing else runs until it lands
+    if (busy.poll(ImGui::GetTime())) return;
+    for (const auto& r : saver.take_reports()) // the working copy's writes (app/save_writer.hpp)
+        if (r.error) {
+            log.push_back({"error", "save", r.message});
+            toast("save failed: " + r.message, true);
+        }
     /* EVERY VIEW REDECLARES WHAT IT SHOWS, this frame (Void Maiz's Surfaces is
      * immediate mode on purpose: a registry with a lifecycle goes stale the
      * moment a window closes on one device and not another). */
@@ -2572,12 +2563,14 @@ void HormigaApp::frame_prelude() {
     LanRuntime::apply_incoming(*this); // members' changes, merged by the replica (lan_sync.cpp)
 
     // a DEFERRED heavy op runs now — the "working…" overlay painted last frame
-    if (busy_action) {
-        auto a = busy_action;
-        busy_action = nullptr;
-        a();               // blocks (save/open/pack) — the overlay already showed
-        busy_label.clear();
-        busy_progress = -1.0f;
+    if (busy.action) {
+        auto a = busy.action;
+        busy.action = nullptr;
+        a();               // blocks, unless it handed its work to a worker (run_busy_async)
+        if (!busy.running()) {
+            busy.label.clear();
+            busy.progress = -1.0f;
+        }
     }
 
     // a finished background job: join it, land its model changes through the
@@ -2598,13 +2591,14 @@ void HormigaApp::frame_prelude() {
     // — each entry is dispatched as-is; batching happened where it was built.
     // `map …` verbs route through the action registry here too, so agents
     // driving HORMIGA_BOOT_CMD get the same vocabulary as the command bar.
-    if (fv2.chambers_dirty) reconcile_chambers(); // Antfarm v2: writes only what is out of step
+    if (fv2.chambers_dirty) reconcile_chambers(); // the Antfarm's chambers: writes only what is out of step
     if (!pending_cmds.empty()) {
         std::vector<std::string> cmds;
         cmds.swap(pending_cmds);
         for (const auto& c : cmds)
             if (!try_map_verb(c) && !try_doc_verb(c) && !try_farm_verb(c)) dispatch_and_reproject(c);
     }
+    if (fv2.convert && pending_cmds.empty() && !busy.action) convert_antfarm(); // after a load's own commands
     // a date-tag temper pass runs once the import's commands have all landed
     if (run_temper_next && pending_cmds.empty()) {
         run_temper_next = false;
@@ -2626,6 +2620,7 @@ void HormigaApp::frame_prelude() {
 void HormigaApp::frame() {
     ImGuiIO& io = ImGui::GetIO();
     frame_prelude();
+    if (busy.running()) { draw_busy_overlay(); return; } // nothing to click while the database changes
     if (phone) { // a navigation bar and screens, never windows (phone/phone.cpp)
         phone_frame();
         return;
@@ -2664,9 +2659,7 @@ void HormigaApp::frame() {
             if (ImGui::MenuItem("Open database...")) {
                 if (on_pick_file) {
                     std::string p = on_pick_file(""); // OS open dialog (.miga)
-                    if (!p.empty())
-                        run_busy("Opening database…",
-                                 [this, p] { open_database(p); });
+                    if (!p.empty()) begin_open_database(p);
                 } else {
                     toast("no file picker available", true);
                 }
@@ -2678,7 +2671,7 @@ void HormigaApp::frame() {
                 for (const auto& r : recent) {
                     const bool here = r == cur_miga;
                     if (ImGui::MenuItem(fs::path(r).filename().string().c_str(), here ? "open" : nullptr, false, !here))
-                        run_busy("Opening database…", [this, r] { open_database(r); });
+                        begin_open_database(r);
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", r.c_str());
                 }
                 ImGui::EndMenu();
@@ -2691,9 +2684,9 @@ void HormigaApp::frame() {
                     std::string p = on_save_file("my-database.miga");
                     if (!p.empty())
                         run_busy("Saving database…",
-                                 [this, p] { save_database_as(p); });
+                                 [this, p] { save_database_as(p, true); });
                 } else if (!cur_miga.empty()) {
-                    run_busy("Saving database…", [this] { save_database(); });
+                    run_busy("Saving database…", [this] { save_database(true); });
                 }
             }
             if (ImGui::MenuItem("Save database as...")) {
@@ -2704,7 +2697,7 @@ void HormigaApp::frame() {
                     std::string p = on_save_file(suggest); // OS save dialog
                     if (!p.empty())
                         run_busy("Saving database…",
-                                 [this, p] { save_database_as(p); });
+                                 [this, p] { save_database_as(p, true); });
                 } else {
                     toast("no save dialog available", true);
                 }
@@ -2770,7 +2763,7 @@ void HormigaApp::frame() {
     // Ctrl+S saves the working copy; Ctrl+Shift+S saves the database bundle
     if (io.KeyCtrl && !io.WantTextInput && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
         if (io.KeyShift && !cur_miga.empty())
-            run_busy("Saving database…", [this] { save_database(); });
+            run_busy("Saving database…", [this] { save_database(true); });
         else if (io.KeyShift)
             save_database(); // no file yet → its own Save-As dialog
         else

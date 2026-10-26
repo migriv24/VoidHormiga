@@ -11,6 +11,68 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q129 — what is the unit a device holds: a cluster as a mantle, or a cluster
+  loaded out of one?** (Opened 2026-10-25, from the author's "smaller and smaller
+  clusters", see [clusters](/concepts/platform/clusters.md).) Leiden hierarchies
+  are built and measured, but a device still holds and projects the whole data
+  mantle. There are two seams:
+  - **clusters as mantles**, composed into one view through Void Core's mantle
+    composition. Each edit then costs the cluster's mantle, and this works today
+    with what Core has, but the cut becomes part of the data, and moving a rune
+    to another cluster becomes a move between mantles;
+  - **one mantle, loaded by cluster**, which needs Core to export and load by a
+    tag. The cut stays a view, and nothing in the data changes when the
+    clustering does.
+
+  **Lean: one mantle, loaded by cluster.** A clustering is an opinion about the
+  links, and it changes with every new contact, so it should not be written
+  into where a rune lives. Ask Void Core for the seam, show the overview
+  (clusters as nodes, Elmqvist & Fekete) in Void Maiz first, and use the
+  `c1:`/`c2:` tags until then.
+
+- **Q130 — strip Void Core's `_baseline` from the files Hormiga writes?**
+  (Opened 2026-10-25.) Core's `save` copies every mantle into `_baseline`,
+  inside the state, so every working copy and every bundle saved after it holds
+  the database twice. Measured: 28 MB became 57 MB. Hormiga counts unsaved
+  edits itself and never reads Core's `status`, `diff` or `revert`, but a person
+  can type them in the console. After a reload with the copy stripped, they
+  would show every rune as added. **Lean: wait for Core**, which has the report
+  (a digest instead of a copy). If disk becomes the constraint first, strip it
+  in the bundle only (`pack`), not in the working copy, so the console verbs keep
+  working within a session.
+
+- **Q126 — where does the master private-terms list live?** (Opened 2026-10-23;
+  researched 2026-10-24 at the author's request.) It cannot be in this
+  repository (the list is the secret), and a repository secret cannot be read
+  back, so the `PRIVATE_TERMS` secret can be written from a list but cannot be
+  the list. How other groups keep material that must not be public:
+  - Kubernetes keeps embargoed security work in a private committee with private
+    channels, membership granted by role;
+  - SOPS with age encrypts values inside a file in the repository, and
+    git-crypt encrypts whole files. Both leave ciphertext in a public history
+    forever, both need every maintainer's device to hold a key, and a removed
+    recipient can still read every old version;
+  - GitHub's custom secret-scanning patterns can block a push server-side, but
+    that needs a paid plan for private repositories.
+
+  **Lean, sharpened by the research: a private repository readable by the
+  maintainers' accounts, holding `.private-terms` and nothing else that needs
+  code.** It is the only option that is an account rather than a device (the
+  rule in [contributing](/concepts/contributing/index.md)), it leaves nothing
+  in public history, and removing a maintainer is removing an account.
+  `setup-github.sh --terms` pushes it to the secret after each change. If the
+  plan ever allows custom patterns with push protection, add them as the
+  server-side lock.
+
+- **Q128 — move the demo workspaces' magnitudes onto measures?** (Opened
+  2026-10-25, from issue #2, see [measures](/concepts/foundation/measures.md).)
+  The grocery workspace's price and stock, and the smart home's quantities, are
+  magnitudes read by rules (the "low stock" warning) and by totals, which is
+  exactly SPEC §3.7.1's case. The organization workspace has none. **Lean: yes,
+  for the demos, when a feature first reads them as numbers (a sales total, a
+  stock rule on a value rather than a tag), using Void Maiz's measures.hpp, and
+  never for dates, coordinates or grid positions.**
+
 - **Q113 — adopt Void Hammer's names directly, or keep the aliases?** (Opened
   2026-10-18, after the networking audit.) Void Hammer owns `voidhammer_reach`
   and `voidhammer_net`; Hormiga still includes `voidmaiz/*` and links
@@ -27,7 +89,7 @@ fold into concepts and clear from here.
   `RnsSession` does not have. **Lean: no, not until Q98 is answered and the
   members registry can prove who a peer is. Keep the sealed LAN session as the
   default; add Reticulum behind an explicit transport choice only after that.**
-  ([the audit](/reports/networking-stack-audit-2026-10-18.md))
+  ([the audit](/audits/networking-stack-audit-2026-10-18.md))
 
 - **Q115 — adopt `voidmaiz/nav.hpp` now?** (Opened 2026-10-18.) The library now
   has Hormiga's navigation bar, app bar, Back and per-destination `Stack`.
@@ -39,7 +101,7 @@ fold into concepts and clear from here.
   it configures without networking; the result is green but untested on the
   network. **Lean: an explicit configure warning and a documented gap, never a
   silent green. Add the Hammer clone when it has a public remote, and run the
-  five networking tests there.** ([the audit](/reports/networking-stack-audit-2026-10-18.md))
+  five networking tests there.** ([the audit](/audits/networking-stack-audit-2026-10-18.md))
 
 - **Q117 — does the members registry gain a Reticulum identity?** (Opened
   2026-10-18.) `members.json` holds a libsodium `crypto_kx` key and a
@@ -229,20 +291,6 @@ fold into concepts and clear from here.
   all three? v2 reserves `device: station` on the profile facet and decides
   nothing. ([network](/concepts/platform/antfarm/v2/network.md) §6)
 
-- **Q98 — should the chambers reach a database that has no v2 Antfarm?**
-  (Opened 2026-09-29.) `UiState::chambers_dirty` starts `true`, so the desktop
-  application's first frame adds the `assets`, `network` and `documents`
-  mantles to **every** database it opens, v1 included. That writes to an
-  organization's database before V7, makes a dev build and an installed 0.1.x
-  hold different things in one document, and syncs the new mantles to members
-  whose builds do not know them. The CLI already waits for `farm init`.
-  **Lean: reconcile only when a `farm` mantle exists** (and on `farm init`,
-  `farm chambers`, `farm showcase`), so a database becomes v2 by one logged
-  act, which is what the migration page promises. **What settles it:** the
-  author, since the second pass made "every database gets them at boot" a
-  deliberate line. ([v2](/concepts/platform/antfarm/v2/index.md) §"Found on a
-  copy of a real database")
-
 - **Q99 — the stand-ins whose trigger has fired.** (Opened 2026-09-29.) Five
   pieces were written to be replaced "when X lands", and X has landed:
 
@@ -325,7 +373,7 @@ fold into concepts and clear from here.
   one that ships. **2026-10-18: still not migrated.** The client lives in
   `voidmaiz_update`, which Hormiga already links; the general HTTP seam it uses
   is `voidmaiz/http.hpp`. The lean is to migrate after Q113 and carry the
-  consent file over. See [the audit](/reports/networking-stack-audit-2026-10-18.md).
+  consent file over. See [the audit](/audits/networking-stack-audit-2026-10-18.md).
 
 - **Q79 — the database needs a profile of its own, and today it is three
   config keys.** (Opened 2026-09-20.) **Lean: a dedicated structure, minted
@@ -589,7 +637,7 @@ fold into concepts and clear from here.
   now a reproducible one.
 
 - **Q66 — should `link` carry `caption_en` / `caption_es`?** (Opened
-  2026-09-08, Click LaFont's platform-set report §3.) **Lean: yes, and only
+  2026-09-08, a client's platform-set report §3.) **Lean: yes, and only
   that — two fields, no container.**
 
   A platform card today is a label and nothing more, and the report shows why
@@ -963,7 +1011,7 @@ fold into concepts and clear from here.
   that all four are one shape:
 
   > **the glyph set is fixed at compile time, and an organization that is not
-  > shaped like LON has to borrow.** Borrowing works … but each borrow costs a
+  > shaped like the first partner organization has to borrow.** Borrowing works … but each borrow costs a
   > lie in the GUI, a workaround in CSS, or a parser over presentation.
 
   Three things they contribute that this entry did not have:
@@ -1030,7 +1078,7 @@ fold into concepts and clear from here.
   twice.**
 
 - **Q54 — can Hormiga play a sound? RUNG 1 BUILT 2026-09-02; rungs 2-3 open.**
-  (Opened 2026-09-02, from the Click LaFont report A1.) **Lean: yes, and in
+  (Opened 2026-09-02, from a client's field report A1.) **Lean: yes, and in
   three steps, smallest first.**
 
   **Rung 1 shipped the same day.** An `audio` block: a file the organization
@@ -1083,7 +1131,7 @@ fold into concepts and clear from here.
      what a Hormiga site *is*.
 
 - **Q55 — how does media reach the object store?** (opened 2026-09-02, from the
-  Click LaFont report A2.) **Lean: a third `what`, named `assets`, and a
+  client's field report A2.) **Lean: a third `what`, named `assets`, and a
   `base_url` on `hol_object_store`.**
 
   `effect push-store` takes `index` or `backup` and explicitly not a path. The
@@ -1146,7 +1194,7 @@ fold into concepts and clear from here.
   nothing.
 
 - **Q57 — should an organization's data mantle be permanently called
-  `demo-org`?** (opened 2026-09-02, from the Click LaFont report D6.)
+  `demo-org`?** (opened 2026-09-02, from a client's field report D6.)
   **Lean: rename the default, do not make it configurable.**
 
   `kDataMantle` is `"demo-org"`, hardcoded, and every block query, `effect
@@ -1275,7 +1323,7 @@ fold into concepts and clear from here.
   said bilingual "must be an ENGINE."
 
   **2026-09-02 — the first half is built, and the author sharpened the
-  question.** The Click LaFont report asked for a way to publish ONE language;
+  question.** A client's field report asked for a way to publish ONE language;
   the author declined it in the terms that make this question's answer
   non-negotiable:
 
@@ -1341,7 +1389,7 @@ fold into concepts and clear from here.
   possible.
 
   **What has to be decided is custody.** It would put the organization's whole
-  database — 146 contacts, ~70 emails, ~66 phone numbers, and the vault's
+  database — every contact, their emails and phone numbers, and the vault's
   secrets — on a server, where today it is one file on one machine and the file
   is the authority. For an org serving communities where a leaked contact list
   has consequences that are not financial, that is a real change of posture and
@@ -2349,6 +2397,27 @@ settled it named. They are not a place to think out loud forever.
   structure does not depend on the words.
 
 # Decided
+
+## By the author, 2026-10-19 (one Antfarm)
+
+- **The old Antfarm is no longer a choice.** The author: *"we don't want the
+  user to be able to choose to use the old antfarm. rather, we just wanna
+  convert the old to the new. we can support the old systems, but we are no
+  longer using them ... often times 'legacy' is associated with more stable
+  and better working. We shouldn't give off that vibe at all ... the safest
+  choice IS the new antfarm."* Built the same day: the Try/Back switch is gone
+  on desktop and phone, every database is converted on open (`farm migrate
+  apply`, or `farm init` for one with no graph or a new one), the old glyphs
+  are never offered and `--describe` files them as the older format, and
+  `use antfarm` prints a note in the CLI. Making the safe choice actually safe
+  came first: the map rendition's privacy-seam gap was closed, `farm
+  rollback` was added, and `farm publish` to Cloudflare, which had never
+  worked, was fixed. What still reads the old format is listed in
+  [the migration](/concepts/platform/antfarm/v2/migration.md).
+- **Q98 (the chambers one; the number is shared with the Reticulum
+  question): should the chambers reach a database with no v2 Antfarm?
+  Answered by the decision above.** Every database is given its Antfarm on
+  open, chambers included, so writing them on the first frame is intended.
 
 ## By the author, 2026-10-18 ("go with what your leaning towards for now")
 

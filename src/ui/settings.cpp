@@ -22,6 +22,7 @@
 #include "json.hpp" // the position channel is a JSON payload
 
 #include "platform/app_settings.hpp"  // Settings > Starting Hormiga
+#include "report/report.hpp"           // Settings > About > Report a problem
 #include "platform/device_paths.hpp"  // Preferences > where files are
 
 void HormigaApp::draw_settings() {
@@ -201,6 +202,32 @@ void HormigaApp::draw_settings() {
         ImGui::SeparatorText("About");
         ImGui::TextWrapped("Settings are this application's, on this device. A database's own "
                            "preferences are under File > Preferences.");
+        /* REPORT A PROBLEM (2026-10-25). The person who needs this is not a developer
+         * (Void Mago okf/concepts/audiences.md): it is an organizer whose help is
+         * often their own group's technical person, so the report can be COPIED
+         * to send them as well as opened as our form. It carries only what this
+         * build is (report/report.hpp), never the database. */
+        static int report_kind = 0;
+        if (ImGui::Button(ICON_FA_BUG "  Report a problem")) { report_kind = 0; ImGui::OpenPopup("##report"); }
+        ImGui::SameLine();
+        if (ImGui::Button("Ask for something")) { report_kind = 1; ImGui::OpenPopup("##report"); }
+        if (ImGui::BeginPopup("##report")) {
+            const auto kind = report_kind ? hormiga::report::Kind::Feature : hormiga::report::Kind::Bug;
+            const std::string txt = hormiga::report::text(kind);
+            ImGui::TextWrapped("Send this to whoever helps you with Hormiga, or open the form. It says "
+                               "which Hormiga this is and nothing about your database.");
+            ImGui::InputTextMultiline("##report-text", const_cast<char*>(txt.c_str()), txt.size() + 1,
+                                      ImVec2(560, 220), ImGuiInputTextFlags_ReadOnly);
+            if (ImGui::Button(ICON_FA_COPY "  Copy")) {
+                ImGui::SetClipboardText(txt.c_str());
+                toast("copied: paste it into a message or an email");
+            }
+            if (on_open) {
+                ImGui::SameLine();
+                if (ImGui::Button("Open the form")) on_open(hormiga::report::issue_url(kind));
+            }
+            ImGui::EndPopup();
+        }
     }
     ImGui::End();
 }

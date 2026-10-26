@@ -236,7 +236,7 @@ std::filesystem::path HormigaApp::resolve_file(const std::string& raw) const {
  * The author, first: *"we have the IDs and stuff correct in the antfarm, but
  * still can't publish? or it still ask for keys."* The IDs travel inside the
  * database. The keys do not, by design: `cloudflare_token.txt` and `imgbb.key`
- * sat beside `LON_*.miga` in the organization's folder, the hosting nodes named
+ * sat beside `<org>_*.miga` in the organization's folder, the hosting nodes named
  * them relatively, and every reader resolved that against `base_dir` -- the
  * folder the program was LAUNCHED from. The same database published or asked
  * for keys depending on how Hormiga was started.

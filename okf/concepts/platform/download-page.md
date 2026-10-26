@@ -13,7 +13,7 @@ is the moment a person who has never heard of us clicks a button.
 
 What is now built and measured, rather than argued:
 
-- **The page exists**, at <https://clicklafont.com/hormiga-en>, built against
+- **The page exists**, on a client's website, built against
   §6 of this document by an agent who had not written it. The build brief in §6
   is therefore *runnable*, which it was not when it was written.
 - **Platform sets** (§5d) — the answer to the author's *"it should detect the
@@ -26,10 +26,10 @@ What is still a plan is the part that is not ours to write: **there is no
 release yet**, so the stable URL in §4 still 404s. §7 is the order.
 
 **Three numbers and one warning on this page were wrong** when it was written
-and are corrected below, all measured by the Click LaFont agent on 2026-09-05:
+and are corrected below, all measured by the client's agent on 2026-09-05:
 the installer is **7.0 MB, not ~25 MB**, and the apostrophe warning in §6.2 was
-over-cautious. The report is
-[`okf/reports/click-lafont-download-page-2026-09-05.md`](../../reports/click-lafont-download-page-2026-09-05.md).
+over-cautious. Their report stays with the client
+([what may be public](/concepts/foundation/what-may-be-public.md)).
 
 **Who this is for.** Two readers at once. Sections 1–5 are the reasoning and are
 written for the author, in more detail than an agent needs. **Section 6 is the
@@ -197,7 +197,7 @@ https://github.com/migriv24/VoidHormiga/releases/latest/download/VoidHormiga-win
 - The versioned asset stays attached too, so a specific version is still
   citable and downloadable forever. Both facts are true at once.
 
-**And the one place this argument cannot reach is prose.** (Click LaFont,
+**And the one place this argument cannot reach is prose.** (A client's agent,
 2026-09-09.) The button, the checksums and the update feed all *point at* the
 authoritative thing and let GitHub resolve it, so none of them can go stale. A
 sentence on a page **restates** a fact, and nothing resolves it — their page said
@@ -358,7 +358,7 @@ trust level as the lightbox and the video click-to-load that already ship in
 `download_refusal` and the `custom.css`-is-a-file decision exist to refuse:
 model data arrives by import and by merge, from a device somebody else was
 using, so a field that becomes code on the site's own origin is a hole. The
-Click LaFont agent asked for this version rather than the loosening, and was
+client's agent asked for this version rather than the loosening, and was
 right to.
 
 **And it still cannot invent a build.** There is one, `windows-x64`. Detection
@@ -397,7 +397,7 @@ bylaws, an annual report.
 Do not use `download` for the installer. It works, and §3 says why not to.
 
 **Nor for `SHA256SUMS.txt`, which this section told you to do until 2026-09-08.**
-The Click LaFont agent declined that instruction while building the live page and
+The client's agent declined that instruction while building the live page and
 was right to: a checksums file staged into the site is *version-specific*, so it
 goes stale on every release and has to be re-staged and redeployed — which is
 precisely the maintenance §4 built the version-free URL to abolish. Following
@@ -431,7 +431,7 @@ made in five separate implementations, including two of its own.
 
 **Corrected 2026-09-05:** this used to say *do not hand-escape it*, which read as
 though escaping were unavailable. It is not. `'` inside single quotes works
-exactly as `--describe`'s house rule #3 documents, and the Click LaFont agent
+exactly as `--describe`'s house rule #3 documents, and the client's agent
 round-tripped ten apostrophes through it on the live page. Escape it, or emit
 the command through the encoder (`maiz::arg`, or Void Core's `vc_arg_quote`), or
 type it into the Builder's inspector, which quotes for you. What is true is the
@@ -521,7 +521,7 @@ switch to find.
 > own machine**, because the author's own platform is usually the one already in
 > front. Nothing warns; the render log is clean.
 >
-> Measured 2026-09-08 by the Click LaFont agent, who built exactly that and
+> Measured 2026-09-08 by the client's agent, who built exactly that and
 > caught it only by spoofing six platforms. If a card needs explaining, the
 > explanation has to be *in* the card or in a full-width block that promises no
 > position — the unit of movement is one `.wcol`.
@@ -640,7 +640,7 @@ verified here against this repository's own manifest, not a fixture: `mago
 wizard voidhormiga --platform windows-x64` now emits `SetOutPath
 "$INSTDIR\voidhormiga-0.1.0\vendor\fonts"`, and none of the 23 quoted path
 arguments in the generated script contains a forward slash. The page in step 6
-is built and live ahead of its turn at <https://clicklafont.com/hormiga-en> with
+is built and live ahead of its turn on a client's site with
 a sentence where the button goes.
 
 **Nothing in code is blocking any more.** What is left is step 3, which needs a
@@ -659,7 +659,7 @@ second computer, and step 4, which needs a person to create a release.
    webfonts found beside the binary` on every `render-site`. The staging tree
    was correct the whole time, because `fs::path` forgives a forward slash and
    NSIS does not; nothing that inspected the tree could see it. Diagnosed by the
-   Click LaFont agent by rebuilding with backslashes. Fixed at a chokepoint —
+   client's agent by rebuilding with backslashes. Fixed at a chokepoint —
    one `nsis_path()` every emitted path goes through — with a test asserting the
    general form over the whole script rather than the one line that had it.
 3. **Install it on a second computer and open it.** This is
@@ -697,7 +697,7 @@ second computer, and step 4, which needs a person to create a release.
    *HTTP 404*. If it does not, the website will be advertising something the
    application cannot see.
 6. Build the page (§6, and §6.2b for the platform set) and `deploy-site`. Done
-   ahead of turn, on clicklafont.com; flipping the button live is two `set`
+   ahead of turn, on a client's site; flipping the button live is two `set`
    commands and a redeploy once step 4 exists.
 7. **Download it from the live URL, on a machine that has never had it**, in a
    browser you are not signed into GitHub with. Click your own button. This is

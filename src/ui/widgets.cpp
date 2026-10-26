@@ -55,25 +55,40 @@ std::string HormigaApp::search_picker(
  * own dedicated UI and shouldn't be hand-typed here. */
 std::string HormigaApp::tag_picker(const char* id, char* buf, size_t bufsz,
                                    const char* hint) {
-    // gather the existing tag vocabulary once (deduped, sorted, de-namespaced)
-    std::set<std::string> vocab;
-    for (const auto& n : scene.nodes)
-        for (const auto& t : n.tags) {
-            // namespaced tags (kw:food, clearance:public) are offered too since
-            // 2026-09-13 - they were skipped, which made them impossible to find
-            vocab.insert(t);
-        }
-    /* A TAG CAN EXIST BEFORE ANYTHING CARRIES IT (2026-09-15): a map shape that
-     * bestows `apple` makes `apple` a tag of this database even while nothing is
-     * inside the shape, so it is searchable here (domain/bestow.hpp). */
-    if (scene.mantle == kDataMantle)
-        for (const auto& b : hormiga::bestow::bestowers(scene)) vocab.insert(b.tag);
     ImGui::SetNextItemWidth(-1);
     bool enter = ImGui::InputTextWithHint(
         id, hint, buf, (int)bufsz, ImGuiInputTextFlags_EnterReturnsTrue);
     std::string typed = buf;
     std::string chosen;
     if (!typed.empty()) {
+        /* The existing tag vocabulary (deduped, sorted), gathered when somebody
+         * types and kept until the model changes (2026-10-25). It was gathered
+         * every frame for every picker on screen, typed into or not: at 5×10^5
+         * runes, millions of set inserts a frame. */
+        static struct {
+            const maiz::SceneNode* base = nullptr;
+            std::size_t count = ~std::size_t(0);
+            unsigned gen = ~0u;
+            std::set<std::string> tags;
+        } cache;
+        if (cache.base != scene.nodes.data() || cache.count != scene.nodes.size() || cache.gen != model_gen) {
+            cache.base = scene.nodes.data();
+            cache.count = scene.nodes.size();
+            cache.gen = model_gen;
+            cache.tags.clear();
+            for (const auto& n : scene.nodes)
+                for (const auto& t : n.tags) {
+                    // namespaced tags (kw:food, clearance:public) are offered too since
+                    // 2026-09-13 - they were skipped, which made them impossible to find
+                    cache.tags.insert(t);
+                }
+            /* A TAG CAN EXIST BEFORE ANYTHING CARRIES IT (2026-09-15): a map shape that
+             * bestows `apple` makes `apple` a tag of this database even while nothing is
+             * inside the shape, so it is searchable here (domain/bestow.hpp). */
+            if (scene.mantle == kDataMantle)
+                for (const auto& b : hormiga::bestow::bestowers(scene)) cache.tags.insert(b.tag);
+        }
+        const std::set<std::string>& vocab = cache.tags;
         /* ONE ID PER ROW (2026-09-15). The label was `"@" + tag + "##" + id`,
          * and every caller's id begins with `##`, so a row read
          * `@color:blue####noteaddtag`. ImGui treats `###` as "the id is what

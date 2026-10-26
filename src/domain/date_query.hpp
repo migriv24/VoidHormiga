@@ -198,10 +198,9 @@ inline When when_of(const maiz::Scene& scene, const maiz::SceneNode& n,
 
     When best = When::Undated;
     long long best_day = 0;
-    for (const auto& w : scene.wires) {
-        std::string other;
-        if (w.from == n.name) other = w.to;
-        else if (w.to == n.name) other = w.from;
+    for (const std::size_t i : scene.wires_at(n.name)) { // its own wires, not every wire (Scene::wires_at)
+        const auto& w = scene.wires[i];
+        const std::string& other = w.from == n.name ? w.to : w.from;
         if (other.empty()) continue;
         const maiz::SceneNode* ev = scene.find(other);
         if (!ev || ev->glyph != "event") continue;
@@ -261,11 +260,16 @@ inline std::vector<std::string> query_bag(const maiz::Scene& scene,
  *
  * `scene` is the DATA scene the rune came from — the edges are read out of it,
  * so passing the document mantle here would silently disable the borrow. */
+inline bool mentions_date(std::string_view expr);
+
 inline bool query_matches(std::string_view expr, const maiz::Scene& scene,
                           const maiz::SceneNode& n, long long today) {
     if (expr.empty()) return true;
     try {
-        return maiz::Core::tag_match(expr, query_bag(scene, n, today));
+        /* Tags match exactly (Void Core's tag.c: no wildcard, no prefix), so a
+         * `date:` tag can only matter to an expression that spells one. Working
+         * out a rune's date reads its events; it was done for every query. */
+        return maiz::Core::tag_match(expr, mentions_date(expr) ? query_bag(scene, n, today) : maiz::filter_bag(n));
     } catch (const std::invalid_argument&) {
         return true; // malformed mid-keystroke: degrade to "show everything"
     }

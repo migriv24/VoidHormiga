@@ -86,7 +86,17 @@ Read in this order the first time:
   reaching a device, the sync engine, what crosses, what networking looks like,
   and who may join; the current APIs; what Hormiga still uses by compatibility;
   the Reticulum announce privacy gate; and the approved order of work. Evidence
-  is [the audit](/reports/networking-stack-audit-2026-10-18.md).
+  is [the audit](/audits/networking-stack-audit-2026-10-18.md).
+- [Scale](/concepts/platform/scale.md) — **2026-10-25, issues #1 and #2**: what a
+  database of 10^5 runes costs, measured phase by phase; the bundle as a
+  scanner (open 3.1 s to 0.6 s), work off the UI thread with byte-weighted
+  progress, the Data tab O(visible), the projection's O(E·N) and the section
+  ping-pong gone, and what is Void Core's to fix. Then 5×10^5: what was left on
+  the main thread, found by sampling it.
+- [Clusters](/concepts/platform/clusters.md) — **proposed 2026-10-25**: smaller
+  and smaller clusters as the unit a weak device holds. Leiden hierarchies
+  measured on the 5×10^5 stress database, hierarchical aggregation for showing
+  them, and what loading by cluster needs from Void Core (Q129).
 
 # The rule this folder exists to protect
 

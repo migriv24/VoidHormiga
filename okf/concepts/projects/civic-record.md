@@ -130,13 +130,13 @@ type for free.
 The important consequence: **the generator does not need to link anything, know
 C++, or share a header.** It emits Void Core commands.
 
-    rune new contact "Sean VanGordon"
-    tag "Sean VanGordon" +role:mayor +ward:at-large
+    rune new contact "Pat Example"
+    tag "Pat Example" +role:mayor +ward:at-large
     rune new policy ord-6472
     rune new revision ord-6472-r3
     link ord-6472-r3 ord-6472-r2 --relation supersedes
     tag ord-6472-r3 +topic:zoning +status:adopted
-    link "Sean VanGordon" ord-6472-r3 --relation voted-yes
+    link "Pat Example" ord-6472-r3 --relation voted-yes
 
 A tool that emits that transcript is **automatically conformant**: every import
 lands as one replayable batch, logged and undoable, exactly like the CSV importer

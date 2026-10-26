@@ -313,9 +313,12 @@ void HormigaApp::draw_allomone_body() {
     ImGui::TextDisabled(
         "Rules are a SET, not a sequence - order changes nothing, the sharper "
         "rule wins, and nothing here edits your data.");
-    ImGui::Text("%d subject(s)  -  %d source(s)  -  %d derived cell(s)",
-                (int)allo_derived.subjects.size(), (int)allo_derived.sources.size(),
-                (int)allo_derived.merged.cells.size());
+    if (allo_derived.scripts.empty()) // nothing is derived until a script exists (refresh_allo_rules)
+        ImGui::TextUnformatted("No scripts yet - add one and it runs over every subject.");
+    else
+        ImGui::Text("%d subject(s)  -  %d source(s)  -  %d derived cell(s)",
+                    (int)allo_derived.subjects.size(), (int)allo_derived.sources.size(),
+                    (int)allo_derived.merged.cells.size());
     if (nconf) {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.95f, 0.65f, 0.25f, 1), "  -  %d unsettled",

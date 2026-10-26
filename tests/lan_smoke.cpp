@@ -34,7 +34,7 @@ int main() {
     using namespace hormiga;
 
     // ── names that arrive from someone else ──────────────────────────────────
-    CHECK(lan::safe_rel("LON.miga"));
+    CHECK(lan::safe_rel("Org.miga"));
     CHECK(lan::safe_rel("keys/cloudflare_token.txt"));
     CHECK(lan::safe_rel("Llaves de José.txt"));
     CHECK(!lan::safe_rel(""));

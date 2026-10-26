@@ -6,6 +6,11 @@ tags: [status:current, audience:dev, confidence:measured]
 timestamp: 2026-09-22T00:00:00Z
 ---
 
+> **The node names on this page are the Antfarm's format before 2026-09-28**
+> (`hol_*`, the `antfarm` mantle). The ideas carry over to the Antfarm
+> ([v2](/concepts/platform/antfarm/v2/index.md)), which is the only one since
+> 2026-10-19; build with `farm`, not with these glyphs.
+
 # The idea
 
 The author, 2026-09-15:

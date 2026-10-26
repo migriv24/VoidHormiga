@@ -2,7 +2,7 @@
  *
  * ── WHY THIS EXISTS, AND WHY IT IS NOT THE FEATURE THAT WAS ASKED FOR ────────
  *
- * The Click LaFont field report (2026-09-02) asked for A3. **Their proposal is
+ * A client's field report (2026-09-02) asked for A3. **Their proposal is
  * quoted below and was DECLINED — `site.languages` is not a key, has never been
  * read, and is not coming.** It is quoted because the reasoning matters, not
  * because it describes behaviour:

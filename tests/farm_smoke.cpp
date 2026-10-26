@@ -87,7 +87,7 @@ int main() {
     ctx.chamber = [data](const std::string& c) {
         std::vector<farm::Rune> out;
         if (c == "data")
-            for (const auto& n : data->nodes) out.push_back({"data", n, data, 100});
+            for (std::size_t i = 0; i < data->nodes.size(); ++i) out.push_back({"data", data, i, 100});
         return out;
     };
     ctx.exists = [](const std::string& p) { return p == "ana.jpg"; };

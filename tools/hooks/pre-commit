@@ -1,0 +1,13 @@
+#!/bin/sh
+# Refuse a commit that would publish something from a real database, a client,
+# another project or this machine. See okf/concepts/foundation/what-may-be-public.md.
+# Turn on once per clone:   git config core.hooksPath tools/hooks
+root=$(git rev-parse --show-toplevel) || exit 1
+py=$(command -v python3 || command -v python) || {
+    echo "pre-commit: no python found; tools/lint_public.py did not run" >&2
+    exit 1
+}
+"$py" "$root/tools/lint_public.py" --staged --strict || {
+    echo "pre-commit: refused. Remove what is listed above, or rewrite it as a fact about Hormiga." >&2
+    exit 1
+}

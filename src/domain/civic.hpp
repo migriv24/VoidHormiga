@@ -57,9 +57,11 @@ namespace civic {
 // ── glyphs ──────────────────────────────────────────────────────────────────
 //
 // EDGES CARRY ALMOST NOTHING, which is the first thing hand-building taught us.
-// `link` accepts only `--relation`, `--weight` and `--undirected`, and the
-// PROJECTION drops even the weight (`maiz::SceneWire` has no weight field). So
-// an edge is `(relation, directed)` and nothing more.
+// `link` accepts only `--relation`, `--weight` and `--undirected`. The
+// projection has carried the weight since Void Core 0.2.14 (`SceneWire::weight`,
+// and `is_value` when the target is a measure rune, where the weight IS a value:
+// see domain/measures.hpp). It did not when this was written, which is why the
+// civic record reified: an edge is `(relation, directed, weight)` and no more.
 //
 // Everything richer must be REIFIED as a rune. That is why `term` exists rather
 // than a `held` edge with dates on it, and why an assertion is a rune rather

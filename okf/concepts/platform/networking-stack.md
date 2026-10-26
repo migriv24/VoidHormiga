@@ -184,4 +184,4 @@ No source or build change is part of the audit itself. The approved sequence is:
 
 The measurements, exact commands, test counts, inventory and the full delta
 ledger are in
-[the networking stack audit](/reports/networking-stack-audit-2026-10-18.md).
+[the networking stack audit](/audits/networking-stack-audit-2026-10-18.md).

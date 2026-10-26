@@ -152,6 +152,15 @@ block is what the update prompt shows a person — including
 `behavior_changes`, the category a version number cannot express and a
 dependency resolver cannot see.
 
+## Contributing
+
+Reports, requests, platform testing and pull requests are welcome; start at
+[CONTRIBUTING.md](CONTRIBUTING.md). `voidhormiga-cli report` prints what a bug
+report needs and a link to the form. Security problems go privately through
+[SECURITY.md](SECURITY.md). Hormiga holds other people's information, so
+nothing from a real organization belongs in an issue or a pull request: show it
+on the Cat Colony.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Third-party components are vendored, never

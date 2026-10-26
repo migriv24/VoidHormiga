@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
@@ -85,14 +86,17 @@ bool migrated(maiz::Core& core);
 
 farm::Context make_context(maiz::Core& core, const std::filesystem::path& base, const hormiga::Vault* vault,
                            const Device& dev,
-                           std::function<std::string(const std::string&)> presence = {});
+                           std::function<std::string(const std::string&)> presence = {},
+                           std::shared_ptr<std::shared_ptr<const maiz::Scene>> data = {}, // a shared slot for the data mantle
+                           std::function<std::shared_ptr<const maiz::Scene>()> held = {}); // fills it, if the host holds one
 
 bool farm_exists(maiz::Core& core);
 maiz::Scene project_farm(maiz::Core& core); // with named wires resolved for drawing
 
 /* The demo documents a fresh v2 Antfarm points at: the first Builder document,
  * the first calendar view, the first map view. */
-farm::SeedInfo seed_info(maiz::Core& core, const std::string& website_doc, const std::string& actor);
+farm::SeedInfo seed_info(maiz::Core& core, const std::string& website_doc, const std::string& actor,
+                         const maiz::Scene* data = nullptr); // the data mantle, if the caller holds it
 
 /* The Connections view (canvas.md §4), as rows both front-ends draw. */
 struct Row {
@@ -103,7 +107,8 @@ std::vector<Row> connection_rows(const farm::Graph& g, farm::Evaluator& ev);
 /* What the application keeps between frames for Antfarm v2 (one member of
  * HormigaApp, so app.hpp does not grow a field per feature). */
 struct UiState {
-    bool v2 = true;      // the Antfarm tab shows v2 (when this database has one)
+    bool convert = true; // give this database its Antfarm at the next frame's start (convert_antfarm)
+    bool fresh = false;  // ...and it is a new database: the default colony, not a conversion of its seed
     bool here = false;   // this database has a `farm` mantle (refreshed on reproject)
     int view = 0;        // 0 Connections, 1 Wiring
     bool fit = true;     // fit the whole graph in view on the next Wiring frame
@@ -119,6 +124,9 @@ struct UiState {
      * renderers see ONLY these data runes, whatever a block asks for. */
     std::shared_ptr<const std::set<std::string>> grant;
     std::string grant_doc, grant_text; double grant_at = -100.0; // the Builder's grant line, cached
+    std::uint64_t grant_gen = 0;                                // ...and the model it was computed for
+    // the data mantle, shared by every context of one model generation (farm_context)
+    std::shared_ptr<std::shared_ptr<const maiz::Scene>> data; unsigned data_gen = ~0u;
 };
 
 /* The Builder's line for a document: what the Antfarm grants it, and who

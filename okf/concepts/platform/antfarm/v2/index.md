@@ -2,11 +2,21 @@
 type: Index
 title: Antfarm v2
 description: "The reimagined Antfarm (designed and prototyped 2026-09-28; the migration is not built): a .miga is a set of chambers (Data, Assets, Network, Documents) and the Antfarm is where a person configures how those chambers speak to each other and to the world. Mantles flow and are filtered like Blender geometry, rivers are where data rests, keys are shared credentials, documents render to domains, and the canvas draws the effect boundary as the ground surface of an ant farm. A new version, not compatible with v1, reached by a logged migration command. This index holds what changed, what was kept, the vocabulary, the reading order, and the status."
-tags: [status:direction, audience:all, confidence:asserted]
+tags: [status:current, audience:all, confidence:measured]
 timestamp: 2026-09-28T00:00:00Z
 ---
 
 # Antfarm v2
+
+> **The only Antfarm, since 2026-10-19.** The author: *"we don't want the user
+> to be able to choose to use the old antfarm ... the safest choice IS the new
+> antfarm."* The switch between versions is gone from the desktop and the
+> phone; every database is converted when it opens (`convert_antfarm`), and a
+> new one starts with the default colony. The old format's glyphs stay
+> registered for replay and are never offered. What still reads that format
+> is listed in [the migration](/concepts/platform/antfarm/v2/migration.md)
+> §"What still reads the old format". "v2" survives as this folder's name and
+> in dated history; on screens and in the CLI it is simply the Antfarm.
 
 > **Built, in two passes (2026-09-28).** The chambers are real mantles, v2 nodes
 > run real effects through the effect gate, and the Cat Dataset ships with a
@@ -262,18 +272,21 @@ the wires in plain sentences.
 
 **What did not, most serious first:**
 
-1. **The map rendition bypasses the privacy seam** (ground rule 6). v1's
+1. **The map rendition bypasses the privacy seam** (ground rule 6). **Closed
+   2026-10-19**: the map now asks `kinds::on_public_map`, the website map's own
+   seam, for its GeoJSON and its picture; the Cat Colony's 50 cats are withheld. v1's
    renderer publishes a person only with `clearance:public`. The map branch of
    `farm-preview`/`farm-publish` (`app/farm_effects.cpp`) writes every rune the
    Antfarm filter keeps that has `geo`, with name, title and tags. The seeded
    filter is `NOT private`, and a database that marks consent with
-   `clearance:` rather than `private` sent **8 people's coordinates** into
+   `clearance:` rather than `private` sent **people's coordinates** into
    `places.geojson`. Local in the trial and not wired to a web domain, so
    nothing was published. "One privacy seam for all four kinds" (V4) is not
    true of the map yet. Workaround in a graph: filter the map's data with
    `(NOT glyph contact) OR clearance:public`.
 2. **The desktop application writes the chambers into every database it
-   opens.** `UiState::chambers_dirty` starts `true` (`app/farm_host.hpp`), so
+   opens.** *(Since 2026-10-19 this is intended: every database is given its
+   Antfarm on open, chambers included.)* `UiState::chambers_dirty` starts `true` (`app/farm_host.hpp`), so
    the first frame reconciles and adds `assets`, `network` and `documents` to a
    v1 database. That contradicts [phases](/concepts/platform/antfarm/v2/phases.md)
    ("no organization's database is touched before V7"), splits what a database

@@ -94,7 +94,7 @@ std::string HormigaApp::stage_site_asset(const std::string& rel) {
  * `publish_index` and `effect query` all project THAT mantle; `ls` projects the
  * ACTIVE one. So a new client doing the obvious first thing —
  *
- *     mantle new clicklafont
+ *     mantle new theirorg
  *     rune new image img-cover-sky
  *     tag img-cover-sky +type:image +cover
  *

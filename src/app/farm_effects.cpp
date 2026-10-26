@@ -65,12 +65,17 @@ maiz::Scene v1_scene_for(const farm::Graph& g, const farm::Node& n) {
             s.nodes.push_back(v1_node(n.name, "hol_github",
                                       {{"repo", n.field("target")}, {"branch", n.field("branch")},
                                        {"token_key", entry}}));
-        else
+        else /* "cloudflare" is the web domain's word; the deploy code's native
+              * Pages upload answers "cloudflare-pages", and until 2026-10-19 this
+              * passed the first, so every `farm publish` to Cloudflare failed with
+              * "no built-in upload for provider 'cloudflare'". */
             s.nodes.push_back(v1_node(n.name, "hol_static_host",
-                                      {{"provider", host.empty() ? "cloudflare" : host},
+                                      {{"provider", host.empty() || host == "cloudflare" ? "cloudflare-pages" : host},
                                        {"project", n.field("target")},
                                        {"account_id", n.field("account")},
-                                       {"token_key", entry}}));
+                                       {"token_key", entry},
+                                       {"deploy_cmd", n.field("deploy_cmd")},
+                                       {"rollback_cmd", n.field("rollback_cmd")}}));
         if (!n.field("name").empty()) s.nodes.push_back(v1_node(n.name + "-name", "hol_dns", {{"domain", n.field("name")}}));
     } else if (id == "bucket") {
         s.nodes.push_back(v1_node(n.name, "hol_object_store",
@@ -80,10 +85,39 @@ maiz::Scene v1_scene_for(const farm::Graph& g, const farm::Node& n) {
                                    {"secret_key", entry}, {"prefix", n.field("prefix")},
                                    {"public_url", n.field("public_url")}}));
     } else if (id == "image-host") {
-        s.nodes.push_back(v1_node(n.name, "hol_imgbb", {}));
+        s.nodes.push_back(v1_node(n.name, "hol_imgbb", {{"vault_entry", entry}})); // its key, by name
     }
     return s;
 }
+
+} // namespace
+
+/* ── WHERE "HOST IT ONLINE" LOOKS (2026-10-19) ──────────────────────────────
+ * The Antfarm's image hosts, buckets and web domains, as the hosting code knows
+ * them (the same translation `farm publish` uses), first; then whatever the
+ * format before 2026-09-28 still holds, by any name the Antfarm did not use.
+ * The panel, the app's "Host it online" and `effect host-online` all read this,
+ * so an image host added with `farm add image-host` is one they can use. */
+maiz::Scene HormigaApp::image_host_scene(maiz::Core& core) {
+    maiz::ProjectOptions ao;
+    ao.mantle = kAntfarmMantle;
+    const maiz::Scene old = maiz::project_scene(core, ao);
+    maiz::Scene s;
+    s.mantle = kAntfarmMantle;
+    if (hormiga::farmhost::farm_exists(core)) {
+        const farm::Graph g = farm::read(hormiga::farmhost::project_farm(core));
+        for (const auto& n : g.nodes) {
+            const std::string id = n.kind ? n.kind->id : std::string();
+            if (id != "image-host" && id != "bucket" && id != "web-domain") continue;
+            for (auto& h : v1_scene_for(g, n).nodes) s.nodes.push_back(std::move(h));
+        }
+    }
+    for (const auto& n : old.nodes)
+        if (!s.find(n.name)) s.nodes.push_back(n);
+    return s;
+}
+
+namespace {
 
 /* The chamber entry a document node names, and its content. */
 struct DocTarget {
@@ -149,7 +183,7 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
     const maiz::Scene fs_ = hormiga::farmhost::project_farm(core);
     const farm::Graph g = farm::read(fs_);
     const farm::Node* n = g.find(a[0]);
-    if (!n || !n->kind) return fail("no v2 node called " + a[0]);
+    if (!n || !n->kind) return fail("no Antfarm node called " + a[0]);
     if (n->kind->planned) return fail(n->name + " is " + n->kind->label + ": planned, and no code answers it yet");
     const bool apply = a.size() > 1 && a[1] == "apply";
     const farm::Context ctx = farm_context();
@@ -206,11 +240,11 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
             // the files this mantle names
             std::set<std::string> files;
             for (const auto& r : m.runes) {
-                if (r.chamber == "assets") files.insert(farm::field_of(r.node, "file"));
+                if (r.chamber == "assets") files.insert(farm::field_of(r.node(), "file"));
                 else
-                    for (const auto& fl : r.node.fields)
-                        if (fl.editor == "image" || (r.node.glyph == "image" && fl.key == "path")) {
-                            const std::string v = farm::field_of(r.node, fl.key);
+                    for (const auto& fl : r.node().fields)
+                        if (fl.editor == "image" || (r.node().glyph == "image" && fl.key == "path")) {
+                            const std::string v = farm::field_of(r.node(), fl.key);
                             if (!v.empty() && v.rfind("http", 0) != 0) files.insert(v);
                         }
             }
@@ -331,6 +365,54 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
         return fail(n->name + " (" + n->kind->label + ") has no check yet");
     }
 
+    // ── farm-rollback <web-domain> [deployment] (2026-10-19) ─────────────────
+    /* WHAT `farm publish` SENDS, `farm rollback` CAN TAKE BACK. Before this the
+     * Antfarm could publish and not undo, so the old format's `effect
+     * rollback-site` was the safer road, and the author's rule is that the safe
+     * choice is this one. The same code does it: rollback_site, over the
+     * deployment history (which lives in the `antfarm` mantle, where every
+     * publish records it) plus the host this web domain stands for. */
+    if (op == "farm-rollback") {
+        if (id != "web-domain")
+            return fail(n->name + " is not a web domain: `farm rollback <web-domain> [deployment]`");
+        maiz::ProjectOptions ao;
+        ao.mantle = kAntfarmMantle;
+        maiz::Scene history = maiz::project_scene(core, ao);
+        if (a.size() < 2) { // which one? the record answers, newest first
+            std::vector<const maiz::SceneNode*> mine;
+            for (const auto& d : history.nodes)
+                if (d.glyph == "deployment" && field_value(d, "host") == n->name) mine.push_back(&d);
+            std::sort(mine.begin(), mine.end(), [](auto* x, auto* y) { return x->name > y->name; });
+            fx.text = mine.empty() ? n->name + " has no recorded deployments yet"
+                                   : n->name + "'s deployments (`farm rollback " + n->name + " <id>`):";
+            for (const auto* d : mine)
+                fx.text += "\n  " + field_value(*d, "vendor_id") + "  " + field_value(*d, "state") + "  " +
+                           field_value(*d, "at") + "  " + field_value(*d, "url");
+            return fx;
+        }
+        for (const auto& h : v1_scene_for(g, *n).nodes) {
+            std::erase_if(history.nodes, [&](const maiz::SceneNode& x) { return x.name == h.name; });
+            history.nodes.push_back(h);
+        }
+        const std::size_t from = log.size();
+        const std::string done = rollback_site(history, n->name, a.size() > 1 ? a[1] : std::string());
+        if (done.empty()) {
+            std::string why;
+            for (std::size_t i = from; i < log.size(); ++i)
+                if (log[i].op == "rollback" && log[i].level == "error") why += (why.empty() ? "" : "; ") + log[i].msg;
+            return fail("rollback failed" + (why.empty() ? std::string() : ": " + why));
+        }
+        fx.commands.push_back(std::string("use ") + kAntfarmMantle); // the history moves with what is live
+        for (const auto& d : history.nodes)
+            if (d.glyph == "deployment" && field_value(d, "state") == "live")
+                fx.commands.push_back("set " + d.name + " state superseded");
+        for (const auto& d : history.nodes)
+            if (d.glyph == "deployment" && field_value(d, "vendor_id") == done)
+                fx.commands.push_back("set " + d.name + " state live");
+        fx.text = n->name + " is back on " + done;
+        return fx;
+    }
+
     // ── farm-preview / farm-publish: build what is mounted, then send it ────
     const bool publishing = op == "farm-publish";
     if (op != "farm-preview" && !publishing) return fail("unknown farm effect " + op);
@@ -374,7 +456,7 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
             auto granted = std::make_shared<std::set<std::string>>();
             const auto dw = g.into(d->name, "data");
             for (const auto& r : ev.eval(dw[0]->from, dw[0]->out).runes)
-                if (r.chamber == "data") granted->insert(r.node.name);
+                if (r.chamber == "data") granted->insert(r.node().name);
             fv2.grant = granted;
         }
         if (dk == "website") {
@@ -388,6 +470,7 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
             scene = maiz::project_scene(core, dio);
             const maiz::Scene views = scene; // the calendar view itself is not a granted rune
             hormiga::farmhost::apply_grant(scene, fv2.grant.get());
+            scene.source = 0; // filtered: never kept as the mantle's projection
             if (const maiz::SceneNode* v = views.find(t.of)) {
                 if (!scene.find(t.of)) scene.nodes.push_back(*v); // the view, not granted data
                 cal_apply_view(*v);
@@ -413,16 +496,28 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
             const auto dw = g.into(d->name, "data");
             const farm::Value seen = dw.empty() ? farm::Value{} : ev.eval(dw[0]->from, dw[0]->out);
             std::string items;
+            int withheld = 0;
             for (const auto& r : seen.runes) {
-                const std::string geo = farm::field_of(r.node, "geo");
+                const std::string geo = farm::field_of(r.node(), "geo");
                 double lat = 0, lon = 0;
                 if (geo.empty() || std::sscanf(geo.c_str(), "%lf,%lf", &lat, &lon) != 2) continue;
-                std::string title = farm::field_of(r.node, "display_name");
-                if (title.empty()) title = farm::field_of(r.node, "title_en");
-                if (title.empty()) title = r.node.name;
+                /* THE PRIVACY SEAM, ON THIS MAP TOO (CLAUDE.md rule 6; found on a
+                 * copy of a real database 2026-09-28, closed 2026-10-19). The
+                 * website's map asks `kinds::on_public_map`, and so does this:
+                 * one seam, not a second copy of its rule. No contact, note,
+                 * picture or reference point, and a database's own kind only with
+                 * `clearance:public`. The Antfarm's filter narrows what a
+                 * document may see; it never stands in for consent. */
+                if (!hormiga::kinds::on_public_map(r.node())) {
+                    ++withheld;
+                    continue;
+                }
+                std::string title = farm::field_of(r.node(), "display_name");
+                if (title.empty()) title = farm::field_of(r.node(), "title_en");
+                if (title.empty()) title = r.node().name;
                 features.push_back({{"type", "Feature"},
                                     {"geometry", {{"type", "Point"}, {"coordinates", {lon, lat}}}},
-                                    {"properties", {{"name", r.node.name}, {"title", title}, {"tags", r.node.tags}}}});
+                                    {"properties", {{"name", r.node().name}, {"title", title}, {"tags", r.node().tags}}}});
                 items += "<li>" + title + " <small>(" + geo + ")</small></li>";
             }
             std::ofstream(dir / "places.geojson", std::ios::trunc)
@@ -434,6 +529,8 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
                 scene = maiz::project_scene(core, dio);
                 const maiz::Scene views = scene;
                 hormiga::farmhost::apply_grant(scene, fv2.grant.get());
+                scene.source = 0; // filtered: never kept as the mantle's projection
+                std::erase_if(scene.nodes, [](const maiz::SceneNode& n) { return !hormiga::kinds::on_public_map(n); });
                 if (const maiz::SceneNode* v = views.find(t.of)) scene.nodes.push_back(*v); // the view, not granted data
                 const std::string png = export_map_png(t.of, false);
                 std::string err;
@@ -445,7 +542,12 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
                  << "<p><a href=\"places.geojson\">places.geojson</a> (" << features.size()
                  << " places)</p><ul>" << items << "</ul>";
             built.push_back(d->name + " -> " + t.mount + "places.geojson (" + std::to_string(features.size()) +
-                            " places" + (picture ? ", and map.png" : "") + ")");
+                            " places" + (picture ? ", and map.png" : "") +
+                            (withheld ? ", " + std::to_string(withheld) +
+                                            " withheld by the privacy seam: no contacts or notes on a public "
+                                            "map, and your own kinds only with clearance:public"
+                                      : std::string()) +
+                            ")");
         } else if (dk == "newsletter") {
             cur_doc = t.of;
             const std::string html = render_preview("en");
@@ -482,7 +584,25 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
         return fx;
     }
     fx.text += "\npublished: " + url;
-    for (const auto& c : deployment_record(v1, domain->name, url, doc_target(core, *n).of, hormiga::site_langs_str()))
+    /* THE DEPLOYMENT HISTORY, which `farm rollback` reads (2026-10-19). It lives in
+     * the `antfarm` mantle, where every publish records it, so a database that
+     * has none gets it here: without it the record was refused and the site could
+     * not be rolled back. The record supersedes the previous live deployment, so
+     * it is handed that history, not the host this domain stands for. */
+    bool has_history_mantle = false;
+    {
+        std::istringstream ms(core.dispatch("mantles").data);
+        for (std::string line; std::getline(ms, line);) {
+            while (!line.empty() && (line.front() == '*' || line.front() == ' ')) line.erase(0, 1);
+            while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
+            has_history_mantle = has_history_mantle || line == kAntfarmMantle;
+        }
+    }
+    if (!has_history_mantle) fx.commands.push_back(std::string("mantle new ") + kAntfarmMantle);
+    maiz::ProjectOptions hist;
+    hist.mantle = kAntfarmMantle;
+    const maiz::Scene history = has_history_mantle ? maiz::project_scene(core, hist) : maiz::Scene{};
+    for (const auto& c : deployment_record(history, domain->name, url, doc_target(core, *n).of, hormiga::site_langs_str()))
         fx.commands.push_back(c);
     fx.commands.push_back(std::string("use ") + hormiga::chambers::kDocuments);
     for (const farm::Node* d : docs) {

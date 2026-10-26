@@ -227,7 +227,7 @@ void HormigaApp::phone_frame() {
                            ? kDataMantle
                        : ph.screen == kAntfarm                                             ? nullptr
                                                                                            : nullptr;
-    const std::string farm_mantle = antfarm_mantle(); // v2 when this database has one
+    const std::string farm_mantle = antfarm_mantle(); // the `farm` mantle, once the database has it
     if (ph.screen == kAntfarm) want = farm_mantle.c_str();
     /* A database without that mantle (an empty one a tool wrote) refuses the
      * switch; asking again every frame queued a toast every frame. Once every

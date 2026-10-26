@@ -45,8 +45,9 @@
 #include "domain/date_query.hpp"           // the date-aware block grammar
 #include "domain/flier_read.hpp"           // proposing tags from a flier
 #include "domain/seed.hpp"                 // register_glyphs: data + block + antfarm
-#include "main/farm_cli.hpp"                 // `voidhormiga-cli farm …` (Antfarm v2)
+#include "main/farm_cli.hpp"                 // `voidhormiga-cli farm …` (the Antfarm)
 #include "update/cli.hpp"                     // `voidhormiga-cli update`
+#include "report/report.hpp"                  // `voidhormiga-cli report`
 #include "voidmaiz/headless.hpp"
 
 #include <algorithm>
@@ -804,10 +805,9 @@ maiz::HostApp build_app() {
             HormigaApp app;
             wire(app);
             app.state_name = g_state_name;
-            maiz::ProjectOptions ao, dpo;
-            ao.mantle = kAntfarmMantle;
+            maiz::ProjectOptions dpo;
             dpo.mantle = kDataMantle;
-            const maiz::Scene farm = maiz::project_scene(*g_core, ao);
+            const maiz::Scene farm = HormigaApp::image_host_scene(*g_core); // the Antfarm's hosts first
             const maiz::Scene data = maiz::project_scene(*g_core, dpo);
             std::string base = g_core->dispatch("config get site.base_url").data;
             if (base.size() >= 2 && base.front() == '"' && base.back() == '"')
@@ -1376,18 +1376,18 @@ int main(int argc, char** argv) {
      * and one perfectly ordinary reason to want a newer Hormiga is that this
      * one will not open the database. So `update` is a verb of the PROCESS, not
      * of the org: it touches no document, takes no lock, and works in a folder
-     * with nothing in it.
-     *
-     * The verb itself lives in `src/update/cli.cpp`, beside the client it
-     * drives rather than in this file, for the reason src/update/ exists at
-     * all: it must be buildable and testable without a session, a window, or
-     * Void Core. What is here is the two lines that reach it. */
+     * with nothing in it. `report` (src/report/) is the same, for the same
+     * reason: a broken install is exactly when somebody files an issue. Each
+     * verb lives beside what it drives, buildable without a session or Void
+     * Core; what is here is the lines that reach them. */
+    if (argc >= 2 && std::string_view(argv[1]) == "report")
+        return hormiga::report::run_cli(argc - 1, argv + 1);
     for (int i = 1; i < argc; ++i)
         if (std::string_view(argv[i]) == "update")
             return hormiga::update::run_cli(argc - i, argv + i, shell_capture);
 
     if (const int rc = hormiga::farm_cli_main(build_app(), argc, argv, given_state, g_base_dir, g_state_name, g_ship_dir); rc >= 0)
-        return rc; // `farm` (Antfarm v2): a subcommand of the process, with its own session
+        return rc; // `farm` (the Antfarm): a subcommand of the process, with its own session
     static std::string flag = "--state";
     static std::string path = (g_base_dir / "demo-org.json").string();
     if (given_state.empty()) {

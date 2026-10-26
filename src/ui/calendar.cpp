@@ -10,6 +10,8 @@
 #include "domain/rrule.hpp"     // C3a: recurrence, expanded for the grid
 #include "domain/naming.hpp"    // a quick-added title is its name
 
+#include <unordered_map>
+
 // ── the CALENDAR (okf/concepts/sections/calendar.md): dated runes on a time grid,
 // styled by the SAME rules engine as the map. Model grounds in RFC 5545
 // (date/start_time/end_time ≈ DTSTART/DTEND; `days` ≈ RRULE-lite, future);
@@ -72,23 +74,68 @@ static std::string cal_date_field(const maiz::Scene& s, const std::string& rune)
     return k && !k->builtin && !k->date_field.empty() ? k->date_field : std::string("date");
 }
 
+/* THE DATED RUNES, INDEXED ONCE PER CHANGE (2026-10-25). A month grid asks
+ * for 42 days a frame, and each ask read every rune's date: 2×10^7 field reads a
+ * frame at 5×10^5 runes, which is seconds a frame. The index holds each dated
+ * rune under its own day, and the recurring ones apart, because a rule can put
+ * an occurrence on any day. Rebuilt when the model changes or the scene moves. */
+namespace {
+struct DatedIndex {
+    const maiz::SceneNode* base = nullptr;
+    std::size_t count = ~std::size_t(0);
+    unsigned gen = ~0u;
+    std::unordered_map<int, std::vector<std::size_t>> by_day; // y*10000 + m*100 + d
+    std::vector<std::size_t> recurring;                        // an understood rule
+    std::vector<int> start;                                    // node → its own day key
+};
+int day_key(int y, int m, int d) { return y * 10000 + m * 100 + d; }
+} // namespace
+
 std::vector<HormigaApp::CalEntry> HormigaApp::cal_entries_on(int y, int m,
                                                              int d) const {
+    static DatedIndex ix;
+    if (ix.base != scene.nodes.data() || ix.count != scene.nodes.size() || ix.gen != model_gen) {
+        ix = {};
+        ix.base = scene.nodes.data();
+        ix.count = scene.nodes.size();
+        ix.gen = model_gen;
+        ix.start.assign(scene.nodes.size(), 0);
+        for (std::size_t i = 0; i < scene.nodes.size(); ++i) {
+            const auto& node = scene.nodes[i];
+            if (node.glyph == "map") continue;
+            // `day` runes are date-keyed TAG holders, not scheduled entries — they
+            // get a subtle cell indicator (cal_day_tags), never an entry row.
+            if (node.glyph == "day") continue;
+            int yy, mm, dd;
+            std::string ds = hormiga::temper::field_value(node, "date");
+            const auto* own = hormiga::kinds::current().find(node.glyph);
+            if (own && own->builtin) own = nullptr;
+            if (own) ds = hormiga::kinds::current().date_of(node); // its own date field, when it is `dated`
+            if (std::sscanf(ds.c_str(), "%d-%d-%d", &yy, &mm, &dd) != 3) continue;
+            ix.start[i] = day_key(yy, mm, dd);
+            ix.by_day[ix.start[i]].push_back(i);
+            const std::string rr = hormiga::temper::field_value(node, "rrule");
+            if (rr.empty()) continue;
+            const hormiga::rrule::Rule rule = hormiga::rrule::parse(rr);
+            if (rule.freq != hormiga::rrule::Freq::None && rule.understood) ix.recurring.push_back(i);
+        }
+    }
+    std::vector<std::size_t> cand;
+    const int want = day_key(y, m, d);
+    if (auto it = ix.by_day.find(want); it != ix.by_day.end()) cand = it->second;
+    for (const std::size_t i : ix.recurring)
+        if (ix.start[i] != want) cand.push_back(i); // already a candidate on its own day
+    std::sort(cand.begin(), cand.end()); // the scene's order, as the scan had it
+
     std::vector<CalEntry> out;
     const maiz::SceneNode* view = scene.find(map_sel);
     std::vector<MapRule> rules;
     if (view) rules = parse_view_rules_of(*view);
-    for (const auto& node : scene.nodes) {
-        if (node.glyph == "map") continue;
-        // `day` runes are date-keyed TAG holders, not scheduled entries — they
-        // get a subtle cell indicator (cal_day_tags), never an entry row.
-        if (node.glyph == "day") continue;
-        int yy, mm, dd;
-        std::string ds = hormiga::temper::field_value(node, "date");
+    for (const std::size_t ci : cand) {
+        const auto& node = scene.nodes[ci];
+        const int yy = ix.start[ci] / 10000, mm = ix.start[ci] / 100 % 100, dd = ix.start[ci] % 100;
         const auto* own = hormiga::kinds::current().find(node.glyph);
         if (own && own->builtin) own = nullptr;
-        if (own) ds = hormiga::kinds::current().date_of(node); // its own date field, when it is `dated`
-        if (std::sscanf(ds.c_str(), "%d-%d-%d", &yy, &mm, &dd) != 3) continue;
         /* RECURRENCE (C3a, 2026-09-11). An entry lands on this day if its own
          * date IS this day, or if its rule puts an occurrence here.
          *

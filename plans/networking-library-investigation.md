@@ -3,7 +3,7 @@
 **Status: executed 2026-10-18.** The audit, the durable map, the documentation
 corrections and the upstream messages are complete. Source, CMake, Android
 build and CI behaviour were not changed; the deltas are H1–H14 in
-[the audit report](../okf/reports/networking-stack-audit-2026-10-18.md) and await
+[the audit report](../okf/audits/networking-stack-audit-2026-10-18.md) and await
 approval.
 
 ## Purpose
@@ -173,7 +173,7 @@ multicast lock, radio permissions, the iOS multicast wall and Bonjour.
 
 1. **A dated map** at `okf/concepts/platform/networking-stack.md`: owners,
    current APIs, what Hormiga uses, what is stale, and the upgrade path.
-2. **An evidence report** at `okf/reports/networking-stack-audit-2026-10-18.md`:
+2. **An evidence report** at `okf/audits/networking-stack-audit-2026-10-18.md`:
    commands, versions, test counts, measurements, and confidence per claim.
 3. **A delta ledger** classifying every finding as: no-op, adopt directly,
    needs an upstream change, or declined with a reason.

@@ -8,6 +8,7 @@
 
 #include <GLFW/glfw3.h> // brings the system GL header: glReadPixels is GL 1.0
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -48,6 +49,16 @@ bool PhoneHarness::parse(int argc, char** argv) {
 }
 
 void PhoneHarness::inject(ImGuiIO& io) {
+    if (perf_left_ > 0) { // the previous frame's duration, as ImGui measured it
+        perf_.push_back(io.DeltaTime);
+        if (--perf_left_ == 0) {
+            std::sort(perf_.begin(), perf_.end());
+            const auto at = [&](double q) { return perf_[(std::size_t)(q * (double)(perf_.size() - 1))] * 1000.0; };
+            std::fprintf(stderr, "perf: %zu frames  median %.1f ms  p95 %.1f ms  worst %.1f ms\n", perf_.size(),
+                         at(0.5), at(0.95), at(1.0));
+            perf_.clear();
+        }
+    }
     if (std::getenv("HORMIGA_SIM_TRACE"))
         std::fprintf(stderr, "sim: pos %.0f,%.0f down %d capture %d\n", io.MousePos.x, io.MousePos.y,
                      (int)io.MouseDown[0], (int)io.WantCaptureMouse);
@@ -252,6 +263,11 @@ void PhoneHarness::inject(ImGuiIO& io) {
         }
         if (op == "shot") {
             in >> pending_shot_;
+            return;
+        }
+        if (op == "perf") {
+            in >> perf_left_;
+            perf_.clear();
             return;
         }
         if (op == "quit") {

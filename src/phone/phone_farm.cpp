@@ -1,4 +1,4 @@
-/* phone/phone_farm.cpp — Antfarm v2 on a phone (the prototype, 2026-09-28).
+/* phone/phone_farm.cpp — the Antfarm on a phone (designed 2026-09-28; the only one since 2026-10-19).
  *
  * The author: "we are building primarily for desktop and mobile will just have
  * to share". So the phone draws the SAME rows, faces and canvas style the desktop
@@ -65,19 +65,9 @@ void HormigaApp::PhoneUi::farm(HormigaApp& app, PhoneUi& ph, Frame& f) {
         return;
     }
 
-    if (ImGui::SmallButton(ICON_FA_ARROW_LEFT "  Antfarm v1")) {
-        app.fv2.v2 = false;
-        return;
-    }
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.55f, 0.75f, 0.95f, 1), "v2 prototype");
-    if (!app.fv2.here) {
-        maiz::dim_wrapped("This database has no v2 Antfarm yet. Creating one adds a `farm` mantle with a "
-                          "default colony. v1 is not touched, and it syncs to members like any mantle.");
-        if (ImGui::Button(ICON_FA_PLUS "  Create the v2 Antfarm", ImVec2(-FLT_MIN, 48.0f * dp)))
-            app.try_farm_verb("farm init");
-        if (ImGui::Button(ICON_FA_CAT "  The Cat Colony showcase", ImVec2(-FLT_MIN, 48.0f * dp)))
-            app.try_farm_verb("farm showcase");
+    if (!app.fv2.here) { // the moment before convert_antfarm lands, or if it was refused
+        maiz::dim_wrapped("Setting up this database's Antfarm. It syncs to members like any part of the database.");
+        if (ImGui::Button(ICON_FA_PLUS "  Set up the Antfarm now", ImVec2(-FLT_MIN, 48.0f * dp))) app.convert_antfarm();
         return;
     }
 
@@ -93,7 +83,7 @@ void HormigaApp::PhoneUi::farm(HormigaApp& app, PhoneUi& ph, Frame& f) {
             ph.farm_style_ready = true;
         }
         const maiz::TouchGate& gate = maiz::default_touch_gate();
-        if (gate.pinch.active) { // the same pinch as v1's graph (2026-09-27)
+        if (gate.pinch.active) { // the same pinch the first phone graph had (2026-09-27)
             const ImVec2 origin = ImGui::GetCursorScreenPos();
             maiz::Camera& cam = app.ed.cam;
             const float wx = cam.x + (gate.pinch.cx - origin.x) / cam.zoom;

@@ -24,7 +24,7 @@
 
 namespace farm {
 
-inline constexpr const char* kMantle = "farm"; // v1 stays in "antfarm"
+inline constexpr const char* kMantle = "farm"; // the format before 2026-09-28 is the "antfarm" mantle
 inline constexpr int kVersion = 2;
 
 /* ── socket types (types.md §1) ───────────────────────────────────────────

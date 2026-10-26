@@ -30,7 +30,7 @@ set golden-morning summary_es 'La reunion mensual de toda la red, arriba.'
 set golden-morning date '2026-08-19'
 set golden-morning start_time '8:00 AM'
 set golden-morning end_time '10:00 AM'
-set golden-morning venue 'Community Education Building, 100 Main St, Riverton, OR 97000'
+set golden-morning venue 'Riverton Community Center, 100 Main St, Riverton, OR 97000'
 set golden-morning color '#2563eb'
 tag golden-morning +type:event +news:golden
 rune new event golden-noon

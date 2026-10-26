@@ -2,9 +2,15 @@
 type: Guide
 title: The Antfarm from the command line
 description: "Example usage, run for real on 2026-09-22 against the shipped voidhormiga-cli in a throwaway folder: building the default colony from its seed transcript, reading it (mantles, tree, links, cat, get --json), the port-index table every link needs, wiring a GitHub Pages target and a domain, rehearsing with --no-save and --dry-run-effects, the effect gate, undo within a session, and the eight gaps the session found. Written as the specification the GUI overhaul must match: every gesture here needs a GUI twin, and every GUI gesture needs one here."
-tags: [status:current, audience:dev, audience:agent, confidence:measured]
+tags: [status:superseded, audience:dev, audience:agent, confidence:measured]
 timestamp: 2026-09-22T00:00:00Z
 ---
+
+> **The Antfarm's format before 2026-09-28.** Since 2026-10-19 there is one
+> Antfarm, the `farm` mantle ([v2](/concepts/platform/antfarm/v2/index.md)),
+> and Hormiga converts this format when it opens a database. This page is
+> kept to read an older database or an old log, not to build with: it is not
+> the safer choice, and the `hol_*` glyphs it names are never offered.
 
 **Every transcript on this page was run**, not composed. It used the
 `voidhormiga-cli` built from `main` at `50e1f48`, in an empty scratch folder,

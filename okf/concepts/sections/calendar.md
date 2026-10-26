@@ -78,8 +78,8 @@ Two references, deliberately split by concern:
   future dated kind — appear with no registration step (projection, not
   subscription).
 - **Events and incidents are visibly distinct kinds** (author directive,
-  standing): planned events vs. dated occurrences (road closures, ICE
-  activity) never blur. Incidents carry a warning mark and a red accent
+  standing): planned events vs. dated occurrences (road closures, community
+  safety alerts) never blur. Incidents carry a warning mark and a red accent
   regardless of rules; rules refine, kinds distinguish.
 - **The styling engine is the map's** (the cross-view directive made real):
   a calendar entry's icon/color resolve exactly like a marker's — first
@@ -133,7 +133,7 @@ Stored times stay "HH:MM".
   (FullCalendar-vendored or hand-rolled JS; decided when built). Rides the
   same deploy as the website blocks.
 - **Privacy at the export seam (sharper here than anywhere):** incidents can
-  be *sensitive* (ICE activity is the canonical example). A public calendar
+  be *sensitive* (a community safety alert is the canonical example). A public calendar
   export must be **filterable** — the view's tag filter decides what leaves
   the machine, and internal-notes-class fields never render into any export.
   v1 exports what the grid shows; the filter field is the immediate next
@@ -192,7 +192,7 @@ primitives (the map canvas already proved the input model); the only
   the reusable `tag_picker` (no hand-typed AND/OR — the author's UX ask). The
   filter drives `cal_entries_on`, so every view (month/week/3-day/agenda)
   and the PNG export honor it. *Privacy-blocking for anything published*
-  (incidents can be ICE activity — "Events only" hides them by choice). The
+  (incidents can be safety alerts — "Events only" hides them by choice). The
   *published* export still needs this filter baked into a saved calendar
   view (C4d) before a public calendar ships.
 - C4b. Temporal-linkage badges (the derived proximity, surfaced here).

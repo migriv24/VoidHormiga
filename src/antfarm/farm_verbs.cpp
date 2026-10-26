@@ -108,7 +108,7 @@ std::string show(const Graph& g, Evaluator* ev, const Node& n) {
 
 std::string help() {
     return "farm                          the Connections view: what this database is connected to\n"
-           "farm init                     create the v2 Antfarm (the `farm` mantle) with its default colony\n"
+           "farm init                     create the Antfarm (the `farm` mantle) with its default colony\n"
            "farm ls [--stratum S]         nodes\n"
            "farm show <node>              one node: readiness, face, ports and what they are wired to\n"
            "farm kinds [group]            the palette\n"
@@ -124,12 +124,13 @@ std::string help() {
            "farm place <node> on <any|each|profile>\n"
            "farm arrange                  lay the graph out by stratum and flow\n"
            "farm chambers                 bring the Assets, Network and Documents mantles in step\n"
-           "farm showcase                 the Cat Colony: a v2 Antfarm that uses every kind of node\n"
-           "farm migrate [apply]          build the v2 Antfarm from this database's v1 one (rehearses unless apply)\n"
+           "farm showcase                 the Cat Colony: an Antfarm that uses every kind of node\n"
+           "farm migrate [apply]          convert a graph in the format before 2026-09-28 (rehearses unless apply)\n"
            "farm run <node> [apply]       run a source, a store or a tunnel (rehearses unless apply)\n"
            "farm check <node>             the smallest real test of a folder, a domain or a key\n"
            "farm preview <document>       build it, and serve it on its local domain\n"
            "farm publish <document>       build it and send it to its web domain\n"
+           "farm rollback <web-domain> [deployment]   put an earlier deployment back live\n"
            "farm key add <provider> <name>   a key rune (its value: farm key set <name>, from stdin)\n"
            "farm version\n";
 }
@@ -288,7 +289,9 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
     const std::string verb = a.empty() ? "" : a[0];
     if (verb == "help") return r.text = help(), r;
     if (verb == "version") {
-        r.text = exists ? "Antfarm v2 (the `farm` mantle)\n" : "no v2 Antfarm in this database: `farm init` creates one\n";
+        r.text = exists ? "the Antfarm (the `farm` mantle)\n"
+                        : "no Antfarm in this database yet: `farm migrate apply` converts a graph in the format "
+                          "before 2026-09-28, `farm init` starts one (the app does this when it opens a database)\n";
         return r;
     }
     if (verb == "kinds") {
@@ -315,18 +318,19 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
               << (p.writes ? "  writes when run" : "") << "\n";
         return r.text = o.str(), r;
     }
-    if (verb == "chambers" || verb == "showcase" || verb == "migrate" || verb == "run" || verb == "check" || verb == "preview" || verb == "publish") {
+    if (verb == "chambers" || verb == "showcase" || verb == "migrate" || verb == "run" || verb == "check" || verb == "preview" || verb == "publish" ||
+        verb == "rollback") {
         r.needs_host = true; // the chambers and every effect are the host's (farm_verbs.hpp)
         return r;
     }
     if (verb == "init") {
-        if (exists) return fail("this database already has a v2 Antfarm (`farm` to see it)");
+        if (exists) return fail("this database already has its Antfarm (`farm` to see it)");
         r.commands = {std::string("mantle new ") + kMantle};
         for (auto& c : seed_commands(seed)) r.commands.push_back(c);
-        r.text = "created the v2 Antfarm: `farm` shows it, `farm arrange` lays it out\n";
+        r.text = "created the Antfarm: `farm` shows it, `farm arrange` lays it out\n";
         return r;
     }
-    if (!exists) return fail("no v2 Antfarm in this database yet - `farm init` creates one");
+    if (!exists) return fail("no Antfarm in this database yet - `farm migrate apply` converts an older graph, `farm init` starts one");
 
     if (verb.empty()) {
         if (!ev) return fail("nothing to evaluate with");
@@ -349,7 +353,7 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
     if (verb == "show" || (verb == "key" && a.size() == 2)) {
         if (a.size() < 2) return fail("usage: farm show <node>");
         const Node* n = g.find(a[1]);
-        if (!n || !n->kind) return fail("no v2 node called " + a[1]);
+        if (!n || !n->kind) return fail("no Antfarm node called " + a[1]);
         return r.text = show(g, ev, *n), r;
     }
     if (verb == "eval") {
@@ -365,7 +369,7 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
         if (v.type == "mantle") {
             std::map<std::string, int> by;
             long long bytes = 0;
-            for (const auto& ru : v.runes) ++by[ru.chamber + "/" + ru.node.glyph], bytes += ru.bytes;
+            for (const auto& ru : v.runes) ++by[ru.chamber + "/" + ru.node().glyph], bytes += ru.bytes;
             o << "  " << v.runes.size() << " runes, " << human_bytes(bytes) << ", "
               << strands_for((long long)v.runes.size()) << " strand(s)\n";
             for (const auto& [k, c] : by) o << "    " << k << "  " << c << "\n";
@@ -394,7 +398,7 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
         if (!ev) return fail("nothing to evaluate with");
         std::ostringstream o;
         for (const char* c : {"data", "assets", "network", "documents"}) {
-            const auto rs = ev->chamber(c);
+            const auto& rs = ev->chamber(c);
             long long b = 0;
             for (const auto& x : rs) b += x.bytes;
             char buf[128];
@@ -436,7 +440,7 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
     if (verb == "set") {
         if (a.size() < 3) return fail("usage: farm set <node> field=value ...");
         const Node* n = g.find(a[1]);
-        if (!n || !n->kind) return fail("no v2 node called " + a[1]);
+        if (!n || !n->kind) return fail("no Antfarm node called " + a[1]);
         if (!kv(2, n, *n->kind)) return r;
         return r;
     }
@@ -476,7 +480,7 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
     if (verb == "place") {
         if (a.size() < 4 || a[2] != "on") return fail("usage: farm place <node> on <any|each|profile>");
         const Node* n = g.find(a[1]);
-        if (!n || !n->kind) return fail("no v2 node called " + a[1]);
+        if (!n || !n->kind) return fail("no Antfarm node called " + a[1]);
         r.commands.push_back("set " + n->name + " placement " + json_quote(a[3]));
         return r;
     }

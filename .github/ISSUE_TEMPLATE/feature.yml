@@ -1,0 +1,39 @@
+name: I need Hormiga to do something
+description: Something your organization, or you, needs and Hormiga cannot do yet.
+labels: [feature, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This tracker is public.** Describe the kind of organization and the kind of task, never a real one: "a food bank's volunteer schedule", not its name. No names, emails, addresses or screenshots of real data.
+
+        It helps most to say what you are trying to get done. A maintainer may answer with a different design than the one you suggest. The project's open design decisions are in [`okf/developer_questions.md`](../blob/main/okf/developer_questions.md).
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before you submit
+      options:
+        - label: Nothing in this request comes from a real person or organization.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version you use
+      placeholder: "0.2.2"
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "windows-x64, linux-x64, macos-arm64, android-arm64"
+  - type: textarea
+    id: need
+    attributes:
+      label: What you are trying to do
+      description: Who does it (a role, not a person), how often, and what goes wrong today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: Optional. Your idea for it, or another tool that does it well.

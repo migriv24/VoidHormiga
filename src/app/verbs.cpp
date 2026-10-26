@@ -133,6 +133,17 @@ bool HormigaApp::try_doc_verb(const std::string& cmd) {
     }
     if (scene.mantle != cur_doc) // documents live in the issue mantle
         dispatch_and_reproject(std::string("use ") + cur_doc);
+    /* ...AND ONLY THERE (2026-10-25). When `cur_doc` named a mantle this database
+     * does not have, the `use` above failed and the action ran on whatever was
+     * active -- the DATA mantle, where `doc migrate` found ten thousand records
+     * "without a grid row" and wrote row, col and span into every one of them
+     * (found at 10^5 runes, where it also took hours). A document verb that
+     * cannot reach its document does nothing. */
+    if (scene.mantle != cur_doc || scene.mantle == kDataMantle) {
+        log.push_back({"error", "doc", "doc " + a->name + ": the document '" + cur_doc +
+                                           "' is not in this database; nothing was changed"});
+        return true;
+    }
     auto cmds = doc_actions.run(tok[1], scene, args);
     if (cmds.empty()) {
         /* ── "NOTHING TO DO" IS NOT AN ERROR ─────────────────────────────────

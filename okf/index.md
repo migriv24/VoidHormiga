@@ -53,7 +53,7 @@ encrypted, and eventually collaborative.**
 
 # Map
 
-**The concepts live in five folders** (restructured 2026-08-27 — seventeen
+**The concepts live in six folders** (restructured 2026-08-27 — seventeen
 files in one directory had stopped being a structure and started being a pile).
 Each folder has its own index explaining its boundary, and
 `tools/lint_okf_links.py` runs in CI so a moved page takes its inbound links
@@ -66,6 +66,7 @@ with it.
 | [platform](/concepts/platform/index.md) | the machine underneath: storage, backends, privacy, network |
 | [allomone](/concepts/allomone/index.md) | the rules engine, adopted from Void Maiz |
 | [projects](/concepts/projects/index.md) | the neighbours: sibling repos and the test colony |
+| [contributing](/concepts/contributing/index.md) | how somebody who is not the author changes Hormiga |
 
 ## foundation — what this is
 
@@ -145,11 +146,21 @@ with it.
   drawn as an ant farm's cross-section with the effect boundary as its surface.
   A new version with a migration. **Built the same day, in two passes**: the
   chambers are real mantles, v2 nodes run gated effects (import, store, check,
-  preview, publish), and the Cat Dataset ships with a showcase Antfarm. v1 runs
-  beside it until the migration.
+  preview, publish), and the Cat Dataset ships with a showcase Antfarm. **Since 2026-10-19 it is
+  the only Antfarm**: every database is converted on open, and the older
+  format is read only where a feature still keeps settings there. Before that, v1 ran
+  beside it.
 - [Security](/concepts/platform/security.md) — the E2EE posture: at-rest
   encryption, the render-seam privacy rule, the three collaboration modes,
   signed releases.
+- [Scale](/concepts/platform/scale.md) — **opened 2026-10-24 by issues #1 and
+  #2**: a database of 10^5 runes, measured before anything changed. Open 3.1 s
+  to 0.6 s off the UI thread, the Data tab O(visible), the projection's O(E·N)
+  and the section ping-pong removed, and the core's undo memento reported upstream.
+  Then a 5×10^5 stress database, opened in the app and sampled until it opened.
+- [Clusters](/concepts/platform/clusters.md) — **proposed 2026-10-25**: the
+  author's "smaller and smaller clusters" as the unit a weak device holds; Void
+  Maiz's Leiden hierarchy, measured, and what loading by cluster would take.
 - [Data planes](/concepts/platform/data-planes.md) — the admin database, the
   publication and the inbox: what is authoritative in each, why they must never
   merge, the two kinds of "cloud save", and why claiming a contact must not
@@ -186,7 +197,7 @@ with it.
   Void Maiz owns what networking looks like; Void Palabra owns what crosses;
   Hormiga owns who may join and what may leave. The current APIs, what Hormiga
   still uses by compatibility, the Reticulum announce privacy gate, and the
-  approved order of work. Evidence: [the audit](/reports/networking-stack-audit-2026-10-18.md).
+  approved order of work. Evidence: [the audit](/audits/networking-stack-audit-2026-10-18.md).
 - [A database is its own room](/concepts/platform/database-separation.md) —
   **built 2026-10-18**, after the author's test colony kept syncing into the
   next database opened. Joining is the only way two files are the same
@@ -221,6 +232,18 @@ with it.
   decided by evaluation order. Derive-only. Start at
   [adoption](/concepts/allomone/adoption.md) — the rest of the folder is the
   history that earned the move.
+
+## contributing — how others change Hormiga
+
+- [Contributing](/concepts/contributing/index.md) — **opened 2026-10-23**: the
+  pipeline as its own thing, from `voidhormiga-cli report` through the issue
+  forms, the intake scan, triage, review and merge. The rule underneath it is
+  that **a role is an account, not a device**, so nothing in it needs the
+  machine the author happens to use. [Intake](/concepts/contributing/intake.md)
+  keeps a report from carrying anyone's data;
+  [maintainers](/concepts/contributing/maintainers.md) lists what a maintainer
+  needs on a new computer, and what is still tied to one (the Windows
+  installer, the Android key, the names list's master copy).
 
 ## projects — the neighbours
 
@@ -269,17 +292,14 @@ with it.
   concepts unpacked in plain language for the author (derive vs materialize,
   conflict resolution, reactivity, round-tripping, …).
 - [Log](/log.md) — the running history.
-- `okf/reports/` — **field reports from agents running the shipped binary**
-  against real data. They are kept rather than folded away because each one is a
-  measurement: what an outside caller, following the documentation in good
-  faith, actually got. Every claim in them is reproduced against the binary
-  before anything is decided, and the decisions land in the [log](/log.md) and
-  the concepts. The folder was created on 2026-09-02 to hold the first report
-  from a client that is **not** an outreach organization — a music project,
-  adopted deliberately to find where the vocabulary runs out. It ran out in
-  twelve places, two of which were live on a real community website at the
-  time, which is the argument for keeping a client whose needs are wrong on
-  purpose.
+- `okf/audits/` — **dated measurements of this codebase and its siblings**,
+  such as the [networking stack audit](/audits/networking-stack-audit-2026-10-18.md).
+  An audit measures Hormiga, never a database it runs on.
+- **There is no `okf/reports/`, and there must not be.** Field reports from
+  agents running Hormiga against a real database stay beside that database. Their
+  findings reach this OKF as facts about Hormiga, with the client unnamed. See
+  [what may be public](/concepts/foundation/what-may-be-public.md): the folder
+  existed twice, and the second time it shipped in sixteen releases.
 - `DESIGN.md` (repo root) — the dated founding design document, the one place
   that references the predecessor project freely. This OKF supersedes it
   concept by concept as things stabilize.
@@ -293,6 +313,12 @@ with it.
   reply 2026-07-21), not the message files.
 
 # Status
+
+**2026-10-19: one Antfarm.** The old Antfarm is no longer a choice, on any
+screen or in the CLI: every database is converted to the Antfarm when it
+opens. Before that, the Antfarm was made the safe road in fact: its map
+output now passes the privacy seam, it can roll a published site back, and
+it can publish to Cloudflare. See [the Antfarm](/concepts/platform/antfarm/index.md).
 
 **2026-10-18: databases are separate by construction.** A test database can no
 longer reach a real one: rooms belong to databases, not folders, every link
@@ -376,7 +402,7 @@ Remaining for C's exit: the rescue-dump import (deadline
 ready for it), Sheets import, temper hygiene, the table view
 (see [roadmap](/roadmap.md) and the [log](/log.md)).
 
-**The download page went live 2026-09-08**, on `clicklafont.com` — the author's
+**The download page went live 2026-09-08**, on a client's site — the author's
 choice, because that site is experimental enough to be safe to break. It was
 built by that client's agent from §6 of the concept, which is how three of that
 page's numbers got corrected (the installer is 7.0 MB, not 25) and how the OS
@@ -427,7 +453,7 @@ Q64 and Q65 are answered and cleared.
 publishes to GitHub Pages natively, alongside the Cloudflare Pages path, which
 is what turns *every cloud host is disposable* from an argument into a property
 an organization can exercise. The same day brought the first field report from a
-client that is **not** an outreach organization (`okf/reports/`), six one-line
+client that is **not** an outreach organization, six one-line
 render fixes it found — two of them live on a real community website — and the
 author's decision that a site may never be published in one language: the answer
 to "translating is tedious" is **better translation tooling**, not a switch. See

@@ -27,6 +27,15 @@ If you are reading the OKF for the first time, read this folder before
 - [Data model](/concepts/foundation/data-model.md) — the five kinds of thing an
   outreach org runs on, as glyphs; tag axes and temper hygiene; relations as
   edges.
+- [What may be public](/concepts/foundation/what-may-be-public.md) — **read
+  before writing down anything a real deployment told you.** Only Hormiga's
+  development is committed: no report about a database, no client or person,
+  no real slug, count or path. Why the rule failed twice as prose, and the
+  lint, hook and staging rule that now hold it.
+- [Measures](/concepts/foundation/measures.md) — **2026-10-25, issue #2**: which of
+  Hormiga's numbers are values on edges (magnitudes rules compute with) and
+  which stay fields (points, positions, identifiers), and the statistics a
+  measure's level admits (Stevens, 1946), enforced by Void Maiz's measures.hpp.
 - [Kinds are yours](/concepts/foundation/kinds.md) — **the next major version
   (2026-10-06).** Those kinds stop being the application's and become the
   database's: renamed, recoloured, and new ones made, as `kind` runes in a

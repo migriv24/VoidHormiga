@@ -19,12 +19,19 @@
 
 namespace farm {
 
-/* One rune as the Antfarm sees it: which chamber, its projection, its size. */
+/* One rune as the Antfarm sees it: which chamber, its projection, its size.
+ *
+ * A PLACE IN A SCENE, NOT A COPY OF ONE (2026-10-25). Every stage of a pipeline
+ * — the database, a separation, a filter — passes its runes on, and each Rune
+ * held a whole SceneNode: at 5×10^5 runes one evaluation copied the organization
+ * once per stage, and memory reached 20 GB. Now a Rune is the scene it came from
+ * (shared, so it lives as long as any Rune of it) and an index into it. */
 struct Rune {
     std::string chamber; // data | assets | network | documents
-    maiz::SceneNode node;
     std::shared_ptr<const maiz::Scene> scene; // the scene it came from (date queries borrow edges)
+    std::size_t index = 0;                    // which of its nodes
     long long bytes = 0;
+    const maiz::SceneNode& node() const { return scene->nodes[index]; }
 };
 
 /* A query is a rule, not a set (◆). Tag expressions go to the host's matcher,
@@ -83,7 +90,7 @@ public:
     Evaluator(const Graph& g, const Context& ctx) : g_(g), ctx_(ctx) {}
     Value eval(const std::string& node, const std::string& port);
     Face face(const std::string& node);
-    std::vector<Rune> chamber(const std::string& name); // cached
+    const std::vector<Rune>& chamber(const std::string& name); // cached
 
 private:
     Value compute(const Node& n, const std::string& port);

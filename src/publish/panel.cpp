@@ -317,7 +317,7 @@ void HormigaApp::draw_publish_body() {
              * `TextDisabled`, so the one thing the operator needed to read —
              * the absolute path the token was NOT found at — ran off the right
              * edge of a narrow panel as
-             * "not found: C:\Users\migri\Documents\Projects\VoidHorm".
+             * "not found: C:\Users\<name>\Documents\Projects\VoidHorm".
              * A diagnosis you cannot finish reading is not a diagnosis. */
             ImGui::Indent(18.0f);
             ImGui::PushStyleColor(ImGuiCol_Text,
@@ -716,9 +716,7 @@ void HormigaApp::register_hosting_faces() {
         std::string bu = unquote_config(core.dispatch("config get site.base_url").data);
         while (!bu.empty() && bu.back() == '/') bu.pop_back();
         g_hosting.base_url = bu;
-        maiz::ProjectOptions ao;
-        ao.mantle = kAntfarmMantle;
-        const maiz::Scene farm = maiz::project_scene(core, ao);
+        const maiz::Scene farm = image_host_scene(core);
         std::string why;
         const maiz::SceneNode* h = pick_image_host(farm, g_hosting.chosen, bu, &why);
         g_hosting.active = h ? h->name : std::string();
@@ -726,10 +724,15 @@ void HormigaApp::register_hosting_faces() {
         if (ImGui::GetTime() - g_hosting.counted_at > 3.0) {
             g_hosting.counted_at = ImGui::GetTime();
             g_hosting.online = g_hosting.offline = g_hosting.no_file = 0;
-            maiz::ProjectOptions dpo;
-            dpo.mantle = kDataMantle;
-            const maiz::Scene data = maiz::project_scene(core, dpo);
-            for (const auto& n : data.nodes) {
+            maiz::Scene projected; // only when the window holds none (held_data)
+            const maiz::Scene* data = held_data();
+            if (!data) {
+                maiz::ProjectOptions dpo;
+                dpo.mantle = kDataMantle;
+                projected = maiz::project_scene(core, dpo);
+                data = &projected;
+            }
+            for (const auto& n : data->nodes) {
                 if (n.glyph != "image") continue;
                 const std::string p = field_value(n, "path");
                 std::error_code ec;
@@ -792,17 +795,17 @@ void HormigaApp::draw_hosting_panel() {
                         "Which node makes that link is the Antfarm's decision: ImgBB, an "
                         "object store (S3, or Cloudflare R2 on your own domain), or your "
                         "website itself.");
-    maiz::ProjectOptions ao;
-    ao.mantle = kAntfarmMantle;
-    const maiz::Scene farm = maiz::project_scene(core, ao);
+    const maiz::Scene farm = image_host_scene(core);
     std::vector<const maiz::SceneNode*> hosts;
     for (const auto& n : farm.nodes)
         if (hormiga::hosting::asset_host(n.glyph)) hosts.push_back(&n);
     if (hosts.empty()) {
         ImGui::TextColored(kHostAmber, "No node here can host images yet.");
-        ImGui::TextWrapped("Drag one in from the palette: ImgBB; Object store (fill in its "
-                           "public_url); or Static host / GitHub Pages to use your own "
-                           "website, which needs the site's address in Style > Site.");
+        ImGui::TextWrapped("Add one to the Antfarm: an Image host (ImgBB) or a Bucket (S3 or R2, with "
+                           "its public address), each with a Key; or a Web domain, to use your own "
+                           "website, which needs the site's address in Style > Site. In the console: "
+                           "farm add image-host photos provider=imgbb, then farm key add imgbb "
+                           "imgbb-key and farm plug imgbb-key.key photos.key.");
         ImGui::PopTextWrapPos();
         ImGui::Separator();
         return;

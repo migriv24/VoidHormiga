@@ -149,8 +149,8 @@ as a summary that could disagree with them.
 
 The other thing the proposal added and this page declines: **no visitor IP is
 stored.** In a database whose entire privacy argument is that the member list
-must not be enumerable by strangers, for an organization serving people who may
-be undocumented, "for audit purposes" is not sufficient reason to start keeping
+must not be enumerable by strangers, for an organization whose members can be
+harmed by being found, "for audit purposes" is not sufficient reason to start keeping
 network locations of people who filled in a form. If an abuse problem appears,
 it gets solved with rate limiting at the edge, where the data can stay.
 

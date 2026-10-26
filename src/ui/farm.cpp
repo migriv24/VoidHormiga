@@ -1,10 +1,10 @@
-/* ui/farm.cpp — the Antfarm tab, v2 (the prototype, 2026-09-28).
+/* ui/farm.cpp — the Antfarm tab (designed 2026-09-28; the only Antfarm since
+ * 2026-10-19).
  *
  * okf/concepts/platform/antfarm/v2/canvas.md. Connections first (A3: "everyone
  * else gets the dashboard over it"), the graph one click away, the Inspector
  * beside both. The Wiring view draws the effect boundary as an ant farm's ground
- * line: what sits above it leaves this device. v1 is one button away and keeps
- * running every publish until the migration (V7). */
+ * line: what sits above it leaves this device. */
 #include "app/app_internal.hpp"
 #include "voidmaiz/mobile.hpp" // segmented
 
@@ -45,30 +45,17 @@ void legend() {
 } // namespace
 
 void HormigaApp::draw_farm_section() {
-    if (ImGui::SmallButton(ICON_FA_ARROW_LEFT "  Antfarm v1")) {
-        fv2.v2 = false;
-        dispatch_and_reproject(std::string("use ") + kAntfarmMantle);
-        return;
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("the Antfarm every publish runs on today; v2 does not change it");
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.55f, 0.75f, 0.95f, 1), "Antfarm v2 - prototype");
-    ImGui::SameLine();
-    ImGui::TextDisabled("(a design to try, not to rely on: okf/concepts/platform/antfarm/v2)");
-
     if (!fv2.here) {
+        /* Every database is given its Antfarm when it opens (convert_antfarm):
+         * built from its old graph, or a fresh colony. This shows for the frame
+         * before that lands, or if it was refused, with the way to do it by hand. */
         ImGui::Spacing();
-        ImGui::TextWrapped("This database has no v2 Antfarm yet. Creating one adds a `farm` mantle with a "
-                           "default colony: the database and where it rests, its chambers, a filter that "
-                           "keeps private runes off the website, three documents, a local preview domain, "
-                           "and this device's profile. v1 is not touched. It syncs to members like any mantle.");
-        if (ImGui::Button(ICON_FA_PLUS "  Create the v2 Antfarm")) try_farm_verb("farm init");
+        ImGui::TextWrapped("Setting up this database's Antfarm: where it rests, its chambers, a filter that keeps "
+                           "private runes off the website, its documents, a local preview domain, and this device's "
+                           "profile. It syncs to members like any part of the database.");
+        if (ImGui::Button(ICON_FA_PLUS "  Set up the Antfarm now")) convert_antfarm();
         ImGui::SameLine();
-        ImGui::TextDisabled("= `farm init`");
-        if (ImGui::Button(ICON_FA_CAT "  Build the Cat Colony showcase")) try_farm_verb("farm showcase");
-        ImGui::SameLine();
-        ImGui::TextDisabled("= `farm showcase`: a website, a birthdays calendar, a map, a photo river, keys, a web domain");
+        ImGui::TextDisabled("= `farm migrate apply`, or `farm init` for a database with no graph yet");
         return;
     }
     if (scene.mantle != farm::kMantle) dispatch_and_reproject(std::string("use ") + farm::kMantle);
@@ -87,8 +74,8 @@ void HormigaApp::draw_farm_section() {
     ImGui::SameLine();
     legend();
 
-    nested_dockspace("farm-dock", nullptr, nullptr, "Antfarm v2##farm", "Inspector##farm");
-    ImGui::Begin("Antfarm v2##farm", nullptr, ImGuiWindowFlags_NoScrollbar);
+    nested_dockspace("farm-dock", nullptr, nullptr, "Antfarm##farm", "Inspector##farm");
+    ImGui::Begin("Antfarm##farm", nullptr, ImGuiWindowFlags_NoScrollbar);
     if (fv2.view == 0) {
         /* ── CONNECTIONS: what this database is connected to, by question ── */
         ImGui::BeginChild("##farm-conn");
@@ -190,6 +177,7 @@ void HormigaApp::draw_farm_section() {
     ImGui::End();
 
     ImGui::Begin("Inspector##farm");
+    draw_hosting_panel(); // "host it online": which host, and what is waiting
     draw_farm_inspector();
     ImGui::End();
 }

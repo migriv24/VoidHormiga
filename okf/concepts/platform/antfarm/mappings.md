@@ -6,6 +6,11 @@ tags: [status:current, audience:dev, confidence:asserted]
 timestamp: 2026-09-22T00:00:00Z
 ---
 
+> **The node names on this page are the Antfarm's format before 2026-09-28**
+> (`hol_*`, the `antfarm` mantle). The ideas carry over to the Antfarm
+> ([v2](/concepts/platform/antfarm/v2/index.md)), which is the only one since
+> 2026-10-19; build with `farm`, not with these glyphs.
+
 **How to read this page.** The sections on Hormiga's own design are measured
 against the code. **The vendor API facts and the prior art are recalled, not
 re-checked against current vendor documentation on 2026-09-22.** They are

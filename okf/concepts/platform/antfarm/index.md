@@ -8,8 +8,22 @@ timestamp: 2026-09-22T00:00:00Z
 
 # The Antfarm
 
+> **One Antfarm, since 2026-10-19.** The Antfarm is the `farm` mantle,
+> designed and built in [v2/](/concepts/platform/antfarm/v2/index.md). The
+> author: *"we don't want the user to be able to choose to use the old
+> antfarm. rather, we just wanna convert the old to the new ... the safest
+> choice IS the new antfarm."* Hormiga converts a database still in the
+> format before 2026-09-28 when it opens it, and a new database starts with
+> the default colony. The pages here that describe the `antfarm` mantle
+> ([the graph as built](/concepts/platform/antfarm/model.md), the
+> [CLI examples](/concepts/platform/antfarm/cli-examples.md)) describe that
+> older format, for reading old databases and logs. The invariants below
+> hold for both. What still reads the older format is listed in
+> [the migration](/concepts/platform/antfarm/v2/migration.md).
+
 **The organization's nervous system, made visible.** Every backend the
-organization uses has one rune in the `antfarm` mantle: the local SQLite store,
+organization uses has one rune in the Antfarm (`antfarm` mantle before
+2026-09-28, `farm` since): the local SQLite store,
 the assets folder, the website publisher, GitHub Pages, an S3 bucket, the LAN
 share, the members list. The ports on those runes are typed by what flows
 through them. The edges between them are the configuration. Configuring a
@@ -35,6 +49,9 @@ place. Nothing was dropped in the split. The history that no longer describes
 the code is in the [ledger](#the-decision-ledger) below with its date.
 
 ## Antfarm v2 (2026-09-28)
+
+**Since 2026-10-19 this is the only Antfarm** (the banner at the top). What
+follows is how it stood on 2026-09-28.
 
 **The redesign is written, in [v2/](/concepts/platform/antfarm/v2/index.md),
 and a prototype runs** (desktop and phone, the `farm` verbs in the CLI and the

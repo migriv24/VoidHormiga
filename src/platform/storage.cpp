@@ -5,6 +5,8 @@
 
 #include <chrono>
 #include <cstdio>
+#include <initializer_list>
+#include <string_view>
 
 namespace hormiga {
 
@@ -59,6 +61,29 @@ static bool run(sqlite3* db, const char* sql, const std::vector<std::string>& ar
     return ok;
 }
 
+/* A prepared INSERT, reused for every row of its table. */
+namespace {
+struct Insert {
+    sqlite3* db;
+    sqlite3_stmt* st = nullptr;
+    Insert(sqlite3* d, const char* sql) : db(d) { sqlite3_prepare_v2(d, sql, -1, &st, nullptr); }
+    ~Insert() { sqlite3_finalize(st); }
+    Insert(const Insert&) = delete;
+    Insert& operator=(const Insert&) = delete;
+    bool ok() const { return st != nullptr; }
+    bool row(std::initializer_list<std::string_view> args, std::string& err) {
+        int i = 0;
+        for (std::string_view a : args)
+            sqlite3_bind_text(st, ++i, a.data() ? a.data() : "", (int)a.size(), SQLITE_TRANSIENT); // "" stays text, not NULL
+        const bool done = sqlite3_step(st) == SQLITE_DONE;
+        if (!done) err = sqlite3_errmsg(db);
+        sqlite3_reset(st);
+        sqlite3_clear_bindings(st);
+        return done;
+    }
+};
+} // namespace
+
 bool Storage::save(const std::string& state_json,
                    const std::vector<maiz::Scene>& mantles) {
     if (!db_) return false;
@@ -70,25 +95,28 @@ bool Storage::save(const std::string& state_json,
         sqlite3_free(msg);
         return false;
     }
-    bool ok = true;
+    /* ONE STATEMENT PER TABLE, bound per row (2026-10-25). Each row used to be
+     * parsed and planned afresh: a save of 5×10^5 runes is millions of rows, and
+     * SQLite spent most of it in its parser (measured by sampling the stress
+     * database's save, okf/concepts/platform/scale.md). */
+    Insert runes(db_, "INSERT INTO runes VALUES(?,?,?)"), fields(db_, "INSERT INTO fields VALUES(?,?,?,?)"),
+        tags(db_, "INSERT INTO tags VALUES(?,?,?)"), links(db_, "INSERT INTO links VALUES(?,?,?,?)");
+    bool ok = runes.ok() && fields.ok() && tags.ok() && links.ok();
+    if (!ok) err_ = sqlite3_errmsg(db_);
     for (const auto& scene : mantles) {
         for (const auto& n : scene.nodes) {
-            ok = ok && run(db_, "INSERT INTO runes VALUES(?,?,?)",
-                           {scene.mantle, n.name, n.glyph}, err_);
+            if (!ok) break;
+            ok = runes.row({scene.mantle, n.name, n.glyph}, err_);
             for (const auto& f : n.fields) {
                 if (f.value_json.empty() || f.value_json == "null") continue;
-                std::string v = f.value_json;
+                std::string_view v = f.value_json;
                 if (f.is_string && v.size() >= 2) v = v.substr(1, v.size() - 2);
-                ok = ok && run(db_, "INSERT INTO fields VALUES(?,?,?,?)",
-                               {scene.mantle, n.name, f.key, v}, err_);
+                ok = ok && fields.row({scene.mantle, n.name, f.key, v}, err_);
             }
-            for (const auto& t : n.tags)
-                ok = ok && run(db_, "INSERT INTO tags VALUES(?,?,?)",
-                               {scene.mantle, n.name, t}, err_);
+            for (const auto& t : n.tags) ok = ok && tags.row({scene.mantle, n.name, t}, err_);
         }
         for (const auto& w : scene.wires)
-            ok = ok && run(db_, "INSERT INTO links VALUES(?,?,?,?)",
-                           {scene.mantle, w.from, w.to, w.relation}, err_);
+            ok = ok && links.row({scene.mantle, w.from, w.to, w.relation}, err_);
     }
     // ISO-8601 UTC now
     auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());

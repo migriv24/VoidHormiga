@@ -14,7 +14,7 @@
  *
  * ── the block itself ─────────────────────────────────────────────────────────
  *
- * The Click LaFont report's A1, first rung: *"a music artist's website cannot
+ * A client field report's A1, first rung: *"a music artist's website cannot
  * play the artist's music."* Not a niche of one — an organization with a
  * podcast, a recorded meeting, or a Spanish-language radio spot has exactly the
  * same absence, and for that organization the recording is often the most

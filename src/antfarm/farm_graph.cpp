@@ -105,8 +105,8 @@ std::string check_plug(const Graph& g, std::string_view from, std::string_view o
     const Node* b = g.find(to);
     if (!a) return "refused: there is no node called " + std::string(from) + ".";
     if (!b) return "refused: there is no node called " + std::string(to) + ".";
-    if (!a->kind) return "refused: " + a->name + " is not a v2 node.";
-    if (!b->kind) return "refused: " + b->name + " is not a v2 node.";
+    if (!a->kind) return "refused: " + a->name + " is not an Antfarm node.";
+    if (!b->kind) return "refused: " + b->name + " is not an Antfarm node.";
     if (a->name == b->name) return "refused: a node cannot feed itself.";
     const PortDecl* po = a->kind->port(out, true);
     const PortDecl* pi = b->kind->port(in, false);
@@ -154,7 +154,7 @@ std::vector<std::string> audit(const Graph& g) {
         const Node* b = g.find(w.to);
         const std::string label = w.from + " -[" + w.relation + "]-> " + w.to;
         if (!a || !b || !a->kind || !b->kind) {
-            bad.push_back(label + ": joins something that is not a v2 node");
+            bad.push_back(label + ": joins something that is not an Antfarm node");
             continue;
         }
         const PortDecl* po = a->kind->port(w.out, true);

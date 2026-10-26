@@ -208,9 +208,9 @@ inline void register_glyphs(maiz::Core& core,
      * `event`. `job` got neither, so its card heading was `humanize(name)` and
      * the site printed:
      *
-     *     sass-survivor-access-coordinator → "Sass Survivor Access Coordinator"
+     *     acme-outreach-coordinator → "Acme Outreach Coordinator"
      *
-     * SASS is Sexual Assault Support Services. A rune NAME is a command-safe
+     * ACME is an acronym. A rune NAME is a command-safe
      * slug: it is allowed to be an acronym flattened to lowercase, allowed to
      * carry a typo, allowed to carry an internal suffix. Published prose is
      * allowed none of those, which is the entire reason `title_en` exists — and
@@ -272,7 +272,7 @@ inline void register_glyphs(maiz::Core& core,
         R"__("labels":{"title":"Name (blank = its first line)","text":"Text","geo":"Location (lat,lon)",)__"
         R"__("ref":"Reference point (fan-out parent)"}}})__"));
     // incidents are NOT events (author, 2026-07-22): dated occurrences —
-    // road closures, ICE activity, emergencies — that belong on the map and,
+    // road closures, safety alerts, emergencies — that belong on the map and,
     // when dated, on the calendar as a SEPARATE 'incident' entry, never mixed
     // with planned events. type:incident keeps the query surfaces apart.
     reg(with_channels(

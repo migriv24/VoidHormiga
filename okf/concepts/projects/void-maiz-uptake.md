@@ -79,7 +79,7 @@ Three things moved after the 09-29 table:
 The portable `maiz::App` shell and the update client are adjacent and
 separately decided. The full map and evidence are
 [the networking stack](/concepts/platform/networking-stack.md) and
-[the 2026-10-18 audit](/reports/networking-stack-audit-2026-10-18.md).
+[the 2026-10-18 audit](/audits/networking-stack-audit-2026-10-18.md).
 
 # Updates: proven compatible, migration staged
 

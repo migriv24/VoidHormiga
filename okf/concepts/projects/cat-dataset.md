@@ -19,8 +19,8 @@ to demo.
 # The real-data move (2026-08-05)
 
 The real partner data is **out of the project folder entirely** — `demo-org.db/.json`
-(the 280-thing import), `databases/<org>_*.miga` (the 60 MB bundles), the partner's
-`assets/` (77 flyers/photos), and the built `site/`/`exports/` were **moved** to
+(the import), `databases/<org>_*.miga` (the bundles), the partner's
+`assets/` (flyers and photos), and the built `site/`/`exports/` were **moved** to
 `Documents/HormigaFiles/<org>/` (moved, not deleted — reversible; the author also
 has it backed up). The project no longer contains any real org data. The small
 fictional `seed_transcript()` / `seed_issue_transcript()` in `seed.hpp` remain

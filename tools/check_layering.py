@@ -61,6 +61,16 @@ FORBIDDEN = {
                'the update client must stay runnable on a broken install: it '
                'is what a person reaches for when the application itself is '
                'the thing that is wrong'),
+    # src/report/ IS WHAT A PERSON PUBLISHES (2026-10-23). `voidhormiga-cli
+    # report` prints the facts for a public issue, so it may know only what the
+    # BINARY is. Reaching the application would put a path, a profile or an
+    # organization's data one function call away from a public tracker
+    # (okf/concepts/contributing/intake.md).
+    'report': ([r'imgui', r'GLFW', r'glad', r'voidmaiz', r'voidcore',
+                r'"app/', r'"ui/', r'"render/', r'"domain/', r'"platform/',
+                r'"publish/', r'"sync/', r'"antfarm/', r'\.\./app/', r'\.\./ui/'],
+               'the issue report is published: it may know the build, never the '
+               'database, the machine or the person'),
     # src/phone/ IS A FRONT-END, NOT A SKIN (2026-09-23). The phone reaches the
     # application through app.hpp like the desktop does, and draws its own
     # screens. Reaching into ui/ would make every desktop panel a phone panel
@@ -98,17 +108,18 @@ ALLOWED = {
     'sync': {'sync'},
     # update depends on ITSELF ONLY -- see FORBIDDEN above.
     'update': {'update'},
+    'report': {'report'},
     'antfarm': {'antfarm'},
     'domain': {'domain', 'gis'},
     'render': {'render', 'domain', 'app', 'gis'},
     'platform': {'platform', 'domain', 'gis'},
     'publish': {'publish', 'render', 'domain', 'app', 'gis'},
-    'ui': {'ui', 'render', 'domain', 'app', 'platform', 'gis', 'sync', 'update', 'antfarm'},
-    'app': {'app', 'domain', 'render', 'platform', 'ui', 'gis', 'sync', 'update', 'antfarm'},
+    'ui': {'ui', 'render', 'domain', 'app', 'platform', 'gis', 'sync', 'update', 'report', 'antfarm'},
+    'app': {'app', 'domain', 'render', 'platform', 'ui', 'gis', 'sync', 'update', 'report', 'antfarm'},
     # the two front-ends: adapters, so they may reach anything. There are
     # exactly two and they are peers — founding commitment 1, in the tree.
     'main': {'main', 'app', 'domain', 'render', 'platform', 'publish', 'ui',
-             'gis', 'sync', 'update', 'antfarm'},
+             'gis', 'sync', 'update', 'report', 'antfarm'},
 }
 
 

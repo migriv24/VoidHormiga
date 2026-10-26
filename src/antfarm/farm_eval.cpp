@@ -74,12 +74,10 @@ const char* kChambers[] = {"data", "assets", "network", "documents"};
 
 } // namespace
 
-std::vector<Rune> Evaluator::chamber(const std::string& name) {
+const std::vector<Rune>& Evaluator::chamber(const std::string& name) {
     auto it = chambers_.find(name);
     if (it != chambers_.end()) return it->second;
-    std::vector<Rune> r = ctx_.chamber ? ctx_.chamber(name) : std::vector<Rune>{};
-    chambers_[name] = r;
-    return r;
+    return chambers_[name] = ctx_.chamber ? ctx_.chamber(name) : std::vector<Rune>{};
 }
 
 bool Evaluator::test(const Query& q, const Rune& r) {
@@ -89,13 +87,13 @@ bool Evaluator::test(const Query& q, const Rune& r) {
         if (q.a.empty()) return true;
         if (ctx_.match) return ctx_.match(q.a, r);
         try {
-            return maiz::Core::tag_match(q.a, maiz::filter_bag(r.node));
+            return maiz::Core::tag_match(q.a, maiz::filter_bag(r.node()));
         } catch (...) {
             return true; // malformed: degrade to everything, as the renderers do
         }
-    case Query::Op::FieldSet: return !farm::field_of(r.node, q.a).empty();
-    case Query::Op::FieldEmpty: return farm::field_of(r.node, q.a).empty();
-    case Query::Op::FieldEq: return farm::field_of(r.node, q.a) == q.b;
+    case Query::Op::FieldSet: return !farm::field_of(r.node(), q.a).empty();
+    case Query::Op::FieldEmpty: return farm::field_of(r.node(), q.a).empty();
+    case Query::Op::FieldEq: return farm::field_of(r.node(), q.a) == q.b;
     case Query::Op::Not: return q.kids.empty() || !test(q.kids[0], r);
     case Query::Op::And:
         for (const auto& k : q.kids)

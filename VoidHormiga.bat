@@ -1,7 +1,7 @@
 @echo off
 rem Launch Hormiga (build it first - see README.md).
 rem
-rem NAME THE DATABASE:   VoidHormiga.bat "C:\path\to\LON_01.state.json"
+rem NAME THE DATABASE:   VoidHormiga.bat "C:\path\to\TheirOrg.state.json"
 rem or drag the database file onto this .bat.
 rem
 rem With nothing named, Hormiga opens demo-org.json in the folder it was

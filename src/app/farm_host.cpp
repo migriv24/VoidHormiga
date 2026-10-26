@@ -396,13 +396,13 @@ std::string safe_name(std::string s) {
 MigratePlan migrate_plan(maiz::Core& core) {
     MigratePlan p;
     if (farm_exists(core)) {
-        p.refused = "this database already has a v2 Antfarm (the `farm` mantle). The migration builds one from "
-                    "v1 and will not write over an existing graph.";
+        p.refused = "this database already has its Antfarm (the `farm` mantle). Converting builds one from a "
+                    "graph in the format before 2026-09-28, and will not write over an existing one.";
         return p;
     }
     const maiz::Scene v1 = project(core, kAntfarmMantle);
     if (v1.nodes.empty()) {
-        p.refused = "there is no v1 Antfarm to migrate; `farm init` creates a v2 one";
+        p.refused = "there is no graph in the format before 2026-09-28 to convert; `farm init` creates the Antfarm";
         return p;
     }
     auto& c = p.commands;
@@ -503,16 +503,15 @@ MigratePlan migrate_plan(maiz::Core& core) {
             if (website_domain.empty()) website_domain = d;
             p.mapped.push_back(n.name + (gh ? " (GitHub Pages)" : " (static host)") + " -> Web domain `" + d + "`" +
                                (dns_name.empty() ? "" : ", named " + dns_name));
-            if (!f(n, "deploy_cmd").empty())
-                p.notes.push_back(n.name + " has a custom deploy_cmd: v2 publishes through the same v1 code, which "
-                                           "still reads it from the v1 node");
+            for (const char* cmd : {"deploy_cmd", "rollback_cmd"})
+                if (!gh && !f(n, cmd).empty()) c.push_back(mq(d, cmd, f(n, cmd)));
         } else if (g == "hol_sheets") {
             add("farm_import_sheets", safe_name(n.name));
             p.mapped.push_back(n.name + " (Sheets) -> Import Google Sheets (planned)");
         } else if (g == "hol_html") {
             p.mapped.push_back(n.name + " (HTML publisher) -> one document node per Builder document (below)");
         } else if (g == "hol_lan_share" || g == "hol_membership") {
-            p.kept.push_back(n.name + " (" + g + "): LAN sharing still reads it from v1, so it stays there");
+            p.kept.push_back(n.name + " (" + g + "): LAN sharing still reads its settings from the old-format node, so it stays there");
         } else {
             p.skipped.push_back(n.name + " (" + g + ")");
         }
@@ -533,7 +532,7 @@ MigratePlan migrate_plan(maiz::Core& core) {
         p.mapped.push_back("document `" + m + "` -> a " + kind + " node");
     }
     if (web_domains.size() > 1)
-        p.notes.push_back("v1 had " + std::to_string(web_domains.size()) + " publish hosts; the website publishes to `" +
+        p.notes.push_back("the old-format graph had " + std::to_string(web_domains.size()) + " publish hosts; the website publishes to `" +
                           website_domain + "`. Wire the others where you want them.");
     add("farm_profile", "me");
     return p;
@@ -541,7 +540,7 @@ MigratePlan migrate_plan(maiz::Core& core) {
 
 std::string migrate_report(const MigratePlan& p, bool applied) {
     if (!p.refused.empty()) return "refused: " + p.refused + "\n";
-    std::string o = applied ? "migrated to Antfarm v2 (one batch; `undo` reverses it in this session)\n"
+    std::string o = applied ? "converted to the Antfarm (one batch; `undo` reverses it in this session)\n"
                             : "rehearsal: what `farm migrate apply` would do\n";
     auto list = [&](const char* title, const std::vector<std::string>& v) {
         if (v.empty()) return;
@@ -549,7 +548,7 @@ std::string migrate_report(const MigratePlan& p, bool applied) {
         for (const auto& s : v) o += "  " + s + "\n";
     };
     list("MAPPED", p.mapped);
-    list("STAYS IN V1 (still read there)", p.kept);
+    list("KEPT IN THE OLD FORMAT (settings still read there)", p.kept);
     list("NOT MIGRATED", p.skipped);
     if (!p.key_files.empty()) {
         o += "KEY FILES, sealed into this device's vault on apply (the files are not deleted)\n";
@@ -568,7 +567,9 @@ bool migrated(maiz::Core& core) {
 }
 
 farm::Context make_context(maiz::Core& core, const std::filesystem::path& base, const hormiga::Vault* vault,
-                           const Device& dev, std::function<std::string(const std::string&)> presence) {
+                           const Device& dev, std::function<std::string(const std::string&)> presence,
+                           std::shared_ptr<std::shared_ptr<const maiz::Scene>> slot,
+                           std::function<std::shared_ptr<const maiz::Scene>()> held) {
     namespace fs = std::filesystem;
     farm::Context c;
     maiz::Core* cp = &core;
@@ -619,14 +620,23 @@ farm::Context make_context(maiz::Core& core, const std::filesystem::path& base, 
     };
 
     // ── the chambers ────────────────────────────────────────────────────
-    auto data = std::make_shared<maiz::Scene>([cp] {
-        maiz::ProjectOptions po;
-        po.mantle = kDataMantle;
-        return maiz::project_scene(*cp, po);
-    }());
+    /* The data mantle is projected when a chamber is first ASKED for, once per
+     * context, never before (2026-10-25): every verb, face and grant line built a
+     * context, most never read the data chamber, and each paid a projection of
+     * the whole organization — seconds apiece at 5×10^5 runes. */
+    if (!slot) slot = std::make_shared<std::shared_ptr<const maiz::Scene>>();
+    auto data = [cp, slot, held] {
+        if (!*slot && held) *slot = held();
+        if (!*slot) {
+            maiz::ProjectOptions po;
+            po.mantle = kDataMantle;
+            *slot = std::make_shared<const maiz::Scene>(maiz::project_scene(*cp, po));
+        }
+        return *slot;
+    };
     c.match = [](const std::string& expr, const farm::Rune& r) {
-        if (!r.scene) return hormiga::query_matches(expr, maiz::Scene{}, r.node);
-        return hormiga::query_matches(expr, *r.scene, r.node);
+        if (!r.scene) return hormiga::query_matches(expr, maiz::Scene{}, r.node());
+        return hormiga::query_matches(expr, *r.scene, r.node());
     };
     c.document_exists = [cp](const std::string& name) {
         for (const auto& n : project(*cp, hormiga::chambers::kDocuments).nodes)
@@ -638,14 +648,17 @@ farm::Context make_context(maiz::Core& core, const std::filesystem::path& base, 
          * mantle; the other three are mantles of their own, kept in step by
          * `chamber_commands`. */
         std::vector<farm::Rune> out;
-        std::shared_ptr<maiz::Scene> s = which == "data" ? data : std::make_shared<maiz::Scene>(project(*cp, which));
-        for (const auto& n : s->nodes) {
+        std::shared_ptr<const maiz::Scene> s =
+            which == "data" ? data() : std::make_shared<const maiz::Scene>(project(*cp, which));
+        out.reserve(s->nodes.size());
+        for (std::size_t i = 0; i < s->nodes.size(); ++i) {
+            const maiz::SceneNode& n = s->nodes[i];
             long long b = rune_bytes(n);
             if (which == "assets") {
                 const std::string sz = field_value(n, "bytes");
                 if (!sz.empty()) b = std::atoll(sz.c_str());
             }
-            out.push_back({which, n, s, b});
+            out.push_back({which, s, i, b});
         }
         return out;
     };
@@ -700,7 +713,8 @@ maiz::Scene project_farm(maiz::Core& core) {
     return s;
 }
 
-farm::SeedInfo seed_info(maiz::Core& core, const std::string& website_doc, const std::string& actor) {
+farm::SeedInfo seed_info(maiz::Core& core, const std::string& website_doc, const std::string& actor,
+                         const maiz::Scene* data) {
     farm::SeedInfo s;
     s.actor = actor;
     s.website = website_doc;
@@ -710,9 +724,14 @@ farm::SeedInfo seed_info(maiz::Core& core, const std::string& website_doc, const
                 s.website = m;
                 break;
             }
-    maiz::ProjectOptions po;
-    po.mantle = kDataMantle;
-    for (const auto& n : maiz::project_scene(core, po).nodes) {
+    maiz::Scene projected; // only when the caller holds none: at 5×10^5 runes a projection is seconds
+    if (!data) {
+        maiz::ProjectOptions po;
+        po.mantle = kDataMantle;
+        projected = maiz::project_scene(core, po);
+        data = &projected;
+    }
+    for (const auto& n : data->nodes) {
         if (n.glyph == "calview" && s.calendar.empty()) s.calendar = n.name;
         if (n.glyph == "map" && s.map.empty()) s.map = n.name;
     }

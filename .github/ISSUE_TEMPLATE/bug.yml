@@ -1,0 +1,72 @@
+name: Something is wrong
+description: Hormiga did something it should not have, or did not do something it should.
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. **This tracker is public**, and Hormiga holds other people's information, so please read this first.
+
+        **Keep out:** an organization's database or `.miga`, its logs, real names, emails, phone numbers or addresses, screenshots showing real people, paths on your computer (anything under your home folder), keys and tokens. Use made-up values instead. The **Cat Colony**, the made-up database Hormiga opens on its first run, is the best place to show a bug.
+
+        **A security problem** (a way to read, leak or change data you should not be able to) goes to the [private advisory form](../security/advisories/new), not here.
+
+        `voidhormiga-cli report` prints the facts below and a link that fills them in.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before you submit
+      options:
+        - label: Nothing in this issue comes from a real person or organization, and nothing names a path on my computer.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`voidhormiga-cli update` prints it, and so does Settings in the app."
+      placeholder: "0.2.2"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "windows-x64, linux-x64, macos-arm64, macos-x64, android-arm64"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options:
+        - The desktop application
+        - The command line (voidhormiga-cli)
+        - The phone application
+        - A website or newsletter Hormiga built
+        - Installing or updating
+        - Building from source
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      description: Steps on the Cat Colony if you can. If it only happens with your own data, describe the shape (for example "an event with no date and two fliers") rather than pasting the data.
+      placeholder: |
+        1. Open the Cat Colony
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Messages
+      description: Error text from the console or the command line. **Check it for names, emails and paths first.**
+      render: text

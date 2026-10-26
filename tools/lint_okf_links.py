@@ -44,11 +44,10 @@ def main() -> int:
     bad = []
     seen = 0
     for base, dirs, files in os.walk(okf):
-        # `reports/` held a partner organization's dated field measurements and
-        # was removed before publication (2026-09-01) — the findings live in the
-        # log and in the code, the organization does not live in this repo. The
-        # skip stays so a future reports/ is again treated as verbatim: you do
-        # not rewrite a link inside a measurement somebody else wrote.
+        # `reports/` must not exist (okf/concepts/foundation/what-may-be-public.md):
+        # it held field reports about real databases twice. It is gitignored and
+        # tools/lint_public.py fails a commit of it; if one is on disk anyway,
+        # it is somebody's data and nothing here should read it.
         dirs[:] = [d for d in dirs if d != 'reports']
         for fn in files:
             if not fn.endswith('.md'):

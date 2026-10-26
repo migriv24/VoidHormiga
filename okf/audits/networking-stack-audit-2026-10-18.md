@@ -43,7 +43,7 @@ workflows during this audit.
 **Void Hammer has no Git history.** That is not a documentation detail: CI and
 release cannot clone it, so they build without networking and report green. The
 build cache confirms the local tree is configured with
-`VOIDHAMMER_ROOT=C:/Users/migri/Documents/Projects/VoidHammer`.
+`VOIDHAMMER_ROOT=../VoidHammer`.
 
 # Build and test baseline
 
@@ -64,7 +64,7 @@ The existing `build/` was up to date and configured with Reticulum enabled
 | `hormiga_golden_render` | **failed** | `dirname`, `mktemp`, `cat`, `grep`, `rm` absent from `cmd.exe` |
 | `hormiga_headless_smoke` | **failed** | same shell-tooling cause |
 
-Re-running the two shell tests with `C:\msys64\usr\bin` on `PATH` removed the
+Re-running the two shell tests with MSYS2's `usr/bin` on `PATH` removed the
 missing-tool errors, but both still failed at `cd /tmp/...` because MSYS2's
 `/tmp` and the shell's working directory did not agree. They are environment
 failures, not product failures, and neither exercises networking. **The five

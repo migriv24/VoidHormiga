@@ -62,7 +62,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
         if (!v.empty()) { ++lang_hits; return v; }
         std::string o = field_value(n, base + alt);
         /* AN ADDRESS HAS NO SPANISH (2026-09-03). A `label` holding
-         * `migriv24@gmail.com` fell back on every Spanish render and counted
+         * `ana@example.org` fell back on every Spanish render and counted
          * against a coverage figure that could therefore never reach 100% —
          * and a warning that cannot be cleared is one people stop reading. The
          * same test `translation-report` uses, so the two numbers agree. */
@@ -886,9 +886,9 @@ std::string HormigaApp::render_site(std::string_view lang) {
                 h << ">"
                   << "<h3>" << html_escape(title_of(dn)) << "</h3>";
                 /* THREE FACTS, THREE ROWS (2026-08-20). This was one grey run —
-                 * "2026-08-19 · 8:00 AM–10:00 AM · Community Education Building,
-                 * 100 Main St Ste #170, Room 230T (second floor), Riverton, OR
-                 * 97000" — which is a sentence a reader has to parse to find an
+                 * "2026-08-19 · 8:00 AM–10:00 AM · Riverton Community Center,
+                 * 100 Main St, Room 2 (second floor), Riverton, OR 97000" —
+                 * which is a sentence a reader has to parse to find an
                  * address. A date, a time and a place are different kinds of
                  * fact; giving each its own line and its own mark is the whole
                  * of the fix, and it is also what makes the long address wrap
@@ -1056,7 +1056,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
                  * of somebody's data plan either way until this line. */
                 const std::string thumb = site_thumb(href, 900);
                 /* The lightbox caption was `humanize(rune_name)` — reading
-                 * "Flier Escudo Back2school Eng" under a picture. `description`
+                 * "Flier Backpacks Fall Eng" under a picture. `description`
                  * and `alt` are declared, already populated, and written for a
                  * reader. */
                 /* Per-language, with the legacy field last: `description`
@@ -1244,11 +1244,10 @@ std::string HormigaApp::render_site(std::string_view lang) {
              *
              * This is CLAUDE.md rule 6 in its outward-facing form: the seam
              * where data leaves is the place to decide what leaves, and here
-             * what leaves is the reader's address. The report names why it
-             * matters for this organization in particular — members include
-             * immigration and survivor-services groups — and that is a reason
-             * to build the careful version once rather than to leave it to
-             * whoever places the block.
+             * what leaves is the reader's address. An outreach organization's
+             * readers can include people who are harmed by being identified,
+             * and that is a reason to build the careful version once rather
+             * than to leave it to whoever places the block.
              *
              * NO-JAVASCRIPT READERS get the poster wrapped in a link to the
              * video, which is a working page rather than a dead rectangle.
@@ -1330,10 +1329,10 @@ std::string HormigaApp::render_site(std::string_view lang) {
             const int hits = (int)jobs.size();
             for (const maiz::SceneNode* jp : jobs) {
                 const maiz::SceneNode& dn = *jp;
-                /* `display_name(dn)` printed "Sass Survivor Access
-                 * Coordinator" for `sass-survivor-access-coordinator`, because
-                 * `job` declared no title field and this fell through to the
-                 * humanized slug. SASS is Sexual Assault Support Services. */
+                /* `display_name(dn)` printed "Acme Outreach Coordinator" for
+                 * `acme-outreach-coordinator`, because `job` declared no title
+                 * field and this fell through to the humanized slug, which
+                 * title-cases the acronym ACME into a word. */
                 const std::string jtitle = heading_of(dn);
                 std::string tagbag = jtitle + " " + field_value(dn, "org");
                 h << "<article class=\"card job\" data-tags=\""
@@ -1570,8 +1569,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
              *
              * ── WHY THE CONSENT TAG IS NOT OPTIONAL ─────────────────────────
              *
-             * The same database holds 84 contacts, 70 of them carrying a
-             * personal email and 66 a phone. A directory block that published
+             * A real database holds dozens of contacts, most of them carrying
+             * a personal email and a phone. A directory block that published
              * everything its query matched would publish a phone book, and it
              * would do it the first time somebody wrote `type:contact` — which
              * is exactly the query a person writes when they want a directory.

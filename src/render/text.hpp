@@ -123,10 +123,10 @@ inline bool lang_matches(const maiz::SceneNode& n, std::string_view lang) {
 
 /* ── SOME VALUES HAVE NO TRANSLATION, AND COUNTING THEM IS A LIE ─────────────
  *
- * The portfolio agent, after translating 96% of a site by hand:
+ * A field report, after translating 96% of a site by hand:
  *
  *   > The last two fields standing between us and 100% are
- *   > `label_es "migriv24@gmail.com"` and `label_es "541-913-5781"`. An email
+ *   > `label_es "ana@example.org"` and `label_es "541-555-0100"`. An email
  *   > address has no Spanish. The report's own header warns that writing the
  *   > source value into the `_es` field is "worse than the fallback", so the
  *   > correct move is to leave them — which means **the warning can never go
@@ -138,7 +138,7 @@ inline bool lang_matches(const maiz::SceneNode& n, std::string_view lang) {
  * render undoes that for all of them.
  *
  * Their first suggestion — "not counting a field whose value contains no
- * letters" — does not survive `migriv24@gmail.com`, which is nearly all
+ * letters" — does not survive `ana@example.org`, which is nearly all
  * letters. What actually distinguishes these values is that they are
  * IDENTIFIERS rather than prose: an address, a phone number, a URL, a handle.
  * They are typed the same in every language because they are not in a language.
@@ -174,10 +174,10 @@ inline bool untranslatable(const std::string& v) {
  *
  * `render_site`'s own `text()` lambda does this for the DOCUMENT — `title_en`
  * falling back to `title_es` — and it stopped there, so the blocks that publish
- * an organization's own CONTENT could not be bilingual at all. The portfolio
- * report is exact about the cost:
+ * an organization's own CONTENT could not be bilingual at all. A field report
+ * was exact about the cost:
  *
- *   > Every one of Miguel's five project descriptions — the longest prose on
+ *   > Every one of the five project descriptions — the longest prose on
  *   > the site, the part a reader actually reads — prints in English on the
  *   > Spanish page, and `translation-report` says the site is 96% done.
  *

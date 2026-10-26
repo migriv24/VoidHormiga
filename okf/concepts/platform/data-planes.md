@@ -117,8 +117,8 @@ it under a different name does not make it a different disclosure.
 
 And it is worse than a leak of one record: a search box over the member list is
 a **membership enumeration oracle**. Anyone may type a name and learn whether
-that person is in the network. For an organization serving Latine communities
-including people who may be undocumented, the member list is exactly the artifact
+that person is in the network. For an organization whose members can be harmed
+by being found, the member list is exactly the artifact
 that must not be queryable by strangers, and "you need an account first" is not a
 defence against someone who can make an account.
 

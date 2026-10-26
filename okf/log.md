@@ -360,16 +360,15 @@ The repository was made ready to be public. Changes worth recording:
 Two things happened on the same day and they belong in one entry, because the
 second is the answer to a question the first asked.
 
-## The Click LaFont report
+## A field report from a client that is not an outreach organization
 
-The first field report from a client that **is not an outreach organization**:
-one person's music project — a character, two albums, and a website meant to be
-explored. Adopting it was the point, which is to say finding where the
-vocabulary runs out. It ran out in twelve places on day one, and the report
-keeps six **defects** apart from six **absences** on purpose. It is kept in
-`okf/reports/` rather than folded away, per the rule the index states: each
-report is a measurement of what an outside caller, following the documentation
-in good faith, actually got.
+The first field report from a client that **is not an outreach organization**.
+Adopting it was the point, which is to say finding where the vocabulary runs
+out. It ran out in twelve places on day one, and the report keeps six
+**defects** apart from six **absences** on purpose. The report itself is not in
+this repository: it describes a client's site and data, and those stay with the
+client ([what may be public](/concepts/foundation/what-may-be-public.md)). Its
+findings are folded in below.
 
 **Two of the six defects were live on a real community organization's website
 at the time**, which is the strongest argument the report makes for adopting a
@@ -399,7 +398,7 @@ Fixed the same day:
   `AGENT-GUIDE.md §8` documents the linkification without distinguishing them,
   and the guide is what an agent trusts — so the fix makes the guide true rather
   than narrowing it. What the divergence had cost, measured: a site with no
-  lists at all, two eighteen-track tracklists as one hyphen-joined paragraph
+  lists at all, two long lists as one hyphen-joined paragraph
   each, and every ordinary paragraph its own block rune. `linkify` grew a style
   seam at the same time, because the email's inline `color:inherit` is right
   there and wrong on a page that has a stylesheet.
@@ -436,7 +435,7 @@ ask attached the moment anyone looked:
 
 - **`image_grid.columns` was declared, labelled `combo:2,3,4`, offered in the
   inspector, and read by nothing.** Layout came entirely from the stylesheet's
-  `auto-fill`, so getting one album cover to fill its column meant discovering
+  `auto-fill`, so getting one image to fill its column meant discovering
   empirically that `span 4` yields one tile and `span 5` yields two. The
   report's sentence for it is the one to keep: *a field that does nothing is
   worse than no field.*
@@ -451,7 +450,7 @@ ask attached the moment anyone looked:
 ## The language decision
 
 The report's A3 asked for `config set site.languages 'en'` — a way to build one
-language, on the grounds that a solo artist with no Spanish copy gets a nav
+language, on the grounds that a client with no Spanish copy gets a nav
 button promising Spanish and a sitemap of duplicate pairs.
 
 **The author declined it**, and the reasoning is now a commitment rather than a
@@ -607,8 +606,8 @@ second question in the same breath: a registry for custom **data types**.
 > object is a bit more specific. Heck, what if its a unity game showcase, and
 > the data type is webgl Unity games? that's super specific!
 
-That reframes [Q54](/developer_questions.md) — the audio block the Click LaFont
-report asked for — from *should we add audio* into *is a glyph per medium the
+That reframes [Q54](/developer_questions.md) — the audio block that report
+asked for — from *should we add audio* into *is a glyph per medium the
 right shape at all*. Both are written up: [Q58](/developer_questions.md) for
 elements, [Q59](/developer_questions.md) for types.
 
@@ -674,10 +673,10 @@ the ordinary build.
 
 ## Sound, and icons that were already in the building
 
-**The `audio` block.** The Click LaFont report's A1 rung 1, and the reason it
+**The `audio` block.** That report's A1 rung 1, and the reason it
 went in ahead of the registry questions is that it is the part that is certainly
 right: an organization with a podcast, a recorded meeting or a
-Spanish-language radio spot has the same absence a music project does, and for
+Spanish-language radio spot has the same absence that client's site had, and for
 that organization the recording is often the most accessible thing on the site
 because it does not require reading.
 
@@ -729,11 +728,11 @@ Still owed: the Antfarm and Allomone palettes are drawn by Void Maiz
 (`maiz::edit_canvas`), so icons there are an upstream ask rather than something
 to patch in here.
 
-## The portfolio client, and the evening the app would not open
+## A third client, and the evening the app would not open
 
 A third client, and the difference that produced every finding: **one person
-publishing about themselves.** LON is a network, Click LaFont is a brand; both
-are organizations. Five pages, 62 blocks, deployed to GitHub Pages — and
+publishing about themselves**, where the first two clients were organizations.
+A multi-page site deployed to GitHub Pages — and
 `check-host` passed all four checks on the first try, which is the first
 independent use of the day's earlier work.
 
@@ -780,7 +779,7 @@ hashes agreeing, and I checked one of them.**
 
 ### The `download` block
 
-The portfolio's blocking gap, and their diagnosis was unusually complete: three
+That client's blocking gap, and their diagnosis was unusually complete: three
 of the four pieces already existed. `link` emits the right markup,
 `stage_site_asset` is type-agnostic and would have staged a PDF correctly, and
 `resource` (`path`, `topic`) was declared, editable in the GUI, and **rendered
@@ -806,7 +805,7 @@ at, and their sentence for it is the right one: *naming the file is the
 consent.* A `download_grid` over `resource` runes would inherit `directory`'s
 question and can arrive later with that conversation attached.
 
-A résumé surfaced it; the thing is general. A flier PDF, the bylaws, an annual
+One personal document surfaced it; the thing is general. A flier PDF, the bylaws, an annual
 report, a know-your-rights sheet, a printable calendar — the documents an
 outreach organization is most often asked for, and until now the answer was to
 host them somewhere Hormiga does not manage.
@@ -814,9 +813,9 @@ host them somewhere Hormiga does not manage.
 ### `site.languages`, which was accepted, stored and ignored
 
 The trust bug, and it is partly a documentation-shape failure of mine.
-`app/translate.cpp` opens by QUOTING the Click LaFont ask — `config set
+`app/translate.cpp` opens by QUOTING the earlier client's ask — `config set
 site.languages 'en'` — in order to record that the author declined it. An
-unlabelled blockquote reads as a contract, the portfolio agent set the key, Void
+unlabelled blockquote reads as a contract, the next client's agent set the key, Void
 Core's free-form `config` accepted and returned it, and nothing anywhere read
 it. Their framing is the one to keep:
 
@@ -835,17 +834,17 @@ in `translate.cpp` rather than in the renderer.
 `role` before `project` ([Q60](/developer_questions.md),
 [Q61](/developer_questions.md)), on the report's own ordering: *"`role` removes
 a parser that will break; `project` removes labels that are merely wrong."* The
-résumé builder currently parses work history back out of `narrative` prose with
+client's site currently parses its history back out of `narrative` prose with
 a line-shape convention — a parser over presentation, which inverts this repo's
 first ground rule and breaks the day a person edits the block by hand.
 
 And one diagnostic worth stealing, from A2: **a privacy control that is
 meaningless for the data it guards means the data is not what the block is
-for.** `directory` refusing to publish a Blender project without
+for.** `directory` refusing to publish a creative project without
 `clearance:public` is not the gate misbehaving; it is the gate correctly
 reporting that the block is being borrowed.
 
-## 2026-09-03 — the portfolio's second round, and four asks that were already on the list
+## 2026-09-03 — the third client's second round, and four asks that were already on the list
 
 Five of the seven items were built the day they arrived. What makes this round
 worth its own entry is that **most of it was already somewhere in the OKF**, and
@@ -858,7 +857,7 @@ to keep: *"the site was correct, the bundle was correct, and the combination was
 broken."*
 
 `download.file` is documented as "a path relative to the database", so they put
-a resume in `resume/` beside the database. The render staged it, the deploy
+a document in `papers/` beside the database. The render staged it, the deploy
 published it, and `effect pack-database` wrote a `.miga` that **silently did not
 contain it** — because `pack()` bundled the assets folder and nothing else.
 Opened anywhere else, the block reported "This file is not available", correctly
@@ -1288,7 +1287,7 @@ button on a static site.
 
 - `link` (`target` takes a page slug **or an external URL**, `link_style
   button`) is the installer button.
-- `download` (2026-09-02, from the portfolio field report) stages a named file
+- `download` (2026-09-02, from a client's field report) stages a named file
   into the site, emits `<a download>`, and prints its type and size. It is right
   for `SHA256SUMS.txt` and for PDFs.
 
@@ -1325,19 +1324,17 @@ the way `download` itself arrived.
 
 The author's instruction, in full: *"it should detect the system (linux,
 windows, mac), and then provide the correct download for hormiga."* Also, the
-same day: **the first download button is going on clicklafont.com**, because
+same day: **the first download button is going on a client's site**, because
 that site is experimental enough to be safe to break — so the first page that
 offers Void Hormiga to a stranger is hosted by a client that is not an outreach
 organization, and rendered by the same binary it is offering.
 
 ## The report that said no, and was right
 
-The Click LaFont agent built the download page from
+The client's agent built the download page from
 [download-page.md](/concepts/platform/download-page.md) §6 and then declined the
 detection ask, which is the correct answer to a request that cannot be
-expressed. Their report is
-`okf/reports/click-lafont-download-page-2026-09-05.md`. Three walls, and the
-third is the one worth keeping:
+expressed. Three walls, and the third is the one worth keeping:
 
 1. It needs JavaScript, and there is no seam for author-supplied script. That is
    not an oversight — `custom.css` is a *file* and CSS-only for a stated reason,
@@ -1452,14 +1449,14 @@ a second machine.
 Both at the repo root, both uniquely titled per the 2026-07-21 convention, and
 both to be folded into this log and deleted when their replies land.
 
-- `MESSAGE_FOR_CLICKLAFONT_hormiga-platform-sets-2026-09-08.md` — the capability
+- a message to the client on platform sets — the capability
   they proposed, the one place it differs from their proposal (`link` carries
   `platform` too, and had to), the §6.2b transcript, the three corrections, and
   the D6 question back to them: **does their `demo-org` have anything in it?**
   That single answer decides whether the narrow gap above is what they hit or
   whether there is a third thing going on.
 - `MESSAGE_FOR_VOIDMAGO_hormiga-installer-paths-and-the-stable-asset-name-2026-09-08.md`
-  — the slash, with what Click could not see from outside: that `mago stage` is
+  — the slash, with what the client could not see from outside: that `mago stage` is
   correct because `fs::path` forgives a forward slash and NSIS does not, so **a
   correct staging tree compiles into an installer that puts the files somewhere
   else** and nothing that inspects the tree can find it. Plus the survey that
@@ -1485,9 +1482,9 @@ fails closed here and Mago's warning is what explains why.
 
 The report says a data mantle not named `demo-org` still renders an empty site
 with no warning. Reproduced against the binary, per the rule for reports: it
-**warns correctly** — `mantle new clicklafont`, an image rune, `render-site`,
+**warns correctly** — `mantle new theirorg`, an image rune, `render-site`,
 and the output says *"the data mantle 'demo-org' is empty, but 1 image rune(s)
-live in 'clicklafont'"*.
+live in 'theirorg'"*.
 
 What is true is narrower, and is a real gap: `warn_if_data_is_elsewhere`
 (`render/assets.cpp`) returns early when the data mantle is **not** empty, so a
@@ -1521,8 +1518,8 @@ was, and it is worth keeping:
 > treating a script as a filesystem. Normalizing upstream would make `stage`,
 > `feed` and `wizard` all speak NSIS's dialect to make one of them happy.
 
-They verified by diffing the regenerated script against the hand-fixed one Click
-LaFont compiled and installed, and reported it identical. **We verified
+They verified by diffing the regenerated script against the hand-fixed one the
+client compiled and installed, and reported it identical. **We verified
 differently, on purpose** — a diff against a tested file is a claim about a file,
 not about our manifest:
 
@@ -1592,11 +1589,11 @@ stranger downloads Void Hormiga from a page Void Hormiga deployed, and it update
 itself"* — needs a 0.1.1 for the second half to have anywhere to go.
 
 Mago asked for two things back: the installer's real size from a build we ran
-(they have Click's 7,327,237 bytes and say a measured figure is worth more than
+(they have the client's 7,327,237 bytes and say a measured figure is worth more than
 an inferred one), and one plain sentence saying the fonts landed in
 `vendor\fonts` and the icons are there. Both are owed after step 3.
 
-`MESSAGE_FOR_CLICKLAFONT_hormiga-release-unblocked-2026-09-08.md` went out at the
+A message to the client went out at the
 repo root: their bug is fixed upstream, the family's fixtures are permanently
 safer because of their report, and **their button's URL was checked against the
 name Mago actually emits, and matches.** Worth running rather than assuming — a
@@ -1610,8 +1607,8 @@ who would notice.
 
 ## Void Hormiga 0.1.0 exists
 
-Cut as `v0.1.0` after Mago 0.1.6, with the four assets §3 specifies. The Click
-LaFont agent verified it the way a stranger would rather than the way a builder
+Cut as `v0.1.0` after Mago 0.1.6, with the four assets §3 specifies. The
+client's agent verified it the way a stranger would rather than the way a builder
 would, and the numbers are theirs:
 
 - `VoidHormiga-0.1.0-windows-x64-setup.exe`, **7,355,451 bytes**; the
@@ -1685,7 +1682,7 @@ Their `demo-org` has five runes in it today, which fits the early-return
 hypothesis exactly — and that is not what happened. On 2026-09-02 there was **no
 `demo-org` mantle at all**: they had deleted the auto-created file before
 creating their own state document. The five runes are there now only because
-`mantle rename clicklafont demo-org` is how they fixed it.
+`mantle rename theirorg demo-org` is how they fixed it.
 
 So they reproduced the original condition against the current binary instead of
 arguing from memory, and it warns correctly, naming the count and carrying its
@@ -1870,7 +1867,7 @@ yet" on two of three cards.** Both of those are now true *because* of a stated
 distinction rather than by default, which is the difference between honesty and
 not having gotten around to it.
 
-`MESSAGE_FOR_CLICKLAFONT_hormiga-three-platforms-compile-2026-09-08.md` went out,
+A message to the client on the three platforms went out,
 and **most of it is a message telling a client not to change anything.** Their
 first instinct on hearing "it compiles on three platforms now" would reasonably
 be to update the two cards that say *no build yet*, and those cards are still
@@ -1985,7 +1982,7 @@ machine until the author's fine-grained PAT gains **Workflows: Read and write**.
 Recorded here because it will be the same wall the next time any workflow is
 touched, and because it is the sort of thing that reads like a broken push.
 
-## Click LaFont, on prose that goes stale
+## A client, on prose that goes stale
 
 Their third report in eight days, and the finding generalises past their page.
 They verified §1 rather than acting on it — that CI really does matrix three
@@ -2040,8 +2037,8 @@ Before any of this: **Void Maiz's repository on GitHub was last pushed
 `vendor/glfw/deps/wayland/`. Their message of 2026-09-08 described a
 three-platform runner and we relayed that to the author as *"their CI is green
 on all three"*. It cannot have been: the workflow was never on GitHub, so it had
-never run. Their "verified cold, 11/11" was a local Windows run. The Click
-LaFont agent's verification of our own `ci.yml` was likewise a local file read —
+never run. Their "verified cold, 11/11" was a local Windows run. The client
+agent's verification of our own `ci.yml` was likewise a local file read —
 ours was not pushed either until today.
 
 Nobody was lying. **Three agents each reported honestly on something local and
@@ -2486,8 +2483,8 @@ namespaces and nothing here can know what they mean.
 **A denylist is therefore unsafe by construction.** It can only exclude the
 namespaces that existed when it was written, so the first internal axis an
 organization coins is published to the world *by default*, silently, on a URL
-strangers poll. `okf/concepts/sections/calendar.md` names ICE activity as the
-canonical sensitive case for this section, which is about as clear as the stakes
+strangers poll. `okf/concepts/sections/calendar.md` names a community safety
+alert as the canonical sensitive case for this section, which is about as clear as the stakes
 get.
 
 So `public_categories` is an **allowlist**: only `kw:` reaches a feed, prefix
@@ -3013,12 +3010,12 @@ Item 3 was the headline, and it was simpler than broken. The email renderer
 walked the document and emitted every block as its own full-width table, one
 under the next. The Builder let a person place two buttons side by side, the
 website honoured it, and the newsletter stacked them. It is the "declared but
-invisible" shape again -- and it arrived the same week Click LaFont reported
+invisible" shape again -- and it arrived the same week a client's report found
 `col` doing the same thing on the web (it orders blocks, it does not position
 them). The email now mirrors the website's row driver: consecutive blocks
 sharing a `row` become one table row of cells sized from `span`, normalised to
 the row's total so a short row still fills (an email table cannot hold a gap,
-and inventing one is the surprise Click's report warned against). A `cell_px`
+and inventing one is the surprise that report warned against). A `cell_px`
 width reaches every `width=` attribute, because Outlook obeys that attribute
 over CSS and a 572px image in a half-width cell breaks the 620px frame. `col`'s
 label now says what it does: "Order within the row (0-11) - blocks fill left to
@@ -3109,9 +3106,9 @@ canvas loop and cannot move). What could move went to `ui/builder_ext.cpp`,
 
 The `</>` button on the Data tab's and the Calendar's tag filters (`data.cpp` is
 two lines from its budget and wants a small split first); the image-preview
-engine (item 6); a sentence beside `deploy-site` for Click's finding that a
+engine (item 6); a sentence beside `deploy-site` for a client's finding that a
 deleted page can outlive its deployment on a Pages custom domain for up to a
-week. Click's other report asks the author to confirm or reverse its choice to
+week. The client's other report asks the author to confirm or reverse its choice to
 label the macOS and Linux cards "untested" rather than "no build yet" -- that is
 the author's call and was not made here. Void Maiz's touch message is unanswered.
 
@@ -3119,7 +3116,7 @@ the author's call and was not made here. Void Maiz's touch message is unanswered
 # 2026-09-13, second entry -- colon tags stop hiding, and a tool for the copy that should not exist
 
 Three asks from the author, the second arriving with a report from the agent
-that works in LON's folder.
+that works in a partner organization's folder.
 
 ## Colon tags were not quiet, they were gone
 
@@ -3150,12 +3147,12 @@ was two lines from its budget.
 
 ## The launch trap, the second time
 
-The LON agent's report: the dev app had been started through `VoidHormiga.bat`
+The field agent's report: the dev app had been started through `VoidHormiga.bat`
 with no database named, so it opened `demo-org.json` in the folder it was
-launched from -- the source tree -- and LON's edits, a deploy record, and 157
-assets went there. All of it is gitignored and none of it was committed. This
-session did not touch those files: the LON agent is merging them back, and two
-agents editing one database is the failure being repaired.
+launched from -- the source tree -- and an organization's edits, a deploy record
+and its assets went there. All of it is gitignored and none of it was committed.
+This session did not touch those files: the field agent is merging them back,
+and two agents editing one database is the failure being repaired.
 
 The cause was already documented in `desktop.cpp` from the first time, before
 2026-09-01. What had been fixed then was `--state`; what had not been fixed was
@@ -3185,7 +3182,7 @@ Collaboration section 7.3 has the rest.
 
 **Status, plainly: compiled, not exercised.** The merge underneath is the tested
 one; the detections have only ever existed in a window nobody has opened, and
-they were deliberately not tried against LON's real files while another agent is
+they were deliberately not tried against the organization's real files while another agent is
 merging them.
 
 ## A QR code, because the author wanted one
@@ -3225,7 +3222,7 @@ renderer changed.
 
 ## Not done
 
-Exercising the merge tool on a real stray copy (after the LON agent's merge, or
+Exercising the merge tool on a real stray copy (after the field agent's merge, or
 on a synthetic one); a detailed preview of a `.miga`; and, still open from the
 previous entry, the `</>` filter button on the Data tab and the Calendar.
 
@@ -3638,7 +3635,7 @@ click, which is why they come first in the notes:
 `MESSAGE_FOR_*.md` and `REPORT_FROM_*.md` are in `.gitignore`, with the reason
 beside the patterns: they are correspondence rather than project, and one still
 in flight can quote a client's site or a sibling's unreleased work. Two old
-`MESSAGE_FOR_CLICKLAFONT_...` files that had been committed were removed from the
+messages to a client that had been committed were removed from the
 index and stay on disk. CLAUDE.md rule 4 says so.
 
 ## Staging: three findings on Mago's side, nothing patched there (rule 4)
@@ -3834,7 +3831,7 @@ something unrelated.
 ## The other half of the console: one picture, three image runes
 
 The author's log had three `image` runes minted for a single file, each written
-with `set <rune> path '"assets/the-latino-entrepreneurship-instinct.webp"'` --
+with `set <rune> path '"assets/banner.webp"'` --
 the value carrying its own quotes.
 
 `json_arg(json_str(x))` is the pairing for **`setjson`**, whose argument has to
@@ -3871,7 +3868,7 @@ application says it itself.
 ## Not done
 
 - **The author's database still holds the duplicate image runes** this made:
-  `the-latino-entrepreneurship-instinct`, `-4c4a3d10` and `-4c4a3d10-2`. They
+  `banner`, `banner-4c4a3d10` and `banner-4c4a3d10-2`. They
   resolve again now, but they are clutter, and nothing prunes them.
 
 # Keys beside the database mean beside the .miga (2026-09-16, second entry)
@@ -3882,11 +3879,11 @@ antfarm. make sure the paths and such are properly configured."*
 
 ## What was actually wrong
 
-Nothing in the Antfarm. `lon-pages` carried the right project and account id,
+Nothing in the Antfarm. The pages node carried the right project and account id,
 `out-imgbb` named its key, and both named their key files **relatively** --
 `cloudflare_token.txt`, `imgbb.key` -- which is what the glyph hints recommend
 ("a token file beside the database"). The files were exactly there, beside
-`LON_*.miga` in the organization's folder.
+`<org>_*.miga` in the organization's folder.
 
 Every reader resolved a relative key file against `base_dir`, and `base_dir` is
 the folder the program was **launched** from: the working copy lives there, and a
@@ -4192,7 +4189,7 @@ Both lose data on an ordinary sync, with no attacker and no error:
    recognised by its members being named `a` and `r`.
 
 Fixed upstream; we get them by compiling their new sources. **Checked against the
-author's own data** as they asked: LON's one mantle with `tags` kept them through
+author's own data** as they asked: the one mantle with `tags` kept them through
 every version back to 2026-08-19, and it has no `rules` -- nothing was lost. Worth
 recording why the third item could not have bitten us: our links live in each
 mantle's `layout.edges`, not in a rune's `relations`.
@@ -6246,7 +6243,7 @@ announces carry the person's name, colour and the database's name in the clear
 
 **Written:** [the networking stack](/concepts/platform/networking-stack.md) (the
 durable map) and
-[the audit report](/reports/networking-stack-audit-2026-10-18.md) (the
+[the audit report](/audits/networking-stack-audit-2026-10-18.md) (the
 measurements, inventory and delta ledger). Corrected the stale ownership in
 [LAN sharing](/concepts/platform/lan-sharing.md), [radios](/concepts/platform/radios.md),
 [Antfarm collaboration](/concepts/platform/antfarm/collaboration.md),
@@ -6400,3 +6397,313 @@ update as well."*
 
 **Still owed:** two phones on 0.2.2 (the radio change has not met hardware),
 the new buttons seen in a window, and a person running the macOS archives.
+
+# One Antfarm (2026-10-19)
+
+The author: *"we dont want the user to be able to choose to use the old
+antfarm. rather, we just wanna convert the old to the new. we can support the
+old systems, but we are no longer using them ... often times 'legacy' is
+associated with more stable and better working. We shouldn't give off that vibe
+at all. we dont want to confuse agents who want to 'play it safe' ... the
+safest choice IS the new antfarm."*
+
+**The safe choice had to be safe first.** Three things the new Antfarm could not
+honestly be the safer road without:
+- **Its map broke ground rule 6** (found on a copy of a real database on
+  2026-09-28, never closed): `farm preview`/`publish` wrote every place-bearing
+  rune the filter kept into `places.geojson`, people included, with names and
+  tags. It now asks `kinds::on_public_map`, the website map's own seam, for the
+  GeoJSON and for the picture, and says how many it withheld. Measured on the
+  Cat Colony: 50 cats, all contacts, 0 published (50 before).
+- **It could publish and not take it back.** `farm rollback <web-domain>
+  [deployment]` lists a domain's deployments, or puts one back, through the same
+  `rollback_site` the Publish tab uses. A `farm publish` into a database with no
+  `antfarm` mantle had its deployment record refused, so it could never have
+  been rolled back; it now makes the mantle. It also handed the record the
+  host's synthetic scene instead of the history, so the previous live
+  deployment was never superseded.
+- **It had never published to Cloudflare.** The web domain's `cloudflare`
+  reached the deploy code as provider `cloudflare`, which has no built-in upload
+  (`cloudflare-pages` does). Fixed, and the web domain gained `deploy_cmd` and
+  `rollback_cmd`, which the conversion now carries over instead of leaving them
+  on the old node.
+
+**Then the choice went.**
+- **The screens.** The desktop's "Try Antfarm v2" / "Antfarm v1" buttons, the
+  old graph's tab (and its "not ready" warning) and the phone's old graph screen
+  are removed, with the old palette. The tab is the Antfarm, titled so, with no
+  "prototype" label. The Hosting images panel moved to its Inspector.
+- **Every database is converted when it opens** (`convert_antfarm`, at the next
+  frame's start after any load, once queued commands have run). A database with
+  an old graph gets `farm migrate apply`; one with none, or a new one, gets `farm
+  init` (a new database still carries the old seed for the settings below, and a
+  conversion of that seed is not the designed default). One logged batch each.
+  The CLI never converts on its own.
+- **Agents.** `--describe` files every `hol_*` glyph under *Antfarm format
+  before 2026-09-28 - converted on open; build with farm*. `use antfarm` and
+  `rune new hol_*` print a note pointing at `farm`. The `farm` help and messages
+  say "the Antfarm", never "v2" or "v1". AGENT-GUIDE has a new section, *The
+  Antfarm is `farm`*, with a GitHub Pages setup run for real through `farm` (a
+  dummy token, and the domain *ready*), and marks the `hol_*` recipes as the old
+  format for databases already wired that way.
+- **The OKF.** The Antfarm folder's front page says there is one Antfarm; the
+  graph-as-built and CLI-examples pages are tagged `status:superseded` with a
+  banner; the concept pages note their node names are the old format. The v2
+  index is `status:current`. The migration page lists what still reads the old
+  format, the next work, one row each: LAN sharing's settings, the Publish
+  tab's hosts, `push-store`, the deployment history,
+  `import-rescue`, and the new-database seed.
+
+**Measured.** The desktop, isolated: a Cat Colony state with no Antfarm opened
+and saved with `farm` and `migrated_from = antfarm`; `effect new-database` got
+the default colony. The phone harness converted the same way and quit cleanly.
+55/56 (`reduce_conformance`), every linter, every file within budget. **Not
+looked at:** the new tab and the phone screen in a window.
+
+**Image hosting moved to the Antfarm.** Removing the old palette left Hosting
+images online telling people to "drag one in from the palette", which no longer
+existed, and `effect host-online` could use only old-format hosts. Now one
+function, `image_host_scene`, gives the panel, the app's Host it online and the
+CLI the Antfarm's image hosts, buckets and web domains first (through the
+translation `farm publish` uses), then any old-format host by a name the
+Antfarm did not use. An Antfarm ImgBB host carries its key's vault entry. The
+panel's empty state says how to add one with `farm`. Measured: on the Cat
+Colony, `host-online` picked the Antfarm bucket and said it needs its bucket
+name, then put a picture on the web domain (`hosted_by: cats-on-pages`).
+
+**Found, not changed:** "legacy" is also the word on Allomone's old dialect,
+the Builder's *elements (legacy)* and Settings' *Show legacy tools*. They are
+outside the Antfarm and were left alone.
+
+# Nothing from somebody's database, ever (2026-10-23)
+
+The author found a client's name in `okf/reports/` on the public repository and
+asked for the damage, the repeats and a rule that holds. The finding is
+[what may be public](/concepts/foundation/what-may-be-public.md): **only
+Hormiga's development is committed.**
+
+**What had happened.** On 2026-09-01 a partner organization's field reports
+were removed before publication, and this log says so. On 2026-09-02 the folder
+came back: field reports from two more clients, one of them a person's own
+portfolio, were committed to `okf/reports/`, and the index described the folder
+as where such reports are kept. They quoted a client's site and local folder, a
+phone number and a personal email. `okf/` is staged beside the binary, so the
+reports shipped inside every installer and archive from 0.1.0 to 0.2.2. Their
+names, details about the partner organization's members, real slugs, venues,
+file names and counts spread into this log, the questions, the concepts,
+`AGENT-GUIDE.md`, source comments and tests.
+
+**Done in the working tree.** The six reports left the repository (kept on the
+author's machine, outside any repo). The networking audit, which measures only
+code, moved to `okf/audits/`. Every remaining mention was rewritten as a fact
+about Hormiga with the client unnamed, and the fixtures were made fictional. The
+build no longer stages `bin/okf/reports`. Five stale copies of the first
+partner's reports were found there, never committed but one packaging step away
+from shipping. `void.json` lists the OKF's parts instead of `okf/`.
+
+**The mechanisms**, because the rule had failed twice as prose:
+
+- `tools/lint_public.py` runs as the `hormiga_public` test. It checks forbidden
+  paths, emails, phones, home directories and credential shapes, plus the names
+  in a local gitignored `.private-terms`. The list of names cannot be committed,
+  because the list is itself the secret.
+- `tools/hooks/pre-commit` runs the lint over staged files, and also over the
+  commit author email (`git config core.hooksPath tools/hooks`).
+- CLAUDE.md rule 2 says what the rule covers, and `AGENT-GUIDE.md` §11 tells a
+  field agent where its notes go: beside the database, never into Hormiga.
+
+**Not done, and the author's to decide:** git history still holds every
+removed line, every commit's author email names a client, and sixteen releases'
+assets still carry the reports. See the page's last section.
+
+# A way in for everybody else (2026-10-23, later)
+
+The author: contributions had only been thought about in passing and should be
+a pipeline of their own, and *do not assume this device will always be the
+admin.* The design is [contributing](/concepts/contributing/index.md); the rule
+under it is that **a role is an account, not a device**.
+
+**Built (working tree, nothing pushed):**
+
+- **`voidhormiga-cli report`** (`src/report/`). It prints the version, the
+  platform, whether networking was built in, and a link that opens the bug or
+  feature form pre-filled. Every value is a compile-time constant. It opens no
+  database, reads no path or name, and makes no request. `check_layering.py`
+  forbids `src/report/` from including the application, and
+  `headless_smoke.sh` checks that it runs in an empty folder, creates nothing
+  there and names no path. The tracker URL is `void.json`'s `repository`, read
+  by CMake.
+- **The front door:** `CONTRIBUTING.md`, `SECURITY.md` (GitHub private
+  advisories, which reach whoever maintains the project rather than one inbox),
+  two issue forms with no blank issues, a pull request checklist that is
+  CLAUDE.md's ground rules written for people, and `CODEOWNERS`.
+- **`intake` workflow:** every new issue, PR and comment goes through
+  `tools/intake_scan.py`, which reuses `lint_public.py`'s new `scan_text()` and
+  reads the names from the `PRIVATE_TERMS` secret. A finding gets the
+  `privacy-review` label and a comment that gives line numbers and reasons,
+  never the text. It is safe on forks because it checks out only our `tools/`.
+- **`privacy` workflow:** the lint on every PR (patterns only, since a fork
+  cannot see secrets) and on every push to `main` and weekly (with the names).
+  The lint now also takes the list as text (`HORMIGA_PRIVATE_TERMS_TEXT`) and
+  can scan another checkout (`--root`).
+- **`tools/maintainer/`:** `setup-github.sh` (labels, private advisories, the
+  secret, optional protection of `main`, acting on whatever `origin` is) and
+  `review-pr.sh` (a PR's tree in a temporary worktree, checked with *our* lint
+  and the names, nothing of theirs run).
+
+**Asked of Void Mago** (`MESSAGE_FOR_VOIDMAGO_hormiga-contributors-and-a-second-machine-2026-10-23.md`):
+
+- `mago bootstrap`, which is their own §8.1;
+- `mago notify --issue`, so family messages reach repositories nobody has on disk;
+- a `contribute` block in `void.json`;
+- a warning when `ships_beside_binary` would stage untracked files;
+- whether `stage`/`wizard`/`feed` can run on a CI runner.
+
+**Opened:**
+
+- Q123: bootstrap belongs to Mago.
+- Q124: family messages as issues.
+- Q125: protect `main`.
+- Q126: where the master names list lives.
+- Q127: build and sign every release in CI, the last thing tied to one machine.
+
+**Not done:** a "Report a problem" button in the desktop and the phone. Pushing
+the workflows needs a token with `workflow` scope. The repository settings wait
+on `setup-github.sh`.
+
+# A client at 10^5 runes, measured (2026-10-24 to 25)
+
+Issues #1 and #2 came from a client two orders of magnitude past the
+documented scale. They proposed fixes. We measured first, against synthetic
+databases of 5×10^3 to 10^5 runes and a 208 MB bundle, and fixed what the
+measurements found. See [scale](/concepts/platform/scale.md) for the numbers.
+
+**The bundle.** `miga.cpp` is a scanner now. The state goes to Void Core as
+text, pictures are decoded in parallel and written only when they differ, and
+pack streams. Open went from 3.1 s to 0.6 s, reopen from 3.5 s to 0.7 s with
+nothing rewritten, pack from 6.2 s to 1.7 s. Open is a mirror of the bundle,
+not delete-then-write.
+
+**The window.** Open and save run on a worker (`app/busy.*`), with a
+determinate bar weighted by measured cost per byte, the phase in words, and
+an estimate shown only once it is honest. While a database is replaced,
+nothing else is drawn, so nothing can be clicked.
+
+**The Data tab.** Its rows are cached on what they depend on and drawn through
+the clipper, so a frame costs O(visible). Every row has the same leading slot, so
+the names line up.
+
+**What the running app showed, and the stack trace confirmed:**
+- Two visible sections each claimed the context every frame, two full
+  projections a frame. A scene is now kept per mantle until something changes.
+- `kinds::apply` projected the whole active mantle inside every reprojection.
+- **A data-damaging bug that predates this work:** when the remembered document
+  was not in the opened database, the Builder drew the data mantle as a document
+  and queued `doc migrate`, which wrote row, col and span into every record. A
+  `doc` verb now refuses when it cannot reach its document, and the canvas says
+  the document is missing instead of drawing another mantle.
+
+**In Void Maiz** (built there, logged there):
+- the projection's edge loop was O(E·N), now O(N+E);
+- layout runs in topological order;
+- one mantle is sliced out of the export without parsing the rest;
+- `Scene::find` is indexed;
+- `measures.hpp` gives values on edges, and only the statistics a level admits
+  ([measures](/concepts/foundation/measures.md)).
+
+**For Void Core** (message drafted, not relayed):
+- one `set` is 4.8 µs per rune, all of it the undo memento;
+- a batch copies the slice twice;
+- per-command lookup inside a batch makes imports superquadratic. After the
+  open, the Antfarm's 2,400-command chamber reconcile spends most of its three
+  minutes there;
+- a host cannot export one mantle.
+
+**Answered:** Q123 (bootstrap is Mago's, built), Q124 (family messages are
+issues, CLAUDE.md rule 4), Q125 (protect `main`), and Q127 (release in CI). Q126
+is researched and still the author's. Q128 is opened.
+
+**Reporting a problem, in the app.** Settings > About and the phone's Me screen
+have Report a problem. It produces a text to send to whoever helps, or opens the
+form. On a phone it uses the share sheet once the app runs on Void Maiz's
+portable shell.
+
+**Mago's audiences** (Void Mago `okf/concepts/audiences.md`): no user ever needs
+Mago; a fork maintainer uses it by choice; a family contributor needs it. On a
+phone the store is the only updater, by Play and App Store policy. Hormiga's
+manifest now states its `identity` and `contribute` blocks.
+
+# 5×10^5 runes from public data, opened until it opened (2026-10-25, later)
+
+The author asked for a database large enough to stand in for a weak device. It
+had to be built from a real open dataset if possible, with links and clustering
+at its centre. They wanted to test the file themselves.
+
+**The tool** is `tools/datasets/stressgen.cpp` (README beside it), in C++,
+because CSV-to-mantle should become a Hormiga capability. It takes:
+- 2.7×10^5 real organizations from the IRS exempt-organization file (public
+  domain), with the "in care of" name and the street left out;
+- ZIP centroids from the Census gazetteer;
+- synthetic contacts and events.
+
+The links are membership, colleagues, volunteering, hosting, attending,
+partnering, and revenue and assets as values on measure edges. Void Maiz's new
+Leiden hierarchy clusters the result: 23,609 level-1 clusters at modularity
+0.977, NMI 0.77 with city and 0.14 with field. It writes the `.miga` directly,
+because at this size Void Core cannot build it command by command. The bundle
+is 296 MB. It, and the downloads, live outside the repository.
+
+**Opening it** in the real app froze the window and climbed past 18 GB. We
+sampled the main thread's stack and fixed whatever held it longest, then ran
+again, about a dozen rounds in all
+([scale](/concepts/platform/scale.md) has the table). Hormiga's side:
+- **the save is off the UI thread:** `app/save_writer`, coalescing, flushed at
+  quit; the SQLite mirror prepares each statement once;
+- **no re-projection after a save;**
+- **a scene is kept when its mantle's digest is unchanged;**
+- **Allomone derives nothing until a script exists.** Also: `allo_style` is now
+  cleared on every refresh. It never was before, so a script switched off kept
+  its colours, labels and `hide` until a restart;
+- **Antfarm contexts read the data lazily,** once per change, from the scene the
+  window holds (`held_data`). A `farm::Rune` is now an index into a shared
+  scene, not a copy;
+- **the date query** reads a rune's own wires (`Scene::wires_at`), and does no
+  date work for an expression without `date:`. Tags match exactly in Void Core,
+  so this changes no answer;
+- **the calendar** indexes dated runes once per change;
+- **the tag picker** gathers its vocabulary only when typed into;
+- **the Builder's grant line** recomputes on a change, not every 2 s;
+- **the image-host panel** counts from the held scene.
+
+**In Void Maiz** (built there, logged there): `graph.hpp`; layout by strongly
+connected components; `Core::revision` with one export per change and reads
+that are reads; glyph re-registration as a no-op; `mantle_digest` and
+`Scene::source`; `Scene::wires_at`.
+
+**Where it stands, on this laptop:**
+- the window is usable after about 280 s;
+- frames then take a median of 11 ms;
+- memory is about 18 GB.
+
+Most of the 280 s is the first open's Antfarm creation and chamber reconcile.
+Those are command sequences, and each command pays Void Core's undo copy plus a
+projection. Quitting waits minutes for the working copy's write.
+
+**For Void Core** (message drafted, section 5 added):
+- `save` keeps a full copy of every mantle inside the state: 28 MB became 57 MB;
+- `validate` is quadratic;
+- a host cannot tell whether a command changed anything;
+- graph analysis is Python-only, and Void Maiz's C++ implementation is on offer.
+
+**Opened:**
+- Q129: is the unit a device holds a cluster as a mantle, or a cluster loaded
+  out of one? The lean is one mantle, loaded by cluster.
+- Q130: should Hormiga strip `_baseline` from its files? The lean is to wait
+  for Core.
+
+The research is in [clusters](/concepts/platform/clusters.md): Leiden,
+hierarchical aggregation (Elmqvist & Fekete), Shneiderman's overview first, and
+dynamic-frontier updates.
+
+**The test file is not the fixture.** The bundle is in the author's own folder
+and is never committed. It is made of public records and invented people.

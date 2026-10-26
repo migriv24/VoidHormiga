@@ -882,7 +882,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
      * full-width table, one under the next. It never read `row` at all. The
      * Builder let you place two buttons side by side, the website honoured it,
      * and the newsletter quietly stacked them — the "declared but invisible"
-     * shape again, the same week Click LaFont reported `col` doing the same
+     * shape again, the same week a field report found `col` doing the same
      * thing on the web.
      *
      * So this mirrors the website's driver in render/site.cpp: a run of

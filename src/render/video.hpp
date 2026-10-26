@@ -64,8 +64,8 @@ struct VideoRef {
      * `render/site.cpp`.
      *
      * The report's reasoning, kept because it is the reason and not a
-     * preference: *"For an organization whose members include immigration and
-     * survivor-services groups, that is not a small detail."* A visitor to a
+     * preference: for an organization whose readers can be harmed by being
+     * identified, that is not a small detail. A visitor to a
      * mutual-aid site should not be reported to a third party for having read
      * the page. */
     std::string embed_url() const {

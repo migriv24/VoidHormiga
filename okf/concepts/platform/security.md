@@ -112,7 +112,7 @@ if it carries `clearance:public`, and its `email`/`phone` only with a separate
 **Why the rule lives in the block and not in the query.** A query is authored to
 select, and the natural query for a directory is `type:contact`. If selection
 were sufficient, the first person to write the obvious thing would publish
-84 people's phone numbers and be told it worked. A privacy rule that a correct-
+dozens of people's phone numbers and be told it worked. A privacy rule that a correct-
 looking query can step around is not a seam; it is a convention with a good
 reputation.
 

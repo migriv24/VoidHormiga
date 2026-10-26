@@ -121,10 +121,7 @@ void HormigaApp::draw_databases() {
         const std::string p = on_pick_file("");
         if (!p.empty()) {
             save_open();
-            run_busy("Opening database…", [this, p] {
-                open_database(p);
-                hormiga::app_settings::note_recent(p);
-            });
+            begin_open_database(p, [p] { hormiga::app_settings::note_recent(p); });
             listed_at = -100.0;
         }
     }
@@ -160,10 +157,7 @@ void HormigaApp::draw_databases() {
             if (!is_open && ImGui::SmallButton("Open")) {
                 save_open();
                 const std::string p = k.path;
-                run_busy("Opening database…", [this, p] {
-                    open_database(p);
-                    hormiga::app_settings::note_recent(p);
-                });
+                begin_open_database(p, [p] { hormiga::app_settings::note_recent(p); });
                 listed_at = -100.0;
             }
             if (!k.is_default) {

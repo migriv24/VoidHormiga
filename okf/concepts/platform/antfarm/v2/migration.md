@@ -2,9 +2,32 @@
 type: Guide
 title: Migrating an Antfarm from v1 to v2
 description: "For agents and people with a v1 database (written 2026-09-28, before any of it is built, so it can be built to): why v2 is a new version and not an upgrade in place, the migration command and what it does step by step (a backup first, then one batch), the glyph-by-glyph mapping, the v1 script idioms and their v2 lines, what does not migrate, how mixed-version members are kept apart, and how to verify and undo."
-tags: [status:direction, audience:agent, audience:dev, confidence:asserted]
+tags: [status:current, audience:agent, audience:dev, confidence:measured]
 timestamp: 2026-09-28T00:00:00Z
 ---
+
+**Runs on open since 2026-10-19.** The author removed the choice between
+versions: the app converts a database the moment it opens it
+(`HormigaApp::convert_antfarm`, at the start of the next frame, one logged
+batch, so `undo` reverses it and the file on disk is the backup until the next
+save). A database with no graph, or a new one, gets `farm init` instead. The CLI
+never converts on its own: an agent runs `farm migrate apply`, and is told to
+when it reaches for the `antfarm` mantle.
+
+## What still reads the old format
+
+Not choices anyone makes: settings these features keep in the `antfarm` mantle
+until each moves to the Antfarm. Each is the next piece of this work.
+
+| reader | what it keeps there | its Antfarm home |
+|---|---|---|
+| LAN sharing (`hol_lan_share`, `hol_membership`) | allow, presence, port, the room key's file name, private tags, the registry's name | the Network chamber's sharing settings (no kind yet) |
+| the Publish tab, `effect deploy-site`, `check-host`, `rollback-site` | its hosts | `web-domain` (`farm publish`, `check`, `rollback` already run on it) |
+| Hosting images online, `effect host-online` | **moved 2026-10-19**: they read the Antfarm's image hosts, buckets and web domains first (`image_host_scene`), then any old-format host | done; the old hosts are read only where a database still has them |
+| `effect push-store`, `check-store` | `hol_object_store` | a `bucket` reservoir |
+| the deployment history | `deployment` runes, written by both publish paths | the Documents chamber |
+| `effect import-rescue` | `hol_supabase` | an import kind (not designed) |
+| new databases | the old seed, for the rows above | goes when they move |
 
 **Built 2026-10-01** (`farmhost::migrate_plan`; `farm migrate`, `farm migrate
 apply`, in the CLI and the command bar), with these departures from the plan
@@ -45,7 +68,7 @@ from ground rule 3 and bound how the break is made:
 
 1. **Old logs must still replay.** A v1 transcript says
    `link out-html out-localhost --relation 3:1`. The v1 glyphs therefore stay
-   **registered, as legacy**: they are not in the palette and nothing new uses
+   **registered, never offered**: they are not in the palette and nothing new uses
    them, but a replay finds them.
 2. **The migration is a command, not a file rewrite.** It is logged,
    attributed, rehearsable and undoable like any other change.
@@ -59,7 +82,9 @@ the migration. After migrating, it is tagged `superseded`, read by nothing, and
 kept, so the migration can be compared and undone. `farm migrate retire-v1`
 removes it once the organization is satisfied.
 
-**The migration is offered only when v2 can do everything v1 does** (the end of
+*(Superseded 2026-10-19: the author chose to convert every database now and
+move the remaining readers one by one, listed above.)* **The migration is
+offered only when v2 can do everything v1 does** (the end of
 [phase](/concepts/platform/antfarm/v2/phases.md) V6). Until then a v2 graph can
 be built only in a database created with v2 enabled, for development and the
 Cat Dataset. No organization runs half its connections on each version.

@@ -32,8 +32,8 @@
  * that does not exist on the type cannot be leaked by a future caller who
  * forgets, and cannot be added by accident."* CLAUDE.md rule 6 applies harder
  * here than almost anywhere else, because a published calendar feed is a URL
- * that strangers poll: `okf/concepts/sections/calendar.md` names ICE activity as
- * the canonical sensitive case. A caller must fill each field deliberately, and
+ * that strangers poll: `okf/concepts/sections/calendar.md` names a community
+ * safety alert as the canonical sensitive case. A caller must fill each field deliberately, and
  * `public_categories` is an ALLOWLIST rather than a denylist — see its comment.
  */
 #pragma once

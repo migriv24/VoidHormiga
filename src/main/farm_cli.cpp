@@ -20,20 +20,25 @@ namespace hormiga {
 std::vector<maiz::EffectOp> farm_effect_ops() {
     return {
         {"farm-run",
-         "Run an Antfarm v2 node: an Import CSV (rows into Data), a Store (files into a river), the "
+         "Run an Antfarm node: an Import CSV (rows into Data), a Store (files into a river), the "
          "Data->Assets tunnel (register files). Args: <node> [apply]. Rehearses unless `apply`.",
          false,
          "an import adds runes (one undoable batch); a store COPIES FILES into another folder or PUTS "
          "THEM ONLINE through a bucket or image host, where anyone with the link can see them"},
-        {"farm-check", "The smallest real test of a v2 folder, domain, bucket or key. Args: <node>.", true,
+        {"farm-check", "The smallest real test of an Antfarm folder, domain, bucket or key. Args: <node>.", true,
          "a folder check writes and deletes one small file; a domain, bucket or key check sends the "
          "key to that vendor and reads, and changes nothing there"},
-        {"farm-preview", "Build a v2 document and everything mounted beside it on its local domain. Args: <doc>.",
+        {"farm-preview", "Build an Antfarm document and everything mounted beside it on its local domain. Args: <doc>.",
          true, "rewrites site/ beside the database; in the application it also serves it on localhost"},
         {"farm-publish",
-         "Build everything mounted on a v2 document's web domain and publish it there. Args: <doc>.", false,
+         "Build everything mounted on an Antfarm document's web domain and publish it there. Args: <doc>.", false,
          "PUBLISHES THE WEBSITE (and the calendars and maps mounted on the same domain). It becomes the "
-         "live page everyone sees, immediately, and nothing in this application can take it back"},
+         "live page everyone sees, immediately; `farm rollback <web-domain>` puts a previous one back"},
+        {"farm-rollback",
+         "Put a web domain back on an earlier deployment. Args: <web-domain> [deployment]. Without a "
+         "deployment it lists them.",
+         false,
+         "CHANGES THE LIVE WEBSITE: the deployment named becomes what everyone sees, immediately"},
     };
 }
 
@@ -193,7 +198,7 @@ int run_farm_cli(const maiz::HostApp& app, const std::filesystem::path& state, c
             session.close();
             return 0;
         }
-        if (v == "run" || v == "check" || v == "preview" || v == "publish") {
+        if (v == "run" || v == "check" || v == "preview" || v == "publish" || v == "rollback") {
             std::string c = "effect farm-" + v;
             for (std::size_t i = 1; i < tok.size(); ++i) c += " " + tok[i];
             const maiz::Result res = session.dispatch(c);
@@ -246,6 +251,20 @@ int run_farm_cli(const maiz::HostApp& app, const std::filesystem::path& state, c
 
 int farm_cli_main(const maiz::HostApp& app, int argc, char** argv, const std::string& given_state,
                   std::filesystem::path& base, std::string& state_name, const std::filesystem::path& ship) {
+    /* AN AGENT REACHING FOR THE OLD FORMAT is told, once, what to use instead
+     * (the author, 2026-10-19: "the safest choice IS the new antfarm"). Not a
+     * refusal: old logs must replay, and Share and Publish still keep settings
+     * there. Seen on one-command calls; a script is not read ahead. */
+    for (int i = 1; i + 1 < argc; ++i) {
+        const std::string_view a = argv[i], b = argv[i + 1];
+        const bool old = (a == "use" && b == "antfarm") ||
+                         (a == "new" && b.substr(0, 4) == "hol_" && std::string_view(argv[i - 1]) == "rune");
+        if (!old) continue;
+        std::cerr << "note: the `antfarm` mantle is the Antfarm's format before 2026-09-28. It is kept so old logs "
+                     "replay and is converted when the app opens a database; build with `farm` instead "
+                     "(`farm help`, and `farm migrate apply` to convert this database now).\n";
+        break;
+    }
     for (int i = 1; i < argc; ++i) {
         if (std::string_view(argv[i]) != "farm" || std::string_view(argv[i - 1]) == "--state") continue;
         std::vector<std::string> tok, flags;

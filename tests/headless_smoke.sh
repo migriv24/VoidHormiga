@@ -497,18 +497,18 @@ check $? "job_grid declares a detail axis like event_grid"
 "$CLI" use demo-org >/dev/null 2>&1
 cat > mk.txt <<'EOF'
 use demo-org
-rune new organization lcog
-set lcog display_name 'County Council of Governments'
-set lcog geo '44.05,-123.09'
+rune new organization rcog
+set rcog display_name 'Riverton Council of Governments'
+set rcog geo '41.88,-87.63'
 use es-site
 rune new map_embed mp
 set mp row 3
 EOF
 "$CLI" --script mk.txt --atomic >/dev/null 2>&1
 "$CLI" --allow-effects=render-site effect render-site en es-site >/dev/null 2>&1
-grep -q 'County Council of Governments' site/index-en.html
+grep -q 'Riverton Council of Governments' site/index-en.html
 check $? "map markers use display_name, not the humanized slug"
-! grep -q '&quot;n&quot;:&quot;Lcog&quot;' site/index-en.html
+! grep -q '&quot;n&quot;:&quot;Rcog&quot;' site/index-en.html
 check $? "...so an acronym is not title-cased into nonsense"
 
 # ── THE STYLE AXES (2026-08-20) ────────────────────────────────────────────
@@ -781,10 +781,10 @@ rune new contact cy-private
 set cy-private display_name 'Cy Private'
 set cy-private email 'cy@example.org'
 tag cy-private +type:contact
-rune new organization lcog
-set lcog display_name 'County Council of Governments'
-set lcog email 'desk@example.org'
-tag lcog +type:organization +clearance:public
+rune new organization rcog
+set rcog display_name 'Riverton Council of Governments'
+set rcog email 'desk@example.org'
+tag rcog +type:organization +clearance:public
 PUBEOF
 "$CLI" --script pub.txt --atomic >/dev/null 2>&1
 "$CLI" --allow-effects=publish-index effect publish-index >/dev/null 2>&1
@@ -817,7 +817,7 @@ check $? "clearance:contact releases the email and phone"
 
 # an ORGANISATION's email waits for the tag too: a small group's "front desk"
 # is very often one volunteer's personal inbox
-grep -q 'County Council of Governments' "$IDX"
+grep -q 'Riverton Council of Governments' "$IDX"
 check $? "an organization is listed on clearance:public"
 ! grep -q 'desk@example.org' "$IDX"
 check $? "...and its email waits for clearance:contact like anyone else's"
@@ -1045,7 +1045,7 @@ check $? "...and the newline itself survives, so a two-paragraph value works"
 cd ..
 
 
-# ── the Click LaFont field report, 2026-09-02 ────────────────────────────────
+# ── a client's field report, 2026-09-02 ──────────────────────────────────────
 # Six defects and six absences, of which these are the ones a headless run can
 # see. Each check names the report item it pins, because a test whose reason
 # lives only in a commit message is a test somebody deletes.
@@ -1381,7 +1381,7 @@ check $? "the newsletter links the file at an absolute address"
 check $? "the download glyph is in the briefing an agent reads"
 
 # ── PLATFORM SETS: the download for the visitor's computer (2026-09-08) ────
-# The author asked for OS detection; the Click LaFont report is why it is
+# The author asked for OS detection; a client's field report is why it is
 # renderer-owned rather than an author `<script>`, and why it may only reorder
 # and mark. The rule under test is the one that makes it safe: NOTHING IS EVER
 # HIDDEN -- not by the renderer, and not by app.js, which does not run at all
@@ -1588,7 +1588,7 @@ check $? "...and translation-report does not ask anyone to translate an email"
 cat > heroparts.txt <<'EOF'
 use report-site
 rune new hero h-portrait
-set h-portrait title_en 'Miguel Rivas'
+set h-portrait title_en 'Ana Ruiz'
 set h-portrait portrait 'assets/tone-cover-missing.png'
 set h-portrait row 42
 rune new narrative n-head
@@ -1710,6 +1710,22 @@ check $? "host-online asks the Antfarm, and the website's host answers with a li
 check $? "...the file is in site/, to go live with the next publish"
 grep -q '"hosted_by"' demo-org.json && grep -q 'https://example.org/assets/web-pic.png' demo-org.json
 check $? "...and the image keeps the link and the node that made it"
+cd ..
+
+# ── `report`: what a person pastes into a public issue (2026-10-23) ──────────
+# okf/concepts/contributing/intake.md. It may know the BUILD and nothing else:
+# no database is opened or made, and nothing names this machine.
+mkdir -p report-verb && cd report-verb
+rep=$("$CLI" report 2>&1)
+check $? "report runs with no database"
+[ -z "$(ls -A)" ]
+check $? "...and makes nothing in the folder it ran in"
+echo "$rep" | grep -q '/issues/new?template=bug.yml&version='
+check $? "...and links the bug form with the version filled in"
+! echo "$rep" | grep -q -i -E 'users[/\\]|/home/|report-verb'
+check $? "...and names no path on this machine"
+"$CLI" report --feature 2>&1 | grep -q 'template=feature.yml'
+check $? "report --feature links the feature form"
 cd ..
 
 # A failed command must exit non-zero: a shell and an agent both branch on it.

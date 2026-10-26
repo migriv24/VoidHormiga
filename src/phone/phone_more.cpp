@@ -16,6 +16,14 @@
 
 #include "json.hpp"
 #include "platform/device_paths.hpp"
+#include "report/report.hpp"     // Something wrong? > Report a problem
+/* The share sheet and the browser, where a shell installed them. Void Maiz's
+ * portable shell (device.hpp) is not on its released branch yet: without it
+ * the report is shown to select and copy, as on this app's own shell. */
+#if __has_include("voidmaiz/device.hpp")
+#include "voidmaiz/device.hpp"
+#define HORMIGA_HAS_MAIZ_DEVICE 1
+#endif
 
 #include <cfloat>
 
@@ -190,128 +198,11 @@ void HormigaApp::PhoneUi::notes(HormigaApp& app, PhoneUi& ph, Frame& f) {
     ImGui::Dummy(ImVec2(0, card_h)); // room under the last card for the add button
 }
 
-/* ── THE ANTFARM: its nodes, one node, or the graph ────────────────────── */
-void HormigaApp::PhoneUi::antfarm(HormigaApp& app, PhoneUi& ph, Frame& f) {
-    if (app.fv2.v2) { // Antfarm v2, the prototype (phone_farm.cpp)
-        farm(app, ph, f);
-        return;
-    }
-    const float dp = ph.dp;
-    if (f.route.rfind("detail:", 0) == 0) {
-        const maiz::SceneNode* n = app.scene.find(f.route.substr(7));
-        if (!n) {
-            maiz::dim_wrapped("This node was removed, here or on another device.");
-            return;
-        }
-        app.ed.selection = {n->name};
-        ImGui::TextUnformatted(n->label.empty() ? n->name.c_str() : n->label.c_str());
-        ImGui::TextDisabled("%s", kind_label(n->glyph).c_str());
-        if (hormiga::collab::device_only(*n))
-            maiz::dim_wrapped(ICON_FA_LOCK "  Names a credential file, so it stays on this device.");
-        // what it is connected to, both ways
-        for (const auto& w : app.scene.wires) {
-            if (w.from == n->name) ImGui::TextDisabled(ICON_FA_ARROW_RIGHT "  feeds %s", w.to.c_str());
-            if (w.to == n->name) ImGui::TextDisabled(ICON_FA_ARROW_LEFT "  from %s", w.from.c_str());
-        }
-        ImGui::Separator();
-        maiz::WidgetContext ctx{app.scene, f.out, std::string(), 0.0f};
-        for (const auto& fl : n->fields) {
-            if (fl.editor == "hidden" || fl.key == "pos" || fl.key == "size") continue;
-            ImGui::TextDisabled("%s", fl.label.empty() ? fl.key.c_str() : fl.label.c_str());
-            ImGui::PushItemWidth(-FLT_MIN);
-            ImGui::PushID(fl.key.c_str());
-            maiz::widget_field(ctx, app.widgets, *n, fl);
-            ImGui::PopID();
-            ImGui::PopItemWidth();
-        }
-        return;
-    }
-
-    if (ImGui::SmallButton(ICON_FA_FLASK "  Try Antfarm v2")) app.fv2.v2 = true;
-    int mode = ph.farm_graph ? 1 : 0;
-    if (maiz::segmented("##farm-mode", {"Nodes", "Graph"}, mode)) ph.farm_graph = mode == 1;
-    if (ph.farm_graph) {
-        if (!ph.farm_style_ready) {
-            ph.farm_style = app.canvas_style;
-            maiz::TouchProfile prof;
-            prof.dp = dp;
-            maiz::apply_touch_canvas(ph.farm_style, prof);
-            app.ed.cam.zoom = std::clamp(dp * 0.6f, 0.4f, 2.0f); // start near a readable size
-            ph.farm_style_ready = true;
-        }
-        // zoom: a phone has no wheel, and pinching is not wired yet
-        auto zoom = [&](float k) {
-            const ImVec2 avail = ImGui::GetContentRegionAvail();
-            const float cx = app.ed.cam.x + avail.x * 0.5f / app.ed.cam.zoom;
-            const float cy = app.ed.cam.y + avail.y * 0.5f / app.ed.cam.zoom;
-            app.ed.cam.zoom = std::clamp(app.ed.cam.zoom * k, ph.farm_style.min_zoom, ph.farm_style.max_zoom);
-            app.ed.cam.x = cx - avail.x * 0.5f / app.ed.cam.zoom;
-            app.ed.cam.y = cy - avail.y * 0.5f / app.ed.cam.zoom;
-        };
-        if (ImGui::Button(ICON_FA_MAGNIFYING_GLASS_MINUS)) zoom(1.0f / 1.25f);
-        ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_MAGNIFYING_GLASS_PLUS)) zoom(1.25f);
-        ImGui::SameLine();
-        maiz::dim_wrapped("Pinch to zoom, drag to move around. Hold on a node for its menu.");
-        /* PINCH (2026-09-27; the author: the graph "doesn't have the same zoom in
-         * and out controls that the node graph should have"). Two fingers are
-         * the touch gate's; the point between them stays under them while the
-         * view scales, and moving both pans. */
-        const maiz::TouchGate& gate = maiz::default_touch_gate();
-        if (gate.pinch.active) {
-            const ImVec2 origin = ImGui::GetCursorScreenPos(); // where the canvas draws from
-            maiz::Camera& cam = app.ed.cam;
-            const float wx = cam.x + (gate.pinch.cx - origin.x) / cam.zoom;
-            const float wy = cam.y + (gate.pinch.cy - origin.y) / cam.zoom;
-            cam.zoom = std::clamp(cam.zoom * gate.pinch.scale, ph.farm_style.min_zoom, ph.farm_style.max_zoom);
-            cam.x = wx - (gate.pinch.cx - origin.x) / cam.zoom - gate.pinch.dx / cam.zoom;
-            cam.y = wy - (gate.pinch.cy - origin.y) / cam.zoom - gate.pinch.dy / cam.zoom;
-        }
-        maiz::CanvasNet anet;
-        anet.surfaces = &app.surfaces;
-        anet.roster = &app.roster;
-        anet.display = app.net_settings.show;
-        anet.shareable = app.share_now;
-        anet.surface_id = "canvas:antfarm";
-        maiz::CanvasIO cio = maiz::edit_canvas("phone-antfarm", app.scene, app.ed, ph.farm_style, &app.palette_antfarm,
-                                               &app.faces, {}, nullptr, &anet);
-        for (auto& c : cio.commands) f.out.push_back(std::move(c));
-        return;
-    }
-
-    maiz::dim_wrapped("What this database runs on: its backends, where it publishes, and each device. "
-                      "Shared with its members, except anything naming a credential file.");
-    std::vector<const maiz::SceneNode*> rows;
-    for (const auto& n : app.scene.nodes) rows.push_back(&n);
-    std::sort(rows.begin(), rows.end(), [](const maiz::SceneNode* a, const maiz::SceneNode* b) {
-        return a->glyph != b->glyph ? a->glyph < b->glyph : a->label < b->label;
-    });
-    const float card_h = 64.0f * dp, pad = 12.0f * dp;
-    for (const maiz::SceneNode* n : rows) {
-        ImGui::PushID(n->name.c_str());
-        const bool tapped = ImGui::InvisibleButton("##node", ImVec2(-FLT_MIN, card_h));
-        const bool held = ImGui::IsItemActive();
-        ImGui::PopID();
-        const ImVec2 r0 = ImGui::GetItemRectMin(), r1 = ImGui::GetItemRectMax();
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        dl->AddRectFilled(r0, r1, ImGui::GetColorU32(held ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg), 10.0f * dp);
-        const float r = 16.0f * dp, cy = (r0.y + r1.y) * 0.5f;
-        dl->AddCircleFilled(ImVec2(r0.x + pad + r, cy), r, kind_colour(n->glyph));
-        const std::string title = n->label.empty() ? n->name : n->label;
-        const float title_px = ImGui::GetFontSize() * 1.04f, sub_px = ImGui::GetFontSize() * 0.88f;
-        dl->PushClipRect(r0, ImVec2(r1.x - pad, r1.y), true);
-        dl->AddText(ImGui::GetFont(), title_px, ImVec2(r0.x + pad * 2 + r * 2, cy - title_px), ImGui::GetColorU32(ImGuiCol_Text),
-                    title.c_str());
-        std::string kind = kind_label(n->glyph); // the palette's own name for it, when it has one
-        for (const auto& e : app.palette_antfarm.entries)
-            if (e.glyph == n->glyph) kind = e.label;
-        const std::string sub = kind + (hormiga::collab::device_only(*n) ? "  " ICON_FA_LOCK : "");
-        dl->AddText(ImGui::GetFont(), sub_px, ImVec2(r0.x + pad * 2 + r * 2, cy + 2 * dp),
-                    ImGui::GetColorU32(ImGuiCol_TextDisabled), sub.c_str());
-        dl->PopClipRect();
-        if (tapped && ImGui::GetIO().MouseDragMaxDistanceSqr[0] < 36.0f * dp * dp) f.stack->push("detail:" + n->name);
-    }
-}
+/* ── THE ANTFARM: one, the same as the desktop's (phone_farm.cpp) ─────────
+ * The old graph's screen and its "Try Antfarm v2" button were removed on
+ * 2026-10-19: a database is converted when it opens, so there is no older
+ * Antfarm to choose. */
+void HormigaApp::PhoneUi::antfarm(HormigaApp& app, PhoneUi& ph, Frame& f) { farm(app, ph, f); }
 
 /* ── SETTINGS: this app, on this phone ─────────────────────────────────── */
 void HormigaApp::PhoneUi::settings(HormigaApp& app, PhoneUi& ph, Frame&) {
@@ -399,6 +290,38 @@ void HormigaApp::PhoneUi::settings(HormigaApp& app, PhoneUi& ph, Frame&) {
     if (ImGui::Button(ICON_FA_FLOPPY_DISK "  Save now")) app.do_save();
     maiz::dim_wrapped("The Builder and the Map are on the desktop. A phone keeps the organization's people, "
                       "dates and notes with you, and in sync.");
+
+    /* REPORT A PROBLEM, ON A PHONE (2026-10-25, Void Mago okf/concepts/audiences.md).
+     * The organizer on a phone is the person least likely to have a GitHub account
+     * and most likely to have somebody who helps them, so the first door is the
+     * system's share sheet (a message, an email) and the form is the second. Both
+     * come from the Device a Void Maiz shell installs; this app's own Android
+     * shell installs none yet, so there the report is shown to select and copy,
+     * and the share sheet arrives with the move to Void Maiz's portable shell. */
+    ImGui::SeparatorText("Something wrong?");
+    static bool show_report = false;
+    const std::string txt = hormiga::report::text(hormiga::report::Kind::Bug);
+#ifdef HORMIGA_HAS_MAIZ_DEVICE
+    maiz::Device* device = maiz::device();
+    if (ImGui::Button(ICON_FA_BUG "  Report a problem")) {
+        maiz::ShareItem item;
+        item.subject = "Void Hormiga: a problem";
+        item.text = txt;
+        if (!(device && device->share(item))) show_report = !show_report;
+    }
+    if (device) {
+        ImGui::SameLine();
+        if (ImGui::Button("Open the form")) device->open_url(hormiga::report::issue_url(hormiga::report::Kind::Bug));
+    }
+#else
+    if (ImGui::Button(ICON_FA_BUG "  Report a problem")) show_report = !show_report;
+#endif
+    if (show_report) {
+        ImGui::InputTextMultiline("##phone-report", const_cast<char*>(txt.c_str()), txt.size() + 1,
+                                  ImVec2(-1, ImGui::GetTextLineHeight() * 12), ImGuiInputTextFlags_ReadOnly);
+        maiz::dim_wrapped("Send this to whoever helps you with Hormiga. It says which Hormiga this is and "
+                          "nothing about your database.");
+    }
 }
 
 /* ── PROFILE: the desktop's own body ───────────────────────────────────── */

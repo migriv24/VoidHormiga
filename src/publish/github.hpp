@@ -91,8 +91,8 @@ struct DeployResult {
 };
 
 struct Config {
-    std::string owner;               // "clicklafont"
-    std::string repo;                // "clicklafont.github.io"
+    std::string owner;               // "theirorg"
+    std::string repo;                // "theirorg.github.io"
     std::string branch = "gh-pages"; // the branch Pages serves
     std::string token;
     std::string cname;    // custom domain → a CNAME file in the tree ("" = none)

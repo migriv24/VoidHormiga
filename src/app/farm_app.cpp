@@ -18,7 +18,49 @@ void HormigaApp::reconcile_chambers() {
 }
 
 std::string HormigaApp::antfarm_mantle() const {
-    return fv2.v2 && fv2.here ? std::string(farm::kMantle) : std::string(kAntfarmMantle);
+    return fv2.here ? std::string(farm::kMantle) : std::string(kDataMantle); // never the old graph
+}
+
+/* ── EVERY DATABASE HAS THE ANTFARM (the author, 2026-10-19) ─────────────────
+ *
+ * "we don't want the user to be able to choose to use the old antfarm. rather,
+ * we just wanna convert the old to the new." Run at the start of a frame after
+ * a database loads (fv2.convert, set by every load), never inside one, because
+ * it replaces mantles. A database with no `farm` mantle is given one:
+ *   - built from its graph in the format before 2026-09-28 (`farm migrate
+ *     apply`, which lists by name what it could not carry), or
+ *   - a fresh colony (`farm init`) when it has none, or is new (new_database
+ *     still seeds the old format's nodes, because Share and Publish read their
+ *     settings there; a conversion of that seed is not the designed default).
+ * Each is one logged batch, so `undo` takes it back and a replay reproduces it.
+ * The file on disk is untouched until the next save, so the opened bundle is the
+ * backup. Settings Share and Publish still keep in the `antfarm` mantle are not
+ * removed: they are read there until they move (okf/concepts/platform/antfarm/
+ * v2/migration.md, "What still reads the old format"). */
+void HormigaApp::convert_antfarm() {
+    fv2.convert = false;
+    const bool fresh = fv2.fresh;
+    fv2.fresh = false;
+    if (hormiga::farmhost::farm_exists(core)) return;
+    // a new database's old-format seed holds only Share's and Publish's settings: it gets the default colony
+    maiz::ProjectOptions old;
+    old.mantle = kAntfarmMantle;
+    const bool from_old = !fresh && !maiz::project_scene(core, old).nodes.empty();
+    try_farm_verb(from_old ? "farm migrate apply" : "farm init");
+    fv2.here = hormiga::farmhost::farm_exists(core);
+    if (fv2.here)
+        log.push_back({"info", "farm",
+                       from_old ? "this database's Antfarm was converted from the format before 2026-09-28 (one undo step)"
+                                : "this database was given its Antfarm (one undo step)"});
+}
+
+/* The data mantle's scene, when the window already holds one: the scene on
+ * screen, or the one kept while another section shows. At 5×10^5 runes a
+ * projection is seconds; anything that only READS the data asks here first. */
+const maiz::Scene* HormigaApp::held_data() const {
+    if (scene.mantle == kDataMantle) return &scene;
+    const auto idle = scenes_idle.find(kDataMantle);
+    return idle != scenes_idle.end() ? &idle->second : nullptr;
 }
 
 farm::Context HormigaApp::farm_context() {
@@ -29,13 +71,26 @@ farm::Context HormigaApp::farm_context() {
     dev.also = {ship_dir};
     const maiz::Roster* ros = &roster;
     const std::string me = dev.me;
+    /* ONE DATA MANTLE PER CHANGE, SHARED BY EVERY CONTEXT (2026-10-25): each
+     * context projected it for itself, seconds apiece at 5×10^5 runes, and the
+     * Builder builds one every few seconds. The slot lives for one model
+     * generation. The first context that needs the data fills it: with a copy of
+     * the scene the window holds, or else by projecting. */
+    if (!fv2.data || fv2.data_gen != model_gen) {
+        fv2.data = std::make_shared<std::shared_ptr<const maiz::Scene>>();
+        fv2.data_gen = model_gen;
+    }
+    auto held = [this]() -> std::shared_ptr<const maiz::Scene> {
+        const maiz::Scene* d = held_data();
+        return d ? std::make_shared<const maiz::Scene>(*d) : nullptr;
+    };
     return hormiga::farmhost::make_context(core, base_dir, &vault, dev, [ros, me](const std::string& u) {
         if (u == me) return std::string("here (this device)");
         for (const auto& p : ros->peers())
             if (p.state.who.name == u)
                 return "here, on " + (p.state.device.empty() ? std::string("a device") : p.state.device);
         return std::string();
-    });
+    }, fv2.data, held);
 }
 
 void HormigaApp::refresh_farm() {
@@ -70,8 +125,9 @@ bool HormigaApp::try_farm_verb(const std::string& cmd) {
     const farm::Context ctx = farm_context();
     farm::Evaluator ev(g, ctx);
     const std::string me = lan ? lan->me.username : std::string();
+    const maiz::Scene* data = held_data();
     const farm::VerbResult r = farm::run(tok, g, exists, &ev,
-                                         hormiga::farmhost::seed_info(core, cur_doc, me));
+                                         hormiga::farmhost::seed_info(core, cur_doc, me, data));
     if (r.needs_host) {
         const std::string v = tok.empty() ? "" : tok[0];
         if (v == "migrate") {
@@ -103,11 +159,11 @@ bool HormigaApp::try_farm_verb(const std::string& cmd) {
             if (!arrange.empty()) dispatch_and_reproject(maiz::compile_commit(farm::in_farm(arrange, scene.mantle)));
             log.push_back({cmds.empty() ? "error" : "info", "farm", note});
             fv2.fit = true;
-            if (section == Antfarm && fv2.v2) dispatch_and_reproject(std::string("use ") + farm::kMantle);
+            if (section == Antfarm) dispatch_and_reproject(std::string("use ") + farm::kMantle);
         } else if (v == "chambers") {
             reconcile_chambers();
             log.push_back({"info", "farm", "the chambers are in step"});
-        } else if (v == "run" || v == "check" || v == "preview" || v == "publish") {
+        } else if (v == "run" || v == "check" || v == "preview" || v == "publish" || v == "rollback") {
             std::string c = "effect farm-" + v; // through the effect seam, like every crossing
             for (std::size_t i = 1; i < tok.size(); ++i) c += " " + tok[i];
             dispatch_and_reproject(c);
@@ -128,7 +184,7 @@ bool HormigaApp::try_farm_verb(const std::string& cmd) {
         const maiz::Scene made = hormiga::farmhost::project_farm(core);
         const auto arrange = farm::arrange_commands(farm::read(made));
         if (!arrange.empty()) dispatch_and_reproject(maiz::compile_commit(farm::in_farm(arrange, back)));
-        if (section == Antfarm && fv2.v2) dispatch_and_reproject(std::string("use ") + farm::kMantle);
+        if (section == Antfarm) dispatch_and_reproject(std::string("use ") + farm::kMantle);
         return true;
     }
     dispatch_and_reproject(maiz::compile_commit(farm::in_farm(r.commands, back)));

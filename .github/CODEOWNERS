@@ -1,0 +1,16 @@
+# Who reviews what (okf/concepts/contributing/maintainers.md).
+#
+# Maintainers are GitHub ACCOUNTS, never machines. Whoever holds one of these
+# roles can triage, review, merge and release from any computer signed in with
+# `gh auth login`; nothing in this repository assumes a particular device.
+# Adding a maintainer is two steps: give the account the Maintain role on the
+# repository, and add it here.
+*                     @migriv24
+
+# The privacy rule and its mechanisms: a change here changes what may become
+# public, so it is reviewed as such.
+/tools/lint_public.py  @migriv24
+/tools/intake_scan.py  @migriv24
+/tools/hooks/          @migriv24
+/.github/              @migriv24
+/okf/concepts/foundation/what-may-be-public.md @migriv24

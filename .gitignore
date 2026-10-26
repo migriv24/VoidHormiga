@@ -143,3 +143,24 @@ android/*.keystore
 android/*.keystore.pass
 *.apk
 *.apk.idsig
+
+# ── NOTHING FROM SOMEBODY'S DATABASE, EVER (2026-10-23) ──────────────────────
+#
+# okf/concepts/foundation/what-may-be-public.md. This repository and every
+# release built from it are public, and okf/ ships beside the binary. Twice a
+# folder of field reports written against real databases was committed here; the
+# second time it shipped in sixteen releases with a phone number and a personal
+# email in it. A report about a database stays beside that database.
+#
+# `.private-terms` is the local list of client, organization and person names
+# tools/lint_public.py refuses. It is the one list that cannot be committed,
+# because the list is itself the secret.
+okf/reports/
+.private-terms
+HormigaFiles/
+*.state.json
+*.bkp
+*.db
+
+# Python bytecode from running tools/*.py (intake_scan imports lint_public)
+__pycache__/

@@ -567,8 +567,8 @@ std::string rune_title(const maiz::SceneNode& n);
 bool search_match(const maiz::SceneNode& n, std::string_view query);
 inline constexpr const char* kSearchHint = "search...  @tag  type:event  -@tag";
 
-/* Turn a rune's slug name back into a display title ("oakshire-inspires-
- * benefit" → "Oakshire Inspires Benefit"). The import slugified titles into
+/* Turn a rune's slug name back into a display title ("spring-benefit-
+ * dinner" → "Spring Benefit Dinner"). The import slugified titles into
  * names (Q2); this recovers a readable form for rendering. Imperfect on
  * acronyms, good enough for a newsletter. */
 std::string humanize(const std::string& slug);

@@ -7,12 +7,25 @@
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
+  "identity": {
+    "app_id": "org.voidhormiga.app",
+    "publisher": "Void Hormiga",
+    "feed": "https://github.com/migriv24/VoidHormiga/releases/latest/download/void-updates.json",
+    "belongs_to": "https://github.com/migriv24/VoidHormiga"
+  },
+  "_identity_note": "Who this application is to an operating system and a store: the Android package, the installer's publisher, the update feed. A fork changes all four, and `mago doctor` warns when it does not (Void Mago okf/concepts/audiences.md). A fork also sets `fork_of` to this repository.",
+  "contribute": {
+    "guide": "CONTRIBUTING.md",
+    "security": "SECURITY.md",
+    "issues": "https://github.com/migriv24/VoidHormiga/issues/new/choose"
+  },
   "requires": [
     {
       "name": "voidcore",
       "kind": "runtime",
       "version": ">=0.2.14",
       "sibling": "../VoidCore",
+      "repository": "https://github.com/migriv24/void-core",
       "cmake_var": "VOIDCORE_ROOT",
       "link": "shared",
       "note": "the engine and the dispatcher; ships as libvoidcore.dll beside our binaries. The floor is 0.2.14 rather than 0.2.7 because `glyphs` (the descriptor as a host contract) and `state.glyphs` (declarations that travel with the document) are both read here, and a 0.2.13 core answers neither -- it does not fail, it returns an empty descriptor, which is the shape of failure this floor exists to refuse."
@@ -22,6 +35,7 @@
       "kind": "runtime",
       "version": "*",
       "sibling": "../VoidMaiz",
+      "repository": "https://github.com/migriv24/VoidMaiz",
       "cmake_var": "VOIDMAIZ_ROOT",
       "link": "static",
       "note": "the view and node-graph library; we are its client #2"
@@ -31,6 +45,7 @@
       "kind": "runtime",
       "version": "*",
       "sibling": "../VoidAllomone",
+      "repository": "https://github.com/migriv24/VoidAllomone",
       "cmake_var": "VOIDALLOMONE_ROOT",
       "link": "static",
       "via": "voidmaiz",
@@ -41,9 +56,20 @@
       "kind": "runtime",
       "version": "*",
       "sibling": "../VoidPalabra",
+      "repository": "https://github.com/migriv24/VoidPalabra",
       "cmake_var": "VOIDPALABRA_ROOT",
       "link": "static",
       "note": "canonical encoding and the CRDT merge; compiled from source into our own target"
+    },
+    {
+      "name": "voidhammer",
+      "kind": "runtime",
+      "version": "*",
+      "sibling": "../VoidHammer",
+      "cmake_var": "VOIDHAMMER_ROOT",
+      "link": "static",
+      "optional": true,
+      "note": "the family networking since 2026-10-17. Optional: without it Hormiga builds with networking absent and CMake says so. It has no public repository yet, so `mago bootstrap` reports it absent rather than failing."
     }
   ],
   "_vendors_unversioned_note": "BLAKE3, Lucide and the typefaces carry no version string in the vendored drop, so they carry none here. `mago doctor` is right that nothing can then tell whether ours is the same copy anybody else has -- but a version invented to silence a note is the wrong answer to exactly the question the field exists to ask. The fix is to record the version at the next re-vendor, when it is a fact rather than a reconstruction.",
@@ -188,10 +214,18 @@
     ],
     "ships_beside_binary": [
       "AGENT-GUIDE.md",
-      "okf/",
+      "okf/index.md",
+      "okf/log.md",
+      "okf/roadmap.md",
+      "okf/verbs.md",
+      "okf/developer_questions.md",
+      "okf/developer_explanations.md",
+      "okf/concepts/",
+      "okf/audits/",
       "vendor/fonts/",
       "demo-assets/"
-    ]
+    ],
+    "_ships_note": "The OKF is listed by its parts, never as okf/, so that a folder left on disk beside them (okf/reports/ shipped in every release from 0.1.0 to 0.2.2 with a client's and a person's details in it) can never reach an installer. okf/concepts/foundation/what-may-be-public.md."
   },
   "data": {
     "layout": "one database, one folder",

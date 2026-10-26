@@ -82,7 +82,7 @@ you stop having to think about it.
 
 Any one of those folders can also be moved on its own (2026-09-01):
 
-    voidhormiga-cli config set paths.tiles  "D:/map-cache/lane-county"
+    voidhormiga-cli config set paths.tiles  "D:/map-cache/riverton"
     voidhormiga-cli config set paths.assets "../shared-photos"
     voidhormiga-cli config get paths.tiles          # read it back
     voidhormiga-cli config set paths.tiles ""       # unset: back to the default
@@ -180,7 +180,7 @@ directions.
 > Void Core 0.2.13 (2026-09-02) added the signpost we asked for, so on a current
 > build the empty answer tells you which verb you wanted:
 >
->     (no tag neighbors; 'click-dns' is a rune with 1 link - try `links click-dns`)
+>     (no tag neighbors; 'org-dns' is a rune with 1 link - try `links org-dns`)
 >
 > It still reports `ok: true` -- it found what it was asked for, which was zero
 > tag neighbours -- so do not branch on `ok` to detect this.
@@ -587,7 +587,7 @@ Also 2026-09-02, and also previously true of the email only. Newlines inside a
 
 One block, four lines. Before this, eighteen lines in one field rendered as one
 line on the website, and the only way to get a break was one block rune per
-line — a real site shipped two eighteen-track lists as single hyphen-joined
+line — a real site shipped two long lists as single hyphen-joined
 paragraphs because of it. Runs of spaces still collapse (that is `pre-line`, not
 `pre`), so pasted text behaves.
 
@@ -699,6 +699,19 @@ image rune's `url`. How that link is made is the Antfarm's decision (2026-09-15)
   answer. The Antfarm tab's inspector has a "Hosting images online" panel, and
   every image field says "online" or "not online yet", with a Host it online
   button.
+- **Add an image host with the Antfarm** (since 2026-10-19 `effect host-online`
+  and the panel look there first, then at any old-format host):
+
+      farm add image-host photos provider=imgbb
+      farm key add imgbb imgbb-key
+      farm key set imgbb-key < imgbb.token
+      farm plug imgbb-key.key photos.key
+
+  A `bucket` (S3 or R2, with its `public_url`) works the same way, and a
+  `web-domain` puts the file on your own website (it needs `site.base_url`).
+  `config set hosting.images photos` chooses one by its node name. Measured:
+  `effect host-online <image> <web-domain>` wrote the link and `hosted_by`.
+  `farm run <store> apply` puts a whole mantle's files online through a river.
 - **The preview still draws an image that is not online yet**, outlined in
   dashed red under a PREVIEW notice. **Do not send an issue showing that
   notice.** Run `effect host-online missing` first.
@@ -743,7 +756,7 @@ same one `ls --tag` evaluates. So a featured event does not have to appear twice
     set network-meeting summary_es 'Reunion mensual. El estacionamiento es limitado.'
 
 **Set `title_en`.** Without it the display title is the rune *name*, prettified —
-which turns `naacp-open-house-aug` into "Naacp Open House Aug". The old
+which turns `acme-open-house-aug` into "Acme Open House Aug". The old
 single-valued `summary` still works as a fallback, so nothing already in the
 database breaks; but writing both languages into one field means the English
 issue prints the Spanish too, which was 18% of a real newsletter.
@@ -794,9 +807,9 @@ These are two independent annotations, not two rungs of a ladder. "List me" and
 without the other.
 
 This is deliberate and it will look like a broken block the first time you use
-it. A real database held 84 contacts, 70 of them with a personal email — a
-directory that trusted `type:contact` would have published a phone book, and it
-would have done it the first time anyone wrote the obvious query. The render
+it. A real database holds dozens of contacts, most of them with a personal
+email — a directory that trusted `type:contact` would publish a phone book, and
+it would do it the first time anyone wrote the obvious query. The render
 tells you what it withheld:
 
     [info] render: directory net-members: 71 rune(s) withheld - only runes
@@ -854,6 +867,56 @@ person's, and the tag is the record of it. Ask, then tag what you are told.
   language, plus `calendar-en.ics` / `calendar-es.ics`. You do not need to
   post-process any of it.
 
+### The Antfarm is `farm`
+
+There is one Antfarm: the `farm` mantle, built and read with `farm` (`farm help`
+lists the grammar). Since 2026-10-19 the app converts any database whose graph
+is still in the format before 2026-09-28 when it opens it, and a new database
+starts with the default colony. In the CLI, `farm migrate` rehearses that
+conversion and `farm migrate apply` does it; the report names anything it
+could not carry.
+
+You will meet `hol_*` nodes (`hol_github`, `hol_static_host`, `hol_lan_share`
+and the rest) in the `antfarm` mantle of older databases. **They are the old
+format, not the cautious choice.** They are kept so old logs replay, and the
+Share window and the Publish tab still keep their settings there. Do not build
+with them: `use antfarm` prints a note saying so, and `--describe` files them
+under *Antfarm format before 2026-09-28*. The Antfarm is the safer road:
+- a wire with the wrong type is refused at the door;
+- a key is sealed in the vault, not left in a token file beside the database;
+- a publish keeps the same history and can be rolled back.
+
+**Publishing a website with the Antfarm**, run for real on 2026-10-19 with a
+dummy token:
+
+    farm add web-domain org-pages host=github target=theirorg/theirorg.github.io branch=gh-pages name=example.org
+    farm key add github gh-key
+    farm key set gh-key < gh.token          # standard input, never an argument; sealed in the vault
+    farm plug gh-key.key org-pages.key
+    farm plug site.publish org-pages.renditions
+    farm                                     # site: publish -> org-pages, and org-pages [ready]
+
+    voidhormiga-cli --allow-effects=farm-check    farm check org-pages
+    voidhormiga-cli --allow-effects=farm-publish  farm publish site
+    voidhormiga-cli --allow-effects=farm-rollback farm rollback org-pages        # lists its deployments
+    voidhormiga-cli --allow-effects=farm-rollback farm rollback org-pages <id>   # puts one back
+
+- **The vault is this device's.** It is `org.miga` beside the database, opened
+  by your profile's key. The app makes it at boot, and `farm key set` makes it
+  when there is none. A key whose value lives on another member's device says
+  *needs* here, which is right.
+- **Cloudflare Pages:** `host=cloudflare target=<project> account=<account id>`,
+  a `cloudflare` key, and `rollback_cmd` on the domain (the placeholders are in
+  the table below). An unlisted host takes `deploy_cmd` the same way.
+- **The same code underneath.** `farm publish` runs the Publish tab's deploy
+  code, writes the same `deployment` history, and passes the same privacy
+  seams, the map's included.
+
+`effect deploy-site`, `effect check-host` and `effect rollback-site` still work.
+They act on the old-format host nodes the Publish tab configures, and the rest
+of this section describes them, because a database you open may already be
+wired that way.
+
 ### Publishing, and the history it writes
 
 `effect deploy-site <host-node> [<document>]` puts the built `site/` online
@@ -882,6 +945,10 @@ a `hol_static_host` it needs `rollback_cmd` on the node (the sibling of
 the commit the `deployment` rune already holds.
 
 #### Wiring a host: the command lives on the node
+
+The `rune new hol_*` lines below are the old format, for reading a database
+already wired that way. A new host is a `web-domain` (above), and its
+`deploy_cmd` and `rollback_cmd` take the same placeholders.
 
 **Hormiga has no vendor endpoint compiled into it, deliberately.** A REST API
 this code cannot execute even once is one it has no business asserting, and a
@@ -948,6 +1015,11 @@ that branch. Four different fixes, and only one of them is the token. A pass on
 three and a fail on one is a specific instruction, not a failure.
 
 #### Publishing to GitHub Pages
+
+**To set one up, use the Antfarm transcript above** (*The Antfarm is `farm`*).
+What follows is the old-format route, for a database already wired with a
+`hol_github` node; everything said about tokens, `.nojekyll`, `CNAME` and the
+mirror holds for both, because both run the same code.
 
 New 2026-09-02. The other deploy target, and usually the cheaper one to set up
 because an organization tends to already have the account.
@@ -1136,8 +1208,8 @@ could not be bilingual.
 | `organization` | `bio_en` / `bio_es` | `bio` |
 | `image` | `alt_en` / `alt_es`, `description_en` / `description_es` | `alt`, `description` |
 
-    set o-nomad bio_en 'A geometry-nodes experiment.'
-    set o-nomad bio_es 'Un experimento de nodos de geometria.'
+    set o-garden bio_en 'A community garden on the east side.'
+    set o-garden bio_es 'Un huerto comunitario en el lado este.'
 
 The legacy field is read **last**, so a database written before this still
 publishes every word it had — but if you are writing new prose, write both
@@ -1303,13 +1375,13 @@ types. Do not add one on the assumption it is coming; ask.
 
 ### Put a video on the page
 
-    rune new video youth-hub
-    set youth-hub url 'https://youtu.be/dQw4w9WgXcQ'
-    set youth-hub caption_en 'Youth HUB'
-    set youth-hub caption_es 'Youth HUB'
-    set youth-hub poster 'assets/youth-hub-still.jpg'   # optional
-    set youth-hub ratio '16:9'                          # or 4:3, 1:1, 9:16
-    set youth-hub row '6'
+    rune new video youth-night
+    set youth-night url 'https://youtu.be/dQw4w9WgXcQ'
+    set youth-night caption_en 'Youth night'
+    set youth-night caption_es 'Noche juvenil'
+    set youth-night poster 'assets/youth-night-still.jpg' # optional
+    set youth-night ratio '16:9'                          # or 4:3, 1:1, 9:16
+    set youth-night row '6'
 
 **Paste the address, not an embed code.** The share dialog's `<iframe>…` snippet
 will not work and is not meant to — a field that took markup would be a way to
@@ -1402,7 +1474,11 @@ command. If you need something else pushed, that is an edit to
 
 ### Wiring it
 
-One Antfarm node. `secret_key` names a secret in the vault; `secret_file` is the
+One node, and it is still in the old format: `effect push-store` and
+`check-store` read a `hol_object_store` in the `antfarm` mantle, and the
+Antfarm's `bucket` reservoir does not drive them yet. This is the one place this
+guide tells you to write an old-format node, because nothing else does the job
+yet. `secret_key` names a secret in the vault; `secret_file` is the
 alternative for an operator who would rather keep it out of the database.
 **Never put a secret in a field** — a field is in the state document, and the
 state document travels.
@@ -1798,7 +1874,16 @@ compiles, and that is a smaller claim than it looks.
 6. **Never add a `clearance:` tag to make a page look fuller.** It is the record
    of a person's consent to be published, not a display switch. If a directory
    is empty, say so and ask who has agreed to be listed.
-7. **Read the design when unsure.** The OKF bundle is the real documentation:
+7. **Your notes stay with the database, never in Hormiga.** If you write a
+   report, a field note or a list of findings about this organization's
+   database, save it in the database's own folder, or in a
+   `MESSAGE_FOR_VOIDHORMIGA_<you>-<topic>-<date>.md` at the Hormiga repository
+   root, which is gitignored. **Never write into Hormiga's `okf/`, its source, or
+   anything else in that repository.** It is public and it ships inside every
+   installer, so a note there publishes the organization's name, its data and
+   its people to strangers. This happened, and it shipped in sixteen releases.
+   See `okf/concepts/foundation/what-may-be-public.md`.
+8. **Read the design when unsure.** The OKF bundle is the real documentation:
    `python -m okf --bundle okf ls`, then
    `python -m okf --bundle okf get --head <id>`.
 

@@ -2,9 +2,15 @@
 type: Concept
 title: The Antfarm graph as built
 description: "What is in the antfarm mantle on 2026-09-22, read from the code: six payloads, twenty node kinds with their ports, fields and whether anything reads them, the default local-only colony, what an edge means and how its port indices work, where secrets live, the .miga as the door, local-first storage, and publish/mirror."
-tags: [status:current, audience:all, confidence:measured]
+tags: [status:superseded, audience:all, confidence:measured]
 timestamp: 2026-09-22T00:00:00Z
 ---
+
+> **The Antfarm's format before 2026-09-28.** Since 2026-10-19 there is one
+> Antfarm, the `farm` mantle ([v2](/concepts/platform/antfarm/v2/index.md)),
+> and Hormiga converts this format when it opens a database. This page is
+> kept to read an older database or an old log, not to build with: it is not
+> the safer choice, and the `hol_*` glyphs it names are never offered.
 
 This page describes the Antfarm as the code has it, not as it was planned. The
 source is `src/domain/glyphs_antfarm.hpp` (the node declarations),

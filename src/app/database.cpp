@@ -9,6 +9,7 @@
 #include "domain/seed.hpp"             // register_glyphs, seed_antfarm_transcript
 #include "domain/workspaces.hpp"       // what a new database can start as
 
+#include <chrono>
 #include <ctime>
 
 namespace fs = std::filesystem;
@@ -36,50 +37,71 @@ void HormigaApp::reset_working_copy(bool clear_assets) {
 
 /* Pack the working copy into the current bundle (backing up the old one), or
  * fall through to Save As when there's no bundle yet. Save ≈ commit. */
-void HormigaApp::save_database() {
+/* Back up the existing bundle before overwriting it (author #5: backups), and
+ * keep the newest ten. Pure filesystem, so a background save runs it on its
+ * worker: copying a 200 MB bundle is not the window's business. */
+static void back_up_bundle(const fs::path& bundle, const fs::path& backups) {
+    std::error_code ec;
+    if (!fs::exists(bundle, ec)) return;
+    fs::create_directories(backups, ec);
+    char stamp[32];
+    std::time_t t = std::time(nullptr);
+    std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", std::localtime(&t));
+    const std::string stem = bundle.stem().string();
+    fs::copy_file(bundle, backups / (stem + "-" + stamp + ".miga"), fs::copy_options::overwrite_existing, ec);
+    std::vector<fs::path> mine;
+    for (auto& e : fs::directory_iterator(backups, ec))
+        if (e.path().filename().string().rfind(stem + "-", 0) == 0) mine.push_back(e.path());
+    std::sort(mine.begin(), mine.end());
+    for (size_t i = 0; i + 10 < mine.size(); ++i) fs::remove(mine[i], ec);
+}
+
+static std::string saved_line(const fs::path& out, const hormiga::miga::PackResult& r) {
+    return "saved database " + out.filename().string() + " (" + std::to_string(r.assets) +
+           " assets, " + std::to_string(r.bytes / 1024) + " KB)";
+}
+
+void HormigaApp::save_database(bool background) {
     if (cur_miga.empty()) { // no bundle yet → behave as Save As (author #1)
         if (on_save_file) {
             std::string p = on_save_file("my-database.miga");
-            if (!p.empty()) save_database_as(p);
+            if (!p.empty()) save_database_as(p, background);
         } else {
             toast("no save dialog available", true);
         }
         return;
     }
     do_save(); // flush the live state into the working .db first
-    std::error_code ec;
-    // back up the existing bundle before overwriting (author #5: backups)
-    if (fs::exists(cur_miga)) {
-        fs::create_directories(data_dir("backups"), ec);
-        char stamp[32];
-        std::time_t t = std::time(nullptr);
-        std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", std::localtime(&t));
-        std::string stem = fs::path(cur_miga).stem().string();
-        fs::copy_file(cur_miga, data_dir("backups") / (stem + "-" + stamp + ".miga"),
-                      fs::copy_options::overwrite_existing, ec);
-        // retention: keep the newest ~10 backups for this database
-        std::vector<fs::path> mine;
-        for (auto& e : fs::directory_iterator(data_dir("backups"), ec))
-            if (e.path().filename().string().rfind(stem + "-", 0) == 0)
-                mine.push_back(e.path());
-        std::sort(mine.begin(), mine.end());
-        for (size_t i = 0; i + 10 < mine.size(); ++i) fs::remove(mine[i], ec);
+    /* The state is exported HERE, on the main thread, before anything moves:
+     * the worker packs a snapshot and never touches the live core. */
+    const std::string state = core.export_state();
+    const auto extra = referenced_files(state);
+    const fs::path out = cur_miga, base = base_dir, adir = assets_dir(), backups = data_dir("backups");
+    if (!background) {
+        back_up_bundle(out, backups);
+        auto r = hormiga::miga::pack(state, base, out, out.stem().string(), adir, extra);
+        if (r.ok) toast(saved_line(out, r));
+        else toast("save database failed: " + r.error, true);
+        return;
     }
-    auto r = hormiga::miga::pack(core.export_state(), base_dir, cur_miga,
-                                 fs::path(cur_miga).stem().string(), assets_dir(),
-                                 referenced_files(core.export_state()));
-    if (r.ok)
-        toast("saved database " + fs::path(cur_miga).filename().string() + " (" +
-              std::to_string(r.assets) + " assets, " +
-              std::to_string(r.bytes / 1024) + " KB)");
-    else
-        toast("save database failed: " + r.error, true);
+    run_busy_async("Saving database…", [this, state, extra, out, base, adir, backups](const hormiga::BusyReport& report)
+                                           -> hormiga::BusyFinish {
+        report(0.0, "Keeping a backup");
+        back_up_bundle(out, backups);
+        auto r = std::make_shared<hormiga::miga::PackResult>(hormiga::miga::pack(
+            state, base, out, out.stem().string(), adir, extra, {},
+            [&](double f, const char* phase) { report(0.05 + 0.95 * f, phase); }));
+        return [this, r, out] {
+            if (r->ok) toast(saved_line(out, *r));
+            else toast("save database failed: " + r->error, true);
+        };
+    });
 }
 
 /* Save the working copy as a NEW .miga at a user-CHOSEN path (author
  * 2026-07-24: "choose where we are saving"). The path comes from the OS save
  * dialog; .miga is ensured. This bundle becomes the current database. */
-void HormigaApp::save_database_as(const std::string& path) {
+void HormigaApp::save_database_as(const std::string& path, bool background) {
     if (path.empty()) return;
     fs::path out = path;
     if (out.extension() != ".miga") out += ".miga";
@@ -92,21 +114,33 @@ void HormigaApp::save_database_as(const std::string& path) {
     const bool copying = !cur_miga.empty() && !(fs::exists(out, sec) && fs::equivalent(out, cur_miga, sec));
     const std::string was = copying ? LanRuntime::fork_identity(*this) : std::string();
     do_save(); // flush live state into the working .db first
-    auto r = hormiga::miga::pack(core.export_state(), base_dir, out,
-                                 out.stem().string(), assets_dir(),
-                                 referenced_files(core.export_state()));
-    // no new file, no new database: the open one is still the original, with its identity
-    if (!r.ok && !was.empty()) core.dispatch("config set sync.database " + was);
-    if (r.ok) {
-        cur_miga = out.string();
-        remember_bundle(cur_miga);
-        LanRuntime::claim_home(*this);
-        toast("saved database to " + out.string() + " (" +
-              std::to_string(r.assets) + " assets, " +
-              std::to_string(r.bytes / 1024) + " KB)");
-    } else {
-        toast("save database failed: " + r.error, true);
+    const std::string state = core.export_state();
+    const auto extra = referenced_files(state);
+    // what happens once the file exists (or does not), on the main thread either way
+    const auto landed = [this, out, was](const hormiga::miga::PackResult& r) {
+        // no new file, no new database: the open one is still the original, with its identity
+        if (!r.ok && !was.empty()) core.dispatch("config set sync.database " + was);
+        if (r.ok) {
+            cur_miga = out.string();
+            remember_bundle(cur_miga);
+            LanRuntime::claim_home(*this);
+            toast("saved database to " + out.string() + " (" + std::to_string(r.assets) +
+                  " assets, " + std::to_string(r.bytes / 1024) + " KB)");
+        } else {
+            toast("save database failed: " + r.error, true);
+        }
+    };
+    if (!background) {
+        landed(hormiga::miga::pack(state, base_dir, out, out.stem().string(), assets_dir(), extra));
+        return;
     }
+    const fs::path base = base_dir, adir = assets_dir();
+    run_busy_async("Saving database…", [state, extra, out, base, adir, landed](const hormiga::BusyReport& report)
+                                           -> hormiga::BusyFinish {
+        auto r = std::make_shared<hormiga::miga::PackResult>(
+            hormiga::miga::pack(state, base, out, out.stem().string(), adir, extra, {}, report));
+        return [r, landed] { landed(*r); };
+    });
 }
 
 /* Start a COMPLETELY NEW, empty database (author 2026-07-24): a fresh working
@@ -164,6 +198,8 @@ void HormigaApp::new_database(const std::string& workspace) {
         map_cam_loaded = true;
     }
     cur_miga.clear();      // unsaved: a new database has no file until Save As
+    fv2.convert = true;    // a new database gets the Antfarm's default colony (convert_antfarm)
+    fv2.fresh = true;
     remember_bundle("");
     cur_doc = "issue-demo";
     cur_page.clear();
@@ -233,16 +269,29 @@ void HormigaApp::open_default_database(bool reopen_last, bool first_run) {
 /* Replace the running core with a freshly-loaded state, re-establishing the
  * host seams and glyphs (the same setup init() does after a state load), and
  * persist it into the working .db so the app runs off local storage. */
-void HormigaApp::reload_from_state(const std::string& state) {
-    core = maiz::Core(state);
+/* The half of loading a database that needs NOTHING of the app: parse the state
+ * into a core of its own and register the application's glyphs on it. Pure, so
+ * an open runs it on its worker (issue #1); measured at 0.72 s for 10^5 runes,
+ * which is 0.72 s the window now spends drawing instead of frozen. */
+static maiz::Core prepare_core(const std::string& state) {
+    maiz::Core c(state);
+    hormiga::register_glyphs(c);
+    hormiga::register_block_glyphs(c);
+    hormiga::register_antfarm_glyphs(c);
+    farm::register_glyphs(c);
+    hormiga::chambers::register_glyphs(c);
+    c.dispatch("config set actor human:hormiga");
+    return c;
+}
+
+void HormigaApp::reload_from_state(const std::string& state) { adopt_core(prepare_core(state)); }
+
+/* The main thread's half: the prepared core becomes the database, with this
+ * app's host seams on it, and everything that reads it is refreshed. */
+void HormigaApp::adopt_core(maiz::Core&& fresh) {
+    core = std::move(fresh);
     install_host();
     channel_fields.clear();
-    hormiga::register_glyphs(core);
-    hormiga::register_block_glyphs(core);
-    hormiga::register_antfarm_glyphs(core);
-    farm::register_glyphs(core);
-    hormiga::chambers::register_glyphs(core);
-    core.dispatch("config set actor human:hormiga");
     reproject();
     read_view_config();
     apply_theme();
@@ -250,14 +299,22 @@ void HormigaApp::reload_from_state(const std::string& state) {
     cur_page.clear();
     cur_doc = "issue-demo";
     ed.selection.clear();
+    fv2.convert = true; // its Antfarm, at the next frame's start (convert_antfarm)
 }
 
-void HormigaApp::open_database(const std::string& path) {
-    LanRuntime::leave_database(*this); // the one open now stops being this device's shared one
-    // isolate: drop the current working copy's assets + caches BEFORE the
-    // bundle extracts its own into base_dir/assets/ (databases don't bleed)
-    reset_working_copy(true);
-    auto r = hormiga::miga::open(path, base_dir, assets_dir());
+/* ── OPENING A DATABASE, IN TWO HALVES (2026-10-24, issue #1) ─────────────────
+ *
+ * Isolation (databases never bleed, author 2026-07-24) used to be "delete the
+ * assets folder, then write every picture in the bundle": correct, and a full
+ * rewrite on every open. It is now a MIRROR (miga::OpenOptions::mirror_assets):
+ * the folder ends up exactly the bundle's, but a picture already there with the
+ * same bytes is left alone. The caches still go, as before. */
+static double ms_since(std::chrono::steady_clock::time_point t) {
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t).count();
+}
+
+void HormigaApp::finish_open(const std::string& path, const hormiga::miga::OpenResult& r,
+                             maiz::Core&& fresh, double bundle_ms, double core_ms) {
     if (!r.ok) {
         toast(r.version == 2 ? "that's a legacy secrets-only .miga (v2), not a "
                                "full database"
@@ -265,12 +322,66 @@ void HormigaApp::open_database(const std::string& path) {
               true);
         return;
     }
-    reload_from_state(r.state);
+    const auto t = std::chrono::steady_clock::now();
+    adopt_core(std::move(fresh));
     cur_miga = path;
     remember_bundle(path);
     LanRuntime::claim_home(*this); // a copy of a database this device knows is a database of its own
     load_secrets(); // an imgbb.key beside THIS bundle
-    toast("opened database " + fs::path(path).filename().string() + " (" +
-          std::to_string(r.assets) + " assets restored)");
+    /* What the open cost, phase by phase, in the log: issue #2 promised
+     * measurements, and this is where anybody's come from. */
+    char line[200];
+    std::snprintf(line, sizeof line, "opened in %.0f ms: bundle %.0f, database %.0f, view and working copy %.0f",
+                  bundle_ms + core_ms + ms_since(t), bundle_ms, core_ms, ms_since(t));
+    log.push_back({"info", "open", line});
+    toast("opened database " + fs::path(path).filename().string() + " (" + std::to_string(r.assets) +
+          " pictures restored" + (r.assets_kept ? ", " + std::to_string(r.assets_kept) + " already here" : "") + ")");
+}
+
+void HormigaApp::open_database(const std::string& path) {
+    LanRuntime::leave_database(*this); // the one open now stops being this device's shared one
+    reset_working_copy(false);         // the caches; the assets folder is mirrored by the open
+    const auto t0 = std::chrono::steady_clock::now();
+    hormiga::miga::OpenOptions o;
+    o.mirror_assets = true;
+    auto r = hormiga::miga::open(path, base_dir, assets_dir(), o);
+    const double bundle_ms = ms_since(t0);
+    const auto t1 = std::chrono::steady_clock::now();
+    maiz::Core fresh = r.ok ? prepare_core(r.state) : maiz::Core();
+    finish_open(path, r, std::move(fresh), bundle_ms, ms_since(t1));
+}
+
+void HormigaApp::run_busy_async(const std::string& label, hormiga::BusyWork work) {
+    busy.label = label;
+    busy.start(std::move(work), ImGui::GetTime());
+}
+
+void HormigaApp::begin_open_database(const std::string& path, std::function<void()> then) {
+    LanRuntime::leave_database(*this);
+    reset_working_copy(false);
+    const fs::path base = base_dir, adir = assets_dir();
+    run_busy_async("Opening database…", [this, path, base, adir, then](const hormiga::BusyReport& report)
+                                            -> hormiga::BusyFinish {
+        const auto t0 = std::chrono::steady_clock::now();
+        hormiga::miga::OpenOptions o;
+        o.mirror_assets = true;
+        // the bundle is most of the bytes; the database's own load is weighed after it
+        o.progress = [&](double f, const char* phase) { report(0.8 * f, phase); };
+        auto r = std::make_shared<hormiga::miga::OpenResult>(hormiga::miga::open(path, base, adir, o));
+        const double bundle_ms = ms_since(t0);
+        const auto t1 = std::chrono::steady_clock::now();
+        std::shared_ptr<maiz::Core> fresh;
+        if (r->ok) {
+            report(0.8, "Loading the database");
+            fresh = std::make_shared<maiz::Core>(prepare_core(r->state));
+            r->state = std::string(); // forty megabytes nobody needs any more
+        }
+        const double core_ms = ms_since(t1);
+        report(0.97, "Drawing it");
+        return [this, path, r, fresh, bundle_ms, core_ms, then] {
+            finish_open(path, *r, fresh ? std::move(*fresh) : maiz::Core(), bundle_ms, core_ms);
+            if (r->ok && then) then();
+        };
+    });
 }
 

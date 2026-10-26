@@ -1,0 +1,10 @@
+# Every issue goes through a form, because the forms are where the privacy
+# warning is (okf/concepts/contributing/intake.md).
+blank_issues_enabled: false
+contact_links:
+  - name: A security problem
+    url: https://github.com/migriv24/VoidHormiga/security/advisories/new
+    about: Reported privately, seen only by the maintainers. See SECURITY.md.
+  - name: How Hormiga is designed
+    url: https://github.com/migriv24/VoidHormiga/blob/main/okf/index.md
+    about: The design documents, including the open questions, before proposing a large change.

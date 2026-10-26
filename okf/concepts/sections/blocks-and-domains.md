@@ -146,8 +146,8 @@ rendered markup contains none. `youtube-nocookie.com` narrows what is stored but
 does not stop the request, so it is the second line of defence rather than the
 first. This is [security](/concepts/platform/security.md)'s render-seam rule in
 its outward-facing form — at the seam where data leaves, what leaves here is the
-reader's address. The organization's members include immigration and
-survivor-services groups; that is the reason, and it is a reason to build the
+reader's address. An outreach organization's readers can include people who are
+harmed by being identified; that is the reason, and it is a reason to build the
 careful version once rather than leave it to whoever places the block.
 
 Two providers only. Each additional one is another URL shape to get right,
@@ -198,7 +198,7 @@ made sufficient**. A rune reaches an output only if it also carries
 **This is `allo_web_hidden` inverted, and inverted on purpose.** `web-hide` is a
 subtraction from a default of publishing, which is the right default for an
 event and the wrong one for a person. The measured reason: a real database holds
-84 contacts, 70 of them carrying a personal email — a block that trusted
+dozens of contacts, most of them carrying a personal email — a block that trusted
 `type:contact` would publish a phone book, and it would do it the first time
 anyone wrote the obvious query.
 

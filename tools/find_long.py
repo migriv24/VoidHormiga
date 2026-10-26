@@ -69,7 +69,7 @@ BUDGET = {
     # block-emit lambda is now most of the file. NEXT SPLIT: render/blocks.cpp
     # (per-glyph emit) away from render/site.cpp (the page shell). Then ~700.
     # 1600 -> 1650 (2026-08-21): `heading_of` (so a job's title_en/title_es
-    # reaches the page -- the site was printing SASS as "Sass") and site_title
+    # reaches the page -- the site was printing ACME as "Acme") and site_title
     # resolving from the HOME page's hero rather than a global sort a migration
     # can flatten. Both are renderer decisions and belong in the renderer.
     # 1650 -> 1854 (2026-08-28): the field report's four render-seam asks --
@@ -95,7 +95,7 @@ BUDGET = {
     # one string on a generated site the operator could not edit. Twelve lines
     # to read the key and let either half of the footer stand alone. The split
     # named below is still the answer to this file; this is not a licence.
-    # RAISED 2026-09-02, 1866 -> 2060: the Click LaFont field report's render-seam
+    # RAISED 2026-09-02, 1866 -> 2060: a client field report's render-seam
     # fixes. D1 (the `<noscript>` without which every page this renderer has ever
     # produced was invisible with JavaScript off), D4 (`narrative` rendered the
     # same way in both output domains — `prose()` plus `pre-line`, so the

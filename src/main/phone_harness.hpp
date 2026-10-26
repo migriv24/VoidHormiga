@@ -20,6 +20,7 @@
  *   key enter|back
  *   wait N         N frames
  *   shot PATH      a PNG of the whole screen, safe area included
+ *   perf N         over the next N frames: frame times (median, 95th, worst) to stderr
  * The map's gestures (2026-10-04), all through the touch gate:
  *   dtap X Y       a double tap
  *   tap2 X Y       a two-finger tap (fingers 50 dp apart)
@@ -68,4 +69,6 @@ struct PhoneHarness {
     std::string pending_shot_;
     ImVec2 finger_{-1, -1};      // where the script's finger last touched
     bool quit_ = false;
+    int perf_left_ = 0;          // frames still to time (perf N)
+    std::vector<float> perf_;    // their durations, seconds
 };

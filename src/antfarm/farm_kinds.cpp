@@ -195,7 +195,10 @@ std::vector<Kind> build() {
          SU, 104,
          {{"host", "Host", "combo:github,cloudflare,s3"}, {"target", "Repository or project", ""},
           {"branch", "Branch (GitHub)", ""}, {"account", "Account id (Cloudflare)", ""},
-          {"name", "Custom name (example.org)", ""}},
+          {"name", "Custom name (example.org)", ""},
+          // the escape hatches the format before 2026-09-28 had on its host nodes (2026-10-19)
+          {"deploy_cmd", "Deploy command (blank = built in)", ""},
+          {"rollback_cmd", "Rollback command (Cloudflare and unlisted hosts)", ""}},
          {in("renditions", "rendition", true, false, true), in("key", "key"), out("domain", "domain")}});
     add({"mail-domain", "farm_mail_domain", "Mail domain", "Domains", Stratum::Surface, true,
          "a sender for newsletters; what leaves is named before it leaves", PL, 52,

@@ -500,7 +500,7 @@ difference between free and not — for no visible reason and with no error.
 
 ### Cost, honestly
 
-At a real deployment's scale (about 150 contacts, a few hundred members, low traffic) the recurring
+At a small organization's scale (a few hundred contacts and members, low traffic) the recurring
 cost of everything except video is **plausibly under $5/month**, and most of
 that is the Route 53 hosted zone.
 
@@ -556,8 +556,8 @@ Three ways out, and only one is good:
    Not an option.
 
 Option 2 is right and it carries a serious consequence the author must decide,
-not the developer: **the organization's whole database — 146 contacts, ~70
-emails, ~66 phone numbers, and the vault's secrets — would live on a server.**
+not the developer: **the organization's whole database — every contact, their
+emails and phone numbers, and the vault's secrets — would live on a server.**
 Today it lives on one machine and the file is the authority. That is a real
 privacy posture and moving it is a real change, especially for an org serving
 communities where a leaked contact list has consequences that are not financial.
@@ -617,8 +617,8 @@ storage or transcoding). **The interesting part is a privacy question specific
 to this organization.**
 
 An embedded YouTube player gives Google a visitor log of everyone who watched a
-video on a page about immigration resources. For an organization serving a bilingual community
-serving people who may be undocumented, that is not an abstract tracking
+video on a page about sensitive resources. For an organization whose members can
+be harmed by being identified, that is not an abstract tracking
 concern. If video is embedded, it should at minimum use a no-cookie embed
 domain, and the choice should be made deliberately rather than by pasting the
 default share code.

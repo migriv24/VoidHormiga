@@ -224,7 +224,7 @@ inline JsonStoreImport compile_json_store_import(
     /* Rune NAMES are unique across the whole mantle, not per glyph — this
      * must be glyph-agnostic or minting collides with an existing rune of a
      * DIFFERENT glyph and the whole batch rolls back (found against the
-     * real dump: "Oakshire Inspires Benefit" existed as an event AND as an
+     * real dump: one benefit dinner's name existed as an event AND as an
      * image name). */
     const std::function<bool(const std::string& /*name*/)>& name_taken,
     /* For RESOLUTION (does a referenced rune exist, and is it the right

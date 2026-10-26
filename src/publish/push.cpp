@@ -345,6 +345,9 @@ std::string HormigaApp::host_problem(const maiz::SceneNode& node, const std::str
     if (!on_shell_capture) return "no network transport on this front-end";
     if (node.glyph == "hol_imgbb") {
         if (!imgbb_key.empty()) return {};
+        if (const std::string ve = field_value(node, "vault_entry"); !ve.empty() && vault.unlocked() &&
+                                                                     !vault.get(ve).empty())
+            return {}; // an Antfarm image host's key, in the vault
         const std::string kf = field_value(node, "key_file");
         if (!kf.empty() && !read_trimmed(hormiga::find_key_file(kf, key_dirs())).empty())
             return {};
@@ -420,6 +423,8 @@ HormigaApp::HostedLink HormigaApp::host_online(const maiz::Scene& farm, const st
         return out;
     }
     if (host->glyph == "hol_imgbb") {
+        if (const std::string ve = field_value(*host, "vault_entry"); !ve.empty() && vault.unlocked())
+            if (const std::string k = vault.get(ve); !k.empty()) imgbb_key = k; // the Antfarm key's value
         if (imgbb_key.empty()) {
             const std::string kf = field_value(*host, "key_file");
             if (!kf.empty())
@@ -467,21 +472,17 @@ HormigaApp::HostedLink HormigaApp::host_online(const maiz::Scene& farm, const st
 }
 
 bool HormigaApp::image_host_ready() {
-    maiz::ProjectOptions ao;
-    ao.mantle = kAntfarmMantle;
     std::string why;
-    return pick_image_host(maiz::project_scene(core, ao), "", config_url(core), &why) &&
-           why.empty();
+    return pick_image_host(image_host_scene(core), "", config_url(core), &why) && why.empty();
 }
 
 /* The GUI's call: find the image rune, ask the Antfarm, write the link and the node
  * that made it into the rune. Dispatches, so it runs between frames (`run_busy`)
  * or from a control that returns straight afterwards. */
 bool HormigaApp::host_image(const std::string& rune, const std::string& prefer) {
-    maiz::ProjectOptions ao, dpo;
-    ao.mantle = kAntfarmMantle;
+    maiz::ProjectOptions dpo;
     dpo.mantle = kDataMantle;
-    const maiz::Scene farm = maiz::project_scene(core, ao);
+    const maiz::Scene farm = image_host_scene(core);
     const maiz::Scene data = maiz::project_scene(core, dpo);
     std::string path;
     bool found = false;

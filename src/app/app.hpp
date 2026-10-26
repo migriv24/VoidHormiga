@@ -14,8 +14,10 @@
 #include "platform/miga.hpp"            // the .miga v3 database bundle (pack/unpack)
 #include "platform/preview_server.hpp" // the live-preview localhost server (B2)
 #include "domain/templates.hpp"       // starter templates for the Builder
+#include "app/save_writer.hpp"    // the working copy, written off the UI thread
 #include "platform/storage.hpp" // the SQLite Data holiday (phase C)
 #include "platform/vault.hpp"   // the passphrase-locked credential store (.miga v2)
+#include "app/busy.hpp"          // the busy curtain, and work off the UI thread
 #include "app/farm_host.hpp"     // Antfarm v2: the host half (the core half is src/antfarm/)
 
 #include "voidmaiz/textinput.hpp" // the platform keyboard, for the phone front-end
@@ -291,7 +293,7 @@ struct HormigaApp {
     const maiz::SceneNode* pick_image_host(const maiz::Scene& farm, const std::string& prefer,
                                            const std::string& base_url, std::string* why);
     std::string host_problem(const maiz::SceneNode& node, const std::string& base_url);
-    bool image_host_ready();                                // a host that can answer now
+    bool image_host_ready(); static maiz::Scene image_host_scene(maiz::Core& core); // a host now; the Antfarm's, then the old
     bool host_image(const std::string& rune, const std::string& prefer = ""); // sets url
     int host_missing_images(const std::string& prefer = "");
     int push_to_store(const maiz::Scene& farm, std::string_view node,
@@ -409,13 +411,13 @@ struct HormigaApp {
 private:
     // ── the model + projection (the one-sync rule: dispatch → project) ──────
     maiz::Core core;
-    maiz::Scene scene;
+    maiz::Scene scene; std::map<std::string, maiz::Scene> scenes_idle; // other mantles' scenes, kept while nothing changes
+    const maiz::Scene* held_data() const; // the data mantle's scene if one of those is it, else null (farm_app.cpp)
     maiz::EditorState ed;
     maiz::CanvasStyle canvas_style;
     maiz::CommandBarState cmdbar;
     maiz::AddPalette palette;         // data glyphs (Data's connections canvas)
     maiz::AddPalette palette_blocks;  // block glyphs (the Builder canvas)
-    maiz::AddPalette palette_antfarm; // holiday glyphs (the Antfarm canvas)
     maiz::AddPalette palette_allomone; // Allomone block glyphs (the rules canvas)
     maiz::FaceRegistry faces;
     maiz::WidgetRegistry widgets = maiz::WidgetRegistry::defaults();
@@ -539,8 +541,9 @@ private:
     maiz::ActionRegistry doc_actions;         // the Builder's verbs (B1)
     bool try_doc_verb(const std::string& cmd); // `doc <action> …` → ONE batch
 
-    // ── Antfarm v2, the prototype (okf/concepts/platform/antfarm/v2/; app/farm_app.cpp)
+    // ── the Antfarm (okf/concepts/platform/antfarm/v2/; app/farm_app.cpp)
     hormiga::farmhost::UiState fv2;
+    void convert_antfarm(); // a database without one is given its Antfarm (from its old graph, or fresh)
     std::string antfarm_mantle() const; bool try_farm_verb(const std::string& cmd); // the tab's mantle; `farm …`
     void refresh_farm(); void reconcile_chambers(); void register_farm_faces(); void draw_farm_face(maiz::FaceContext& ctx);
     farm::Context farm_context(); maiz::CanvasStyle farm_canvas_style(const maiz::CanvasStyle& base);
@@ -1106,6 +1109,7 @@ private:
 
     // ── the data spine (phase C) ────────────────────────────────────────────
     std::unique_ptr<hormiga::Storage> storage; // SQLite: where the org lives
+    hormiga::SaveWriter saver; // writes it off the UI thread; after storage, so it stops first
     std::vector<std::string> pending_cmds;     // deferred (e.g. tag suggestions)
     int import_kind = 0;                       // Import CSV popup: palette index
 
@@ -1221,9 +1225,8 @@ private:
     int mirror_count = -1;       // mirror.json entries; -1 = not read yet
 
     // ── background jobs (long, non-dispatcher I/O — network downloads) ──────
-    // The worker does PURE I/O and NEVER touches the core (the dispatcher
-    // stays the single door — all model change lands back on the main thread
-    // as commands via `results`). Progress is atomic so the UI animates a bar.
+    // The worker does PURE I/O and NEVER touches the core: model change lands back
+    // on the main thread as commands (`results`). Atomic progress animates a bar.
     struct Job {
         std::string label;
         std::atomic<int> done{0};
@@ -1236,17 +1239,14 @@ private:
     };
     std::unique_ptr<Job> job;
     void draw_job_overlay(); // the progress panel (main thread)
+    std::vector<std::string> mantle_names();        // what the `mantles` verb lists
     std::vector<maiz::Scene> project_all_mantles(); // `mantles` verb → scenes
     void run_csv_import(const std::string& glyph);  // pick file → ONE batch
     std::string ingest_asset(const std::string& src, bool quiet = false);
-    /* Bring a file in AND mint the `image` rune for it — the author's rule
-     * (2026-09-02): "Uploading a NEW image should redirect to creating a new
-     * image asset." Returns the site-relative path, "" on failure. */
+    // Bring a file in AND mint its `image` rune (author, 2026-09-02). Site path, or "".
     std::string ingest_image_rune(const std::string& src);
-    /* A popup that picks one of the organization's existing images, returning
-     * its `path`. "" = nothing picked this frame. Call `ImGui::OpenPopup` with
-     * the same id first. Shared so branding and content pick images the same
-     * way. */
+    /* A popup picking one of the organization's images; its `path`, "" if none this
+     * frame. OpenPopup the same id first. Shared by branding and content. */
     std::string org_image_picker(const char* popup_id, const char* heading);
     char img_pick_search[64] = {}; // filter box inside that popup
 
@@ -1257,7 +1257,7 @@ private:
     void apply_theme();
     void read_view_config();
     void flush_panels();
-    void reproject();
+    void reproject(bool reuse = false); // reuse: `scene` was swapped in from scenes_idle, refresh the rest
     maiz::Result dispatch_and_reproject(const std::string& cmd_in);
     void do_save();
     // ── the .miga v3 DATABASE bundle (okf/concepts/platform/miga-format.md) ──────────
@@ -1280,19 +1280,17 @@ private:
     bool win_data_tools = false;
     bool win_niche_tools = false;   // once-in-a-while utilities (ui/niche_tools.cpp)
     void draw_niche_tools_body();   // database merge with detections, QR codes
-    bool db_in_source_tree() const; // the launch trap that put LON's data in the repo
+    bool db_in_source_tree() const; // the launch trap that put real data in the repo
     void draw_source_tree_banner(); // ...said in the menu bar, where it gets seen
     void draw_data_tools_window();
     // a soft drop shadow behind a rectangle (UI/UX phase; gated by fx_shadows).
     // Drawn on the CURRENT window's draw list, so call before the child/content.
     void panel_shadow(const ImVec2& mn, const ImVec2& mx, float rounding = 6.0f);
-    // ── the BUSY overlay (author 2026-07-24: loading bars for save/open/&c) ──
-    // A heavy op is DEFERRED one frame so the "working…" overlay paints before
-    // the main thread blocks on it. progress<0 = indeterminate spinner.
-    std::string busy_label;
-    float busy_progress = -1.0f;
-    std::function<void()> busy_action;   // runs at the START of the next frame
+    // ── the BUSY curtain (app/busy.hpp): a blocking op deferred one frame, or work OFF the UI thread ──
+    hormiga::Busy busy;
     void run_busy(const std::string& label, std::function<void()> action);
+    void run_busy_async(const std::string& label, hormiga::BusyWork work); // open/save (issue #1)
+    void begin_open_database(const std::string& path, std::function<void()> then = {}); // open_database, the window alive
     void draw_busy_overlay();
     void new_database(const std::string& workspace = "");         // a fresh, empty database (new working copy)
     // reset the working copy's local files so databases stay ISOLATED: clear
@@ -1300,9 +1298,10 @@ private:
     // databases — assets/ too (each .miga carries its own). Invalidates the
     // texture cache so freed image paths don't return stale GPU textures.
     void reset_working_copy(bool clear_assets);
-    void save_database();        // pack → cur_miga (or Save As if none); backs up
-    void save_database_as(const std::string& path);  // pack → chosen .miga path
+    void save_database(bool background = false); // pack → cur_miga (or Save As if none); backs up
+    void save_database_as(const std::string& path, bool background = false); // pack → chosen .miga path
     void open_database(const std::string& path);     // unpack + reload the core
     void reload_from_state(const std::string& state); // replace core, re-seed host
+    void adopt_core(maiz::Core&& fresh); void finish_open(const std::string& path, const hormiga::miga::OpenResult& r, maiz::Core&& fresh, double bundle_ms, double core_ms); // the main-thread halves (database.cpp)
     void draw_share_window();    // Share, Discover, Profile, and presence (ui/share.cpp)
 };

@@ -245,6 +245,11 @@ add_custom_target(hormiga_web_assets
 # same application. They used to carry three copies of this list, and a copied
 # list is how the 0.1.3 release broke (Palabra's, above: a file added, a copy
 # not updated). So it is written once; each target adds only its entry point.
+# WHERE THIS PROJECT TAKES ISSUES (2026-10-23), from void.json's `repository`,
+# so the report (CLI, desktop, phone) points wherever the manifest says the project
+# lives rather than wherever it was compiled. okf/concepts/contributing/.
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/void.json HORMIGA_MANIFEST_JSON)
+string(JSON HORMIGA_REPOSITORY GET "${HORMIGA_MANIFEST_JSON}" repository)
 set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
     src/render/index.cpp src/render/email.cpp
@@ -254,7 +259,7 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/tags.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/database.cpp src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
-  src/app/translate.cpp src/update/update.cpp src/update/cli.cpp
+  src/app/translate.cpp src/app/busy.cpp src/app/save_writer.cpp src/report/report.cpp src/update/update.cpp src/update/cli.cpp
   src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
   src/publish/github.cpp
   src/platform/storage.cpp src/platform/vault.cpp src/platform/backup.cpp
@@ -331,7 +336,7 @@ else()
   set(HORMIGA_PLATFORM_TAG "unknown")
 endif()
 target_compile_definitions(voidhormiga PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
-  HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
+  HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}" HORMIGA_REPOSITORY="${HORMIGA_REPOSITORY}")
 if(TARGET voidmaiz_net)
   target_link_libraries(voidhormiga PRIVATE voidmaiz_net)
   target_compile_definitions(voidhormiga PRIVATE HORMIGA_HAVE_NET=1)
@@ -403,7 +408,7 @@ endif()
 add_executable(voidhormiga-cli src/main/headless.cpp src/main/farm_cli.cpp src/platform/stb_impl.cpp ${HORMIGA_APP_SOURCES})
 target_include_directories(voidhormiga-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../VoidCore/core/include)
 target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_VERSION="${PROJECT_VERSION}"
-  HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
+  HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}" HORMIGA_REPOSITORY="${HORMIGA_REPOSITORY}")
 if(TARGET voidmaiz_net)
   target_link_libraries(voidhormiga-cli PRIVATE voidmaiz_net)
   target_compile_definitions(voidhormiga-cli PRIVATE HORMIGA_HAVE_NET=1)
@@ -538,6 +543,11 @@ add_custom_target(hormiga_agent_files ALL
           ${CMAKE_CURRENT_SOURCE_DIR}/AGENT-GUIDE.md ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           ${CMAKE_CURRENT_SOURCE_DIR}/okf ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/okf
+  # okf/reports/ never ships (okf/concepts/foundation/what-may-be-public.md):
+  # it is gitignored, but copy_directory copies what is on disk, and it never
+  # deletes, so a report removed from the tree lived on in bin/okf/ and went out
+  # in every installer staged from here.
+  COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/okf/reports
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           ${CMAKE_CURRENT_SOURCE_DIR}/vendor/fonts
           ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/vendor/fonts
@@ -609,6 +619,15 @@ if(Python3_Interpreter_FOUND)
            COMMAND ${Python3_EXECUTABLE}
                    ${CMAKE_CURRENT_SOURCE_DIR}/tools/find_long.py --strict
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  # Nothing from a real database, a client or this machine is committed
+  # (okf/concepts/foundation/what-may-be-public.md). Strict: twice a folder of
+  # field reports reached this public repository and its releases, and both times
+  # the rule was only prose. The names themselves come from the gitignored
+  # .private-terms when it is present; CI runs the pattern checks without it.
+  add_test(NAME hormiga_public
+           COMMAND ${Python3_EXECUTABLE}
+                   ${CMAKE_CURRENT_SOURCE_DIR}/tools/lint_public.py --strict
+           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 find_program(BASH_EXE NAMES bash)
@@ -623,6 +642,20 @@ endif()
 
 # The phase B exit test: the demo-org transcript replays headless to an
 # identical projected scene (UI-free — links only the embed layer).
+# A MEASUREMENT, NOT A TEST: what one edit costs at N runes, phase by phase
+# (okf/concepts/platform/scale.md). Built on demand only:
+#   cmake --build build --target hormiga_scale_bench
+add_executable(hormiga_scale_bench EXCLUDE_FROM_ALL tests/scale_bench.cpp)
+add_executable(hormiga_miga_bench EXCLUDE_FROM_ALL tests/miga_bench.cpp src/platform/miga.cpp)
+# The stress database generator (tools/datasets/README.md): not part of Hormiga,
+# built on demand. Real organizations from public records, synthetic people and
+# events, Void Maiz's Leiden clusters as tags.
+add_executable(hormiga_stressgen EXCLUDE_FROM_ALL tools/datasets/stressgen.cpp)
+target_link_libraries(hormiga_stressgen PRIVATE hormiga_allomone)
+target_include_directories(hormiga_stressgen PRIVATE vendor/json)
+target_link_libraries(hormiga_miga_bench PRIVATE sodium)
+target_include_directories(hormiga_miga_bench PRIVATE src vendor/json)
+target_link_libraries(hormiga_scale_bench PRIVATE hormiga_allomone)
 add_executable(hormiga_replay_smoke tests/replay_smoke.cpp)
 target_link_libraries(hormiga_replay_smoke PRIVATE hormiga_allomone) # seed.hpp registers the allo glyphs
 target_include_directories(hormiga_replay_smoke PRIVATE src vendor/json) # seed.hpp

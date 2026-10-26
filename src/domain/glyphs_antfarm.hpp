@@ -1,4 +1,11 @@
-/* glyphs_antfarm.hpp - the ANTFARM glyphs: one rune per backend.
+/* glyphs_antfarm.hpp - the Antfarm's node kinds in its FORMAT BEFORE 2026-09-28.
+ *
+ * Registered so old logs replay and old databases open, and read for the
+ * settings Share and Publish still keep in the `antfarm` mantle. Never offered:
+ * a database is converted to the Antfarm (`farm`, src/antfarm/) when it opens,
+ * and new graphs are built with `farm`. Their palette category says so, because
+ * an agent reading `--describe` should not take an older format for the safe one
+ * (the author, 2026-10-19).
  *
  * Split out of `seed.hpp` on 2026-08-20, when the file crossed its length
  * budget and `tools/find_long.py` said so. The seam was already there — these
@@ -31,7 +38,7 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
     // CORE — the org's data model, exposing two PAYLOAD ports: records + assets.
     core.register_glyph(
         R"({"glyph":"org_core","label":"Hormiga Core","fields":["org_name"],)"
-        R"("hints":{"color":"#b3592e","face":{"w":210,"h":56},)"
+        R"("hints":{"color":"#b3592e","face":{"w":210,"h":56},"category":"Antfarm format before 2026-09-28 - converted on open; build with farm",)"
         R"("labels":{"org_name":"Organization"},)"
         R"("ports":[{"name":"records","dir":"out","type":"records"},)"
         R"({"name":"assets","dir":"out","type":"assets"}]}})");
@@ -41,7 +48,7 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
                    const std::string& labels, int face_h, const std::string& ports) {
         core.register_glyph(
             std::string(R"({"glyph":")") + glyph + R"(","label":")" + label +
-            R"(","fields":[)" + fields + R"(],"hints":{"color":")" + color +
+            R"(","fields":[)" + fields + R"(],"hints":{"category":"Antfarm format before 2026-09-28 - converted on open; build with farm","color":")" + color +
             R"(","face":{"w":230,"h":)" + std::to_string(face_h) +
             R"(},"labels":{)" + labels + R"(},"ports":[)" + ports + R"(]}})");
     };
@@ -202,7 +209,7 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
     core.register_glyph(
         R"({"glyph":"hol_lan_share","label":"Share over LAN",)"
         R"("fields":["allow","presence","port","key_file","private_tags","send_hosted"],)"
-        R"("hints":{"color":"#2e6b4f","face":{"w":230,"h":150},"category":"Antfarm",)"
+        R"("hints":{"color":"#2e6b4f","face":{"w":230,"h":150},"category":"Antfarm format before 2026-09-28 - converted on open; build with farm",)"
         R"("editors":{"allow":"combo:yes,no","presence":"combo:yes,no",)"
         R"("send_hosted":"combo:no,yes"},)"
         R"__("labels":{"allow":"Allow sharing this database over the local network",)__"
@@ -215,7 +222,7 @@ inline void register_antfarm_glyphs(maiz::Core& core) {
     core.register_glyph(
         R"({"glyph":"hol_membership","label":"Members",)"
         R"("fields":["store","file","default_role","precedence"],)"
-        R"("hints":{"color":"#2e6b4f","face":{"w":230,"h":120},"category":"Antfarm",)"
+        R"("hints":{"color":"#2e6b4f","face":{"w":230,"h":120},"category":"Antfarm format before 2026-09-28 - converted on open; build with farm",)"
         R"("editors":{"store":"combo:local-file,mantle,relay","file":"path",)"
         R"("default_role":"combo:admin,editor,viewer",)"
         R"("precedence":"combo:everyone-equal,admins-first"},)"

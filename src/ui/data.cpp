@@ -15,6 +15,33 @@
 
 // ── the Data section: sidebar → list → detail (the management UI) ───────────
 
+/* ── O(VISIBLE) PER FRAME, NOT O(N) (2026-10-24, issue #2) ───────────────────
+ *
+ * At tens of thousands of runes the tab stalled on every frame: it counted every
+ * kind, ran the search and the tag filter against every rune, and laid out a
+ * widget for every match, sixty times a second, for a model that had not
+ * changed. The filtered set is a function of (the model, the kind, the search,
+ * the filter), so it is cached on exactly that and recomputed only when one of
+ * them moves; the list and the cards then draw through ImGuiListClipper, which
+ * lays out only the rows on screen. The key carries the scene's identity as well
+ * as `model_gen`, so a scene replaced without a generation bump can never leave
+ * stale pointers behind. One cache per app (two apps in one process, the phone
+ * harness, each get their own). */
+namespace {
+struct DataRows {
+    unsigned gen = ~0u;
+    const void* nodes = nullptr;
+    size_t count = 0;
+    std::string kind, search, filter;
+    std::vector<size_t> rows;         // indices into scene.nodes
+    std::map<std::string, int> kinds; // the sidebar's counts
+};
+DataRows& data_rows_for(const void* app) {
+    static std::map<const void*, DataRows> per_app;
+    return per_app[app];
+}
+} // namespace
+
 // #2: compile a flat condition list + connector into the ONE tag grammar.
 // "" (no conditions) matches everything, per the grammar's empty convention.
 std::string HormigaApp::compile_filter(const std::vector<FilterTerm>& terms,
@@ -239,8 +266,29 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
                  ImVec2(ImGui::GetCursorScreenPos().x + side_w,
                         ImGui::GetCursorScreenPos().y + body_h));
     ImGui::BeginChild("data-sidebar", ImVec2(side_w, body_h), ImGuiChildFlags_Borders);
-    std::map<std::string, int> counts;
-    for (const auto& n : scene.nodes) counts[n.glyph]++;
+    // the filtered rows and the kind counts, recomputed only when an input moves (above)
+    DataRows& dr = data_rows_for(this);
+    if (dr.gen != model_gen || dr.nodes != scene.nodes.data() || dr.count != scene.nodes.size() ||
+        dr.kind != kind_sel || dr.search != search || dr.filter != filter) {
+        dr.gen = model_gen;
+        dr.nodes = scene.nodes.data();
+        dr.count = scene.nodes.size();
+        dr.kind = kind_sel;
+        dr.search = search;
+        dr.filter = filter;
+        dr.rows.clear();
+        dr.kinds.clear();
+        for (size_t i = 0; i < scene.nodes.size(); ++i) {
+            const maiz::SceneNode& n = scene.nodes[i];
+            dr.kinds[n.glyph]++;
+            if (n.glyph == "note" || n.glyph == "rule") continue; // own tabs
+            if (!kind_sel.empty() && n.glyph != kind_sel) continue;
+            if (!search_match(n, search)) continue; // names, titles, @tags (2026-10-05)
+            if (!maiz::node_matches(filter, n)) continue;
+            dr.rows.push_back(i);
+        }
+    }
+    std::map<std::string, int>& counts = dr.kinds;
     if (ImGui::Selectable(("All (" + std::to_string(scene.nodes.size()) + ")").c_str(),
                           kind_sel.empty()))
         kind_sel.clear();
@@ -311,15 +359,10 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         if (ImGui::Button(lbl.c_str(), ImVec2(-1, 0))) new_rune(kind_sel);
     }
     ImGui::Separator();
-    // gather the filtered set once — shared by the LIST and CARD renderers
+    // the filtered set (cached above) — shared by the LIST and CARD renderers
     std::vector<const maiz::SceneNode*> rows;
-    for (const auto& n : scene.nodes) {
-        if (n.glyph == "note" || n.glyph == "rule") continue; // own tabs
-        if (!kind_sel.empty() && n.glyph != kind_sel) continue;
-        if (!search_match(n, search)) continue; // names, titles, @tags (2026-10-05)
-        if (!maiz::node_matches(filter, n)) continue;
-        rows.push_back(&n);
-    }
+    rows.reserve(dr.rows.size());
+    for (size_t i : dr.rows) rows.push_back(&scene.nodes[i]);
     auto pick = [&](const std::string& nm) { // shared click → selection rule
         if (ImGui::GetIO().KeyCtrl) ed.toggle(nm);
         else ed.selection = {nm};
@@ -365,7 +408,13 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         float r = std::min(cw * 0.30f, 40.0f);
         float ch = 2 * r + 66.0f;
         ImDrawList* dl = ImGui::GetWindowDrawList();
-        for (size_t i = 0; i < rows.size(); ++i) {
+        // a clipper over ROWS of cards: only the rows on screen are laid out at all
+        const int card_rows = (int)((rows.size() + (size_t)cols - 1) / (size_t)cols);
+        ImGuiListClipper clip;
+        clip.Begin(card_rows, ch + ImGui::GetStyle().ItemSpacing.y);
+        while (clip.Step())
+        for (int cr = clip.DisplayStart; cr < clip.DisplayEnd; ++cr)
+        for (size_t i = (size_t)cr * cols; i < std::min(rows.size(), (size_t)(cr + 1) * cols); ++i) {
             const maiz::SceneNode& n = *rows[i];
             if (i % cols != 0) ImGui::SameLine(0, gap);
             ImGui::PushID((int)i);
@@ -457,45 +506,69 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         // and the existing rectangular thumbnail for images ─────────────────
         // the surface a person is WORKING in, when this window has focus
         maiz::presence_focus_if_active(surfaces, "table:data");
-        for (const auto* np : rows) {
-            const maiz::SceneNode& n = *np;
+        /* ONE ROW HEIGHT for every row (2026-10-24): a thumbnail's height, or a
+         * name and its subtitle, whichever is taller. A fixed rhythm is what lets
+         * the clipper skip rows it never lays out, and it is easier to scan than
+         * rows that jump between one line and two. Each row starts at its slot
+         * and the cursor is put back on the next one, so the height is exact. */
+        const float line_h = ImGui::GetTextLineHeightWithSpacing();
+        const float row_h = std::max(42.0f, 2 * line_h) + ImGui::GetStyle().ItemSpacing.y;
+        ImGuiListClipper clip;
+        clip.Begin((int)rows.size(), row_h);
+        while (clip.Step())
+        for (int ri = clip.DisplayStart; ri < clip.DisplayEnd; ++ri) {
+            const maiz::SceneNode& n = *rows[(size_t)ri];
+            const float slot_y = ImGui::GetCursorPosY();
             bool row_clicked = false;
+            /* a 42 x 42 leading slot for a picture or an avatar, the same width on
+             * every row so the names line up in one column */
             if (n.glyph == "image") {
                 std::string p = field_value(n, "path");
                 HostTexture t = p.empty() ? HostTexture{} : texture_for(p);
-                if (t.id) {
-                    float th_h = 42.0f, th_w = th_h * (float)t.w / (float)t.h;
-                    ImGui::Image((ImTextureID)(intptr_t)t.id, ImVec2(th_w, th_h));
+                if (t.id && t.w > 0 && t.h > 0) {
+                    const float k = 42.0f / (float)std::max(t.w, t.h); // fit, never crop
+                    const ImVec2 sz((float)t.w * k, (float)t.h * k), at = ImGui::GetCursorScreenPos();
+                    ImGui::SetCursorScreenPos(ImVec2(at.x + (42 - sz.x) / 2, at.y + (42 - sz.y) / 2));
+                    ImGui::Image((ImTextureID)(intptr_t)t.id, sz);
                     row_clicked = ImGui::IsItemClicked();
-                    ImGui::SameLine();
-                } else if (!p.empty()) {
-                    ImGui::Dummy(ImVec2(42, 42)); // hold space while decoding
-                    ImGui::SameLine();
+                    ImGui::SetCursorScreenPos(at);
                 }
+                ImGui::Dummy(ImVec2(42, 42)); // the slot, decoded or not
+                row_clicked = row_clicked || ImGui::IsItemClicked();
+                ImGui::SameLine();
             } else if (n.glyph == "contact" || n.glyph == "organization") {
-                float r = 15.0f;
-                ImVec2 cur = ImGui::GetCursorScreenPos();
-                draw_avatar(n, ImVec2(cur.x + r, cur.y + r), r);
-                ImGui::Dummy(ImVec2(2 * r, 2 * r));
+                const ImVec2 cur = ImGui::GetCursorScreenPos();
+                draw_avatar(n, ImVec2(cur.x + 21, cur.y + 21), 15.0f);
+                ImGui::Dummy(ImVec2(42, 42));
+                row_clicked = ImGui::IsItemClicked();
+                ImGui::SameLine();
+            } else { // every other kind: its icon in the same slot, so no name starts further left
+                const ImVec2 cur = ImGui::GetCursorScreenPos();
+                const char* icon = glyph_icon(n.glyph);
+                const ImVec2 isz = ImGui::CalcTextSize(icon);
+                ImGui::GetWindowDrawList()->AddText(ImVec2(cur.x + (42 - isz.x) / 2, cur.y + (42 - isz.y) / 2),
+                                                    ImGui::GetColorU32(ImGuiCol_TextDisabled), icon);
+                ImGui::Dummy(ImVec2(42, 42));
                 row_clicked = ImGui::IsItemClicked();
                 ImGui::SameLine();
             }
+            ImGui::BeginGroup(); // the name, and its subtitle under it
             if (ImGui::Selectable(n.name.c_str(), ed.selected(n.name)) || row_clicked)
                 pick(n.name);
             ImGui::PushID(n.name.c_str());
             row_menu(n);
             ImGui::PopID();
             // declares "table:data shows this rune" AND draws the marks, in one
-            // call (Void Maiz's netview: a view cannot do half of it)
+            // call (Void Maiz's netview: a view cannot do half of it). Only rows
+            // on screen reach here, which is what "shows" ought to mean.
             maiz::presence_item(surfaces, roster, net_settings.show, "table:data", n.id,
                                 maiz::Mark::Badge, share_now && !share_now(n));
-            std::string sub = subtitle(n);
-            if (!sub.empty()) {
-                ImGui::Indent(10);
-                ImGui::TextDisabled("%s", sub.c_str());
-                ImGui::Unindent(10);
-            }
-            ImGui::Spacing();
+            const std::string sub = subtitle(n);
+            if (!sub.empty()) ImGui::TextDisabled("%s", sub.c_str());
+            ImGui::EndGroup();
+            // fill the rest of the slot, so every row is exactly row_h tall
+            const float used = ImGui::GetCursorPosY() - slot_y;
+            ImGui::Dummy(ImVec2(0, std::max(0.0f, row_h - used - ImGui::GetStyle().ItemSpacing.y)));
         }
     }
     ImGui::EndChild();
