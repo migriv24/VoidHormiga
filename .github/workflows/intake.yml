@@ -1,0 +1,83 @@
+# Intake: check every new issue, pull request and comment for things that must
+# not be public (okf/concepts/contributing/intake.md).
+#
+# People report problems from inside a real organization's database, so the
+# likeliest thing to land in this public tracker is a member's email, a phone
+# number, a path with a username in it, a pasted token or an organization's
+# name. The issue forms ask them not to; this checks that nobody, in a hurry,
+# did. It labels the item `privacy-review` and comments with LINE NUMBERS AND
+# REASONS ONLY, never the matched text, which would publish it a second time.
+#
+# SAFE ON FORKS BY CONSTRUCTION. `pull_request_target` runs with this
+# repository's token so it can label a fork's PR, which is dangerous only when a
+# workflow checks out and runs the PR's code. This one checks out the DEFAULT
+# BRANCH (our own tools) and reads the PR's title and body as text from the
+# event. Event text reaches the shell through `env:`, never through `${{ }}`
+# inside `run:`, which is the script-injection hole.
+#
+# The private-terms list is the repository secret PRIVATE_TERMS (one term per
+# line, the same format as the local .private-terms). Any maintainer can update
+# it from any machine: `gh secret set PRIVATE_TERMS < .private-terms`.
+name: intake
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created, edited]
+  pull_request_target:
+    types: [opened, edited]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools
+
+      - name: Scan the text
+        id: scan
+        env:
+          TITLE: ${{ github.event.issue.title || github.event.pull_request.title }}
+          BODY: ${{ github.event.comment.body || github.event.issue.body || github.event.pull_request.body }}
+          HORMIGA_PRIVATE_TERMS_TEXT: ${{ secrets.PRIVATE_TERMS }}
+        run: |
+          printf '%s\n%s\n' "$TITLE" "$BODY" > "$RUNNER_TEMP/intake.txt"
+          if python3 tools/intake_scan.py "$RUNNER_TEMP/intake.txt" > "$RUNNER_TEMP/findings.txt"; then
+            echo "found=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Label and say why
+        if: steps.scan.outputs.found == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          WHERE: ${{ github.event.comment && 'your comment' || 'this' }}
+          WHERE_IS_COMMENT: ${{ github.event.comment && 'yes' || '' }}
+        run: |
+          gh label create privacy-review --repo "$GITHUB_REPOSITORY" --color B60205 \
+            --description "May contain something that must not be public" 2>/dev/null || true
+          # one comment per item: an edit that still has a finding re-labels quietly
+          if gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels \
+               --jq '.labels[].name' | grep -qx privacy-review && [ -z "$WHERE_IS_COMMENT" ]; then
+            exit 0
+          fi
+          gh issue edit "$NUMBER" --repo "$GITHUB_REPOSITORY" --add-label privacy-review
+          {
+            echo "Thanks for writing this up. An automatic check found something in $WHERE that may not belong in a public tracker:"
+            echo
+            sed 's/^/- /' "$RUNNER_TEMP/findings.txt"
+            echo
+            echo "Please edit it out: a real person's email or phone number, a path on your computer, a key or token, or the name of an organization or person you work with. A made-up example (\`ana@example.org\`, \`555-0100\`, the Cat Colony) shows the bug just as well."
+            echo
+            echo "Editing keeps the old text in the edit history, so a maintainer will also remove that revision. If it was a key or token, revoke it now: it has been public since you posted it."
+          } > "$RUNNER_TEMP/comment.md"
+          gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"

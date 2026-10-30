@@ -1,0 +1,38 @@
+# Nothing from a real database, a client or a machine reaches this repository
+# (okf/concepts/foundation/what-may-be-public.md).
+#
+# Two runs, because a fork cannot see secrets:
+#
+#   - every pull request: the PATTERN checks (paths, emails, phones, home
+#     directories, credential shapes). Fast, no build, and it fails before a
+#     reviewer has spent any time on the change.
+#   - every push to main, and weekly: the same, plus the NAMES, from the
+#     repository secret PRIVATE_TERMS. This is what catches a name that arrived
+#     through a merge from any machine, so the check no longer depends on the
+#     one device that holds the local .private-terms file.
+#
+# The local hook (tools/hooks/pre-commit) is still the first line: this is the
+# one that holds when somebody did not install it.
+name: privacy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-public:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nothing private in the tree
+        env:
+          # empty on a fork's pull request, which runs the pattern checks only
+          HORMIGA_PRIVATE_TERMS_TEXT: ${{ github.event_name != 'pull_request' && secrets.PRIVATE_TERMS || '' }}
+        run: python3 tools/lint_public.py --strict

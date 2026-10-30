@@ -188,6 +188,20 @@ endif()
 # merge laws, domain predicates, the glyphs our storage and upstream's commands
 # name. UI-free and view-free on purpose: it links `voidmaiz_allomone` only, so
 # the whole derivation is provable headless (tests/allomone_smoke.cpp).
+# THE STORE (2026-10-27, okf/concepts/platform/store.md): the database on disk
+# and the working set Void Core holds. Its own library, so the CLI, the app,
+# the tests and the low-memory harness all open databases the same way.
+add_library(hormiga_store STATIC src/store/json_stream.cpp src/store/store.cpp src/store/working_set.cpp
+  src/store/plan.cpp src/store/bundle.cpp)
+target_include_directories(hormiga_store PUBLIC src PRIVATE vendor/json)
+target_link_libraries(hormiga_store PUBLIC sqlite3 voidmaiz)
+if(WIN32)
+  target_link_libraries(hormiga_store PUBLIC psapi) # platform/process_memory.hpp
+endif()
+if(NOT MSVC)
+  target_compile_options(hormiga_store PRIVATE -Wall -Wextra)
+endif()
+
 add_library(hormiga_allomone STATIC src/domain/hormiga_allomone.cpp)
 target_include_directories(hormiga_allomone PUBLIC src)
 target_link_libraries(hormiga_allomone PUBLIC voidmaiz_allomone)
@@ -646,6 +660,8 @@ endif()
 # (okf/concepts/platform/scale.md). Built on demand only:
 #   cmake --build build --target hormiga_scale_bench
 add_executable(hormiga_scale_bench EXCLUDE_FROM_ALL tests/scale_bench.cpp)
+add_executable(hormiga_store_bench EXCLUDE_FROM_ALL tests/store_bench.cpp)
+target_link_libraries(hormiga_store_bench PRIVATE hormiga_store)
 add_executable(hormiga_miga_bench EXCLUDE_FROM_ALL tests/miga_bench.cpp src/platform/miga.cpp)
 # The stress database generator (tools/datasets/README.md): not part of Hormiga,
 # built on demand. Real organizations from public records, synthetic people and
@@ -810,6 +826,38 @@ add_test(NAME hormiga_icon_smoke COMMAND hormiga_icon_smoke)
 add_executable(hormiga_niche_smoke tests/niche_smoke.cpp vendor/qrcodegen/qrcodegen.cpp)
 target_include_directories(hormiga_niche_smoke PRIVATE src vendor/qrcodegen)
 add_test(NAME hormiga_niche_smoke COMMAND hormiga_niche_smoke)
+
+# Unit tests of the store: the streaming reader, the round trip, selections,
+# a failed import, and memory that does not grow with the file.
+add_executable(hormiga_store_test tests/store_test.cpp)
+target_link_libraries(hormiga_store_test PRIVATE hormiga_store)
+target_include_directories(hormiga_store_test PRIVATE src vendor/json)
+add_test(NAME hormiga_store_test COMMAND hormiga_store_test)
+
+# The working set keeps the store in step: a model-based test against a Core
+# holding the whole database, plus the cases a random walk rarely reaches.
+add_executable(hormiga_working_set_test tests/working_set_test.cpp)
+target_link_libraries(hormiga_working_set_test PRIVATE hormiga_store)
+target_include_directories(hormiga_working_set_test PRIVATE src vendor/json)
+add_test(NAME hormiga_working_set_test COMMAND hormiga_working_set_test)
+add_executable(hormiga_plan_test tests/plan_test.cpp)
+target_link_libraries(hormiga_plan_test PRIVATE hormiga_store)
+target_include_directories(hormiga_plan_test PRIVATE src vendor/json)
+add_test(NAME hormiga_plan_test COMMAND hormiga_plan_test)
+add_executable(hormiga_bundle_test tests/bundle_test.cpp)
+target_link_libraries(hormiga_bundle_test PRIVATE hormiga_store)
+target_include_directories(hormiga_bundle_test PRIVATE src vendor/json)
+add_test(NAME hormiga_bundle_test COMMAND hormiga_bundle_test)
+
+# THE 2 GB DEVICE, ON THIS MACHINE (okf/concepts/platform/store.md, stage 4):
+# tools/lowmem caps a process's memory (a job object on Windows, RLIMIT_AS
+# elsewhere) and open_probe opens a database the way Hormiga does. The test
+# opens 10^5 synthetic runes under a 384 MB cap, planned for a 2 GB machine.
+add_executable(hormiga_lowmem tools/lowmem/lowmem.cpp)
+add_executable(hormiga_open_probe tests/open_probe.cpp)
+target_link_libraries(hormiga_open_probe PRIVATE hormiga_store)
+add_test(NAME hormiga_open_on_a_2gb_machine
+         COMMAND hormiga_lowmem 384 $<TARGET_FILE:hormiga_open_probe> --synthetic 100000 --machine-mb 2048)
 
 add_executable(hormiga_dates_smoke tests/dates_smoke.cpp)
 target_link_libraries(hormiga_dates_smoke PRIVATE voidmaiz)

@@ -1,8 +1,7 @@
 /* app/save_writer.cpp — see save_writer.hpp. */
 #include "app/save_writer.hpp"
 
-#include "platform/storage.hpp"
-#include "voidmaiz/project.hpp"
+#include "store/store.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -18,12 +17,6 @@ SaveWriter::~SaveWriter() {
     }
     wake_.notify_all();
     if (worker_.joinable()) worker_.join();
-}
-
-void SaveWriter::set_storage(Storage* storage) {
-    flush(); // never swap the connection under a write
-    std::lock_guard<std::mutex> g(mu_);
-    storage_ = storage;
 }
 
 void SaveWriter::submit(Job job) {
@@ -53,7 +46,6 @@ std::vector<SaveWriter::Report> SaveWriter::take_reports() {
 void SaveWriter::run() {
     for (;;) {
         Job job;
-        Storage* storage = nullptr;
         {
             std::unique_lock<std::mutex> g(mu_);
             wake_.wait(g, [&] { return stop_ || pending_.has_value(); });
@@ -61,36 +53,27 @@ void SaveWriter::run() {
             job = std::move(*pending_);
             pending_.reset();
             writing_ = true;
-            storage = storage_;
         }
         const auto t0 = std::chrono::steady_clock::now();
         Report rep;
-        if (storage && storage->ok()) {
-            /* Every mantle's rows, projected from the text the save was handed —
-             * the same document the snapshot gets, so the two cannot disagree. */
-            std::vector<maiz::Scene> scenes;
-            scenes.reserve(job.mantles.size());
-            for (const auto& name : job.mantles) {
-                maiz::ProjectOptions po;
-                po.mantle = name;
-                scenes.push_back(maiz::project_scene(*job.state, *job.glyphs, po));
-            }
-            if (!storage->save(*job.state, scenes)) {
-                rep.error = true;
-                rep.message = "db: " + storage->error();
-            }
-        }
         {
-            std::ofstream out(job.snapshot, std::ios::binary | std::ios::trunc);
-            out.write(job.state->data(), (std::streamsize)job.state->size());
-            if (!out) {
+            store::Store st(job.store); // its own connection: the main thread keeps writing to its own
+            const std::filesystem::path tmp = job.snapshot.string() + ".writing";
+            bool ok = st.ok();
+            if (ok) {
+                std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
+                ok = st.write_state(out) && (bool)out;
+            }
+            std::error_code ec;
+            if (ok) std::filesystem::rename(tmp, job.snapshot, ec);
+            if (ok && !ec) st.set_meta("snapshot.stamp", snapshot_stamp(job.snapshot)); // ours, not news
+            if (!ok || ec) {
                 rep.error = true;
-                rep.message += (rep.message.empty() ? "" : "; ") + std::string("write failed: ") +
-                               job.snapshot.string();
+                rep.message = "write failed: " + job.snapshot.string() + (st.ok() ? "" : " (" + st.error() + ")");
+                std::filesystem::remove(tmp, ec);
             }
         }
         rep.ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-        job = {}; // the document's memory goes now, not when the next save arrives
         {
             std::lock_guard<std::mutex> g(mu_);
             reports_.push_back(std::move(rep));

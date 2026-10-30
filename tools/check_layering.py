@@ -71,6 +71,14 @@ FORBIDDEN = {
                 r'"publish/', r'"sync/', r'"antfarm/', r'\.\./app/', r'\.\./ui/'],
                'the issue report is published: it may know the build, never the '
                'database, the machine or the person'),
+    # src/store/ IS WHERE THE DATABASE LIVES (2026-10-27,
+    # okf/concepts/platform/store.md): SQLite on disk and the working set Void
+    # Core holds. The CLI, the phone, the tests and the low-memory harness all
+    # open databases through it, so it may not need a window or the app.
+    'store': ([r'imgui', r'GLFW', r'glad', r'"app/', r'"ui/', r'"render/',
+               r'"publish/', r'\.\./app/', r'\.\./ui/'],
+              'the store opens databases for every front-end and every test; it '
+              'cannot depend on any of them'),
     # src/phone/ IS A FRONT-END, NOT A SKIN (2026-09-23). The phone reaches the
     # application through app.hpp like the desktop does, and draws its own
     # screens. Reaching into ui/ would make every desktop panel a phone panel
