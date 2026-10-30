@@ -164,3 +164,10 @@ HormigaFiles/
 
 # Python bytecode from running tools/*.py (intake_scan imports lint_public)
 __pycache__/
+
+# Never published (Void Mago's Iscariot): secrets, correspondence between
+# agents, and the private-terms list.
+.env
+git_secret.txt
+KEEP_HIDDEN.txt
+*.pem
