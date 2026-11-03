@@ -6759,3 +6759,77 @@ The stress database was opened on this laptop only (scale.md).
   the stable installer and APK URLs serve the files above.
 - The intake and privacy workflows are still unpushed: the token cannot write
   workflow files.
+
+# Opening a database aborted 0.2.3; the store becomes Void Rancho's (2026-11-02)
+
+The author: *"theres a big glitch, when i try to open a datbase the program
+crashes ... recently maiz has adopted a new library in charge of databases and
+such. can you make sure to implement the stuff from void rancho?"*
+
+**The crash, found from Windows' own record of it.** The event log had one
+abort of 0.2.3, a second after a database finished opening. The exception was
+`0xc0000409`, parameter 7: a fail-fast, which is what `std::terminate` becomes.
+A crash dump was in the user's CrashDumps folder. With no debugger on the
+machine, a small reader (minidump streams; the crashing thread's saved stack;
+return addresses resolved against the binary's symbol table) gave the path:
+`frame` → `draw_farm_section` → `draw_hosting_panel` → `image_host_scene` →
+`v1_scene_for` → `v1_node` → `farm::json_quote` → the JSON library's
+serializer throwing `type_error` (316: invalid UTF-8) → nothing catching it.
+
+The data held no invalid UTF-8 (scanned: the bundles and the working copy,
+raw bytes and lone surrogate escapes). The bytes were garbage, and the cause
+was this, in `image_host_scene`:
+
+    const farm::Graph g = farm::read(hormiga::farmhost::project_farm(core));
+
+`farm::Node::sn` pointed into the scene `read` was given, here a temporary,
+destroyed at the end of the line. Every `n.field(...)` after it read freed
+memory. Usually that still held the old text, which is why the bug outlived
+its commit (2026-10-19). 0.2.3's caching of projections reuses memory sooner,
+and on the author's database the freed bytes were not UTF-8. It is reached
+only when the Antfarm tab shows the hosting panel and the Antfarm has an image
+host, a bucket or a web domain, which is why opening other databases, or the
+same one on another tab, did not crash.
+
+**The fix is the cause, not the call.** A `farm::Graph` now owns a copy of
+the scene its nodes point into (`Graph::source`), so a graph read from a
+temporary is safe and no caller can repeat this. `farm::json_quote` replaces
+invalid bytes instead of throwing, so a bad string can no longer end the app
+from a frame. `farm_smoke` reads a graph from a temporary, churns the heap,
+and reads its fields. The old `read` makes that test crash (exit 139); the new
+one passes.
+
+**Void Rancho.** On 2026-10-30 the store built here on 10-27 became the
+family's database library (`../VoidRancho`), and Void Maiz adopted it on
+11-02: `maiz::RanchoLink` and graph analysis moving to Rancho. Hormiga now uses
+it:
+- `src/store/{store,json_stream,working_set,plan}` and their three tests are
+  removed. They live in Rancho (`rancho::`), where its suite runs them (8/8);
+- `src/platform/process_memory.hpp` is removed for `rancho/memory.hpp`;
+- the program's one SQLite is Rancho's (`sqlite3` is an alias of
+  `rancho_sqlite3` when Rancho is beside us);
+- the `.miga` v4 bundle stays Hormiga's, now on Rancho's API: `purge` and
+  `put_blob` on the packed copy, `blob` on open. It writes no SQL of its own
+  against Rancho's schema;
+- the bundle test, `open_probe` and the 2 GB harness run on Rancho, with the
+  app's Core through `maiz::RanchoLink`.
+
+Rancho has no public repository, so a checkout without it builds without the
+store's targets, with a warning.
+
+**What Void Mago committed on 2026-10-30 did not compile.** It took the working
+tree as found, including the first step of the app's move to the store: a save
+writer rewritten for a store the app did not use yet. The shipped writer is
+restored. Stage 5 (the app on the store) restarts on Rancho
+([store](/concepts/platform/store.md)).
+
+**Measured on Rancho:** the stress database (5×10^5 runes) under a 512 MB cap,
+planned for a 2 GB machine, opens and takes edits with a 290 MB peak and a
+0.5 ms write-back per edit. Import takes 32 s, against 20 s for the code it
+replaced, because Rancho also fills its typed-field and tag-source columns.
+Suite: 61/62 (`reduce_conformance`, as before).
+
+**Found, not fixed:** after an open, the Builder dispatches
+`use issue-demo` every frame when the database has no such document, and the
+console fills with the refusal. Minor, and older than this.
+

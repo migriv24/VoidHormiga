@@ -58,8 +58,10 @@ std::string port_at(const maiz::SceneNode& n, int i) {
 
 } // namespace
 
-Graph read(const maiz::Scene& s) {
+Graph read(const maiz::Scene& scene) {
     Graph g;
+    g.source = std::make_shared<const maiz::Scene>(scene); // the nodes point into the graph's own copy
+    const maiz::Scene& s = *g.source;
     for (const auto& n : s.nodes) g.nodes.push_back({n.name, kind_by_glyph(n.glyph), &n});
     for (const auto& w : s.wires) {
         const auto colon = w.relation.find(':');

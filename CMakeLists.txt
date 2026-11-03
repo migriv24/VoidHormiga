@@ -58,6 +58,27 @@ set(VOIDMAIZ_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../VoidMaiz" CACHE PATH
     "Path to the Void Maiz repo")
 add_subdirectory("${VOIDMAIZ_ROOT}" voidmaiz)
 
+# ── VOID RANCHO — where the database lives (2026-11-02) ─────────────────────
+#
+# The store Hormiga built on 2026-10-27 (okf/concepts/platform/store.md) became
+# the family's database library, Void Rancho (../VoidRancho), on 2026-10-30:
+# the same API under `rancho::`, its tests ported, and more (queries by tag
+# expression, typed ranges, NAS-safe opening, the matrix view). Hormiga uses it
+# and keeps no copy. Its Leiden is Void Maiz's (voidmaiz_graph), its Core the
+# one Void Maiz already defines, and its SQLite is the program's only SQLite
+# (below). Rancho has no public repository yet, so a checkout without it still
+# builds: the store's tools and tests are left out, with a warning, as
+# networking is without Void Hammer.
+set(VOIDRANCHO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../VoidRancho" CACHE PATH "Path to the Void Rancho repo")
+if(NOT TARGET voidrancho AND EXISTS "${VOIDRANCHO_ROOT}/CMakeLists.txt")
+  add_subdirectory("${VOIDRANCHO_ROOT}" voidrancho)
+endif()
+if(TARGET voidrancho)
+  message(STATUS "Void Rancho found: the store is Rancho's")
+else()
+  message(WARNING "Void Rancho not found at ${VOIDRANCHO_ROOT} -- the store, its bundle and its tests are left out")
+endif()
+
 # ── VOID PALABRA — the merge (Q40, answered by the author 2026-08-27) ───────
 #
 # okf/concepts/platform/collaboration.md §2. We adopt the MERGE and not (yet)
@@ -120,13 +141,19 @@ if(NOT MSVC)
 endif()
 
 # Vendored SQLite (public domain — vendor/sqlite/LICENSE.md): the default
-# Data holiday, compiled as one C file into a static lib.
-add_library(sqlite3 STATIC vendor/sqlite/sqlite3.c)
-target_include_directories(sqlite3 PUBLIC vendor/sqlite)
-target_compile_definitions(sqlite3 PRIVATE
-  SQLITE_OMIT_LOAD_EXTENSION # no runtime extension loading (and no libdl)
-  SQLITE_DQS=0               # reject double-quoted string literals (hygiene)
-)
+# Data holiday, compiled as one C file into a static lib. ONE SQLite per
+# program: with Void Rancho beside us, its build of the same amalgamation and
+# the same options is ours too, so two static copies never meet at the link.
+if(TARGET rancho_sqlite3)
+  add_library(sqlite3 ALIAS rancho_sqlite3)
+else()
+  add_library(sqlite3 STATIC vendor/sqlite/sqlite3.c)
+  target_include_directories(sqlite3 PUBLIC vendor/sqlite)
+  target_compile_definitions(sqlite3 PRIVATE
+    SQLITE_OMIT_LOAD_EXTENSION # no runtime extension loading (and no libdl)
+    SQLITE_DQS=0               # reject double-quoted string literals (hygiene)
+  )
+endif()
 
 # Vendored libsodium (ISC — vendor/libsodium/README.md): the one crypto
 # dependency, built from source with the ucrt64 toolchain (no hand-rolling).
@@ -188,18 +215,15 @@ endif()
 # merge laws, domain predicates, the glyphs our storage and upstream's commands
 # name. UI-free and view-free on purpose: it links `voidmaiz_allomone` only, so
 # the whole derivation is provable headless (tests/allomone_smoke.cpp).
-# THE STORE (2026-10-27, okf/concepts/platform/store.md): the database on disk
-# and the working set Void Core holds. Its own library, so the CLI, the app,
-# the tests and the low-memory harness all open databases the same way.
-add_library(hormiga_store STATIC src/store/json_stream.cpp src/store/store.cpp src/store/working_set.cpp
-  src/store/plan.cpp src/store/bundle.cpp)
-target_include_directories(hormiga_store PUBLIC src PRIVATE vendor/json)
-target_link_libraries(hormiga_store PUBLIC sqlite3 voidmaiz)
-if(WIN32)
-  target_link_libraries(hormiga_store PUBLIC psapi) # platform/process_memory.hpp
-endif()
-if(NOT MSVC)
-  target_compile_options(hormiga_store PRIVATE -Wall -Wextra)
+# THE .miga v4 BUNDLE (src/store/bundle.*): the store, packed with its pictures.
+# The store itself is Void Rancho's (above); the bundle format is Hormiga's.
+if(TARGET voidrancho)
+  add_library(hormiga_bundle STATIC src/store/bundle.cpp)
+  target_include_directories(hormiga_bundle PUBLIC src)
+  target_link_libraries(hormiga_bundle PUBLIC voidrancho voidmaiz)
+  if(NOT MSVC)
+    target_compile_options(hormiga_bundle PRIVATE -Wall -Wextra)
+  endif()
 endif()
 
 add_library(hormiga_allomone STATIC src/domain/hormiga_allomone.cpp)
@@ -660,8 +684,10 @@ endif()
 # (okf/concepts/platform/scale.md). Built on demand only:
 #   cmake --build build --target hormiga_scale_bench
 add_executable(hormiga_scale_bench EXCLUDE_FROM_ALL tests/scale_bench.cpp)
-add_executable(hormiga_store_bench EXCLUDE_FROM_ALL tests/store_bench.cpp)
-target_link_libraries(hormiga_store_bench PRIVATE hormiga_store)
+if(TARGET voidrancho)
+  add_executable(hormiga_store_bench EXCLUDE_FROM_ALL tests/store_bench.cpp)
+  target_link_libraries(hormiga_store_bench PRIVATE hormiga_bundle)
+endif()
 add_executable(hormiga_miga_bench EXCLUDE_FROM_ALL tests/miga_bench.cpp src/platform/miga.cpp)
 # The stress database generator (tools/datasets/README.md): not part of Hormiga,
 # built on demand. Real organizations from public records, synthetic people and
@@ -827,37 +853,23 @@ add_executable(hormiga_niche_smoke tests/niche_smoke.cpp vendor/qrcodegen/qrcode
 target_include_directories(hormiga_niche_smoke PRIVATE src vendor/qrcodegen)
 add_test(NAME hormiga_niche_smoke COMMAND hormiga_niche_smoke)
 
-# Unit tests of the store: the streaming reader, the round trip, selections,
-# a failed import, and memory that does not grow with the file.
-add_executable(hormiga_store_test tests/store_test.cpp)
-target_link_libraries(hormiga_store_test PRIVATE hormiga_store)
-target_include_directories(hormiga_store_test PRIVATE src vendor/json)
-add_test(NAME hormiga_store_test COMMAND hormiga_store_test)
+# The store's own unit tests (the reader, the round trip, the model-based
+# working-set walk, the plan) moved to Void Rancho with the code (its
+# tests/store_test, working_set_test, plan_test). What stays is Hormiga's: the
+# bundle format, and the 2 GB device on this machine (tools/lowmem caps a
+# process's memory; open_probe opens a database the way Hormiga does).
+if(TARGET voidrancho)
+  add_executable(hormiga_bundle_test tests/bundle_test.cpp)
+  target_link_libraries(hormiga_bundle_test PRIVATE hormiga_bundle)
+  target_include_directories(hormiga_bundle_test PRIVATE src vendor/json)
+  add_test(NAME hormiga_bundle_test COMMAND hormiga_bundle_test)
 
-# The working set keeps the store in step: a model-based test against a Core
-# holding the whole database, plus the cases a random walk rarely reaches.
-add_executable(hormiga_working_set_test tests/working_set_test.cpp)
-target_link_libraries(hormiga_working_set_test PRIVATE hormiga_store)
-target_include_directories(hormiga_working_set_test PRIVATE src vendor/json)
-add_test(NAME hormiga_working_set_test COMMAND hormiga_working_set_test)
-add_executable(hormiga_plan_test tests/plan_test.cpp)
-target_link_libraries(hormiga_plan_test PRIVATE hormiga_store)
-target_include_directories(hormiga_plan_test PRIVATE src vendor/json)
-add_test(NAME hormiga_plan_test COMMAND hormiga_plan_test)
-add_executable(hormiga_bundle_test tests/bundle_test.cpp)
-target_link_libraries(hormiga_bundle_test PRIVATE hormiga_store)
-target_include_directories(hormiga_bundle_test PRIVATE src vendor/json)
-add_test(NAME hormiga_bundle_test COMMAND hormiga_bundle_test)
-
-# THE 2 GB DEVICE, ON THIS MACHINE (okf/concepts/platform/store.md, stage 4):
-# tools/lowmem caps a process's memory (a job object on Windows, RLIMIT_AS
-# elsewhere) and open_probe opens a database the way Hormiga does. The test
-# opens 10^5 synthetic runes under a 384 MB cap, planned for a 2 GB machine.
-add_executable(hormiga_lowmem tools/lowmem/lowmem.cpp)
-add_executable(hormiga_open_probe tests/open_probe.cpp)
-target_link_libraries(hormiga_open_probe PRIVATE hormiga_store)
-add_test(NAME hormiga_open_on_a_2gb_machine
-         COMMAND hormiga_lowmem 384 $<TARGET_FILE:hormiga_open_probe> --synthetic 100000 --machine-mb 2048)
+  add_executable(hormiga_lowmem tools/lowmem/lowmem.cpp)
+  add_executable(hormiga_open_probe tests/open_probe.cpp)
+  target_link_libraries(hormiga_open_probe PRIVATE hormiga_bundle)
+  add_test(NAME hormiga_open_on_a_2gb_machine
+           COMMAND hormiga_lowmem 384 $<TARGET_FILE:hormiga_open_probe> --synthetic 100000 --machine-mb 2048)
+endif()
 
 add_executable(hormiga_dates_smoke tests/dates_smoke.cpp)
 target_link_libraries(hormiga_dates_smoke PRIVATE voidmaiz)

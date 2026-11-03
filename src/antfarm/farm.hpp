@@ -18,6 +18,7 @@
 #include "voidmaiz/embed.hpp"
 #include "voidmaiz/scene.hpp"
 
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -102,6 +103,15 @@ struct Node {
 struct Graph {
     std::vector<Node> nodes;
     std::vector<Wire> wires;
+    /* THE SCENE ITS NODES POINT INTO, kept alive by the graph (2026-11-02).
+     * `Node::sn` pointed into the scene `read` was given, so
+     * `farm::read(project_farm(core))` handed back nodes into a scene destroyed
+     * at the end of that line, and every `field()` after it read freed memory.
+     * Usually that was still the old text; on 2026-11-02 it was not, the bytes
+     * were not UTF-8, quoting them threw, and opening a database whose Antfarm
+     * has an image host or a web domain aborted with the Antfarm tab open. A
+     * graph now owns a copy of its scene, so no caller can make that mistake. */
+    std::shared_ptr<const maiz::Scene> source;
     const Node* find(std::string_view name) const;
     std::vector<const Wire*> into(std::string_view node, std::string_view port) const;
     std::vector<const Wire*> out_of(std::string_view node, std::string_view port) const;

@@ -282,7 +282,12 @@ void register_glyphs(maiz::Core& core) {
     for (const auto& k : kinds()) core.register_glyph(glyph_json(k));
 }
 
-std::string json_quote(std::string_view s) { return nlohmann::json(std::string(s)).dump(); }
+/* Never throws: bytes that are not UTF-8 become U+FFFD instead of an exception
+ * that nothing on a frame's path catches (2026-11-02: one such string aborted
+ * the whole application). */
+std::string json_quote(std::string_view s) {
+    return nlohmann::json(std::string(s)).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+}
 
 std::string field_of(const maiz::SceneNode& n, std::string_view key) {
     for (const auto& f : n.fields) {

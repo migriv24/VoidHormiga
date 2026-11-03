@@ -77,6 +77,21 @@ int main() {
     for (const auto& w : s.wires) linguine += w.kind == maiz::SceneWire::Kind::Linguine;
     CHECK(linguine == (int)g.wires.size()); // named wires draw between sockets
 
+    // ── a graph read from a TEMPORARY scene keeps its fields (2026-11-02) ──
+    // `read` used to point its nodes into the scene it was given; read from a
+    // temporary, every field after the line was freed memory, and quoting the
+    // garbage aborted the app. The graph now owns its scene.
+    {
+        const farm::Graph tmp = farm::read(farm_scene(core));
+        std::vector<std::string> churn; // reuse the freed memory, as a frame would
+        for (int i = 0; i < 2000; ++i) churn.push_back(std::string(64 + i % 200, (char)('a' + i % 26)));
+        const farm::Node* here = tmp.find("here");
+        CHECK(here && here->field("path") == "assets");
+        CHECK(here && here->sn && here->sn->name == "here");
+    }
+    // quoting text that is not UTF-8 is not an exception that ends the app
+    CHECK(farm::json_quote(std::string("caf\xE9 \xFF", 6)).size() > 2);
+
     // ── the evaluator, through a host Context ──────────────────────────────
     auto data = std::make_shared<maiz::Scene>([&] {
         maiz::ProjectOptions po;

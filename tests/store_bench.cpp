@@ -7,9 +7,9 @@
  * Imports the file as a stream, then writes it out whole and as one cluster,
  * and reports the time and the PEAK extra memory of each step: the numbers a
  * 2 GB device has to live within. Pictures are counted and dropped. */
-#include "platform/process_memory.hpp"
+#include "rancho/memory.hpp"
 #include "store/bundle.hpp"
-#include "store/store.hpp"
+#include "rancho/store.hpp"
 #include "voidmaiz/embed.hpp"
 #include "voidmaiz/project.hpp"
 
@@ -31,13 +31,13 @@ int main(int argc, char** argv) {
     for (const char* s : {"", "-wal", "-shm"}) fs::remove(db.string() + s, ec);
     const double mb = 1024.0 * 1024.0;
 
-    const auto base = hormiga::memory::process_bytes();
+    const auto base = rancho::memory::process_bytes();
     std::uint64_t peak = base;
-    auto sample = [&] { peak = std::max(peak, hormiga::memory::process_bytes()); };
+    auto sample = [&] { peak = std::max(peak, rancho::memory::process_bytes()); };
 
-    hormiga::store::Store st(db);
+    rancho::Store st(db);
     const auto t0 = clk::now();
-    hormiga::store::JsonStream in(src.string());
+    rancho::JsonStream in(src.string());
     long long asset_bytes = 0;
     const auto stats = st.import(in, [&](double, const char*) { sample(); },
                                  [&](const std::string&, const std::string& b) { asset_bytes += (long long)b.size(); });
@@ -53,9 +53,9 @@ int main(int argc, char** argv) {
     // one cluster, as a working set would load it
     for (const auto& m : st.mantles()) {
         if (m.runes < 5000) continue;
-        hormiga::store::Selection sel = hormiga::store::Selection::none();
+        rancho::Selection sel = rancho::Selection::none();
         sel.by_tag[m.name] = {"c1:0"};
-        const auto before = hormiga::memory::process_bytes();
+        const auto before = rancho::memory::process_bytes();
         peak = before;
         const auto t1 = clk::now();
         const std::string part = st.state(sel);
@@ -65,13 +65,13 @@ int main(int argc, char** argv) {
                     (double)part.size() / 1024.0, m.name.c_str());
         // what that text costs once Core holds it, and once it is projected: the
         // expansion the working-set budget is computed with
-        const auto m0 = hormiga::memory::process_bytes();
+        const auto m0 = rancho::memory::process_bytes();
         maiz::Core core(part);
-        const auto m1 = hormiga::memory::process_bytes();
+        const auto m1 = rancho::memory::process_bytes();
         const maiz::Scene scene = maiz::project_scene(core);
-        const auto m2 = hormiga::memory::process_bytes();
+        const auto m2 = rancho::memory::process_bytes();
         core.dispatch("set " + (scene.nodes.empty() ? std::string("x") : scene.nodes[0].name) + " display_name y");
-        const auto m3 = hormiga::memory::process_bytes();
+        const auto m3 = rancho::memory::process_bytes();
         const double text = (double)part.size();
         std::printf("expand   core x%.1f, scene x%.1f, one undo frame x%.1f the state text (%zu runes)\n",
                     ((double)m1 - (double)m0) / text, ((double)m2 - (double)m1) / text,
@@ -81,14 +81,14 @@ int main(int argc, char** argv) {
     // the whole document, streamed to a file: what writing a v3 bundle back costs
     const fs::path out = fs::temp_directory_path() / "hormiga-store-bench.state.json";
     {
-        const auto before = hormiga::memory::process_bytes();
+        const auto before = rancho::memory::process_bytes();
         const auto t2 = clk::now();
         std::ofstream o(out, std::ios::binary);
         st.write_state(o);
         o.close();
         std::printf("export   %7.1f s  process +%6.1f MB   %.1f MB written\n",
                     std::chrono::duration<double>(clk::now() - t2).count(),
-                    ((double)hormiga::memory::process_bytes() - (double)before) / mb,
+                    ((double)rancho::memory::process_bytes() - (double)before) / mb,
                     (double)fs::file_size(out, ec) / mb);
     }
     fs::remove(out, ec);

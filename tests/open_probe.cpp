@@ -10,12 +10,13 @@
  * through the dispatcher and writes them back, then checks the store has them.
  * Run under tools/lowmem to hold the whole process to a real cap
  * (okf/concepts/platform/store.md). Exit 0 only if every step held. */
-#include "platform/process_memory.hpp"
-#include "store/plan.hpp"
-#include "store/store.hpp"
-#include "store/working_set.hpp"
+#include "rancho/memory.hpp"
+#include "rancho/plan.hpp"
+#include "rancho/store.hpp"
+#include "rancho/working_set.hpp"
 #include "voidmaiz/embed.hpp"
 #include "voidmaiz/project.hpp"
+#include "voidmaiz/rancho.hpp" // the app's Core as Rancho's CoreLink
 
 #include <algorithm>
 #include <chrono>
@@ -26,7 +27,7 @@
 #include <string>
 
 namespace fs = std::filesystem;
-using namespace hormiga::store;
+using namespace rancho;
 using clk = std::chrono::steady_clock;
 
 namespace {
@@ -34,7 +35,7 @@ namespace {
 double since(clk::time_point t) { return std::chrono::duration<double>(clk::now() - t).count(); }
 double mb(std::uint64_t b) { return (double)b / (1024.0 * 1024.0); }
 std::uint64_t peak = 0;
-void sample() { peak = std::max(peak, hormiga::memory::process_bytes()); }
+void sample() { peak = std::max(peak, rancho::memory::process_bytes()); }
 
 /* A clustered, linked database written as text (a core is too slow to build one this size). */
 void synthetic(const fs::path& p, int n) {
@@ -112,12 +113,13 @@ int main(int argc, char** argv) {
         }
 
     const auto t2 = clk::now();
-    const Plan plan = hormiga::store::plan(st, budget);
+    const Plan plan = rancho::plan(st, budget);
     const double plan_s = since(t2);
     const auto t2b = clk::now();
     maiz::Core core;
     core.set_undo_depth(budget.undo_depth); // the undo frames are part of the budget
-    WorkingSet ws(st, core);
+    maiz::RanchoLink link(core);
+    WorkingSet ws(st, link);
     if (!ws.load(plan.sel)) {
         std::fprintf(stderr, "load failed: %s\n", ws.error().c_str());
         return 1;

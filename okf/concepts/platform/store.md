@@ -115,6 +115,23 @@ predicts the rest. That is the work-unit model of the database progress
 indicators (Luo, Naughton, Ellmann & Watzke 2004; Chaudhuri, Narasayya &
 Ramamurthy 2004). Nothing happens after the bar reaches the end.
 
+# Where the code lives: Void Rancho (2026-11-02)
+
+Stages 1 to 4 were built here on 2026-10-27, in `src/store/`. On 2026-10-30
+they became the family's database library, **Void Rancho** (`../VoidRancho`):
+the same API under `rancho::`, the store's tests ported with it, and more. It
+adds queries by tag expression, typed ranges for fields a kind declares, a
+source on every tag, NAS-safe opening (a store on a network path opens in
+rollback mode, single-host, never WAL), format migration, and the matrix view.
+Hormiga uses Rancho and keeps no copy. Its working sets take the app's Core
+through Void Maiz's `maiz::RanchoLink` (`voidmaiz/rancho.hpp`), and the
+program links Rancho's SQLite as its only one. What stays in `src/store/` is
+Hormiga's own: the `.miga` v4 bundle (`bundle.*`), which packs a Rancho store
+with its pictures in Rancho's `blobs`.
+
+Rancho has no public repository yet, so a checkout without it still builds,
+without the store's tools and tests.
+
 # The order it is built in, and each stage's test
 
 1. **The store**: schema, the streaming v3 reader, and export of the state
@@ -129,8 +146,13 @@ Ramamurthy 2004). Nothing happens after the bar reaches the end.
 4. **The low-memory harness**: the CLI and the app run under an OS memory cap
    (a Windows job object, `ulimit` elsewhere). *Test:* the stress database opens
    and takes edits under a 2 GB cap.
+Stages 1 to 4 are built (now in Rancho, its tests and the 2 GB harness here).
+
 5. **The app's open path and the Data tab** on the store, with the progress
-   model.
+   model. Not yet: the app still holds a whole document. The first attempt
+   rewrote the save writer before the app used it, and that half-step was
+   committed (2026-10-30) in a tree that did not compile. The shipped writer
+   was restored on 2026-11-02, and this stage restarts on Rancho.
 6. **The calendar, the map, search and publishing** on the store.
 7. **LAN sync** of a store-backed database. It merges documents today, and will
    merge the store's rows.

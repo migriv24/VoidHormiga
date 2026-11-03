@@ -3,12 +3,12 @@
  * Packing and opening give back the same database and the same pictures; a
  * v3 file still opens; what was removed is not packed; a failed pack leaves the
  * old file alone; and a packed database takes edits once opened. */
+#include "rancho/working_set.hpp"
 #include "sqlite3.h"
 #include "store/bundle.hpp"
-#include "store/store.hpp"
-#include "store/working_set.hpp"
 #include "voidmaiz/embed.hpp"
 #include "voidmaiz/gesture.hpp"
+#include "voidmaiz/rancho.hpp" // the app's Core as Rancho's CoreLink
 
 #include "json.hpp"
 
@@ -21,6 +21,7 @@
 namespace fs = std::filesystem;
 using nlohmann::json;
 using namespace hormiga::store;
+using rancho::Selection;
 
 static int failures = 0;
 #define CHECK(cond)                                                                  \
@@ -146,7 +147,8 @@ void what_was_removed_is_not_packed() {
         Store st(store);
         maiz::Core core;
         core.register_glyph(R"({"glyph":"thing","label":"Thing","fields":["note"]})");
-        WorkingSet ws(st, core);
+        maiz::RanchoLink link(core);
+        rancho::WorkingSet ws(st, link);
         CHECK(ws.load(Selection::all()));
         core.dispatch("use org");
         ws.dispatch("rune rm r10"); // soft-deleted in the store, with its two edges
@@ -161,7 +163,8 @@ void what_was_removed_is_not_packed() {
     CHECK(st2.rune_count("org") == 49);
     // and no row is waiting for an undo that cannot happen any more
     maiz::Core core;
-    WorkingSet ws(st2, core);
+    maiz::RanchoLink link(core);
+    rancho::WorkingSet ws(st2, link);
     CHECK(ws.load(Selection::all()));
     core.dispatch("use org");
     CHECK(!core.dispatch("cat r10").ok);
@@ -191,7 +194,8 @@ void an_opened_bundle_takes_edits() {
     Store st(store2);
     maiz::Core core;
     core.register_glyph(R"({"glyph":"thing","label":"Thing","fields":["note"]})");
-    WorkingSet ws(st, core);
+    maiz::RanchoLink link(core);
+    rancho::WorkingSet ws(st, link);
     CHECK(ws.load(Selection::all()));
     core.dispatch("use org");
     CHECK(ws.dispatch("set r3 note edited-after-open").ok);
@@ -224,9 +228,9 @@ void a_bundle_cannot_write_outside_the_working_copy() {
         sqlite3* db = nullptr;
         CHECK(sqlite3_open(v4.string().c_str(), &db) == SQLITE_OK);
         CHECK(sqlite3_exec(db,
-                           "INSERT INTO assets VALUES('assets/../../jail-outside.txt', x'78');"
-                           "INSERT INTO assets VALUES('/etc/evil', x'78');"
-                           "INSERT INTO assets VALUES('assets/also-fine.txt', x'79');",
+                           "INSERT INTO blobs VALUES('assets/../../jail-outside.txt', x'78', 1);"
+                           "INSERT INTO blobs VALUES('/etc/evil', x'78', 1);"
+                           "INSERT INTO blobs VALUES('assets/also-fine.txt', x'79', 1);",
                            nullptr, nullptr, nullptr) == SQLITE_OK);
         sqlite3_close(db);
     }
