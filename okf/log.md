@@ -6860,15 +6860,36 @@ There were two reasons, and neither was a code bug:
   ucrt64 GCC build (`___chkstk_ms`), as every Windows release is. The leg now
   builds with MSYS2 ucrt64 and Ninja, the toolchain the releases use.
 
-**So 0.2.4 is Windows and Android only.** Both are built here, where Hammer sits
-beside us. The Linux and macOS runners cannot build until Hammer is published.
-Installs there stay on 0.2.3, and their update check says no build is listed
-for their platform (`update.cpp`, `has_artifact`). Void Mago is told:
+**0.2.4 is held on Void Hammer: committed, not tagged.** Hammer blocks it twice:
+- **It has no manifest.** With Hammer required, `mago stage voidhormiga`
+  refuses: *"voidhormiga requires voidhammer, which has no manifest."* 0.2.3
+  was staged only because the manifest called Hammer optional. Hammer vendors
+  nothing of its own (it uses Void Maiz's cJSON), so its manifest would add no
+  notices. The choice offered was to write Hammer's manifest, to mark Hammer
+  optional again for one release, or to wait. **The author chose to wait.**
+- **It has no public repository**, so the Linux and macOS runners cannot build.
+  A release with only Windows and Android would have been safe: an install
+  whose platform the feed does not list says so and offers nothing
+  (`update.cpp`, `has_artifact`).
+
+Void Mago is told:
 `MESSAGE_FOR_VOIDMAGO_hormiga-0.2.4-and-void-hammer-is-not-public-2026-11-02.md`.
-Publishing Hammer is the author's and Hammer's decision.
+Publishing Hammer is the author's and Hammer's decision. When Hammer has both a
+manifest and a public repository, 0.2.4 is tagged and every platform builds.
 
 **Iscariot's flag #29** (`tests/vault_smoke.cpp:33`, a test value shaped like an
 API key) is fixed: the value is now obviously fake and keeps the same length.
+Iscariot's scan verified it. The same value is still in one old commit, which
+only a history rewrite removes, and that is the author's decision.
+
+**Void Mago's 2026-10-30 reply, consumed.** On our three 10-18 asks:
+- `mago --version` is built;
+- the doctor check for a sibling with no manifest is accepted, not built
+  (Hammer is the live case);
+- `peers.syncs_with` is accepted in principle.
+
+Iscariot (`../VoidMago/iscariot/`) is the family-wide form of our
+`lint_public.py`. Ours stays ours. Both messages are deleted.
 
 **The token** the author provided for this release lives in a file at the
 repository root that `.gitignore` lists. It is passed to one command at a time
