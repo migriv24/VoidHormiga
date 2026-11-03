@@ -133,11 +133,17 @@ EOF
 # fixture is full of Spanish. Every pattern here is ASCII, so reading the file as
 # bytes is not a compromise: it is what these substitutions always meant. This is
 # why the golden has been red on every macOS CI run since 0.1.2.
+#
+# PERL, NOT SED (2026-11-02). Git Bash's sed on Windows drops the CR of every
+# CRLF it reads, and GNU and BSD sed on Linux and macOS keep it. A calendar is
+# CRLF by its standard and a font is bytes, so the Windows-captured golden held
+# hashes of altered files, and CI on the other two platforms was right to
+# disagree. Perl reads lines as bytes, CR included, on every platform.
 norm() {
-  LC_ALL=C sed -E -e 's/DTSTAMP:[0-9TZ]+/DTSTAMP:X/' \
-         -e 's/UID:[A-Za-z0-9_]+@/UID:X@/' \
-         -e 's/\?v=[0-9]+/?v=X/g' \
-         -e 's/(--bdim:)[0-9.]+/\1X/g' "$1"
+  perl -pe 's/DTSTAMP:[0-9TZ]+/DTSTAMP:X/;
+            s/UID:[A-Za-z0-9_]+@/UID:X@/;
+            s/\?v=[0-9]+/?v=X/g;
+            s/(--bdim:)[0-9.]+/${1}X/g' "$1"
 }
 
 sums=""

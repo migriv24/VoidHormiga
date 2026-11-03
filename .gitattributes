@@ -36,7 +36,9 @@
 *.js        text
 *.cmake     text
 CMakeLists.txt text
-*.sha256    text
+# LF everywhere: the golden render diffs this file against LF output, and a
+# CRLF checkout (CI's Windows runner) made every line differ (2026-11-02).
+*.sha256    text eol=lf
 *.voidscript text
 
 # ── BINARY, never touched, never diffed as text ─────────────────────────────

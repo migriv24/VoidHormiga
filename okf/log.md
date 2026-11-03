@@ -6919,3 +6919,34 @@ it as a plain required step. Every sibling on this machine was checked against
 its public remote before the release builds: Core `cb692e2` (`v0.2.15`), Maiz
 `34274a8`, Allomone `e4719c0`, Palabra `2da33cf`, Hammer `2962fa0` and Rancho
 `abeb6ba` (`v0.1.0` + 1). All are clean and equal to `origin`.
+
+## CI on three platforms: the last two failures, and both were real (2026-11-02)
+
+With Void Hammer cloned, all three CI legs built for the first time since
+2026-10-19. Two tests failed.
+
+**`hormiga_bundle_test` on Linux and macOS.** POSIX reads `C:/Windows/evil.txt`
+as a relative path and `..\x` as one name, so the bundle's path guard accepted
+them there. Both still landed inside the working copy, so this was harmless,
+but the verdict depended on where the bundle was opened, and a bundle comes from
+another machine. `place()` now refuses any path with a drive colon or a
+backslash, on every platform. The test adds a backslash path to the v3 case and
+a drive path to the v4 case.
+
+**`hormiga_golden_render` on all three, which earlier releases had called
+"font drift".** It was not drift:
+- Git Bash's `sed` drops the CR of every CRLF it reads, and Linux's and
+  macOS's `sed` keep it. The golden was captured on Windows, through `sed`, so
+  it held hashes of altered calendars (CRLF by their standard) and of two fonts
+  whose bytes happen to contain CRLF. Linux and macOS were right. The
+  normaliser is now `perl`, which keeps every byte on every platform.
+- That exposed a real difference in what Hormiga publishes. `app.js` and
+  `style.css` are embedded at build time from `src/render/web/`, which a Windows
+  checkout gives CRLF, so a site published by a Windows build carried different
+  bytes from a Linux build's. `tools/embed_asset.py` now writes LF whatever the
+  checkout did.
+- CI's Windows checkout gave `golden.sha256` itself CRLF, so every line
+  differed. `.gitattributes` pins `*.sha256` to LF.
+
+The recaptured golden differs from the old one in exactly the five hashes that
+Linux and macOS computed. 61/61 here (`reduce_conformance` aside).

@@ -28,6 +28,10 @@ bool mirror_file(const fs::path& p, const std::string& bytes) {
 
 /* Where a file named in a bundle goes, or nothing if it would leave its folder. */
 bool place(const std::string& path, const fs::path& base_dir, const fs::path& assets_dir, fs::path& out) {
+    // The same verdict on every platform: a bundle is a file from another
+    // machine. POSIX reads "C:/x" as relative and "..\x" as one name, so a drive
+    // or a backslash is refused outright (neither occurs in a portable name).
+    if (path.find(':') != std::string::npos || path.find('\\') != std::string::npos) return false;
     const bool asset = path.rfind("assets/", 0) == 0;
     const fs::path rel = fs::path(asset ? path.substr(7) : path).lexically_normal();
     if (rel.empty() || rel.is_absolute() || rel.has_root_name() || rel.has_root_directory()) return false;

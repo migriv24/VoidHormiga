@@ -28,6 +28,11 @@ def main() -> int:
     src, dst, symbol = sys.argv[1], sys.argv[2], sys.argv[3]
     with open(src, "rb") as f:
         data = f.read()
+    # LF, whatever the checkout did (2026-11-02). git's text=auto gives these
+    # files CRLF on a Windows checkout and LF elsewhere, so the same Hormiga
+    # published different bytes depending on who built it. The golden render
+    # caught it once its normaliser stopped stripping CRs.
+    data = data.replace(b"\r\n", b"\n")
 
     # Chunked hex escapes rather than a raw string: a raw string would break the
     # moment the asset contained the closing delimiter, and MSVC caps a single

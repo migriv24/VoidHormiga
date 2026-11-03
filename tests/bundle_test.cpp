@@ -212,10 +212,10 @@ void a_bundle_cannot_write_outside_the_working_copy() {
     const fs::path v3 = fresh("evil.miga");
     put(v3, R"({"magic":"MIGA","version":3,"meta":{},"assets":{"assets/../../jail-outside.txt":"eA==",)"
             R"("../jail-outside.txt":"eA==","C:/Windows/evil.txt":"eA==","/etc/evil":"eA==",)"
-            R"("assets/fine.txt":"eA=="},"state":)" + sample() + "}");
+            R"("..\\jail-outside.txt":"eA==","assets/fine.txt":"eA=="},"state":)" + sample() + "}");
     const auto r = open_bundle(v3, fresh("evil.store"), base, assets);
     CHECK(r.ok);
-    CHECK(r.refused == 4);
+    CHECK(r.refused == 5); // the same five on every platform: a drive and a backslash are refused on POSIX too
     CHECK(!fs::exists(outside));
     CHECK(slurp(assets / "fine.txt") == "x");
     // v4: the paths are rows
@@ -230,13 +230,14 @@ void a_bundle_cannot_write_outside_the_working_copy() {
         CHECK(sqlite3_exec(db,
                            "INSERT INTO blobs VALUES('assets/../../jail-outside.txt', x'78', 1);"
                            "INSERT INTO blobs VALUES('/etc/evil', x'78', 1);"
+                           "INSERT INTO blobs VALUES('C:/Windows/evil.txt', x'78', 1);"
                            "INSERT INTO blobs VALUES('assets/also-fine.txt', x'79', 1);",
                            nullptr, nullptr, nullptr) == SQLITE_OK);
         sqlite3_close(db);
     }
     const auto r4 = open_bundle(v4, fresh("evil4.store"), base, assets);
     CHECK(r4.ok);
-    CHECK(r4.refused == 2);
+    CHECK(r4.refused == 3);
     CHECK(!fs::exists(outside));
     CHECK(slurp(assets / "also-fine.txt") == "y");
 }
