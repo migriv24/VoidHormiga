@@ -6900,3 +6900,22 @@ crash fix, and the database code coming from Void Rancho). The sync protocol is
 untouched, so 0.2.4 and 0.2.3 sync.
 
 **Tests:** 61/62 (`reduce_conformance`, as before); every linter.
+
+## Void Hammer is public; 0.2.4 is unblocked (2026-11-02)
+
+Void Mago answered (issue #1 on VoidMago, and a letter, consumed and deleted).
+The author decided both blocks, and Mago did the work as Hammer:
+- **Void Hammer 0.1.0** has a manifest (`runtime`; requires Void Maiz and Void
+  Palabra; no vendors, so no notices) and an MIT licence.
+- **It is public** (`github.com/migriv24/VoidHammer`). It has no tag, so our
+  `"*"` edge takes its default branch.
+- `mago doctor` now warns about a required sibling with no manifest or no
+  remote: the check we asked for on 10-18.
+- Iscariot's history flag #95 is the vault test value in `3ed775c`. Mago
+  confirms it was never a real credential, so nothing is revoked.
+
+Here, `void.json`'s Hammer note says Hammer is public, and both workflows clone
+it as a plain required step. Every sibling on this machine was checked against
+its public remote before the release builds: Core `cb692e2` (`v0.2.15`), Maiz
+`34274a8`, Allomone `e4719c0`, Palabra `2da33cf`, Hammer `2962fa0` and Rancho
+`abeb6ba` (`v0.1.0` + 1). All are clean and equal to `origin`.

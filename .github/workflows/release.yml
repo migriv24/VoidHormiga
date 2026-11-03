@@ -69,12 +69,10 @@ jobs:
           git clone --depth 1 https://github.com/migriv24/VoidAllomone.git VoidAllomone
           git clone --depth 1 https://github.com/migriv24/VoidPalabra.git  VoidPalabra
           git clone --depth 1 https://github.com/migriv24/VoidRancho.git   VoidRancho
-          # Void Hammer (networking since 2026-10-17). Void Maiz's main carries
-          # the move since 2026-11-02, so these builds need it: no Hammer, no
-          # networking, and Hormiga's sync does not compile. Until its
-          # repository is public this leg stops here, and says why.
-          GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/migriv24/VoidHammer.git VoidHammer \
-            || { echo "::error::Void Hammer has no public repository: this platform cannot be built"; exit 1; }
+          # Void Hammer (networking since 2026-10-17, public since 2026-11-02).
+          # Void Maiz's main forwards networking to it, so Hormiga's sync does
+          # not compile without it.
+          git clone --depth 1 https://github.com/migriv24/VoidHammer.git   VoidHammer
 
       # GLFW 3.4 builds both an X11 and a Wayland backend by default, so
       # configure needs both sets of headers even on a machine with no display.

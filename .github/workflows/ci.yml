@@ -69,11 +69,9 @@ jobs:
           # Void Rancho: the store (2026-11-02). Optional to CMake, but without it
           # the store's bundle and tests are left out, so CI clones it.
           git clone --depth 1 https://github.com/migriv24/VoidRancho.git VoidRancho
-          # Void Hammer: the networking (2026-10-17), which Void Maiz's main now
-          # forwards to and Hormiga's sync needs. Cloned when its repository is
-          # public; until then this warns and the build fails at src/sync.
-          GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/migriv24/VoidHammer.git VoidHammer \
-            || echo "::warning::Void Hammer has no public repository: Hormiga's networking cannot build"
+          # Void Hammer: the networking (2026-10-17), which Void Maiz's main
+          # forwards to and Hormiga's sync needs. Public since 2026-11-02.
+          git clone --depth 1 https://github.com/migriv24/VoidHammer.git VoidHammer
 
       # The vendored libsodium is a ucrt64 (MSYS2 GCC) build, and so is every
       # Windows release. Visual Studio's linker cannot link it (___chkstk_ms),

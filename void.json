@@ -78,7 +78,7 @@
       "sibling": "../VoidHammer",
       "cmake_var": "VOIDHAMMER_ROOT",
       "link": "static",
-      "note": "the family networking since 2026-10-17. REQUIRED since Void Maiz's main carried the move (2026-11-02): Maiz's voidmaiz/lan.hpp forwards to voidhammer/lan.hpp, and Hormiga's sync does not compile without it. It has no public repository yet (the URL above is where it will be), so the Linux and macOS release builds cannot run until it is published.",
+      "note": "the family networking since 2026-10-17. Required since Void Maiz's main carried the move (2026-11-02): Maiz's voidmaiz/lan.hpp forwards to voidhammer/lan.hpp, and Hormiga's sync does not compile without it. Public since 2026-11-02, with a manifest; it has no release tag yet, so this edge takes its default branch.",
       "repository": "https://github.com/migriv24/VoidHammer"
     }
   ],
