@@ -6950,3 +6950,29 @@ a drive path to the v4 case.
 
 The recaptured golden differs from the old one in exactly the five hashes that
 Linux and macOS computed. 61/61 here (`reduce_conformance` aside).
+
+## 0.2.4 shipped (2026-11-02)
+
+- **Commit `71e3706`, tag `v0.2.4`.** CI was green on all three platforms on
+  that commit, the first green run since 2026-10-19. The tag's tagger is the
+  no-reply address, unlike `v0.2.3`'s.
+- **All three runner legs built** (linux-x64, macos-arm64, macos-x64) against
+  the public siblings: Void Core `v0.2.15`, Void Maiz `34274a8`, Void Allomone,
+  Void Palabra, Void Hammer `2962fa0` and Void Rancho. The installer and the
+  APK were built here against the same commits, each checked equal to its
+  `origin`.
+- **Windows installer:** staged by `mago stage`, which now resolves Hammer.
+  Against 0.2.3 the script differs only in Void Core 0.2.15 and in Rancho and
+  Hammer joining the compiled-in list. The staged CLI reports `Void Hormiga
+  0.2.4 (windows-x64)`. `3cd8b3d3…`, 16,717,282 bytes.
+- **APK:** version code 204, signed with the Hormiga key (certificate
+  `37d0ee24…`, as 0.2.3), so it installs over it. `86444a26…`.
+- **Feed:** the Linux archive was downloaded into the release folder before
+  `mago feed --artifacts`. Its digest `33b789ab…` equals the runner's own, and
+  both feed artifacts hash to what the feed says and match its `bytes`.
+- **Live:** 15 assets, as 0.2.3. `releases/latest/download/void-updates.json`
+  says `latest 0.2.4`, and the stable installer, APK and Linux URLs serve the
+  files above.
+
+**Not done:** 0.2.4 on a phone, and the crash fix seen in a window on the
+database that crashed (the test reproduces the cause).
