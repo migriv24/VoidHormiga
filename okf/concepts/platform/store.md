@@ -129,8 +129,8 @@ program links Rancho's SQLite as its only one. What stays in `src/store/` is
 Hormiga's own: the `.miga` v4 bundle (`bundle.*`), which packs a Rancho store
 with its pictures in Rancho's `blobs`.
 
-Rancho has no public repository yet, so a checkout without it still builds,
-without the store's tools and tests.
+Rancho is public (`github.com/migriv24/VoidRancho`, 2026-11-02) and required:
+CMake stops and says to clone it beside the checkout.
 
 # The order it is built in, and each stage's test
 

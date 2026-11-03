@@ -30,7 +30,7 @@ int main() {
     fs::path vpath = fs::temp_directory_path() / "hormiga-vault-smoke.miga";
     fs::remove(vpath);
     const std::string pass = "correct horse battery staple";
-    const std::string secret = "454e6b38b655104f725d7fd9b15d4ac2"; // an api key shape
+    const std::string secret = "test-fixture-not-a-real-api-key0"; // 32 bytes, the length of an api key
 
     // ── 1: create, set, save ────────────────────────────────────────────────
     {

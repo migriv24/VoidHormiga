@@ -6833,3 +6833,49 @@ Suite: 61/62 (`reduce_conformance`, as before).
 `use issue-demo` every frame when the database has no such document, and the
 console fills with the refusal. Minor, and older than this.
 
+
+# 0.2.4: the crash fix, every public library, and the one that is not (2026-11-02)
+
+The author: *"rancho is published, and so hormiga should be able to properly
+use every library it needs to work ... then try a new release for hormiga, one
+that is properly using void rancho, and other libraries correctly (if there
+are libraries that can't be used correctly yet, arent public somewhere, or
+idk, let void mago know in a message so it can get things sorted out)"*
+
+**Void Rancho is required.** It is public, so CMake stops without it and says
+where to clone it from, instead of building a Hormiga with another SQLite and no
+store. `void.json` lists it in `requires` (`>=0.1.0`, static). CI and the
+release workflow clone it.
+
+**What CI had been failing on since 2026-10-19.** Every run on `main` was red.
+There were two reasons, and neither was a code bug:
+- **Void Hammer is not public.** Void Maiz's `main` carries the networking move
+  (2026-11-02), so `voidmaiz/lan.hpp` forwards to `voidhammer/lan.hpp`, and
+  `src/sync/peer.cpp` does not compile on a machine without a Hammer checkout.
+  `void.json` called Hammer optional, which stopped being true with that merge;
+  it now says it is required. The workflows clone Hammer from where its
+  repository will be. Until it exists, CI warns, and a release leg stops with an
+  error naming it.
+- **The Windows leg used Visual Studio**, and the vendored libsodium is a
+  ucrt64 GCC build (`___chkstk_ms`), as every Windows release is. The leg now
+  builds with MSYS2 ucrt64 and Ninja, the toolchain the releases use.
+
+**So 0.2.4 is Windows and Android only.** Both are built here, where Hammer sits
+beside us. The Linux and macOS runners cannot build until Hammer is published.
+Installs there stay on 0.2.3, and their update check says no build is listed
+for their platform (`update.cpp`, `has_artifact`). Void Mago is told:
+`MESSAGE_FOR_VOIDMAGO_hormiga-0.2.4-and-void-hammer-is-not-public-2026-11-02.md`.
+Publishing Hammer is the author's and Hammer's decision.
+
+**Iscariot's flag #29** (`tests/vault_smoke.cpp:33`, a test value shaped like an
+API key) is fixed: the value is now obviously fake and keeps the same length.
+
+**The token** the author provided for this release lives in a file at the
+repository root that `.gitignore` lists. It is passed to one command at a time
+through the environment.
+
+`void.json`'s release block: `compatible`, no behavior changes, two adds (the
+crash fix, and the database code coming from Void Rancho). The sync protocol is
+untouched, so 0.2.4 and 0.2.3 sync.
+
+**Tests:** 61/62 (`reduce_conformance`, as before); every linter.

@@ -66,10 +66,35 @@ jobs:
           git clone --depth 1 https://github.com/migriv24/VoidMaiz.git VoidMaiz
           git clone --depth 1 https://github.com/migriv24/VoidAllomone.git VoidAllomone
           git clone --depth 1 https://github.com/migriv24/VoidPalabra.git VoidPalabra
-          # VoidHammer (the family's networking since 2026-10-17) has no public
-          # repository yet. This build therefore has networking absent; CMake
-          # warns. Add the clone here when the remote exists, so the five
-          # networking tests run in CI instead of being silently skipped.
+          # Void Rancho: the store (2026-11-02). Optional to CMake, but without it
+          # the store's bundle and tests are left out, so CI clones it.
+          git clone --depth 1 https://github.com/migriv24/VoidRancho.git VoidRancho
+          # Void Hammer: the networking (2026-10-17), which Void Maiz's main now
+          # forwards to and Hormiga's sync needs. Cloned when its repository is
+          # public; until then this warns and the build fails at src/sync.
+          GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/migriv24/VoidHammer.git VoidHammer \
+            || echo "::warning::Void Hammer has no public repository: Hormiga's networking cannot build"
+
+      # The vendored libsodium is a ucrt64 (MSYS2 GCC) build, and so is every
+      # Windows release. Visual Studio's linker cannot link it (___chkstk_ms),
+      # so the Windows leg builds with the toolchain the releases use.
+      - name: Windows toolchain (MSYS2 ucrt64)
+        if: matrix.os == 'windows-latest'
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false
+          install: mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja
+
+      - name: Use ucrt64 for every later step
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          "${{ steps.msys2.outputs.msys2-location }}\ucrt64\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          "CMAKE_GENERATOR=Ninja" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "CC=gcc" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "CXX=g++" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
       # GLFW 3.4 builds BOTH an X11 and a Wayland backend on Linux by default, so
       # configure needs both sets of development headers even though a runner

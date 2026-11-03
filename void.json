@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -62,14 +62,24 @@
       "note": "canonical encoding and the CRDT merge; compiled from source into our own target"
     },
     {
+      "name": "voidrancho",
+      "kind": "runtime",
+      "version": ">=0.1.0",
+      "sibling": "../VoidRancho",
+      "repository": "https://github.com/migriv24/VoidRancho",
+      "cmake_var": "VOIDRANCHO_ROOT",
+      "link": "static",
+      "note": "the database library (the store, its streaming reader, the working set and the planner), extracted from Hormiga's own store on 2026-10-30. Its SQLite is the program's only SQLite. The .miga v4 bundle stays Hormiga's, on Rancho's API. The app's open path does not use the store yet (okf/concepts/platform/store.md, stage 5)."
+    },
+    {
       "name": "voidhammer",
       "kind": "runtime",
       "version": "*",
       "sibling": "../VoidHammer",
       "cmake_var": "VOIDHAMMER_ROOT",
       "link": "static",
-      "optional": true,
-      "note": "the family networking since 2026-10-17. Optional: without it Hormiga builds with networking absent and CMake says so. It has no public repository yet, so `mago bootstrap` reports it absent rather than failing."
+      "note": "the family networking since 2026-10-17. REQUIRED since Void Maiz's main carried the move (2026-11-02): Maiz's voidmaiz/lan.hpp forwards to voidhammer/lan.hpp, and Hormiga's sync does not compile without it. It has no public repository yet (the URL above is where it will be), so the Linux and macOS release builds cannot run until it is published.",
+      "repository": "https://github.com/migriv24/VoidHammer"
     }
   ],
   "_vendors_unversioned_note": "BLAKE3, Lucide and the typefaces carry no version string in the vendored drop, so they carry none here. `mago doctor` is right that nothing can then tell whether ours is the same copy anybody else has -- but a version invented to silence a note is the wrong answer to exactly the question the field exists to ask. The fix is to record the version at the next re-vendor, when it is a fact rather than a reconstruction.",
@@ -249,41 +259,18 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.2.3",
-    "previous": "0.2.2",
+    "version": "0.2.4",
+    "previous": "0.2.3",
     "change": "compatible",
-    "date": "2026-10-26",
-    "summary": "one Antfarm for every database, large databases that open and stay responsive, and a way to report a problem",
+    "date": "2026-11-02",
+    "summary": "a fix for Hormiga closing itself while a database opens",
     "adds": [
-      "Every database gets the current Antfarm when it opens, as one undo step; the old graph and its palette are gone, and the farm commands are the one way to build it",
-      "farm rollback puts a web domain's previous deployment back; Cloudflare Pages publishing works from the Antfarm, and a web domain can carry its own deploy and rollback commands",
-      "Hosting images online uses the Antfarm's image hosts, buckets and web domains",
-      "Opening and saving a database run in the background with a progress bar that says what it is doing and, once it can tell, how long is left",
-      "Large databases: the Data tab, the calendar, the map's filters and the Antfarm stay responsive at hundreds of thousands of records, and saving no longer stops the window",
-      "Report a problem, in Settings > About and on the phone's Me screen, writes what the people who help you need to know (which Hormiga, which system) and nothing about your database; voidhormiga-cli report does the same"
+      "Opening a database no longer closes Hormiga. 0.2.3 could quit a second after a database finished opening when the Antfarm tab was showing and the database's Antfarm had an image host, a bucket or a web domain",
+      "Hormiga's database code now comes from Void Rancho, the family's database library; nothing about your databases changes"
     ],
-    "behavior_changes": [
-      {
-        "what": "THE ANTFARM'S MAP NO LONGER PUBLISHES PEOPLE. A map built with farm preview or farm publish now holds only what may appear on a public map, as the website's map always did; before, every rune with a place went into it, contacts included, with names and tags.",
-        "who_is_affected": "Anyone who published a site with a map through the Antfarm: publish again to replace it."
-      },
-      {
-        "what": "EVERY DATABASE IS CONVERTED TO THE CURRENT ANTFARM WHEN IT OPENS. The conversion is one undo step and the log says it happened; the old Antfarm tab is gone.",
-        "who_is_affected": "Every database that still had an Antfarm in the format before 2026-09-28."
-      },
-      {
-        "what": "SAVING HAPPENS IN THE BACKGROUND. The window keeps working while the database is written; a save that fails says so afterwards, in a message and in the console. Quitting waits until the last save is on disk, which for a very large database can take minutes.",
-        "who_is_affected": "Everyone; noticeable on large databases."
-      },
-      {
-        "what": "SWITCHING OFF AN ALLOMONE SCRIPT REMOVES ITS COLOURS, LABELS AND HIDES AT ONCE. Before, they stayed on the cards until Hormiga restarted.",
-        "who_is_affected": "Anyone who uses Allomone scripts."
-      }
-    ],
+    "behavior_changes": [],
     "read_more": [
-      "okf/concepts/platform/scale.md",
-      "okf/concepts/platform/antfarm/v2/index.md",
-      "okf/concepts/contributing/index.md"
+      "okf/concepts/platform/store.md"
     ]
   },
   "update": {

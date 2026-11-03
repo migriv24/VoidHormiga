@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.20)
 # does not produce a missing answer, it produces a confident wrong one. It is
 # also what the running binary reports to the update client, which is the other
 # reason it cannot be a literal typed into a third place.
-project(voidhormiga VERSION 0.2.3 LANGUAGES CXX C)
+project(voidhormiga VERSION 0.2.4 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -66,9 +66,9 @@ add_subdirectory("${VOIDMAIZ_ROOT}" voidmaiz)
 # expression, typed ranges, NAS-safe opening, the matrix view). Hormiga uses it
 # and keeps no copy. Its Leiden is Void Maiz's (voidmaiz_graph), its Core the
 # one Void Maiz already defines, and its SQLite is the program's only SQLite
-# (below). Rancho has no public repository yet, so a checkout without it still
-# builds: the store's tools and tests are left out, with a warning, as
-# networking is without Void Hammer.
+# (below). Rancho is public (github.com/migriv24/VoidRancho, 2026-11-02), so it
+# is REQUIRED: a checkout without it is told to clone it, rather than building
+# a Hormiga with a different SQLite and no store.
 set(VOIDRANCHO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../VoidRancho" CACHE PATH "Path to the Void Rancho repo")
 if(NOT TARGET voidrancho AND EXISTS "${VOIDRANCHO_ROOT}/CMakeLists.txt")
   add_subdirectory("${VOIDRANCHO_ROOT}" voidrancho)
@@ -76,7 +76,8 @@ endif()
 if(TARGET voidrancho)
   message(STATUS "Void Rancho found: the store is Rancho's")
 else()
-  message(WARNING "Void Rancho not found at ${VOIDRANCHO_ROOT} -- the store, its bundle and its tests are left out")
+  message(FATAL_ERROR "Void Rancho not found at ${VOIDRANCHO_ROOT}. Clone it beside this checkout: "
+    "git clone https://github.com/migriv24/VoidRancho.git ../VoidRancho  (or set VOIDRANCHO_ROOT)")
 endif()
 
 # ── VOID PALABRA — the merge (Q40, answered by the author 2026-08-27) ───────
