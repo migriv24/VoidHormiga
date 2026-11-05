@@ -51,7 +51,10 @@ BUDGET = {
     # the repo. Everything the tools DO is in ui/niche_tools.cpp.
     # 2950 -> 2951 (2026-10-15): `++model_gen` in reproject, the count every cache of
     # the model keys on (the share settings, the map's places and looks).
-    'src/app/app.cpp': 2951,
+    # 2951 -> 2956 (2026-11-03): stage 5, the working copy as a Rancho store. The
+    # boot, the save and the write-back live in app/database.cpp; app.cpp keeps
+    # the four lines that route a save and a dispatch through the working set.
+    'src/app/app.cpp': 2956,
     'src/ui/allomone.cpp': 1950,    # rules editor + canvas + inspector
     'src/ui/map.cpp': 1950,         # draw_map_section is still ~1,200 of it
     # 1600 -> 1620 (2026-08-28): the `video` block's card preview, which resolves
@@ -269,7 +272,9 @@ BUDGET = {
     # is ui/inspector.cpp, ui/widgets.cpp, ui/calendar_panels.cpp, ui/map.cpp.
     # 1304 -> 1308 (2026-10-15, later): `model_gen` and the share-settings
     # cache, which took 10.6 ms off every frame on every tab (measured).
-    'src/app/app.hpp': 1308,
+    # 1308 -> 1327 (2026-11-03): stage 5, the working store and its Data tab
+    # strip as members, one line each (app/working_store.hpp is the subsystem).
+    'src/app/app.hpp': 1327,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because
@@ -330,7 +335,7 @@ BUDGET = {
     # `lan-share`, `lan-join`) -- their catalogue rows and one dispatch branch.
     # Everything they DO is app/lan_cli.cpp; a verb's consequence string has to
     # be written where --allow-effects reads it, which is here.
-    'src/main/headless.cpp': 1489,  # +3: a database's own kinds, at load, in effects' fresh cores, and the render's (2026-10-07); +6: the catalogue rows of home, lan-remove-member and lan-leave (2026-10-18)
+    'src/main/headless.cpp': 1493,  # +4: `store-check` (2026-11-03, app/store_check.cpp); +3: a database's own kinds, at load, in effects' fresh cores, and the render's (2026-10-07); +6: the catalogue rows of home, lan-remove-member and lan-leave (2026-10-18)
     # NEW ENTRY 2026-09-02 (was on the 1000 default): the Data tab lost 168 lines
     # to `ui/widgets.cpp` the same afternoon -- the rune-rename control (shared
     # with the Notes tab, which is why a note could not be renamed at all), the

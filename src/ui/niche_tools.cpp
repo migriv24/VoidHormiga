@@ -289,6 +289,9 @@ void HormigaApp::draw_niche_tools_body() {
                     "a .miga bundle has no detailed preview here - run it in the "
                     "console instead: effect sync-merge \"" + pp.string() +
                     "\" (it prints the same report and writes nothing without apply)";
+            } else if (wstore.partial()) {
+                g_merge.error = "this database is larger than this computer holds at once; a merge of whole "
+                                "documents waits for merging to work on the database itself";
             } else {
                 const std::string text = slurp_text(pp);
                 /* The SAME prefixes `sync_op` uses, so the version this preview

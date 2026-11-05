@@ -32,7 +32,7 @@ target_compile_definitions(voidhormiga PRIVATE
   HORMIGA_VERSION="${PROJECT_VERSION}" HORMIGA_PLATFORM="${HORMIGA_PLATFORM_TAG}")
 add_dependencies(voidhormiga hormiga_web_assets)
 target_link_libraries(voidhormiga PRIVATE
-  voidmaiz_view hormiga_allomone voidmaiz_headless sqlite3 sodium hormiga_sync
+  voidmaiz_view hormiga_allomone voidmaiz_headless sqlite3 sodium hormiga_sync hormiga_bundle
   android log EGL GLESv3)
 # `voidmaiz_net` is Void Maiz's compatibility alias; the target and the code are
 # Void Hammer's since 2026-10-17 (`../VoidHammer/net`). Direct adoption is Q113.

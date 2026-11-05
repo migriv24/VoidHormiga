@@ -1319,6 +1319,10 @@ int main(int argc, char** argv) {
     if (argc > 0)
         g_ship_dir = std::filesystem::absolute(argv[0], ec).parent_path();
 
+    if (argc >= 4 && std::string_view(argv[1]) == "store-check") { // app/store_check.cpp
+        const bool synth = std::string_view(argv[2]) == "--synthetic" && argc >= 5;
+        return HormigaApp().store_check(synth ? "" : argv[2], synth ? std::atoi(argv[3]) : 0, argv[synth ? 4 : 3]);
+    }
     std::vector<char*> args(argv, argv + argc);
     std::string given_state;
     for (int i = 1; i + 1 < argc; ++i)

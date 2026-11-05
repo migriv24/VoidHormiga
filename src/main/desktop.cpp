@@ -458,10 +458,22 @@ int main(int argc, char** argv) {
      * somewhere — but it is said out loud, because a typo'd path is otherwise
      * indistinguishable from a new organization. */
     bool named_database = false; // --state or a bare path: then Settings' default does not apply
+    /* A BUNDLE TO OPEN (2026-11-03): `--open <file.miga>`, or a bare path to a
+     * .miga, which is what a double-click on one in a file browser passes. It is
+     * opened like File > Open, after start-up, into whatever working copy the
+     * rest of the line chose. */
+    std::string open_bundle_arg;
+    for (int i = 1; i < argc; ++i) {
+        const std::string a = argv[i];
+        if (a == "--open" && i + 1 < argc) open_bundle_arg = argv[++i];
+        else if (a.size() > 5 && a[0] != '-' && a.substr(a.size() - 5) == ".miga") open_bundle_arg = a;
+    }
     {
         std::string given;
         for (int i = 1; i < argc; ++i) {
             const std::string a = argv[i];
+            if (a == "--open") { ++i; continue; }
+            if (a.size() > 5 && a[0] != '-' && a.substr(a.size() - 5) == ".miga") continue; // a bundle, not a working copy
             if (a == "--state" && i + 1 < argc) { given = argv[++i]; continue; }
             if (a.rfind("--state=", 0) == 0) { given = a.substr(8); continue; }
             if (a == "--phone-screen" || a == "--safe" || a == "--script") { ++i; continue; } // their values are not a database
@@ -546,7 +558,12 @@ int main(int argc, char** argv) {
     app.init();
     // Settings > Starting Hormiga: the default database, unless one was named
     // (a phone reopens its last; see HormigaApp::open_default_database)
-    if (!named_database || phone_mode) app.open_default_database(phone_mode, first_run);
+    if (!open_bundle_arg.empty()) {
+        std::error_code oec;
+        app.open_from_shell(std::filesystem::absolute(open_bundle_arg, oec).string());
+    } else if (!named_database || phone_mode) {
+        app.open_default_database(phone_mode, first_run);
+    }
     lap("app.init");
 
     while (!glfwWindowShouldClose(window)) {

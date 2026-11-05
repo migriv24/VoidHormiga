@@ -147,7 +147,8 @@ std::string HormigaApp::mint_name(const std::string& base, int first) {
     const std::string stem = tag.empty() ? base : base + "-" + tag;
     for (int i = first;; ++i) {
         std::string name = stem + "-" + std::to_string(i);
-        if (!scene.find(name)) return name;
+        // not loaded is not free: a name the store holds is taken (app/working_store.hpp)
+        if (!scene.find(name) && !wstore.name_taken(scene.mantle, name)) return name;
     }
 }
 
@@ -191,6 +192,9 @@ std::string LanRuntime::strip_private(HormigaApp& app, const std::string& state_
 
 Plan LanRuntime::build_plan(HormigaApp& app, std::string* state_out) {
     Plan p;
+    if (app.wstore.partial())
+        p.notes.push_back("this database is larger than this computer holds at once, and sharing it waits for "
+                          "sharing to work on the database itself");
     maiz::Scene farm = project(app.core, kAntfarmMantle);
     const auto share = hormiga::collab::share_settings(farm);
     const std::vector<fs::path> dirs = app.key_dirs();

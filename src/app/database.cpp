@@ -11,8 +11,176 @@
 
 #include <chrono>
 #include <ctime>
+#include "store/bundle.hpp"            // pack_v4: a database larger than the machine saves as the store it is
 
 namespace fs = std::filesystem;
+
+/* ── THE WORKING COPY AS A STORE (stage 5, app/working_store.hpp) ──────────
+ *
+ * Two forms of working copy, and every database is in exactly one:
+ *  - Core's whole document, written by the save effect to the SQLite mirror and
+ *    the JSON snapshot (a database this machine holds whole: as always);
+ *  - a Rancho store, `<name>-store.db`, of which Core holds a working set (a
+ *    database larger than this machine holds whole).
+ * Entering one retires the other, so a boot can never read a part as the whole. */
+static maiz::Core prepare_core(const std::string& state); // below: the worker's half of an open
+
+fs::path HormigaApp::store_file() const {
+    return base_dir / (fs::path(state_name).stem().string() + "-store.db");
+}
+
+namespace {
+/* The bundle of a store-mode database, packed from a connection of its own so
+ * a worker can pack while the window writes edits back (WAL readers do not
+ * block). Reported as a PackResult, which is what every caller already shows. */
+hormiga::miga::PackResult pack_store(const fs::path& store_path, const fs::path& base, const fs::path& adir,
+                                     const std::map<std::string, fs::path>& files, const fs::path& out,
+                                     const std::string& name, const hormiga::BusyReport& report = {}) {
+    hormiga::miga::PackResult pr;
+    std::vector<std::string> extra; // the files a rune names outside the assets folder, by where they land
+    for (const auto& [rel, abs] : files) extra.push_back(rel);
+    rancho::Store st(store_path);
+    if (!st.ok()) {
+        pr.error = "could not open the database to save it: " + st.error();
+        return pr;
+    }
+    rancho::Progress progress;
+    if (report) progress = [&](double f, const char* ph) { report(f, ph); };
+    const auto r = hormiga::store::pack_v4(st, base, adir, extra, out, name, progress);
+    pr.ok = r.ok;
+    pr.error = r.error;
+    pr.assets = (int)r.assets;
+    std::error_code ec;
+    pr.bytes = r.ok ? (long long)fs::file_size(out, ec) : 0;
+    return pr;
+}
+
+/* Into store mode: the whole-document working copy goes, so a boot cannot read it. */
+} // namespace
+
+void HormigaApp::retire_whole_copy() {
+    HormigaApp& app = *this;
+    app.saver.flush(); // a write in flight lands before the files go
+    app.saver.set_storage(nullptr);
+    app.storage.reset();
+    std::error_code ec;
+    fs::remove(app.db_file(), ec);
+    fs::remove(app.org_file(), ec);
+}
+
+/* Out of store mode: the working copy is Core's whole document again. */
+void HormigaApp::retire_store_copy() {
+    HormigaApp& app = *this;
+    app.wstore.detach();
+    hormiga::remove_store_files(app.store_file());
+    if (!app.storage) {
+        app.storage = std::make_unique<hormiga::Storage>(app.db_file());
+        app.saver.set_storage(app.storage.get());
+    }
+}
+
+/* THE WORKING COPY MAY BE A STORE (init): then it is the database, and Core is
+ * given the part this machine holds, planned again on every start because the
+ * machine may not be the one it was opened on. Null: it is a whole document. */
+std::unique_ptr<hormiga::Prepared> HormigaApp::boot_from_store(std::string& state) {
+    // an open that was quit half-way left its new store unfinished: never the working copy
+    hormiga::remove_store_files(store_file().string() + ".opening");
+    std::error_code ec;
+    if (!fs::exists(store_file(), ec)) return nullptr;
+    auto p = std::make_unique<hormiga::Prepared>(
+        hormiga::prepare_store(store_file(), hormiga::machine_budget(), kDataMantle));
+    if (!p->ok) {
+        toast("the database could not be read (" + p->error + ") - using the last whole copy", true);
+        return nullptr;
+    }
+    state = std::move(p->state);
+    p->state = std::string();
+    return p;
+}
+
+void HormigaApp::attach_boot_store(const hormiga::Prepared& p, std::string& state) {
+    state = "{}"; // not empty: nothing in init may seed a database that exists
+    core.set_undo_depth(hormiga::machine_budget().undo_depth);
+    if (!wstore.attach(core, store_file(), p.plan))
+        toast("edits cannot be written back to the database: " + wstore.error(), true);
+    else if (p.plan.partial)
+        log.push_back({"info", "open", std::to_string(p.plan.runes) + " of " + std::to_string(p.plan.total_runes) +
+                                           " runes held; the Data tab reaches the rest"});
+}
+
+/* IN STORE MODE A SAVE IS THE WRITE-BACK, AND ONLY THAT. Core's own `save`
+ * copies every mantle into `_baseline` (Q130) and moves the revision, which
+ * would send every following write-back to the full comparison of everything
+ * loaded. */
+maiz::Result HormigaApp::store_save() {
+    store_sync_due = false;
+    maiz::Result saved;
+    saved.ok = wstore.sync();
+    if (!saved.ok) {
+        toast("could not write the changes to the database: " + wstore.error(), true);
+        log.push_back({"error", "save", "write-back to the store failed: " + wstore.error()});
+    }
+    return saved;
+}
+
+bool HormigaApp::whole_loaded(const char* what) {
+    if (!wstore.partial()) return true;
+    static std::set<std::string> told; // once per thing, not once per frame
+    if (!told.insert(wstore.path().string() + "|" + what).second) return false;
+    log.push_back({"info", "store",
+                   std::string(what) + " waits: this database is larger than this computer holds at once, so " +
+                       std::to_string(wstore.plan().runes) + " of its " + std::to_string(wstore.total_runes()) +
+                       " runes are loaded, and " + what +
+                       " still works on the whole document. It is being moved onto the database itself "
+                       "(okf/concepts/platform/frontier.md)."});
+    return false;
+}
+
+maiz::Scene HormigaApp::export_data_scene(const maiz::ProjectOptions& po) {
+    if (!wstore.partial() || !wstore.store()) return maiz::project_scene(core, po);
+    /* AN EXPORT TRAVERSES THE WHOLE DATABASE (the author, 2026-11-03). What is
+     * loaded is a part, so the mantle is read from the store, all of it, after
+     * writing back what is not saved yet. */
+    wstore.sync();
+    rancho::Selection sel = rancho::Selection::none();
+    sel.whole.insert(po.mantle.empty() ? std::string(kDataMantle) : po.mantle);
+    maiz::Core whole(wstore.store()->state(sel));
+    if (on_register_glyphs) on_register_glyphs(whole);
+    return maiz::project_scene(whole, po);
+}
+
+void HormigaApp::load_part(const std::string& mantle, const std::string& leaf, const std::string& rune) {
+    if (!wstore.active()) return;
+    do_save(); // what is unsaved goes back to the store first: a reload is never an edit
+    const fs::path path = store_file();
+    const rancho::Budget budget = hormiga::machine_budget();
+    run_busy_async("Loading another part of the database…",
+                   [this, path, budget, mantle, leaf, rune](const hormiga::BusyReport& report) -> hormiga::BusyFinish {
+                       report(0.1, "Choosing what to hold");
+                       auto p = std::make_shared<hormiga::Prepared>(
+                           hormiga::prepare_store(path, budget, mantle, rune, leaf));
+                       std::shared_ptr<maiz::Core> fresh;
+                       if (p->ok) {
+                           report(0.5, "Loading it");
+                           fresh = std::make_shared<maiz::Core>(prepare_core(p->state));
+                           p->state = std::string();
+                       }
+                       report(0.95, "Drawing it");
+                       return [this, p, fresh, mantle, rune] {
+                           if (!p->ok || !fresh) {
+                               toast("could not load that part: " + p->error, true);
+                               return;
+                           }
+                           const std::string doc = cur_doc;
+                           adopt_core(std::move(*fresh), p.get());
+                           cur_doc = doc;
+                           if (!mantle.empty()) dispatch_and_reproject("use " + mantle);
+                           if (!rune.empty()) ed.selection = {rune};
+                           toast("loaded " + std::to_string(p->plan.runes) + " of " +
+                                 std::to_string(wstore.total_runes()) + " runes");
+                       };
+                   });
+}
 
 // ── the .miga v3 database bundle: Save / Save As / Open (miga-format.md) ─────
 
@@ -72,6 +240,32 @@ void HormigaApp::save_database(bool background) {
         return;
     }
     do_save(); // flush the live state into the working .db first
+    if (wstore.active()) { // the database is the store: packed from it, never from what is loaded
+        const std::string state = core.export_state();
+        const auto extra = referenced_files(state);
+        const fs::path out = cur_miga, base = base_dir, adir = assets_dir(), backups = data_dir("backups"),
+                       from = store_file();
+        const std::string name = out.stem().string();
+        if (!background) {
+            back_up_bundle(out, backups);
+            auto r = pack_store(from, base, adir, extra, out, name);
+            if (r.ok) toast(saved_line(out, r));
+            else toast("save database failed: " + r.error, true);
+            return;
+        }
+        run_busy_async("Saving database…", [this, extra, out, base, adir, backups, from,
+                                             name](const hormiga::BusyReport& report) -> hormiga::BusyFinish {
+            report(0.0, "Keeping a backup");
+            back_up_bundle(out, backups);
+            auto r = std::make_shared<hormiga::miga::PackResult>(pack_store(
+                from, base, adir, extra, out, name, [&](double f, const char* ph) { report(0.05 + 0.95 * f, ph); }));
+            return [this, r, out] {
+                if (r->ok) toast(saved_line(out, *r));
+                else toast("save database failed: " + r->error, true);
+            };
+        });
+        return;
+    }
     /* The state is exported HERE, on the main thread, before anything moves:
      * the worker packs a snapshot and never touches the live core. */
     const std::string state = core.export_state();
@@ -130,6 +324,20 @@ void HormigaApp::save_database_as(const std::string& path, bool background) {
             toast("save database failed: " + r.error, true);
         }
     };
+    if (wstore.active()) { // packed from the store, the whole database
+        const fs::path base = base_dir, adir = assets_dir(), from = store_file();
+        if (!background) {
+            landed(pack_store(from, base, adir, extra, out, out.stem().string()));
+            return;
+        }
+        run_busy_async("Saving database…", [extra, out, base, adir, from, landed](const hormiga::BusyReport& report)
+                                               -> hormiga::BusyFinish {
+            auto r = std::make_shared<hormiga::miga::PackResult>(
+                pack_store(from, base, adir, extra, out, out.stem().string(), report));
+            return [r, landed] { landed(*r); };
+        });
+        return;
+    }
     if (!background) {
         landed(hormiga::miga::pack(state, base_dir, out, out.stem().string(), assets_dir(), extra));
         return;
@@ -150,6 +358,7 @@ void HormigaApp::save_database_as(const std::string& path, bool background) {
 void HormigaApp::new_database(const std::string& workspace) {
     LanRuntime::leave_database(*this); // out of the shared one: a new database is nobody's yet
     reset_working_copy(true); // a fresh db owns nothing from the old working copy
+    retire_store_copy(); // and its working copy is a whole document again
     core = maiz::Core(); // a fresh, empty state (no demo data)
     install_host();
     channel_fields.clear();
@@ -258,8 +467,12 @@ void HormigaApp::open_default_database(bool reopen_last, bool first_run) {
         const std::string stem = cur_miga.empty() ? std::string("unsaved") : fs::path(cur_miga).stem().string();
         const fs::path keep = data_dir("backups") / (stem + "-before-start-" + stamp + ".miga");
         do_save();
-        auto r = hormiga::miga::pack(core.export_state(), base_dir, keep, stem, assets_dir(),
-                                     referenced_files(core.export_state()));
+        // a store is kept as the store it is, never as the part that is loaded
+        auto r = wstore.active()
+                     ? pack_store(store_file(), base_dir, assets_dir(), referenced_files(core.export_state()), keep,
+                                  stem)
+                     : hormiga::miga::pack(core.export_state(), base_dir, keep, stem, assets_dir(),
+                                           referenced_files(core.export_state()));
         if (r.ok) log.push_back({"info", "start", "kept the previous working copy in " + keep.string()});
     }
     if (!want.empty() && fs::exists(want, ec)) open_database(want);
@@ -288,8 +501,19 @@ void HormigaApp::reload_from_state(const std::string& state) { adopt_core(prepar
 
 /* The main thread's half: the prepared core becomes the database, with this
  * app's host seams on it, and everything that reads it is refreshed. */
-void HormigaApp::adopt_core(maiz::Core&& fresh) {
+void HormigaApp::adopt_core(maiz::Core&& fresh, const hormiga::Prepared* in_store) {
+    wstore.detach(); // its link names the core being replaced
     core = std::move(fresh);
+    if (in_store) {
+        /* The undo frames are part of the budget (rancho/plan.hpp). The core
+         * holds exactly `plan`'s document here, which is what attach needs. */
+        core.set_undo_depth(hormiga::machine_budget().undo_depth);
+        retire_whole_copy();
+        if (!wstore.attach(core, store_file(), in_store->plan))
+            toast("the database opened, but edits cannot be written back: " + wstore.error(), true);
+    } else if (wstore.active() || fs::exists(store_file())) {
+        retire_store_copy();
+    }
     install_host();
     channel_fields.clear();
     reproject();
@@ -338,9 +562,72 @@ void HormigaApp::finish_open(const std::string& path, const hormiga::miga::OpenR
           " pictures restored" + (r.assets_kept ? ", " + std::to_string(r.assets_kept) + " already here" : "") + ")");
 }
 
+/* A database this machine cannot hold whole opens into a store: a v4 bundle
+ * always (it is one), a v3 one when its file is larger than the budget's text.
+ * Built beside the working copy and moved into place on the main thread, so
+ * the database being left keeps its store until the new one is ready. */
+static bool opens_into_store(const std::string& path) {
+    const auto kind = hormiga::store::bundle_kind(path);
+    return kind == hormiga::store::BundleKind::V4 ||
+           (kind == hormiga::store::BundleKind::V3 && !hormiga::fits_whole(path, hormiga::machine_budget()));
+}
+
+static fs::path opening_path(const fs::path& store) { return store.string() + ".opening"; }
+
+void HormigaApp::finish_open_store(const std::string& path, const hormiga::Prepared& p, maiz::Core&& fresh,
+                                   double ms) {
+    if (!p.ok) {
+        hormiga::remove_store_files(opening_path(store_file()));
+        toast("open failed: " + p.error, true);
+        return;
+    }
+    const auto t = std::chrono::steady_clock::now();
+    wstore.detach();
+    hormiga::remove_store_files(store_file());
+    std::error_code ec;
+    fs::rename(opening_path(store_file()), store_file(), ec);
+    if (ec) {
+        toast("open failed: could not move the database into place: " + ec.message(), true);
+        return;
+    }
+    adopt_core(std::move(fresh), &p);
+    cur_miga = path;
+    remember_bundle(path);
+    LanRuntime::claim_home(*this);
+    load_secrets();
+    log.push_back({"info", "open", "the store's phases: " + p.timings});
+    char line[240];
+    std::snprintf(line, sizeof line,
+                  "opened in %.0f ms: %lld of %lld runes held (%s), %.1f MB of text, %lld mantle(s) clustered",
+                  ms + ms_since(t), p.plan.runes, p.plan.total_runes, p.plan.partial ? "a part" : "all of it",
+                  (double)p.plan.text_bytes / (1024.0 * 1024.0), p.clustered);
+    log.push_back({"info", "open", line});
+    toast("opened database " + fs::path(path).filename().string() +
+          (p.plan.partial ? " - " + std::to_string(p.plan.runes) + " of " + std::to_string(p.plan.total_runes) +
+                                " runes loaded; the Data tab reaches the rest"
+                          : std::string()));
+}
+
 void HormigaApp::open_database(const std::string& path) {
     LanRuntime::leave_database(*this); // the one open now stops being this device's shared one
     reset_working_copy(false);         // the caches; the assets folder is mirrored by the open
+    if (opens_into_store(path)) {
+        const auto t0 = std::chrono::steady_clock::now();
+        auto p = hormiga::open_into_store(path, opening_path(store_file()), base_dir, assets_dir(),
+                                          hormiga::machine_budget());
+        const double store_ms = ms_since(t0);
+        const auto t1 = std::chrono::steady_clock::now();
+        maiz::Core fresh = p.ok ? prepare_core(p.state) : maiz::Core();
+        p.state = std::string();
+        const double core_ms = ms_since(t1);
+        const auto t2 = std::chrono::steady_clock::now();
+        finish_open_store(path, p, std::move(fresh), store_ms + core_ms);
+        char line[160];
+        std::snprintf(line, sizeof line, "phases: the store %.0f ms, the core %.0f ms, adopting it %.0f ms", store_ms,
+                      core_ms, ms_since(t2));
+        log.push_back({"info", "open", line});
+        return;
+    }
     const auto t0 = std::chrono::steady_clock::now();
     hormiga::miga::OpenOptions o;
     o.mirror_assets = true;
@@ -360,6 +647,29 @@ void HormigaApp::begin_open_database(const std::string& path, std::function<void
     LanRuntime::leave_database(*this);
     reset_working_copy(false);
     const fs::path base = base_dir, adir = assets_dir();
+    if (opens_into_store(path)) {
+        const fs::path into = opening_path(store_file());
+        const rancho::Budget budget = hormiga::machine_budget();
+        run_busy_async("Opening database…", [this, path, base, adir, into, budget,
+                                              then](const hormiga::BusyReport& report) -> hormiga::BusyFinish {
+            const auto t0 = std::chrono::steady_clock::now();
+            auto p = std::make_shared<hormiga::Prepared>(hormiga::open_into_store(
+                path, into, base, adir, budget, [&](double f, const char* phase) { report(0.85 * f, phase); }));
+            std::shared_ptr<maiz::Core> fresh;
+            if (p->ok) {
+                report(0.85, "Loading the part this computer holds");
+                fresh = std::make_shared<maiz::Core>(prepare_core(p->state));
+                p->state = std::string();
+            }
+            const double ms = ms_since(t0);
+            report(0.97, "Drawing it");
+            return [this, path, p, fresh, ms, then] {
+                finish_open_store(path, *p, fresh ? std::move(*fresh) : maiz::Core(), ms);
+                if (p->ok && then) then();
+            };
+        });
+        return;
+    }
     run_busy_async("Opening database…", [this, path, base, adir, then](const hormiga::BusyReport& report)
                                             -> hormiga::BusyFinish {
         const auto t0 = std::chrono::steady_clock::now();
@@ -385,3 +695,8 @@ void HormigaApp::begin_open_database(const std::string& path, std::function<void
     });
 }
 
+
+void HormigaApp::open_from_shell(const std::string& path) {
+    if (ImGui::GetCurrentContext()) begin_open_database(path);
+    else open_database(path); // no window: the same open, on this thread
+}

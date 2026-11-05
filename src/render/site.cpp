@@ -32,7 +32,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
     io.mantle = cur_doc;
     dio.mantle = kDataMantle;
     maiz::Scene issue = maiz::project_scene(core, io);
-    maiz::Scene data = maiz::project_scene(core, dio);
+    maiz::Scene data = export_data_scene(dio); // the whole mantle, even when a part is loaded
     const auto given_col = hormiga::bestow::given_values(data, "color"); // shapes' colours, live
     hormiga::farmhost::apply_grant(data, fv2.grant.get()); // Antfarm v2: only what this document is granted
     warn_if_data_is_elsewhere(data); // field report D6: the silent empty render

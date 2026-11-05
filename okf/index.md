@@ -292,6 +292,9 @@ with it.
   concepts unpacked in plain language for the author (derive vs materialize,
   conflict resolution, reactivity, round-tripping, …).
 - [Log](/log.md) — the running history.
+- [Discussion](/discussion/index.md) — **opened 2026-11-04**: the one speculative
+  part of the OKF. After a mistake, why we think it happened and what might
+  have prevented it, as hypotheses that may be wrong. Skip it to start working.
 - `okf/audits/` — **dated measurements of this codebase and its siblings**,
   such as the [networking stack audit](/audits/networking-stack-audit-2026-10-18.md).
   An audit measures Hormiga, never a database it runs on.

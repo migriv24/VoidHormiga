@@ -295,9 +295,9 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/map_panels.cpp src/ui/inspector.cpp src/ui/calendar.cpp src/ui/calendar_panels.cpp
   src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
-  src/ui/tags.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
+  src/ui/tags.cpp src/ui/store_strip.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
-  src/app/database.cpp src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
+  src/app/database.cpp src/app/working_store.cpp src/app/store_check.cpp src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/app/busy.cpp src/app/save_writer.cpp src/report/report.cpp src/update/update.cpp src/update/cli.cpp
   src/publish/publish.cpp src/publish/cloudflare.cpp src/publish/aws.cpp src/publish/push.cpp src/publish/panel.cpp
   src/publish/github.cpp
@@ -390,6 +390,7 @@ target_link_libraries(voidhormiga PRIVATE
   sqlite3
   sodium
   hormiga_sync # the merge (Void Palabra) + the LAN transport
+  hormiga_bundle # the store (Void Rancho) and the .miga v4 bundle: stage 5
 )
 if(WIN32)
   # ws2_32: the live-preview localhost server (B2; winsock). It was linked
@@ -524,7 +525,7 @@ add_dependencies(voidhormiga-cli hormiga_web_assets)
 target_link_libraries(voidhormiga-cli PRIVATE
   voidmaiz_headless # session, lock, journal, effect gate, briefing
   voidmaiz_view     # HormigaApp's other methods live here; never called headless
-  hormiga_allomone sqlite3 sodium hormiga_sync Threads::Threads)
+  hormiga_allomone sqlite3 sodium hormiga_sync hormiga_bundle Threads::Threads)
 if(WIN32)
   target_link_libraries(voidhormiga-cli PRIVATE ws2_32) # see the note above
   target_link_libraries(voidhormiga-cli PRIVATE comdlg32)
@@ -870,6 +871,13 @@ if(TARGET voidrancho)
   target_link_libraries(hormiga_open_probe PRIVATE hormiga_bundle)
   add_test(NAME hormiga_open_on_a_2gb_machine
            COMMAND hormiga_lowmem 384 $<TARGET_FILE:hormiga_open_probe> --synthetic 100000 --machine-mb 2048)
+  # THE APP'S OWN OPEN PATH on the store (stage 5, src/app/store_check.cpp): a
+  # database larger than the machine opens, takes an edit, saves as v4 and boots
+  # again from the store, planned for a 256 MB machine and capped for real.
+  add_test(NAME hormiga_store_check
+           COMMAND hormiga_lowmem 512 $<TARGET_FILE:voidhormiga-cli> store-check --synthetic 20000
+                   ${CMAKE_CURRENT_BINARY_DIR}/store-check)
+  set_tests_properties(hormiga_store_check PROPERTIES ENVIRONMENT "HORMIGA_MACHINE_MB=256")
 endif()
 
 add_executable(hormiga_dates_smoke tests/dates_smoke.cpp)

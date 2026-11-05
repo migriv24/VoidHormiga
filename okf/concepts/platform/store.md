@@ -148,11 +148,38 @@ CMake stops and says to clone it beside the checkout.
    and takes edits under a 2 GB cap.
 Stages 1 to 4 are built (now in Rancho, its tests and the 2 GB harness here).
 
-5. **The app's open path and the Data tab** on the store, with the progress
-   model. Not yet: the app still holds a whole document. The first attempt
-   rewrote the save writer before the app used it, and that half-step was
-   committed (2026-10-30) in a tree that did not compile. The shipped writer
-   was restored on 2026-11-02, and this stage restarts on Rancho.
+5. **The app's open path and the Data tab** on the store. **Built
+   2026-11-03** (`src/app/working_store.*`, `src/ui/store_strip.cpp`). The
+   author's rule from that day is that **every database opens**, and the budget
+   only decides how much of it Core holds:
+   - A database whose file fits the machine's budget loads whole, as before.
+   - Any other, and every v4 bundle, opens into a store (`<name>-store.db`),
+     which is the working copy. A large mantle is clustered on its first open.
+   - Core holds the plan's part. The save effect writes edits back once the
+     command has returned (`WorkingSet::sync`), and Save packs v4 from the
+     store. A restart boots from the store and plans again for the machine it
+     is on. Entering either form of working copy deletes the other, so a boot
+     never reads a part as the whole.
+   - New names are checked against the store.
+   - The Data tab says what is held, and reaches the rest. It lists every
+     cluster leaf to load, and searches the whole database by name or by tag
+     expression.
+   - Exports read the whole data mantle from the store (the
+     [frontier](/concepts/platform/frontier.md)'s *embarque*). It is complete,
+     but its memory is the mantle's size.
+   - LAN sync, share and file merge are whole-document merges. On a partial
+     load they wait and say why in the log, because a part would read as
+     deletions.
+
+   *Test:* `voidhormiga-cli store-check` (`src/app/store_check.cpp`) opens,
+   edits, saves, mints a name, saves as, restarts and checks, under
+   `tools/lowmem`. The measurements are in the log.
+
+   Not yet built:
+   - targeted write-back, since every save compares what is loaded;
+   - the phone's screens on the store;
+   - a bounded export (rodeos and partidas, asked of Rancho);
+   - sync on the store (stage 7).
 6. **The calendar, the map, search and publishing** on the store.
 7. **LAN sync** of a store-backed database. It merges documents today, and will
    merge the store's rows.

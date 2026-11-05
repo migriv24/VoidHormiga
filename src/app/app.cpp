@@ -235,6 +235,10 @@ void HormigaApp::install_host() {
     // and hands the file to the OS (phase D's seam, minimally alive).
     core.set_effect_handler([this](std::string_view op, std::string_view args)
                                 -> std::string {
+        if (op == "save" && wstore.active()) { // written back once the dispatch returns: it reads Core
+            store_sync_due = true;
+            return json_str(store_file().string());
+        }
         if (op == "save") {
             // primary: the SQLite Data holiday (state + normalized rows);
             // beside it: the JSON snapshot mirror (fallback principle). Both
@@ -935,7 +939,10 @@ maiz::Result HormigaApp::dispatch_and_reproject(const std::string& cmd_in) {
      * changed since it was last projected (reproject's note). */
     const bool switching = cmd.rfind("use ", 0) == 0 && cmd.find(' ', 4) == std::string::npos;
     const std::string leaving = scene.mantle;
-    maiz::Result r = core.dispatch(cmd);
+    if (cmd == "save" && wstore.active()) return store_save(); // the write-back alone (database.cpp)
+    // through the working set when there is one, so a write-back costs what the command named
+    maiz::Result r = wstore.active() ? wstore.dispatch(cmd) : core.dispatch(cmd);
+    if (store_sync_due) store_save(); // the save effect ran in store mode (install_host)
     if (switching && r.ok) {
         const std::string entering = cmd.substr(4);
         if (entering == leaving) return r; // already there
@@ -1092,11 +1099,15 @@ void HormigaApp::init() {
               "overwritten by it", true);
 
     saver.set_storage(nullptr); // a save in flight finishes against the old connection
-    storage = std::make_unique<hormiga::Storage>(db_file());
-    saver.set_storage(storage.get());
     std::string state;
-    if (storage->ok()) state = storage->load_state();
-    else toast("database unavailable (" + storage->error() + ") - using snapshot", true);
+    // the working copy may be a store: a database larger than this machine holds (database.cpp)
+    std::unique_ptr<hormiga::Prepared> boot_store = boot_from_store(state);
+    if (!boot_store) {
+        storage = std::make_unique<hormiga::Storage>(db_file());
+        saver.set_storage(storage.get());
+        if (storage->ok()) state = storage->load_state();
+        else toast("database unavailable (" + storage->error() + ") - using snapshot", true);
+    }
 
     /* A HEADLESS RUN MAY HAVE MOVED AHEAD OF US (2026-08-18). `voidhormiga-cli`
      * writes the JSON state document and does not touch SQLite, because Void
@@ -1113,7 +1124,7 @@ void HormigaApp::init() {
      * notice a change we did not make, and we cannot diff against a document we
      * never saw. */
     std::error_code tec;
-    if (!state.empty() && fs::exists(org_file(), tec) && fs::exists(db_file(), tec)) {
+    if (!boot_store && !state.empty() && fs::exists(org_file(), tec) && fs::exists(db_file(), tec)) {
         const auto jt = fs::last_write_time(org_file(), tec);
         const auto dt = fs::last_write_time(db_file(), tec);
         if (!tec && jt > dt) {
@@ -1127,15 +1138,16 @@ void HormigaApp::init() {
             }
         }
     }
-    if (state.empty() && fs::exists(org_file())) {
+    if (!boot_store && state.empty() && fs::exists(org_file())) {
         std::ifstream in(org_file(), std::ios::binary);
         std::stringstream ss;
         ss << in.rdbuf();
         state = ss.str();
-        if (storage->ok()) toast("opened from snapshot; next save fills the db");
+        if (storage && storage->ok()) toast("opened from snapshot; next save fills the db");
     }
     if (!state.empty()) core = maiz::Core(state); // replay the state document
     install_host();
+    if (boot_store) attach_boot_store(*boot_store, state); // the core holds exactly the plan's part
     hormiga::register_glyphs(core); // host config, per-session, never exported
     hormiga::register_block_glyphs(core);
     hormiga::register_antfarm_glyphs(core);

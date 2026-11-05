@@ -58,7 +58,7 @@
 std::string HormigaApp::publish_index() {
     maiz::ProjectOptions dio;
     dio.mantle = kDataMantle;
-    maiz::Scene data = maiz::project_scene(core, dio);
+    maiz::Scene data = export_data_scene(dio); // the whole mantle, even when a part is loaded
     hormiga::farmhost::apply_grant(data, fv2.grant.get()); // Antfarm v2: only what this document is granted
 
     /* NO QUERY. The index is "everything this organization publishes", and the

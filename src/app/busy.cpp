@@ -2,6 +2,7 @@
 #include "app/busy.hpp"
 #include "app/app_internal.hpp" // the curtain itself is the app's: run_busy and its overlay
 
+#include <algorithm>
 #include <cmath>
 
 namespace hormiga {
@@ -19,7 +20,7 @@ void Busy::start(BusyWork work, double now) {
         worker_phase_.clear();
     }
     finish_ = nullptr;
-    since_ = last_t_ = now;
+    since_ = last_t_ = moved_t_ = now;
     last_f_ = 0;
     rate_ = 0;
     progress = 0.0f;
@@ -58,6 +59,7 @@ bool Busy::poll(double now) {
         const double inst = (f - last_f_) / dt;
         const double a = std::exp(-dt / 1.5);
         rate_ = rate_ > 0 ? a * rate_ + (1 - a) * inst : inst;
+        if (f > last_f_) moved_t_ = now;
         last_t_ = now;
         last_f_ = f;
     }
@@ -79,7 +81,15 @@ std::string Busy::estimate(double now) const {
     const double elapsed = now - since_;
     const float f = frac_.load();
     if (elapsed < 2.0 || f < 0.1f || f >= 0.99f || rate_ <= 0) return {};
-    const double left = (1.0 - f) / rate_;
+    /* A STALL IS NOT A SLOWDOWN (2026-11-03). Opening the 5×10^5-rune stress
+     * database into a store, the bar sat still for the length of one SQLite
+     * index build, the smoothed rate decayed toward zero, and the curtain said
+     * "about 460 minutes left" for an open that took a minute. Two rules:
+     *  - while the bar has not moved for 3 s nobody knows, so nothing is said;
+     *  - the rate is never taken as slower than the average so far, f/elapsed,
+     *    so a stall can lengthen the estimate only as fast as time passes. */
+    if (now - moved_t_ > 3.0) return {};
+    const double left = (1.0 - f) / std::max(rate_, (double)f / elapsed);
     if (left < 3) return "a moment left";
     if (left < 60) {
         const int s = (int)(std::ceil(left / 5.0) * 5); // coarse: 5 s steps

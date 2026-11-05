@@ -59,6 +59,7 @@ private:
     double since_ = 0, last_t_ = 0;
     float last_f_ = 0;
     double rate_ = 0; // fraction per second, exponentially smoothed
+    double moved_t_ = 0; // when the bar last moved
 };
 
 } // namespace hormiga

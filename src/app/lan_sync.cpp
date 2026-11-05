@@ -335,6 +335,9 @@ std::set<std::pair<std::string, std::string>> LanRuntime::private_keys(HormigaAp
 }
 
 bool LanRuntime::sync_prepare(HormigaApp& app, double now, bool force) {
+    /* A merge of whole documents cannot run on a part: what is not loaded would
+     * read as deleted, on both devices (okf/concepts/platform/frontier.md). */
+    if (!app.whole_loaded("sharing changes with other devices")) return false;
     LanRuntime& rt = of(app);
     const std::string db = database_id(app, true);
     std::string why;

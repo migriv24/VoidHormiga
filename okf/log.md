@@ -6976,3 +6976,149 @@ Linux and macOS computed. 61/61 here (`reduce_conformance` aside).
 
 **Not done:** 0.2.4 on a phone, and the crash fix seen in a window on the
 database that crashed (the test reproduces the cause).
+
+
+# The frontier: a database that never finishes loading (2026-11-03)
+
+The author: *"so there's still a big issue with hormiga, and it can't open the
+stress test ... it begins to load, then ends up eating all my ram until it
+crashes. I dont want this software to just completely consume a host device's
+ram and resources."* And: *"from now on, les really assume we have infinately
+large datasets, and we still need to traverse it all."*
+
+**What failed is ours.** The app still opens a database as one Void Core
+document. The stress database measured about 18 GB that way on 2026-10-25.
+Rancho's working set opened it at 290 MB under a 512 MB cap on 2026-11-02. The
+app reads only bundles through Rancho, and nothing checks the cost before an
+open. The fix for this database is stage 5.
+
+**The stress database is not the interwoven case.** Its links cluster at
+Q = 0.977. The author's concern, a graph where everything links to everything,
+is the premise from now on, and it is answered in
+[frontier](/concepts/platform/frontier.md):
+- an interwoven graph still loads in pieces, because a piece's boundary is a
+  constant factor of the piece, and only the radius explodes;
+- every answer is settled, growing or open (the knowledge order, certain
+  answers, completeness statements);
+- questions sort by locality into four classes (Gaifman), answered by the
+  working set, by the store, by summaries over the cluster tree, or by passes;
+- loading is a Z-set delta (DBSP);
+- a loading vocabulary with a fringe of stubs and a certificate.
+
+Two facts were checked in the siblings' code, not assumed:
+- Void Core already allows a dangling edge (SPEC §3.7), so the fringe needs
+  nothing from Core.
+- Allomone's kernel conditions read only the subject, so its rules are exact on
+  any loaded rune. A map bestowal is the one cross-rune dependency in use, and
+  it needs its covering shapes loaded with the rune.
+
+**Asked of Void Rancho** in
+`MESSAGE_FOR_VOIDRANCHO_hormiga-the-frontier-2026-11-03.md`:
+- the fringe, and a certificate with every selection;
+- summaries per cluster node, and the covering closure;
+- questions answered with a status;
+- passes for recursive questions;
+- two tests: an interwoven database and an endless one.
+
+**Opened:** Q131 (nothing leaves Hormiga from an answer that is not settled)
+and Q132 (refuse an open the device cannot afford, until stage 5).
+
+**Consumed:** Rancho's reply of 2026-11-02 (`rancho-blobs-drop-and-graph-moved`):
+- `remove_blob`, `clear_blobs` and `compact` exist. `clear_blobs` on the source
+  before `vacuum_into` writes a copy without the pictures. Otherwise call
+  `compact` after dropping.
+- `cmake/voidrancho_graph.cmake` has landed, and `maiz::graph` names
+  `rancho::graph`, so nothing of ours needs to change. We will move to the
+  `rancho::graph::` names with stage 5.
+
+Our message that it answered is deleted.
+
+
+# Stage 5: any database opens, on Void Rancho's store (2026-11-03)
+
+The author, on the frontier page's two questions and its vocabulary:
+- *"lets implement that fix so that rancho is properly integrated"*;
+- *"dont frame it as a 'palabra for loading' but we should give it its own
+  name ... (bonus points if its in spanish related to these concepts)"*;
+- on exports: *"we have to be able to completely traverse the database and
+  encapsulate it fully in some way ... a final singualr thing (even if it would
+  be petabytes in size)"*;
+- on refusing an open: *"no, we should always be able to open any database ...
+  i dont want a temporary bandaid, i want the issue to not exist."*
+
+**Answered, and folded into [frontier](/concepts/platform/frontier.md):**
+- **Q131.** An export is a *rodeo* of the whole store. Its output is an
+  *embarque*: one manifest naming content-named *partidas*, so it is one thing
+  in identity and many in storage, never a petabyte file. An output made on
+  demand (*el molino*) stays possible for Void Squid.
+- **Q132.** Never refuse an open. The budget decides how much of a database
+  Core holds, never whether it opens. A database that does not open is a bug.
+- **The vocabulary is *el lindero*:** potrero, corral, manada, lindero, mojón,
+  arrear and soltar, cuenta, cabal, creciente and suelto, reseña, rodeo,
+  embarque, partida, molino. It is offered to Rancho, and the author decides.
+
+**Built** ([store](/concepts/platform/store.md) stage 5):
+- `src/app/working_store.*`, the working copy as a Rancho store with a working
+  set;
+- the open, boot, save, save as and backup paths on it;
+- the save effect as Rancho's `sync`, after the command returns. In store
+  mode, Core's own `save` is not dispatched, because its `_baseline` copy and
+  revision move sent every write-back to the full comparison;
+- commands through `WorkingSet::dispatch`, so a write-back costs what the
+  command named;
+- `mint_name` and CSV import checked against the store;
+- exports read the whole data mantle from the store;
+- LAN sync, share and file merge wait on a partial load and say why;
+- the Data tab's strip (`src/ui/store_strip.cpp`): what is held, every part
+  loadable, and a search of the whole database;
+- `--open <file.miga>` and a bare `.miga` path on the desktop binary;
+- `HORMIGA_MACHINE_MB`, to plan as a smaller machine;
+- `voidhormiga-cli store-check`.
+
+**Measured.** The stress database (5×10^5 runes, a 310 MB v3 bundle), opened by
+the app's own path (`store-check`), planned for a 2 GB machine, under
+`tools/lowmem` at 1 GB:
+
+| | |
+|---|---|
+| open | 39.6 s: import 29.1 s, clustering 9.4 s, plan 5 ms, the part's document 0.5 s; peak 141 MB |
+| held | 9,276 of 500,000 runes |
+| an edit with its write-back | 274 ms (first build: 3.3 s, every save a full comparison) |
+| Save As | 5.2 s; v4, 786.6 MB, all 500,000 runes |
+| restart, from the store | 3.4 s, the edit kept |
+| whole process | **peak 531 MB under the 1 GB cap**, against about 18 GB before |
+
+**The busy curtain's estimate.** In the window, the open's progress bar said
+*"about 460 minutes left"* during one SQLite index build. The bar stood still,
+and the smoothed rate decayed toward zero. Now nothing is said while the bar has
+not moved for 3 s, and the rate is never taken as slower than the average so far
+(`app/busy.cpp`).
+
+**Not yet:**
+- The v4 bundle is 2.5 times the v3 (asked of Rancho).
+- Exports cost the data mantle's memory. Bounded exports need Rancho's rodeo
+  and partidas.
+- Sync on the store is stage 7.
+- The phone's screens do not use the store yet.
+- The first open of a large v3 bundle takes about 40 s.
+
+Asked in `MESSAGE_FOR_VOIDRANCHO_hormiga-el-lindero-2026-11-03.md`.
+
+
+# A discussion section, and stage 5 committed (2026-11-04)
+
+The author: *"Something i'd also like to try and start logging is the reasons
+for WHY we messed up originally, and what could improve ... This discussion
+section is speculative and intentionally so."*
+
+**Opened [discussion](/discussion/index.md).** It is the one part of the OKF
+that records hypotheses rather than what exists. Each entry is one file per
+event, and none is rewritten to look right later. An agent can skip it to start
+working. The first entry,
+[the database that would not open](/discussion/2026-11-03-the-database-that-would-not-open.md),
+asks why 0.2.4 shipped as the crash fix while the stress database still
+exhausted memory. The main hypothesis is that we measured Rancho's path, not
+the app's. `CLAUDE.md` rule 1 now asks for an entry after a mistake.
+
+Stage 5 ([store](/concepts/platform/store.md)) and the frontier work of
+2026-11-03 are committed and pushed in this commit, unreleased.

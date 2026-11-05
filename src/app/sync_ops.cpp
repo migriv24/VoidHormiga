@@ -370,6 +370,10 @@ bool HormigaApp::gui_sync_effect(std::string_view op, std::string_view args,
     for (const auto& t : a)
         if (t == "apply" || t == "--apply") apply = true;
 
+    if (!whole_loaded("merging another copy of this database")) {
+        result = json_str("waits: this database is loaded in part - see the log");
+        return false;
+    }
     const SyncReport rep = sync_op(op, a, core.export_state(), apply);
     for (const auto& e : rep.lines) log.push_back(e);
 

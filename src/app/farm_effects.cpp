@@ -208,7 +208,7 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
             po.mantle = kDataMantle;
             const maiz::Scene data = maiz::project_scene(core, po);
             const auto res = hormiga::compile_csv_import(ss.str(), glyph, hormiga::glyph_fields(core, glyph),
-                                                         [&](const std::string& nm) { return data.find(nm) != nullptr; });
+                                                         [&](const std::string& nm) { return data.find(nm) != nullptr || wstore.name_taken(kDataMantle, nm); });
             if (!res.error.empty()) return fail("import failed: " + res.error);
             fx.text = (apply ? "imported " : "would import ") + std::to_string(res.rows) + " " + glyph + "(s) from " +
                       file + (res.notes.empty() ? "" : ", " + std::to_string(res.notes.size()) + " note(s)");
@@ -467,7 +467,7 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
         } else if (dk == "calendar") {
             maiz::ProjectOptions dio;
             dio.mantle = kDataMantle;
-            scene = maiz::project_scene(core, dio);
+            scene = export_data_scene(dio); // all of it, even when a part is loaded
             const maiz::Scene views = scene; // the calendar view itself is not a granted rune
             hormiga::farmhost::apply_grant(scene, fv2.grant.get());
             scene.source = 0; // filtered: never kept as the mantle's projection
@@ -526,7 +526,7 @@ HormigaApp::FarmFx HormigaApp::farm_effect(const std::string& op, const std::vec
             if (ImGui::GetCurrentContext()) {
                 maiz::ProjectOptions dio;
                 dio.mantle = kDataMantle;
-                scene = maiz::project_scene(core, dio);
+                scene = export_data_scene(dio); // all of it, even when a part is loaded
                 const maiz::Scene views = scene;
                 hormiga::farmhost::apply_grant(scene, fv2.grant.get());
                 scene.source = 0; // filtered: never kept as the mantle's projection

@@ -15,6 +15,7 @@
 #include "platform/preview_server.hpp" // the live-preview localhost server (B2)
 #include "domain/templates.hpp"       // starter templates for the Builder
 #include "app/save_writer.hpp"    // the working copy, written off the UI thread
+#include "app/working_store.hpp"  // a database larger than the machine: a Rancho store, partly loaded
 #include "platform/storage.hpp" // the SQLite Data holiday (phase C)
 #include "platform/vault.hpp"   // the passphrase-locked credential store (.miga v2)
 #include "app/busy.hpp"          // the busy curtain, and work off the UI thread
@@ -1110,6 +1111,25 @@ private:
     // ── the data spine (phase C) ────────────────────────────────────────────
     std::unique_ptr<hormiga::Storage> storage; // SQLite: where the org lives
     hormiga::SaveWriter saver; // writes it off the UI thread; after storage, so it stops first
+    // ── THE WORKING COPY AS A STORE (stage 5; app/working_store.hpp, database.cpp) ──
+    hormiga::WorkingStore wstore; // after `core`: destroyed first, since its link names the core
+    std::filesystem::path store_file() const; // `<name>-store.db`
+    void retire_whole_copy(); void retire_store_copy(); // entering one form of working copy retires the other
+    bool store_sync_due = false;  // the save effect ran in store mode: written back once the dispatch returns
+    maiz::Result store_save();    // a save, in store mode: the write-back alone
+    std::unique_ptr<hormiga::Prepared> boot_from_store(std::string& state); // init's half: plan the part
+    void attach_boot_store(const hormiga::Prepared& p, std::string& state);
+    void load_part(const std::string& mantle, const std::string& leaf, const std::string& rune = {}); // a reload
+    bool whole_loaded(const char* what); // false, and the log says why, when `what` waits for a whole document
+    maiz::Scene export_data_scene(const maiz::ProjectOptions& po); // all of the mantle: an export is a rodeo
+    void draw_store_strip(); // the Data tab, when a part is loaded (ui/store_strip.cpp)
+    char store_find[128] = {}; std::string store_find_said; std::vector<std::string> store_found;
+    std::vector<rancho::ClusterLeaf> store_leaves;
+public:
+    const hormiga::WorkingStore& working_store() const { return wstore; }
+    void open_from_shell(const std::string& path); // `--open`, a double-clicked .miga (database.cpp)
+    int store_check(const std::string& bundle, int synthetic, const std::string& folder); // app/store_check.cpp
+private:
     std::vector<std::string> pending_cmds;     // deferred (e.g. tag suggestions)
     int import_kind = 0;                       // Import CSV popup: palette index
 
@@ -1302,6 +1322,6 @@ private:
     void save_database_as(const std::string& path, bool background = false); // pack → chosen .miga path
     void open_database(const std::string& path);     // unpack + reload the core
     void reload_from_state(const std::string& state); // replace core, re-seed host
-    void adopt_core(maiz::Core&& fresh); void finish_open(const std::string& path, const hormiga::miga::OpenResult& r, maiz::Core&& fresh, double bundle_ms, double core_ms); // the main-thread halves (database.cpp)
+    void adopt_core(maiz::Core&& fresh, const hormiga::Prepared* in_store = nullptr); void finish_open_store(const std::string& path, const hormiga::Prepared& p, maiz::Core&& fresh, double ms); void finish_open(const std::string& path, const hormiga::miga::OpenResult& r, maiz::Core&& fresh, double bundle_ms, double core_ms); // the main-thread halves (database.cpp)
     void draw_share_window();    // Share, Discover, Profile, and presence (ui/share.cpp)
 };

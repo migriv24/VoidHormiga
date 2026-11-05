@@ -56,7 +56,7 @@ std::string HormigaApp::render_preview(std::string_view lang) {
     io.mantle = cur_doc;
     dio.mantle = kDataMantle;
     maiz::Scene issue = maiz::project_scene(core, io);
-    maiz::Scene data = maiz::project_scene(core, dio);
+    maiz::Scene data = export_data_scene(dio); // the whole mantle, even when a part is loaded
     hormiga::farmhost::apply_grant(data, fv2.grant.get()); // Antfarm v2: only what this document is granted
 
     const std::string suf = std::string("_") + std::string(lang);

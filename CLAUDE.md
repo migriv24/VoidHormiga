@@ -10,7 +10,9 @@ engine — C ABI) and **Void Maiz** (`../VoidMaiz`, the node-graph view library
 1. **OKF first.** `okf/` is the source of truth for design; code follows
    concepts, never the other way. Every session that changes design or code
    captures it in `okf/log.md` and trues up the affected concept docs. Read
-   `okf/index.md` before doing anything.
+   `okf/index.md` before doing anything. When something we built or shipped
+   turns out wrong, add an entry to `okf/discussion/`: why we think it
+   happened, as hypotheses (speculative on purpose; see its index).
 2. **The repo root is a public artifact — only Hormiga's development goes in
    it.** This repo is public, and `okf/` and `AGENT-GUIDE.md` ship inside every
    release. Nothing that came from *using* Hormiga is committed: no member

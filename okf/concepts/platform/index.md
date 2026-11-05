@@ -97,6 +97,14 @@ Read in this order the first time:
   and smaller clusters as the unit a weak device holds. Leiden hierarchies
   measured on the 5×10^5 stress database, hierarchical aggregation for showing
   them, and what loading by cluster needs from Void Core (Q129).
+- [The frontier](/concepts/platform/frontier.md) — **proposed 2026-11-03**:
+  the author's premise that every database is infinite and interwoven. Why an
+  interwoven graph still loads in pieces (the cut is a constant factor; only
+  the radius explodes), answers marked settled, growing or open, four classes
+  of question by locality, summaries over the cluster tree, loading as Z-set
+  deltas, el lindero (the vocabulary proposed to Void Rancho: corral,
+  potrero, mojón, cuenta, rodeo, embarque), exports as complete embarques in
+  partidas, and opening any database as a requirement.
 
 # The rule this folder exists to protect
 

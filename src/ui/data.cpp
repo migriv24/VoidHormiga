@@ -139,6 +139,7 @@ bool HormigaApp::draw_tag_filter(const char* id, std::vector<FilterTerm>& terms,
 }
 
 void HormigaApp::draw_data_section(float /*avail_h*/) {
+    draw_store_strip(); // a database loaded in part says so, and reaches the rest (ui/store_strip.cpp)
     // toolbar
     if (ImGui::SmallButton(data_show_connections ? "browse view" : "connections view"))
         data_show_connections = !data_show_connections;
