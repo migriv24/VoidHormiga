@@ -7140,3 +7140,28 @@ The sync protocol is untouched, so 0.2.5 and 0.2.4 sync. Before the tag:
 - CI was green on `7c07e86` on all three platforms;
 - 62/62 tests passed here, with `reduce_conformance` excluded as before;
 - the APK built with the store linked (version code 205, the same certificate).
+
+## 0.2.5 shipped (2026-11-04)
+
+- **Commit `a73bdeb`, tag `v0.2.5`.** CI was green on all three platforms, and
+  all three runner legs built (linux-x64, macos-arm64, macos-x64) against the
+  same siblings as 0.2.4, each checked equal to its `origin`.
+- **`okf/discussion/` was missing from the installer.** `ships_beside_binary`
+  lists the OKF by parts, and the new folder was not listed. The runners' archives
+  copy the whole OKF, minus `reports/`, so they had it. The installer did not,
+  and its index linked to a missing folder. The line is added after the tag, in
+  the commit after this entry, and the installer was staged with it. Against
+  0.2.4, its script differs only in that folder.
+- **Windows installer:** `mago stage`, then `makensis`. The staged CLI reports
+  `Void Hormiga 0.2.5 (windows-x64)`. `44522a1a…`, 17,149,388 bytes.
+- **APK:** version code 205, the Hormiga key (certificate `37d0ee24…`), so it
+  installs over 0.2.4. `d1b9036b…`.
+- **Feed:** the Linux archive was downloaded before `mago feed --artifacts`. Its
+  digest `6e0ca398…` equals the runner's own, and both feed artifacts hash to what
+  the feed says and match its `bytes`.
+- **Live:** 15 assets. `releases/latest/download/void-updates.json` says
+  `latest 0.2.5`, and the stable installer, APK and Linux URLs serve the files
+  above.
+
+**Not done:** 0.2.5 on a phone, and an interwoven database opened through the
+app ([discussion](/discussion/2026-11-03-the-database-that-would-not-open.md)).
