@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -69,7 +69,7 @@
       "repository": "https://github.com/migriv24/VoidRancho",
       "cmake_var": "VOIDRANCHO_ROOT",
       "link": "static",
-      "note": "the database library (the store, its streaming reader, the working set and the planner), extracted from Hormiga's own store on 2026-10-30. Its SQLite is the program's only SQLite. The .miga v4 bundle stays Hormiga's, on Rancho's API. The app's open path does not use the store yet (okf/concepts/platform/store.md, stage 5)."
+      "note": "the database library (the store, its streaming reader, the working set and the planner), extracted from Hormiga's own store on 2026-10-30. Its SQLite is the program's only SQLite. The .miga v4 bundle stays Hormiga's, on Rancho's API. Since 0.2.5 a database larger than the machine opens into its store (okf/concepts/platform/store.md, stage 5)."
     },
     {
       "name": "voidhammer",
@@ -259,18 +259,31 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.2.4",
-    "previous": "0.2.3",
+    "version": "0.2.5",
+    "previous": "0.2.4",
     "change": "compatible",
-    "date": "2026-11-02",
-    "summary": "a fix for Hormiga closing itself while a database opens",
+    "date": "2026-11-04",
+    "summary": "any database opens, however large, without using up the computer's memory",
     "adds": [
-      "Opening a database no longer closes Hormiga. 0.2.3 could quit a second after a database finished opening when the Antfarm tab was showing and the database's Antfarm had an image host, a bucket or a web domain",
-      "Hormiga's database code now comes from Void Rancho, the family's database library; nothing about your databases changes"
+      "A database larger than this computer can hold at once now opens. Hormiga keeps the part the computer can afford in memory and the rest on disk, and saves the whole database every time",
+      "When only part is loaded, the Data tab says how much, lists every other part to load, and searches the whole database by name or tag",
+      "Newsletters, websites, the calendar and the map always export from the whole database, even when only part of it is loaded",
+      "The progress bar no longer predicts hours while a step is busy and the bar is not moving",
+      "Starting Hormiga with a .miga file (voidhormiga --open <file.miga>, or the path alone) opens that database"
     ],
-    "behavior_changes": [],
+    "behavior_changes": [
+      {
+        "what": "A VERY LARGE DATABASE IS SAVED IN THE NEWER .miga FORMAT (v4). A database too large to load whole, and any v4 file, is kept as a store on disk and saved as v4. A small database stays in the format it had.",
+        "who_is_affected": "Anyone with a database too large for their computer to load whole. 0.2.4 and earlier cannot open a v4 file, so update every device that opens it."
+      },
+      {
+        "what": "SHARING CHANGES OVER THE LOCAL NETWORK, AND MERGING ANOTHER COPY, WAIT WHILE ONLY PART OF A DATABASE IS LOADED. The console says why. They would otherwise read every unloaded record as deleted.",
+        "who_is_affected": "Anyone who syncs a database too large for their computer to load whole."
+      }
+    ],
     "read_more": [
-      "okf/concepts/platform/store.md"
+      "okf/concepts/platform/store.md",
+      "okf/concepts/platform/frontier.md"
     ]
   },
   "update": {

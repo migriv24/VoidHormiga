@@ -7122,3 +7122,21 @@ the app's. `CLAUDE.md` rule 1 now asks for an entry after a mistake.
 
 Stage 5 ([store](/concepts/platform/store.md)) and the frontier work of
 2026-11-03 are committed and pushed in this commit, unreleased.
+
+
+# 0.2.5: any database opens (2026-11-04)
+
+The author: *"this looks alright, now lets release this"*.
+
+`void.json`'s release block: `compatible`, five adds (stage 5, the Data tab's
+strip, exports from the whole database, the busy estimate, `--open`), and two
+behavior changes:
+- **a database too large to load whole, and any v4 file, is saved as v4.**
+  0.2.4's app never opens a v4 bundle (its open reads v3 only), so the notes
+  ask for every device that opens one to be updated;
+- **LAN sync, share and merge wait on a partial load.**
+
+The sync protocol is untouched, so 0.2.5 and 0.2.4 sync. Before the tag:
+- CI was green on `7c07e86` on all three platforms;
+- 62/62 tests passed here, with `reduce_conformance` excluded as before;
+- the APK built with the store linked (version code 205, the same certificate).
