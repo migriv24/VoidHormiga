@@ -7228,3 +7228,29 @@ local until Void Maiz's overview is pushed, because it points at that code):
 - the costs of `leaves`, `matrix_view` and `cluster_of`, measured.
 
 **Discussion:** [the view nobody opened](/discussion/2026-11-05-the-view-nobody-opened.md).
+
+
+# 0.2.6: the connections view, on a database of any size (2026-11-13)
+
+The author: *"lets make sure to get hormiga updated on git, and a new release
+made! we've made some changes recently and i want those reflected on the mobile
+and desktop side of things"*
+
+`void.json`'s release block: `compatible`, three adds (the grouped connections
+view, mojones counted with *load the part around it*, *Other parts...* at
+once) and one behavior change: **with more than 400 linked runes the view
+shows groups**, at most 1,500 bodies, and proximity springs only rune by rune.
+The `.miga` format and the sync protocol are untouched, so 0.2.6 syncs with
+0.2.5.
+
+**Void Maiz first.** The view links Void Maiz's `voidmaiz/overview.hpp`, which
+was built on 2026-11-05 and never pushed. The runners clone Void Maiz's `main`,
+so it is committed and pushed in Void Maiz before this tag, together with that
+repository's later `HostApp::document_io` session. Void Rancho's unpushed
+2026-11-09 session (the reseña, the frontier, el rodeo) is **not** in this
+release: Hormiga uses nothing from it, and its answer
+(`rancho-frontier-overview-and-lindero-built-2026-11-09`) waits, unconsumed,
+for the session that adopts it.
+
+Before the tag: 64/64 tests passed here, with `reduce_conformance` excluded as
+before.
