@@ -958,3 +958,23 @@ if(NOT MSVC)
   target_link_options(hormiga_reyna_import_smoke PRIVATE ${HORMIGA_STATIC_RUNTIME})
 endif()
 
+
+# Every test fails after 10 minutes instead of hanging, ours and the siblings'
+# built beside them. ctest has no default limit, so on 2026-11-13 one Linux test
+# held CI's runner for over half an hour (0.2.6) with no name in the log. The
+# slowest here takes 80 s. Another directory's tests need CMake 3.28.
+function(hormiga_test_timeout dir)
+  get_property(_tests DIRECTORY "${dir}" PROPERTY TESTS)
+  if(_tests)
+    if(dir STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+      set_tests_properties(${_tests} PROPERTIES TIMEOUT 600)
+    elseif(CMAKE_VERSION VERSION_GREATER_EQUAL 3.28)
+      set_tests_properties(${_tests} DIRECTORY "${dir}" PROPERTIES TIMEOUT 600)
+    endif()
+  endif()
+  get_property(_subs DIRECTORY "${dir}" PROPERTY SUBDIRECTORIES)
+  foreach(_sub IN LISTS _subs)
+    hormiga_test_timeout("${_sub}")
+  endforeach()
+endfunction()
+hormiga_test_timeout("${CMAKE_CURRENT_SOURCE_DIR}")
