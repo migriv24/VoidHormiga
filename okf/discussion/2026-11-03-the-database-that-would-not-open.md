@@ -95,3 +95,7 @@ cheapest defence is a counter that says which path ran, not a timer.
 - **Whether hypotheses 2 and 4 are causes or coincidences.** Two releases in
   A crash, a library adoption, two CI failures and a release all landed on
   2026-11-02. That crowding may explain more than either hypothesis.
+
+*Answered in part by
+[the view nobody opened](/discussion/2026-11-05-the-view-nobody-opened.md)
+(2026-11-05): hypothesis 1 held, one level higher.*

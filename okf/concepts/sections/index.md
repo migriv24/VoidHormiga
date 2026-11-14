@@ -26,6 +26,10 @@ rather than a rewrite ([application boundaries](/concepts/foundation/application
   block stacks (Node Blocks applied); query-backed blocks and `materialize`;
   renderer packs per (glyph × domain); themes; the website story and the
   dogfood target.
+- [The connections view](/concepts/sections/connections.md) — the Data tab's
+  force-directed picture of the links, **rebuilt 2026-11-05** to be bounded by
+  what it shows: groups found from the links, opened one at a time, at most
+  1,500 bodies, Barnes–Hut forces, and links leaving the loaded part counted.
 - [Calendar](/concepts/sections/calendar.md) — dated runes on a time grid:
   3-day / week / month views styled by the map's rules engine; static and web
   exports; grounded in RFC 5545 (model) and FullCalendar (view vocabulary).

@@ -16,6 +16,7 @@
 #include "domain/templates.hpp"       // starter templates for the Builder
 #include "app/save_writer.hpp"    // the working copy, written off the UI thread
 #include "app/working_store.hpp"  // a database larger than the machine: a Rancho store, partly loaded
+#include "ui/connections.hpp"     // the connections view's state
 #include "platform/storage.hpp" // the SQLite Data holiday (phase C)
 #include "platform/vault.hpp"   // the passphrase-locked credential store (.miga v2)
 #include "app/busy.hpp"          // the busy curtain, and work off the UI thread
@@ -797,14 +798,8 @@ private:
     bool show_kinds = false;     // the Kinds window (ui/kinds.cpp): name and shape the kinds
     void draw_kinds_window();
 
-    // ── the physics connections view (Gephi-class, not the node editor) ─────
-    std::map<std::string, ImVec2> phys_pos; // layout space positions
-    float phys_temp = 0;                    // >0 = still settling
-    int phys_total_iters = 0, phys_done_iters = 0;
-    std::string phys_drag;                  // node being dragged
-    ImVec2 phys_cam{0, 0};                  // pan offset
-    float phys_zoom = 1.0f;
-    void phys_reset();                      // (re)seed + start settling
+    // ── the connections view (ui/connections.cpp): bounded by what it shows ──
+    hormiga::ConnectionsView conn;
     void draw_physics_view(float body_h);
 
     // ── settings (config tier: logged, persisted with the org) ──────────────

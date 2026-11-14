@@ -39,3 +39,7 @@ entry itself stays as it was written.
 - [2026-11-03 — the database that would not open](/discussion/2026-11-03-the-database-that-would-not-open.md):
   0.2.4 shipped as "the crash fix" and the stress database still exhausted
   memory. We measured the library's path, not the one the person uses.
+- [2026-11-05 — the view nobody opened](/discussion/2026-11-05-the-view-nobody-opened.md):
+  0.2.5 opened the stress database, and the connections view froze on it. We
+  tested "opens", not "is usable". And a harness that counts frames was read
+  as milliseconds.

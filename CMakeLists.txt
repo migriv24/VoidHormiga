@@ -295,7 +295,7 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
   src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/map_panels.cpp src/ui/inspector.cpp src/ui/calendar.cpp src/ui/calendar_panels.cpp
   src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
-  src/ui/tags.cpp src/ui/store_strip.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
+  src/ui/tags.cpp src/ui/store_strip.cpp src/ui/connections.cpp src/domain/connections.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp
   src/app/database.cpp src/app/working_store.cpp src/app/store_check.cpp src/app/verbs.cpp src/app/sync_ops.cpp src/render/map_png.cpp
   src/app/translate.cpp src/app/busy.cpp src/app/save_writer.cpp src/report/report.cpp src/update/update.cpp src/update/cli.cpp
@@ -704,6 +704,13 @@ add_executable(hormiga_replay_smoke tests/replay_smoke.cpp)
 target_link_libraries(hormiga_replay_smoke PRIVATE hormiga_allomone) # seed.hpp registers the allo glyphs
 target_include_directories(hormiga_replay_smoke PRIVATE src vendor/json) # seed.hpp
 add_test(NAME hormiga_replay_smoke COMMAND hormiga_replay_smoke)
+
+# The connections view's model, no window (domain/connections.hpp): mojones counted,
+# the tree within its bounds at a loaded part's size (6x10^4 runes).
+add_executable(hormiga_connections_smoke tests/connections_smoke.cpp src/domain/connections.cpp)
+target_link_libraries(hormiga_connections_smoke PRIVATE voidmaiz)
+target_include_directories(hormiga_connections_smoke PRIVATE src)
+add_test(NAME hormiga_connections_smoke COMMAND hormiga_connections_smoke)
 
 # The phase C spine test: SQLite round-trip (save → reload → identical
 # projection) + the CSV import compiler landing as one replayable batch.

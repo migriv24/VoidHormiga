@@ -175,8 +175,16 @@ Stages 1 to 4 are built (now in Rancho, its tests and the 2 GB harness here).
    edits, saves, mints a name, saves as, restarts and checks, under
    `tools/lowmem`. The measurements are in the log.
 
+   The connections view draws the loaded part in bounded work (2026-11-05,
+   [connections](/concepts/sections/connections.md)), and the strip lists the
+   parts from `leaf_estimates` (4 ms), not `leaves` (12 s at 5×10^5 runes).
+
    Not yet built:
-   - targeted write-back, since every save compares what is loaded;
+   - a write-back targeted from the first save after a boot: the boot's own
+     commands go to Core directly, so that first sync is a full comparison
+     (1.4 s at 59,719 runes, nothing written);
+   - an overview of the whole database, which needs Rancho's upper cluster
+     levels and per-cluster link counts;
    - the phone's screens on the store;
    - a bounded export (rodeos and partidas, asked of Rancho);
    - sync on the store (stage 7).

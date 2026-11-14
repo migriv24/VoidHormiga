@@ -7165,3 +7165,66 @@ The sync protocol is untouched, so 0.2.5 and 0.2.4 sync. Before the tag:
 
 **Not done:** 0.2.5 on a phone, and an interwoven database opened through the
 app ([discussion](/discussion/2026-11-03-the-database-that-would-not-open.md)).
+
+
+# The connections view, bounded by what it shows (2026-11-05)
+
+The author: *"stress test opens, but then the connections view breaks. we'll
+have to rethink how we do that and open it (maybe that's a maiz thing, but
+unsure). the good part is that the stress test opens! lets continue the
+implementation of rancho, and the continued development of it"*
+
+**Why it broke.** The view's repulsion compared all pairs of runes through
+string-keyed maps: 3.6×10^9 steps an iteration at the 59,719 runes held. It
+also reset every frame on a partial load, because a link to an unloaded rune
+added a position for a name the scene did not hold.
+
+**Rebuilt** ([connections](/concepts/sections/connections.md)), in two places:
+- **Void Maiz** got `voidmaiz/overview.hpp`, built and logged there, which
+  answers the author's "maybe that's a maiz thing": a tree of groups over a
+  graph, a cut for what is open, a Barnes–Hut layout per connected piece, and
+  packing.
+- **Hormiga** got `src/domain/connections.*`, the model off the UI thread with
+  links leaving the loaded part counted as mojones, and `src/ui/connections.cpp`,
+  the view. A click opens a group, a right-click closes one, and at most 1,500
+  bodies are on screen. A selected rune with mojones offers *load the part
+  around it*.
+- `hormiga_connections_smoke` checks the model: 6×10^4 runes are gathered in
+  41 ms and built in 408 ms, giving 193 roots.
+
+**The stress database through the real window** (59,719 runes held): 58,674
+linked runes in 382 bodies, 6 ms frames, and a group opening on a click. Two
+faults were found only that way:
+- lowering Leiden's resolution fused the part into one group of 56,611, so
+  merging is now under a size cap;
+- global repulsion pushed 130 unlinked pieces into a far ring, so layout is now
+  per component, with packing.
+
+**Also found and fixed:** *Other parts...* called `Store::leaves`, which takes
+12.4 s on the stress store. It now calls `leaf_estimates`, which returns the
+same 25,998 leaves in 4 ms.
+
+**Measured, so as not to be misread again.** The window harness's `wait`
+counts frames, not milliseconds (`phone_harness.cpp`). A run that seemed to
+take minutes to boot and quit was waiting 30,000 frames. The real costs, on a
+restart from the stress store:
+
+| | |
+|---|---|
+| `init()` | 10–14 s: the store's plan 3.5–4.8 s, the working set's attach 1.2–2.1 s, the first projection 3.1–6.4 s |
+| the first frame | 11.4 s, not yet explained |
+| quitting | 1.4 s, one full write-back with nothing to write (the boot's commands do not go through the working set) |
+
+**Not a leak:** the store grew by 10 runes between the first open and the
+first restart, then by none across three more boots. This is the one-time
+Antfarm conversion every database gets on its first open.
+
+**Asked of Void Rancho** (`MESSAGE_FOR_VOIDRANCHO_hormiga-the-overview-2026-11-05.md`,
+local until Void Maiz's overview is pushed, because it points at that code):
+- upper levels for the cluster tree, which has 23,607 top-level clusters on the
+  stress database;
+- per-cluster link counts (the *reseña*), so the whole database can have an
+  overview;
+- the costs of `leaves`, `matrix_view` and `cluster_of`, measured.
+
+**Discussion:** [the view nobody opened](/discussion/2026-11-05-the-view-nobody-opened.md).
