@@ -7254,3 +7254,18 @@ for the session that adopts it.
 
 Before the tag: 64/64 tests passed here, with `reduce_conformance` excluded as
 before.
+
+**CI's Linux leg hung, twice, in `hormiga_sync_smoke`** (6 s on 0.2.5's run,
+over 30 min on this one, with no test named: ctest has no default limit). Two
+changes:
+- **Every test now times out at 600 s**, ours and Void Maiz's built beside us
+  (`hormiga_test_timeout` in `CMakeLists.txt`). That run named the test.
+- **The bug was the beacon's, not the test's.** `Beacon::stop()` closed the
+  socket to wake the receiving thread's `recvfrom`. Windows wakes it; Linux
+  does not, so `stop()` waited for one more datagram, which a runner that
+  delivers no multicast to itself never sends. Android is Linux, so a phone
+  could stall the same way turning discovery off. The receiving thread now
+  waits at most 200 ms in `select` and looks at `stop` again, and the socket is
+  closed after both threads leave, which also ends a race on a reused
+  descriptor. The test's output is unbuffered, so a killed run shows its last
+  section. Nothing in the sync code had changed since 0.2.5; the runner had.

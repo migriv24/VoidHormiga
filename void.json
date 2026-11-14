@@ -268,7 +268,8 @@
     "adds": [
       "The Data tab's connections view stays fast on a large database. Runes that link closely are drawn as one group; click a group to open it in place, right-click to close it",
       "Links to runes that are not loaded are counted on the rune and its groups (+37), not drawn. Select such a rune to load the part of the database around it",
-      "\"Other parts...\" on the Data tab opens at once on a very large database, instead of freezing the window for several seconds"
+      "\"Other parts...\" on the Data tab opens at once on a very large database, instead of freezing the window for several seconds",
+      "On Linux and Android, turning off finding other devices on the local network no longer waits, sometimes indefinitely, for one more announcement to arrive"
     ],
     "behavior_changes": [
       {

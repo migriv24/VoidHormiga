@@ -402,6 +402,7 @@ static void test_live_beacons() {
 }
 
 int main() {
+    std::setvbuf(stdout, nullptr, _IONBF, 0);  // a test killed on a timeout still shows how far it got
     std::printf("sync smoke\n");
     test_version_names();
     test_merge_basics();

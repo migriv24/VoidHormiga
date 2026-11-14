@@ -310,17 +310,30 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
     setsockopt(s, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char*)&mreq, sizeof mreq);
     p_->listen_sock = s;
 
-    p_->rx = std::thread([this] {
+    p_->rx = std::thread([this, s] {
         char buf[kMaxBeacon + 1];
         while (!p_->stop) {
+            /* WAIT AT MOST 200 ms, THEN LOOK AT `stop` AGAIN. stop() used to close
+             * the socket to unblock recvfrom, which works on Windows and not on
+             * Linux: a close from another thread does not wake a blocked recvfrom
+             * there, so stop() waited for a datagram that might never come (CI's
+             * Linux runner, 2026-11-13: sync_smoke hung in the second stop()).
+             * The socket is closed by stop() only after this thread has left. */
+            fd_set fds;
+            FD_ZERO(&fds);
+            FD_SET(s, &fds);
+            timeval tv{0, 200 * 1000};
+            const int ready = select((int)s + 1, &fds, nullptr, nullptr, &tv);
+            if (ready == 0) continue;
+            if (ready < 0) break;
             sockaddr_in from{};
 #ifdef _WIN32
             int flen = sizeof from;
 #else
             socklen_t flen = sizeof from;
 #endif
-            int n = recvfrom(p_->listen_sock, buf, sizeof buf, 0, (sockaddr*)&from, &flen);
-            if (n <= 0) break;  // closed on stop(), or a hard error
+            int n = recvfrom(s, buf, sizeof buf, 0, (sockaddr*)&from, &flen);
+            if (n <= 0) break;  // a hard error
             PeerInfo peer;
             if (!decode_beacon(std::string(buf, (std::size_t)n), peer)) continue;
             /* OUR OWN BEACON COMES BACK TO US -- multicast loopback is on by
@@ -406,16 +419,16 @@ bool Beacon::start(const PeerInfo& self, std::string* error) {
 
 void Beacon::stop() {
     if (!running_) return;
-    p_->stop = true;
+    p_->stop = true;  // the rx thread sees it within 200 ms, the tx thread within 100 ms
+    if (p_->rx.joinable()) p_->rx.join();
+    if (p_->tx.joinable()) p_->tx.join();
     {
         std::lock_guard<std::mutex> lk(p_->mu);  // the tx thread joins groups on it
         if (p_->listen_sock != HZ_BAD_SOCKET) {
-            hz_close(p_->listen_sock);  // unblocks recvfrom
+            hz_close(p_->listen_sock);  // closed only once nothing reads it
             p_->listen_sock = HZ_BAD_SOCKET;
         }
     }
-    if (p_->rx.joinable()) p_->rx.join();
-    if (p_->tx.joinable()) p_->tx.join();
     running_ = false;
 }
 
