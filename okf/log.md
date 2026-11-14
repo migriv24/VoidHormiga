@@ -7269,3 +7269,32 @@ changes:
   closed after both threads leave, which also ends a race on a reused
   descriptor. The test's output is unbuffered, so a killed run shows its last
   section. Nothing in the sync code had changed since 0.2.5; the runner had.
+
+## 0.2.6 shipped (2026-11-13)
+
+- **Commit `e0e2e9c`, tag `v0.2.6`.** CI was green on all three platforms;
+  `hormiga_sync_smoke` passed on Linux in 5–7 s. Void Maiz was pushed first
+  (`2575a4f`). Its own CI is green on Linux and macOS and red on MSVC, in Void
+  Hammer's `radio_loopback.cpp` (`::min`/`::max` against `windows.h`), which
+  this release did not touch; Hormiga's Windows build is MinGW.
+- **Runners:** linux-x64 and macos-x64 built. **macos-arm64 never started:**
+  GitHub retired `macos-14` (*"The configuration 'macos-14-arm64-us-default' is
+  not supported"*). The fix is `macos-15` in `release.yml`, which this
+  machine's token cannot push (no `workflow` scope), so it waits for the
+  author. The release page says so. The feed lists no macOS, so updates are
+  unaffected.
+- **Windows installer:** `mago stage`, then `makensis`. Its script equals 0.2.5's
+  with versions and dates masked; Void Core's DLL is byte-identical.
+  `cdb5332b…`, 17,333,500 bytes.
+- **APK:** version code 206, the Hormiga key (certificate `37d0ee24…`), so it
+  installs over 0.2.5. `b4227d8e…`. Both were rebuilt after the beacon fix.
+- **Feed:** the Linux archive was downloaded before `mago feed --artifacts`. Its
+  digest `6b41e276…` equals the runner's own, and both feed artifacts hash to
+  what the feed says and match its `bytes`.
+- **Live:** 12 assets (0.2.5's 15, less the Apple Silicon archive, its
+  version-free copy and its sums). `releases/latest/download/void-updates.json`
+  says `latest 0.2.6`, and the stable installer, APK and Linux URLs serve the
+  files above.
+
+**Not done:** 0.2.6 on a phone; the connections view on a phone; Void Rancho's
+2026-11-09 answer, unconsumed.
