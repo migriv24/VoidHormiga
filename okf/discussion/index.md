@@ -43,3 +43,7 @@ entry itself stays as it was written.
   0.2.5 opened the stress database, and the connections view froze on it. We
   tested "opens", not "is usable". And a harness that counts frames was read
   as milliseconds.
+- [2026-11-13 — the close that woke nothing](/discussion/2026-11-13-the-close-that-woke-nothing.md):
+  the LAN beacon stopped by closing a socket, which wakes a blocked receive on
+  Windows and not on Linux or Android. It shipped from 0.1, and hung 0.2.6's CI
+  with no test named.
