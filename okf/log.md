@@ -7596,3 +7596,22 @@ dead port fails plainly), `farm_smoke` (`device` answers `send-to-device`).
 **Not done:** screens on the phone; `ask` over HTTP mapped onto fields; UDP,
 Bluetooth LE and serial; device names looked up; a Hammer model filling a
 node's port; `ui_list` over the store rather than what is loaded.
+
+
+# 0.2.7: polygons and paths on the map, and tabs a database can shape (2026-11-17)
+
+The author: *"commit and publish"*, after the map builder (2026-11-14) and the
+application as data (2026-11-15).
+
+`void.json`'s release block: `compatible`, seven adds (polygons and dashed
+perimeters, several shapes selected, snap to grid, generate perimeter / path
+with progress, a database's tabs and layout, Screen documents as tabs, Device
+nodes) and one behavior change: **a polygon or path opened in 0.2.6 or earlier
+is drawn as its bounding box** (its `geo1`/`geo2`,
+[generation](/concepts/sections/gis/generation.md)), and a Screen document is an
+ordinary document there. Nothing is lost; the `.miga` format and the sync
+protocol are otherwise untouched, so 0.2.7 syncs with 0.2.6.
+
+Every sibling was already pushed (Void Maiz, Void Palabra, Void Core, Void
+Hammer, Void Allomone at `origin/main`), so nothing goes upstream first.
+`mago doctor`'s one error and three warnings are in other projects.
