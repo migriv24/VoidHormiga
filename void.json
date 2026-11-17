@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.2.7",
+  "version": "0.3.0",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -260,30 +260,28 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.2.7",
-    "previous": "0.2.6",
+    "version": "0.3.0",
+    "previous": "0.2.7",
     "change": "compatible",
     "date": "2026-11-17",
-    "summary": "polygons and paths on the map, and tabs a database can shape",
+    "summary": "large map shapes stay fast, and one shape can have holes and separate parts",
     "adds": [
-      "The map builder draws polygon areas and dashed perimeters, tagged like any other area",
-      "Shift-click or shift-drag to select several shapes on the map, then right-click to act on them together",
-      "Snap to grid (off by default) while drawing on the map",
-      "Select shapes and choose Generate perimeter or Generate path: a perimeter around them, or a path through them in the order you selected them, with a progress bar while it works",
-      "A database can name its tabs, their order and a default layout. Windows > Save this layout to the database shares yours; each device applies it once, and your own arrangement stays yours",
-      "New tabs: a Builder document of the new kind Screen becomes its own tab, built from a list, a form, an input and a button whose actions are console lines",
-      "Antfarm Device nodes send text to a device on the network (TCP), from a console line or a screen's button, and show what it answers"
+      "The map and its Inspector stay fast with large imported shapes (thousands of corners). Selecting a large shape no longer freezes the window",
+      "A map shape can have holes and separate parts: one district with islands inside it and pieces apart from it is one shape, with no seam lines",
+      "A selected shape with many corners shows a handle only where corners are spaced apart on screen; zoom in to reach the rest",
+      "Exporting a map as a picture is much faster for large shapes",
+      "Positions on the map are saved to about 1 cm. They were rounded to as much as 11 m, and moving one corner of a large shape rounded all of its corners",
+      "A polygon drawn counter-clockwise no longer fills its notches"
     ],
     "behavior_changes": [
       {
-        "what": "A MAP WITH POLYGONS OR PATHS, OPENED IN 0.2.6 OR EARLIER, SHOWS EACH ONE AS ITS BOUNDING BOX, and a Screen document shows as an ordinary document. Nothing is lost; 0.2.7 draws them again.",
-        "who_is_affected": "Anyone who shares a database between devices that are not all on 0.2.7."
+        "what": "A SHAPE WITH HOLES OR SEPARATE PARTS, OPENED IN 0.2.7 OR EARLIER, SHOWS ONLY ITS MAIN OUTLINE. Its holes and other parts are kept in the file and come back in 0.3.0.",
+        "who_is_affected": "Anyone who shares a database between devices that are not all on 0.3.0, once a shape with holes or parts is in it."
       }
     ],
     "read_more": [
-      "okf/concepts/platform/shell.md",
-      "okf/concepts/sections/gis/generation.md",
-      "okf/concepts/platform/antfarm/capabilities.md"
+      "okf/concepts/sections/gis/territory.md",
+      "okf/discussion/2026-11-17-the-boundary-that-froze-the-inspector.md"
     ]
   },
   "update": {

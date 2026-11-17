@@ -7641,3 +7641,73 @@ Hammer, Void Allomone at `origin/main`), so nothing goes upstream first.
 
 **Not done:** 0.2.7 on a phone; screens on the phone; a database's layout
 applied on a second real machine (it was checked on two folders of this one).
+
+
+# Shapes of real size: the inspector freeze, several rings, ~1 cm positions (2026-11-17)
+
+The author opened a database with imported administrative boundaries in 0.2.7:
+*"when i went to the inspector, the program [froze]"*, and asked whether the
+vertex count was the cause, whether snapping, curves or more stored information
+would help, and allowed new systems to be built and the imported data rewritten
+in them as a test. Nothing about the data or its owner is recorded here (the
+report stays beside the database).
+
+**Measured first** (window harness, `HORMIGA_FRAME_TIMING`, `perf`): Data 6 ms a
+frame, the map 54 ms, the map's Inspector on one selected shape 900 ms. The
+vertex count was not the problem; recomputing per frame what changes only with
+the data was. See the [discussion](/discussion/2026-11-17-the-boundary-that-froze-the-inspector.md).
+
+- **Parsed once per change:** `shape::geometry` (`domain/shape_geom.hpp`).
+- **Asked once per change:** `bestow::receivers_memo`, `covering_memo`; an
+  overlap test reads each region once (`bestow::Region`).
+- **Triangulated once:** `gis::triangulate` (ear clipping on a linked ring),
+  `gis::triangulate_rings` (holes bridged to their outline, as earcut does); the
+  desktop and phone write the triangles straight to the draw list.
+- **Drawn to the pixel:** off-screen shapes skipped, outlines and vertex
+  handles thinned (10 px between corner handles, 24 px edges for add-a-corner).
+- **Several rings:** a polygon's `rings` field (holes and detached parts,
+  `pts|pts`), read with `pts` by the even-odd rule, drawn, hit, contained,
+  exported to the PNG (now a row-by-row fill) and to the website (further
+  subpaths). `pts` stays the main outline, which an older Hormiga draws.
+  [territory](/concepts/sections/gis/territory.md).
+- **Positions at ~1 cm:** `format_geo` wrote `%.7g` (four decimals at a
+  three-digit longitude); it now writes seven decimals, and the seven
+  hand-written `%.7g` formats call it.
+- **A counter-clockwise polygon** filled its notches through ImGui's fill; the
+  fallback orients a ring before filling, and stored polygons use their own
+  triangles.
+
+Measured after, on the same database, idle machine: the map 54 → 6 ms, the
+Inspector 900 → 8.5 ms. Re-imported with `rings` (beside the database, by its
+own Lens), each boundary is one shape; map 10 ms, Inspector 10.5 ms.
+
+The author's other ideas: **snapping** reduces the corners a person draws, not
+those an import brings; **curves** do not fit boundaries made of straight
+survey lines; **more stored information** turned out to be the right one (the
+rings).
+
+Tests: `gis_smoke` (triangles of an L both ways and of a keyhole, seven
+decimals at any longitude), `spine_smoke` (the memo sees an edit, the memos
+answer what the scans do). 66/66. `site.cpp`'s budget rose by five lines for
+the rings (`tools/find_long.py`). Golden: `app.js` only.
+
+Found and not fixed: **`gis_smoke` takes ~72 s** on its own, already so at
+0.2.7 (measured from a worktree at `02f9938`).
+
+**Not done:** a GeoJSON importer in Hormiga; a shape of 10^5 corners (its
+triangles are cut on the frame's thread); the web export's rings are untested
+in a browser; dragging a whole multi-ring shape hides its other rings while the
+drag lasts.
+
+
+# 0.3.0: large map shapes stay fast, and shapes with holes and parts (2026-11-17)
+
+The author: *"now please bump the version (minor change), commit, push, and
+release"*. A minor version: `rings` is a new field in the `.miga`'s map shapes.
+
+`void.json`'s release block: `compatible`, six adds (the freeze fixed, holes
+and separate parts, thinned handles, the faster PNG, positions at ~1 cm, the
+counter-clockwise fill) and one behavior change: **a shape with `rings`, opened
+in 0.2.7 or earlier, shows only its main outline**; its other rings stay in the
+file. The sync protocol is untouched, so 0.3.0 syncs with 0.2.7. Every sibling
+was already pushed.
