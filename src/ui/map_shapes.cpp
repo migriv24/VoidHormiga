@@ -96,13 +96,27 @@ bool HormigaApp::map_polygon_handles(const MapFrame& f, const maiz::SceneNode& s
     const bool open = hormiga::shape::is_line(sel); // a path: no edge from its last corner back to its first
     const size_t edges = open ? n - 1 : n, keep = open ? 2 : 3;
     auto mid = [&](size_t i) { return ImVec2((R[i].x + R[(i + 1) % n].x) * 0.5f, (R[i].y + R[(i + 1) % n].y) * 0.5f); };
+    /* HANDLES AT THE SCREEN'S RESOLUTION (2026-11-17). An imported boundary has a thousand-odd
+     * corners; zoomed out, every handle was drawn, a solid band along its
+     * border. A corner shows (and can be taken) when it stands 10 px from the last
+     * one shown; an edge's "add a corner" handle when the edge is 24 px long. Zoom
+     * in and every corner is there. */
+    std::vector<char> shown(n, 0);
+    for (size_t i = 0, last = 0; i < n; ++i)
+        if (i == 0 || std::fabs(R[i].x - R[last].x) + std::fabs(R[i].y - R[last].y) >= 10.0f) shown[i] = 1, last = i;
+    auto long_edge = [&](size_t i) {
+        const ImVec2 a = R[i], b = R[(i + 1) % n];
+        return std::fabs(a.x - b.x) + std::fabs(a.y - b.y) >= 24.0f;
+    };
     int vhit = -1, mhit = -1;
     for (size_t i = 0; i < n; ++i)
-        if (hovered && std::fabs(mouse.x - R[i].x) <= 7 && std::fabs(mouse.y - R[i].y) <= 7) vhit = (int)i;
+        if (shown[i] && hovered && std::fabs(mouse.x - R[i].x) <= 7 && std::fabs(mouse.y - R[i].y) <= 7) vhit = (int)i;
     if (vhit < 0)
         for (size_t i = 0; i < edges; ++i)
-            if (hovered && std::fabs(mouse.x - mid(i).x) <= 6 && std::fabs(mouse.y - mid(i).y) <= 6) mhit = (int)i;
+            if (long_edge(i) && hovered && std::fabs(mouse.x - mid(i).x) <= 6 && std::fabs(mouse.y - mid(i).y) <= 6)
+                mhit = (int)i;
     for (size_t i = 0; i < edges; ++i) { // the ghost handles first, so a corner is drawn over its edge's
+        if (!long_edge(i)) continue;
         const bool hot = (int)i == mhit;
         const float r = hot ? 5.0f : 3.5f;
         dl->AddCircleFilled(mid(i), r, IM_COL32(255, 255, 255, hot ? 240 : 160));
@@ -110,6 +124,7 @@ bool HormigaApp::map_polygon_handles(const MapFrame& f, const maiz::SceneNode& s
     }
     for (size_t i = 0; i < n; ++i) {
         const bool hot = (int)i == vhit || (poly_editing && (int)i == map_poly_idx);
+        if (!shown[i] && !hot) continue;
         const float h = hot ? 6.0f : 4.5f;
         dl->AddRectFilled(ImVec2(R[i].x - h, R[i].y - h), ImVec2(R[i].x + h, R[i].y + h), IM_COL32(255, 255, 255, 245), 2.0f);
         dl->AddRect(ImVec2(R[i].x - h, R[i].y - h), ImVec2(R[i].x + h, R[i].y + h), IM_COL32(40, 70, 60, 255), 2.0f, 0, 1.5f);
@@ -138,7 +153,8 @@ bool HormigaApp::map_polygon_handles(const MapFrame& f, const maiz::SceneNode& s
                     to_geo(R[i], c.lat, c.lon);
                     v.push_back(c);
                 }
-            pending_cmds.push_back(maiz::compile_commit(hormiga::shape::vertex_commands(sel_shape->name, v, open)));
+            pending_cmds.push_back(maiz::compile_commit(
+                hormiga::shape::vertex_commands(sel_shape->name, v, open, hormiga::shape::extra_rings(*sel_shape))));
         } else {
             toast(open ? "a path keeps at least two points" : "a polygon keeps at least three corners");
         }
@@ -163,7 +179,19 @@ bool HormigaApp::map_polygon_release(const MapFrame& f) {
             to_geo(p, c.lat, c.lon);
             v.push_back(c);
         }
-        pending_cmds.push_back(maiz::compile_commit(hormiga::shape::vertex_commands(map_poly_edit, v, open)));
+        /* Its further rings (holes, parts) go where the outline went when the
+         * whole shape was dragged, by the same move on screen; a corner moved
+         * leaves them where they are. */
+        auto rings = edited ? hormiga::shape::extra_rings(*edited) : std::vector<std::vector<hormiga::gis::Coord>>{};
+        if (map_poly_idx < 0 && !rings.empty() && map_poly_live.size() == map_poly_start.size()) {
+            const ImVec2 d(map_poly_live[0].x - map_poly_start[0].x, map_poly_live[0].y - map_poly_start[0].y);
+            for (auto& r : rings)
+                for (auto& c : r) {
+                    const ImVec2 s = f.to_screen(c.lat, c.lon);
+                    to_geo(ImVec2(s.x + d.x, s.y + d.y), c.lat, c.lon);
+                }
+        }
+        pending_cmds.push_back(maiz::compile_commit(hormiga::shape::vertex_commands(map_poly_edit, v, open, rings)));
     }
     map_poly_edit.clear();
     map_poly_idx = -1;

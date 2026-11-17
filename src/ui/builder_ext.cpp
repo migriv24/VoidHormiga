@@ -596,8 +596,11 @@ void HormigaApp::ensure_icon_editor() {
                 std::vector<std::string> cmds;
                 int inside = 0;
                 // what is inside it on its own canvas, and the shapes it overlaps
-                // (domain/bestow.hpp: the one list the tag editor reads too)
-                for (const maiz::SceneNode* rp : hormiga::bestow::receivers(ctx.scene, n)) {
+                // (domain/bestow.hpp: the one list the tag editor reads too), once
+                // per model change: per frame it froze the inspector on a large imported boundary
+                for (const std::string& rn : hormiga::bestow::receivers_memo(ctx.scene, n, model_gen)) {
+                    const maiz::SceneNode* rp = ctx.scene.find(rn);
+                    if (!rp) continue;
                     const maiz::SceneNode& en = *rp;
                     ++inside;
                     std::string cmd;

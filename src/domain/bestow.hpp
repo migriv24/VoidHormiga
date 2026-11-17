@@ -42,8 +42,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cmath>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -71,6 +73,42 @@ inline gis::Geom geom_of(const maiz::SceneNode& n, bool earth, double lat0) {
     return g;
 }
 
+/* An area's region, read ONCE for many points (2026-11-17): its box, its kind,
+ * and a polygon's parsed vertices. The overlap test samples 256 points; each
+ * read the box and the vertex text again, and a boundary of a thousand-odd vertices made the
+ * inspector take 900 ms a frame. */
+struct Region {
+    bool ok = false;
+    std::string kind;
+    double laL = 0, laH = 0, loL = 0, loH = 0;
+    std::shared_ptr<const shape::Geometry> g;
+};
+
+inline Region region_of(const maiz::SceneNode& shape) {
+    Region r;
+    double la1, lo1, la2, lo2;
+    if (!parse_geo(temper::field_value(shape, "geo1"), la1, lo1) ||
+        !parse_geo(temper::field_value(shape, "geo2"), la2, lo2))
+        return r;
+    r.ok = true;
+    r.laL = std::min(la1, la2), r.laH = std::max(la1, la2);
+    r.loL = std::min(lo1, lo2), r.loH = std::max(lo1, lo2);
+    r.kind = shape::kind_of(shape);
+    if (r.kind == "polygon") r.g = shape::geometry(shape);
+    return r;
+}
+
+inline bool region_contains(const Region& r, double lat, double lon) {
+    if (!r.ok || lat < r.laL || lat > r.laH || lon < r.loL || lon > r.loH) return false;
+    if (r.kind == "polygon") return !r.g || r.g->contains({lon, lat}); // every ring; too few vertices: its box
+    if (r.kind != "ellipse") return true;
+    const double ry = (r.laH - r.laL) / 2.0, rx = (r.loH - r.loL) / 2.0;
+    if (rx <= 0.0 || ry <= 0.0) return false;
+    const double dx = (lon - (r.loL + r.loH) / 2.0) / rx;
+    const double dy = (lat - (r.laL + r.laH) / 2.0) / ry;
+    return dx * dx + dy * dy <= 1.0;
+}
+
 inline bool shape_contains(const maiz::SceneNode& shape, double lat, double lon) {
     if (shape::is_line(shape)) { // a PATH gives to what lies within its reach (2026-11-14)
         const double reach = shape::reach_of(shape);
@@ -79,28 +117,7 @@ inline bool shape_contains(const maiz::SceneNode& shape, double lat, double lon)
         const gis::Geom line = geom_of(shape, earth, lat);
         return !line.pts.empty() && gis::relate(pt, line, 1e-9).distance <= reach;
     }
-    double la1, lo1, la2, lo2;
-    if (!parse_geo(temper::field_value(shape, "geo1"), la1, lo1) ||
-        !parse_geo(temper::field_value(shape, "geo2"), la2, lo2))
-        return false;
-    const double laL = std::min(la1, la2), laH = std::max(la1, la2);
-    const double loL = std::min(lo1, lo2), loH = std::max(lo1, lo2);
-    if (lat < laL || lat > laH || lon < loL || lon > loH) return false;
-    const std::string kind = shape::kind_of(shape);
-    if (kind == "polygon") {
-        const auto v = shape::vertices(shape);
-        if (v.empty()) return true; // too few vertices: it is its box
-        std::vector<gis::XY> r;
-        r.reserve(v.size());
-        for (const auto& c : v) r.push_back(gis::xy_of(c));
-        return gis::ring_contains(r, {lon, lat});
-    }
-    if (kind != "ellipse") return true;
-    const double ry = (laH - laL) / 2.0, rx = (loH - loL) / 2.0;
-    if (rx <= 0.0 || ry <= 0.0) return false;
-    const double dx = (lon - (loL + loH) / 2.0) / rx;
-    const double dy = (lat - (laL + laH) / 2.0) / ry;
-    return dx * dx + dy * dy <= 1.0;
+    return region_contains(region_of(shape), lat, lon);
 }
 
 /* THE TAGS A SHAPE GIVES (several since 2026-10-05: the author found one raw
@@ -174,11 +191,12 @@ inline bool shapes_overlap(const maiz::SceneNode& a, const maiz::SceneNode& b) {
     }
     if (laL >= laH || loL >= loH) return false; // the boxes do not even touch
     if (shape::kind_of(a) == "rect" && shape::kind_of(b) == "rect") return true; // two boxes: exact
+    const Region ra = region_of(a), rb = region_of(b);
     constexpr int N = 16;
     for (int i = 0; i < N; ++i)
         for (int j = 0; j < N; ++j) {
             const double la = laL + (laH - laL) * (i + 0.5) / N, lo = loL + (loH - loL) * (j + 0.5) / N;
-            if (shape_contains(a, la, lo) && shape_contains(b, la, lo)) return true;
+            if (region_contains(ra, la, lo) && region_contains(rb, la, lo)) return true;
         }
     return false;
 }
@@ -262,6 +280,49 @@ inline std::vector<Bestower> covering(const maiz::Scene& data, const maiz::Scene
         if (covers(n, rune))
             for (auto& b : shape_givers(n)) out.push_back(std::move(b));
     return out;
+}
+
+/* ONCE PER CHANGE, NOT ONCE PER FRAME (2026-11-17). The inspector shows what a
+ * shape gives to ("Give them now to 12 inside") and who gives a rune its tags,
+ * and asked both every frame: a scan of the whole data, and for every shape
+ * that shares a box with this one, an overlap test. That answer changes only
+ * when the data does, so it is kept until `gen` (the host's count of model
+ * changes) or the scene itself differs. Names, never pointers: a scene can be
+ * replaced without `gen` moving, and a name that has gone is simply not found.
+ * A few entries (the inspector, the tag editor), cleared on each change. */
+struct MemoKey {
+    std::string mantle;
+    std::uint64_t source = 0;
+    const void* base = nullptr;
+    std::size_t count = 0;
+    unsigned gen = 0;
+    bool operator==(const MemoKey&) const = default;
+};
+inline MemoKey memo_key(const maiz::Scene& data, unsigned gen) {
+    return {data.mantle, data.source, data.nodes.data(), data.nodes.size(), gen};
+}
+
+inline const std::vector<std::string>& receivers_memo(const maiz::Scene& data, const maiz::SceneNode& shape,
+                                                      unsigned gen) {
+    thread_local MemoKey at;
+    thread_local std::map<std::string, std::vector<std::string>> kept;
+    if (const MemoKey k = memo_key(data, gen); !(k == at)) at = k, kept.clear();
+    auto it = kept.find(shape.name);
+    if (it == kept.end()) {
+        std::vector<std::string> names;
+        for (const maiz::SceneNode* r : receivers(data, shape)) names.push_back(r->name);
+        it = kept.emplace(shape.name, std::move(names)).first;
+    }
+    return it->second;
+}
+
+inline const std::vector<Bestower>& covering_memo(const maiz::Scene& data, const maiz::SceneNode& rune, unsigned gen) {
+    thread_local MemoKey at;
+    thread_local std::map<std::string, std::vector<Bestower>> kept;
+    if (const MemoKey k = memo_key(data, gen); !(k == at)) at = k, kept.clear();
+    auto it = kept.find(rune.name);
+    if (it == kept.end()) it = kept.emplace(rune.name, covering(data, rune)).first;
+    return it->second;
 }
 
 } // namespace hormiga::bestow

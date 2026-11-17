@@ -241,7 +241,11 @@
         ctx.save();ctx.beginPath();
         if(sp.p&&sp.p.length>2){sp.p.forEach(function(v,k){
             var px=W/2+(mx(v[1],z)-cx)*256,py=H/2+(my(v[0],z)-cy)*256;
-            if(k)ctx.lineTo(px,py);else ctx.moveTo(px,py);});ctx.closePath();}
+            if(k)ctx.lineTo(px,py);else ctx.moveTo(px,py);});ctx.closePath();
+          // its further rings ("r": holes, parts), one subpath each: 'evenodd' leaves a hole empty
+          (sp.r||[]).forEach(function(rg){rg.forEach(function(v,k){
+            var px=W/2+(mx(v[1],z)-cx)*256,py=H/2+(my(v[0],z)-cy)*256;
+            if(k)ctx.lineTo(px,py);else ctx.moveTo(px,py);});ctx.closePath();});}
         else if(sp.e)ctx.ellipse((mnx+mxx)/2,(mny+mxy)/2,(mxx-mnx)/2,(mxy-mny)/2,0,0,7);
         else ctx.rect(mnx,mny,mxx-mnx,mxy-mny);
         if(!sp.pm){ctx.globalAlpha=0.2;ctx.fillStyle=sp.c;ctx.fill('evenodd');}

@@ -806,3 +806,49 @@ The author's second round ([generation](/concepts/sections/gis/generation.md),
 - **Web export.** The author: *"complex features of map are currently
   unsupported for web export."* The website's map leaves paths out, and the
   Actions panel says so where a map is added to a website.
+
+# Shapes of real size: several rings, parsed once, drawn to the pixel (2026-11-17)
+
+An imported administrative boundary (thousands of corners, holes, detached
+parts) froze 0.2.7's map Inspector; see the
+[discussion](/discussion/2026-11-17-the-boundary-that-froze-the-inspector.md) and the log. What a map shape is now:
+
+- **Several rings.** A polygon may carry `rings` beside `pts`: its holes and
+  detached parts, each spelled as `pts` is, separated by `|`. The region is all
+  of them by the **even-odd rule** (`gis::rings_contain`): a hole is a ring
+  inside a ring, a part is a ring on its own, and no ring needs a direction.
+  `pts` stays the **main outline**: the one the vertex handles edit, the one
+  the label is placed in, and the one an older Hormiga (which does not know
+  `rings`) draws. The box (`geo1`/`geo2`) covers every ring, so box readers
+  stay right. Dragging the whole shape moves every ring; moving a corner moves
+  only that corner. `shape::vertex_commands` writes `pts`, `rings` and the box
+  together. Before this, a hole had to be cut in by a "keyhole" seam that the
+  outline drew, and each detached part was a shape of its own.
+- **Parsed once per change.** `shape::geometry` keeps a polygon's parsed rings
+  per rune until its stored text differs; the map, the hit test, containment
+  and the PNG all read it. Its fill is cut into triangles once
+  (`gis::triangulate`, ear clipping; `gis::triangulate_rings` joins each hole
+  to its outline by a bridge, as earcut does) and only mapped to the screen per
+  frame. ImGui's own fill cut every polygon again every frame.
+- **Asked once per change.** The Inspector's *"Give them now to N inside"* and
+  the tag editor's *"given by"* are kept until the model changes
+  (`bestow::receivers_memo`, `covering_memo`); an overlap test reads each
+  shape's region once, not once per sample.
+- **Drawn to the pixel.** A shape whose box is off the canvas costs nothing but
+  its box; an outline drops corners within a pixel of the last; a selected
+  shape shows a corner handle only 10 px from the last one shown, and an
+  edge's add-a-corner handle only on an edge 24 px long. Zoom in for the rest.
+- **The PNG fills row by row** (each row's crossings), and finds its outline
+  near each edge, instead of testing every pixel against every edge: the same
+  pixels, a thousandfold fewer steps on a large shape.
+- **The website** draws `rings` as further subpaths of the shape, filled
+  even-odd.
+- **Positions are written to ~1 cm everywhere.** `format_geo` wrote `%.7g`,
+  which is four decimals at a three-digit longitude (up to ~11 m) despite its
+  comment; it now writes seven decimals, trailing zeros dropped, and the seven
+  places that formatted a position by hand call it.
+
+Measured in the window harness on the database that froze (the same build,
+idle machine): the map 54 → 7.5 ms a frame, the Inspector on a selected
+boundary 900 → 6 ms. Re-imported with `rings`, each boundary is one shape
+where it was one per part.

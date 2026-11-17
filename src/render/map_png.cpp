@@ -266,20 +266,27 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
          * filled where the even-odd test says inside and outlined within 1.2 px of
          * its edges. A PERIMETER, of any kind, has no fill and a dashed outline made
          * of the same dash segments the canvas draws (gis::dashes, 9 on, 6 off). */
-        const auto verts = hormiga::shape::vertices(node);
+        /* EVERY RING (2026-11-17): a polygon's `rings` too, by the even-odd rule,
+         * so a hole is left unfilled and a detached part is filled. */
+        const auto geom = hormiga::shape::geometry(node);
         const bool perim = hormiga::shape::is_perimeter(node);
-        std::vector<hormiga::gis::XY> ring;
-        if (!verts.empty()) {
-            for (const auto& c : verts) {
-                int vx, vy;
-                sxy(c.lat, c.lon, vx, vy);
-                ring.push_back({(double)vx, (double)vy});
+        std::vector<std::vector<hormiga::gis::XY>> rings;
+        if (geom) {
+            for (std::size_t r = 0; r + 1 < geom->starts.size(); ++r) {
+                std::vector<hormiga::gis::XY> one;
+                for (std::size_t i = geom->starts[r]; i < geom->starts[r + 1]; ++i) {
+                    int vx, vy;
+                    sxy(geom->all[i].y, geom->all[i].x, vx, vy);
+                    one.push_back({(double)vx, (double)vy});
+                }
+                rings.push_back(std::move(one));
             }
         } else if (ell) {
-            ring = hormiga::gis::ellipse_ring({(double)mnx, (double)mny}, {(double)mxx, (double)mxy}, 96);
+            rings = {hormiga::gis::ellipse_ring({(double)mnx, (double)mny}, {(double)mxx, (double)mxy}, 96)};
         } else {
-            ring = hormiga::gis::rect_ring({(double)mnx, (double)mny}, {(double)mxx, (double)mxy});
+            rings = {hormiga::gis::rect_ring({(double)mnx, (double)mny}, {(double)mxx, (double)mxy})};
         }
+        const std::vector<hormiga::gis::XY>& ring = rings.front();
         float rx = (mxx - mnx) * 0.5f, ry = (mxy - mny) * 0.5f;
         float ccx = (mnx + mxx) * 0.5f, ccy = (mny + mxy) * 0.5f;
         const bool line = hormiga::shape::is_line(node);
@@ -287,7 +294,9 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
             std::vector<std::pair<hormiga::gis::XY, hormiga::gis::XY>> strokes;
             if (line && !perim)
                 for (size_t k = 0; k + 1 < ring.size(); ++k) strokes.push_back({ring[k], ring[k + 1]});
-            else strokes = hormiga::gis::dashes(ring, !line, 9.0, 6.0);
+            else
+                for (const auto& rg : rings)
+                    for (const auto& d : hormiga::gis::dashes(rg, !line, 9.0, 6.0)) strokes.push_back(d);
             for (const auto& [a, b] : strokes) {
                 const double L = std::hypot(b.x - a.x, b.y - a.y);
                 const int steps = std::max(1, (int)(L * 2));
@@ -298,13 +307,49 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
                             if (dx * dx + dy * dy <= 1) blend_px((int)std::lround(px) + dx, (int)std::lround(py) + dy, scol, 0.55f);
                 }
             }
-        } else if (!verts.empty()) {
-            for (int y = std::max(0, mny); y <= std::min(H - 1, mxy); ++y)
-                for (int x = std::max(0, mnx); x <= std::min(W - 1, mxx); ++x) {
-                    const hormiga::gis::XY q{(double)x, (double)y};
-                    if (hormiga::gis::ring_edge_dist(ring, q) <= 1.2) blend_px(x, y, scol, 0.9f);
-                    else if (hormiga::gis::ring_contains(ring, q)) blend_px(x, y, scol, 0.2f);
+        } else if (geom) {
+            /* ROW BY ROW (2026-11-17). Every pixel of the box was tested against
+             * every edge, twice: a boundary of a thousand-odd corners across 500 px was ~10^9
+             * steps. Now the outline is found near each edge only, and the inside
+             * from each row's crossings; the same pixels as before: within 1.2 px of
+             * an edge is the outline, and inside is the even-odd rule on the
+             * pixel's corner. */
+            const int x0 = std::max(0, mnx), x1 = std::min(W - 1, mxx), y0 = std::max(0, mny), y1 = std::min(H - 1, mxy);
+            if (x0 <= x1 && y0 <= y1) {
+                const int bw = x1 - x0 + 1;
+                std::vector<char> edge((std::size_t)bw * (y1 - y0 + 1), 0);
+                for (const auto& rg : rings)
+                    for (std::size_t i = 0; i < rg.size(); ++i) {
+                        const hormiga::gis::XY a = rg[i], b = rg[(i + 1) % rg.size()];
+                        const int ex0 = std::max(x0, (int)std::floor(std::min(a.x, b.x) - 2)),
+                                  ex1 = std::min(x1, (int)std::ceil(std::max(a.x, b.x) + 2));
+                        const int ey0 = std::max(y0, (int)std::floor(std::min(a.y, b.y) - 2)),
+                                  ey1 = std::min(y1, (int)std::ceil(std::max(a.y, b.y) + 2));
+                        for (int y = ey0; y <= ey1; ++y)
+                            for (int x = ex0; x <= ex1; ++x)
+                                if (hormiga::gis::seg_dist({(double)x, (double)y}, a, b) <= 1.2)
+                                    edge[(std::size_t)(y - y0) * bw + (x - x0)] = 1;
+                    }
+                std::vector<double> xs;
+                for (int y = y0; y <= y1; ++y) {
+                    xs.clear();
+                    for (const auto& rg : rings)
+                        for (std::size_t i = 0, j = rg.size() - 1; i < rg.size(); j = i++) {
+                            const hormiga::gis::XY &a = rg[i], &b = rg[j];
+                            if ((a.y > y) != (b.y > y)) xs.push_back((b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x);
+                        }
+                    std::sort(xs.begin(), xs.end());
+                    for (int x = x0; x <= x1; ++x) {
+                        if (edge[(std::size_t)(y - y0) * bw + (x - x0)]) {
+                            blend_px(x, y, scol, 0.9f);
+                            continue;
+                        }
+                        // inside: an odd number of crossings lie to its right
+                        const std::size_t right = xs.end() - std::upper_bound(xs.begin(), xs.end(), (double)x);
+                        if (right % 2 == 1) blend_px(x, y, scol, 0.2f);
+                    }
                 }
+            }
         } else
         for (int y = std::max(0, mny); y <= std::min(H - 1, mxy); ++y)
             for (int x = std::max(0, mnx); x <= std::min(W - 1, mxx); ++x) {
@@ -326,6 +371,12 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
          * weight, slant and one of nine places, inside its own box, as the
          * canvas draws it (app_shared.cpp, draw_shape_label). */
         const std::string sl = hormiga::temper::field_value(node, "label");
+        if (rings.size() > 1 && geom) { // several rings: the label on the main outline, not between parcels
+            mnx = mxx = (int)rings[0][0].x, mny = mxy = (int)rings[0][0].y;
+            for (const auto& p : rings[0])
+                mnx = std::min(mnx, (int)p.x), mxx = std::max(mxx, (int)p.x), mny = std::min(mny, (int)p.y),
+                mxy = std::max(mxy, (int)p.y);
+        }
         if (!sl.empty() && atlas) {
             float mul = 1.0f;
             if (const std::string v = hormiga::temper::field_value(node, "label_size"); !v.empty())
@@ -335,7 +386,7 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
             const bool bold = hormiga::temper::field_value(node, "label_bold") == "1";
             const float shear = hormiga::temper::field_value(node, "label_italic") == "1" ? 0.2f : 0.0f;
             std::string pos = hormiga::temper::field_value(node, "label_pos");
-            if (pos.empty()) pos = ell ? "tc" : !verts.empty() ? "c" : "tl"; // an ellipse's (or a polygon's) corner is outside it
+            if (pos.empty()) pos = ell ? "tc" : geom ? "c" : "tl"; // an ellipse's (or a polygon's) corner is outside it
             const char row = pos[0], col = pos.size() > 1 ? pos[1] : 'c';
             const float tw = text_w(sl) * mul, th = font_px * label_scale * 1.15f * mul;
             const int pad = 4;

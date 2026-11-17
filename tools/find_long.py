@@ -168,7 +168,9 @@ BUDGET = {
     # (domain/canvas.hpp), and a shape's colour reaches what it covers, live.
     # 2334 -> 2335 (2026-11-14): a map shape publishes a polygon's vertices and
     # whether it is a perimeter, two lines (domain/shape_geom.hpp does the rest).
-    'src/render/site.cpp': 2335,
+    # 2335 -> 2340 (2026-11-17): and its further rings (`rings`: holes, detached
+    # parts), so a boundary imported as one shape is one shape on the website too.
+    'src/render/site.cpp': 2340,
     'src/domain/allomone_legacy.hpp': 900,  # unshipped, frozen
     # NEW ENTRY 2026-09-15 (was on the 1000 default): the newsletter's own theme,
     # bands, the hero banner and the preview of images not uploaded yet. The

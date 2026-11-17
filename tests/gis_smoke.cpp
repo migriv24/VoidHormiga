@@ -61,6 +61,10 @@ int main() {
         // the round trip a place/move action performs
         ok(format_geo(44.05, -123.09) == "44.05,-123.09",
            "format_geo round-trips through parse_geo's spelling");
+        // ~1 cm anywhere: `%.7g` wrote four decimals at a three-digit longitude (2026-11-17)
+        ok(format_geo(12.3456789, -170.1234567) == "12.3456789,-170.1234567",
+           "format_geo keeps seven decimals at any longitude");
+        ok(format_geo(-0.00000001, 0) == "0,0", "and writes a nothing as 0, never -0");
     }
 
     std::printf("gis: web mercator (Earth) — unchanged behaviour\n");
@@ -362,6 +366,29 @@ int main() {
         ok(relate(box, h, 1e-9).name() == "contains", "and the area contains it");
         const XY m = local_metres({0, 1}, 0);
         ok(std::fabs(m.y - 110574) < 1, "a degree of latitude is about 110.6 km");
+    }
+
+    /* TRIANGULATED ONCE (2026-11-17): the triangles' areas add up to the ring's,
+     * whichever way it runs, for a concave ring and for a keyhole (a ring cut
+     * into its own hole by a narrow bridge, as an importer writes a hole). */
+    {
+        auto tri_area = [](const std::vector<XY>& r, const std::vector<unsigned>& t) {
+            double a = 0;
+            for (std::size_t i = 0; i + 2 < t.size(); i += 3) a += ring_area({r[t[i]], r[t[i + 1]], r[t[i + 2]]});
+            return a;
+        };
+        const std::vector<XY> ell = {{0, 0}, {0, 10}, {4, 10}, {4, 4}, {10, 4}, {10, 0}};
+        const auto t = triangulate(ell);
+        ok(t.size() == 12 && std::fabs(tri_area(ell, t) - 64) < 1e-9, "an L: four triangles, its area");
+        const std::vector<XY> lle(ell.rbegin(), ell.rend());
+        ok(std::fabs(tri_area(lle, triangulate(lle)) - 64) < 1e-9, "the same L the other way round");
+        // a 10x10 square with a 4x4 hole, reached by a bridge 0.01 wide
+        const std::vector<XY> key = {{0, 0}, {0, 10}, {10, 10}, {10, 0}, {5.01, 0}, {5.01, 3}, {7, 3}, {7, 7},
+                                     {3, 7}, {3, 3}, {5, 3}, {5, 0}};
+        const auto kt = triangulate(key);
+        ok(kt.size() == 3 * (key.size() - 2) && std::fabs(tri_area(key, kt) - ring_area(key)) < 1e-6,
+           "a keyhole: every corner used, the hole left out");
+        ok(triangulate({{0, 0}, {1, 1}}).empty(), "two points are no area");
     }
 
     std::printf(failures ? "\nFAILED (%d)\n" : "\nOK - the map engine holds\n",

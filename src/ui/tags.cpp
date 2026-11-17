@@ -91,7 +91,7 @@ void HormigaApp::draw_tag_editor(const maiz::SceneNode& n,
 
     // who gives this rune which tags - only the data mantle holds givers
     const std::vector<Bestower> givers = scene.mantle == kDataMantle
-                                             ? hormiga::bestow::covering(scene, n)
+                                             ? hormiga::bestow::covering_memo(scene, n, model_gen) // once per change
                                              : std::vector<Bestower>{};
     auto giver_of = [&](const std::string& t) -> const Bestower* {
         for (const auto& g : givers)

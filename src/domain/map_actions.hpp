@@ -75,8 +75,7 @@ inline maiz::ActionRegistry make_map_actions() {
             auto f = args.find("field");
             std::string field = (f == args.end() || f->second.empty()) ? "geo"
                                                                        : f->second;
-            char geo[64];
-            std::snprintf(geo, sizeof geo, "%.7g,%.7g", lat, lon);
+            const std::string geo = gis::format_geo(lat, lon); // ~1 cm (gis/geo.hpp)
             out.push_back("rune new " + g->second + " " + n->second);
             out.push_back("set " + n->second + " " + field + " \"" + geo + "\"");
             out.push_back("tag " + n->second + " +type:" + g->second + " +located");
@@ -104,8 +103,7 @@ inline maiz::ActionRegistry make_map_actions() {
             auto f = args.find("field");
             std::string field = (f == args.end() || f->second.empty()) ? "geo"
                                                                        : f->second;
-            char geo[64];
-            std::snprintf(geo, sizeof geo, "%.7g,%.7g", lat, lon);
+            const std::string geo = gis::format_geo(lat, lon); // ~1 cm (gis/geo.hpp)
             out.push_back("set " + n->second + " " + field + " \"" + geo + "\"");
             bool located = false;
             for (const auto& t : node->tags)

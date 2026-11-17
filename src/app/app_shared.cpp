@@ -148,10 +148,9 @@ std::vector<ImVec2> shape_screen_ring(const maiz::SceneNode& n, ImVec2 mn, ImVec
     std::vector<ImVec2> out;
     const std::string kind = hormiga::shape::kind_of(n);
     if (kind == "polygon" || kind == "path") {
-        const auto v = hormiga::shape::vertices(n);
-        if (!v.empty()) {
-            out.reserve(v.size());
-            for (const auto& c : v) out.push_back(to_screen(c.lat, c.lon));
+        if (const auto g = hormiga::shape::geometry(n)) { // parsed once per change (shape_geom.hpp)
+            out.reserve(g->all.size()); // every ring, end to end; the main one first
+            for (const auto& p : g->all) out.push_back(to_screen(p.y, p.x));
             return out;
         }
     }
@@ -162,10 +161,46 @@ std::vector<ImVec2> shape_screen_ring(const maiz::SceneNode& n, ImVec2 mn, ImVec
     return out;
 }
 
+/* Where each ring is in a screen ring: a polygon's stored rings end to end
+ * when the ring is its stored vertices, else one ring (one being reshaped). */
+static std::vector<std::pair<std::size_t, std::size_t>> ring_spans(const maiz::SceneNode& n,
+                                                                    const std::vector<ImVec2>& ring) {
+    const auto g = hormiga::shape::geometry(n);
+    if (!g || ring.size() != g->all.size() || g->starts.size() < 2) return {{0, ring.size()}};
+    std::vector<std::pair<std::size_t, std::size_t>> out;
+    for (std::size_t i = 0; i + 1 < g->starts.size(); ++i) out.push_back({g->starts[i], g->starts[i + 1] - g->starts[i]});
+    return out;
+}
+
+void shape_label_box(const maiz::SceneNode& n, const std::vector<ImVec2>& ring, ImVec2& mn, ImVec2& mx) {
+    const auto spans = ring_spans(n, ring);
+    if (spans.size() < 2 || spans[0].second == 0) return;
+    mn = mx = ring[spans[0].first];
+    for (std::size_t i = spans[0].first; i < spans[0].first + spans[0].second; ++i)
+        mn = ImVec2(std::min(mn.x, ring[i].x), std::min(mn.y, ring[i].y)),
+        mx = ImVec2(std::max(mx.x, ring[i].x), std::max(mx.y, ring[i].y));
+}
+
+bool shape_off_view(const ImDrawList* dl, ImVec2 mn, ImVec2 mx) {
+    const ImVec2 c0 = dl->GetClipRectMin(), c1 = dl->GetClipRectMax();
+    const float pad = 8.0f; // an outline's width, a label's edge
+    return mx.x < c0.x - pad || mn.x > c1.x + pad || mx.y < c0.y - pad || mn.y > c1.y + pad;
+}
+
+/* ImGui fills a concave polygon by ear clipping, which expects the ring CLOCKWISE
+ * on screen and turns it round only when it finds no ear at all; a ring the
+ * other way, drawn as clicked or imported, filled its notches (found on an
+ * imported boundary, 2026-11-17). Its signed area on screen says which way it runs. */
+static bool clockwise_on_screen(const std::vector<ImVec2>& r) {
+    double s = 0;
+    for (std::size_t i = 0, j = r.size() - 1; i < r.size(); j = i++) s += (double)r[j].x * r[i].y - (double)r[i].x * r[j].y;
+    return s >= 0;
+}
+
 void draw_map_shape(ImDrawList* dl, const maiz::SceneNode& n, const std::vector<ImVec2>& ring, ImVec2 mn, ImVec2 mx,
                     unsigned fill, unsigned line, float width, float dp) {
     const std::string kind = hormiga::shape::kind_of(n);
-    const bool poly = kind == "polygon" && ring.size() >= 3 && !hormiga::shape::vertices(n).empty();
+    const bool poly = kind == "polygon" && ring.size() >= 3 && hormiga::shape::geometry(n) != nullptr;
     if (hormiga::shape::is_line(n) && ring.size() >= 2) { // a PATH: an open line, dashed when its style says so
         if (!hormiga::shape::is_perimeter(n)) {
             dl->AddPolyline(ring.data(), (int)ring.size(), line, 0, width + 1.0f);
@@ -177,17 +212,43 @@ void draw_map_shape(ImDrawList* dl, const maiz::SceneNode& n, const std::vector<
             dl->AddLine(ImVec2((float)a.x, (float)a.y), ImVec2((float)b.x, (float)b.y), line, width + 1.0f);
         return;
     }
+    const auto spans = ring_spans(n, ring);
     if (hormiga::shape::is_perimeter(n)) { // an outline only, dashed: what is inside stays in reach
-        std::vector<hormiga::gis::XY> r;
-        r.reserve(ring.size());
-        for (const auto& p : ring) r.push_back({p.x, p.y});
-        for (const auto& [a, b] : hormiga::gis::dashes(r, true, 9.0 * dp, 6.0 * dp))
-            dl->AddLine(ImVec2((float)a.x, (float)a.y), ImVec2((float)b.x, (float)b.y), line, width);
+        for (const auto& [s0, sn] : spans) {
+            std::vector<hormiga::gis::XY> r;
+            r.reserve(sn);
+            for (std::size_t i = s0; i < s0 + sn; ++i) r.push_back({ring[i].x, ring[i].y});
+            for (const auto& [a, b] : hormiga::gis::dashes(r, true, 9.0 * dp, 6.0 * dp))
+                dl->AddLine(ImVec2((float)a.x, (float)a.y), ImVec2((float)b.x, (float)b.y), line, width);
+        }
         return;
     }
     if (poly) {
-        dl->AddConcavePolyFilled(ring.data(), (int)ring.size(), fill);
-        dl->AddPolyline(ring.data(), (int)ring.size(), line, ImDrawFlags_Closed, width);
+        const auto g = hormiga::shape::geometry(n);
+        if (g && ring.size() == g->all.size() && !g->triangles().empty()) {
+            // its stored vertices: the triangles cut once, mapped to the screen
+            const auto& tri = g->triangles();
+            const ImVec2 uv = ImGui::GetFontTexUvWhitePixel();
+            dl->PrimReserve((int)tri.size(), (int)ring.size());
+            const unsigned base = dl->_VtxCurrentIdx;
+            for (const auto& p : ring) dl->PrimWriteVtx(p, uv, fill);
+            for (const unsigned i : tri) dl->PrimWriteIdx((ImDrawIdx)(base + i));
+        } else if (clockwise_on_screen(ring)) { // being reshaped: cut this frame
+            dl->AddConcavePolyFilled(ring.data(), (int)ring.size(), fill);
+        } else {
+            const std::vector<ImVec2> cw(ring.rbegin(), ring.rend());
+            dl->AddConcavePolyFilled(cw.data(), (int)cw.size(), fill);
+        }
+        // each ring's outline at the screen's resolution: a vertex within a pixel of the last adds nothing
+        std::vector<ImVec2> thin;
+        for (const auto& [s0, sn] : spans) {
+            thin.clear();
+            for (std::size_t i = s0; i < s0 + sn; ++i)
+                if (thin.empty() || std::fabs(ring[i].x - thin.back().x) + std::fabs(ring[i].y - thin.back().y) >= 1.0f)
+                    thin.push_back(ring[i]);
+            if (thin.size() < 3) continue; // a ring smaller than a pixel or so: its fill says it
+            dl->AddPolyline(thin.data(), (int)thin.size(), line, ImDrawFlags_Closed, width);
+        }
     } else if (kind == "ellipse") {
         const ImVec2 c((mn.x + mx.x) * 0.5f, (mn.y + mx.y) * 0.5f), r((mx.x - mn.x) * 0.5f, (mx.y - mn.y) * 0.5f);
         dl->AddEllipseFilled(c, r, fill);
@@ -209,8 +270,16 @@ bool map_shape_hit(const maiz::SceneNode& n, const std::vector<ImVec2>& ring, Im
             if (hormiga::gis::seg_dist({p.x, p.y}, r[i], r[i + 1]) <= tol) return true;
         return false;
     }
-    if (hormiga::shape::is_perimeter(n)) return hormiga::gis::ring_edge_dist(r, {p.x, p.y}) <= tol;
-    return hormiga::gis::ring_contains(r, {p.x, p.y});
+    bool in = false; // every ring, by the even-odd rule; a perimeter, near any of them
+    for (const auto& [s0, sn] : ring_spans(n, ring)) {
+        const std::vector<hormiga::gis::XY> one(r.begin() + (long)s0, r.begin() + (long)(s0 + sn));
+        if (hormiga::shape::is_perimeter(n)) {
+            if (hormiga::gis::ring_edge_dist(one, {p.x, p.y}) <= tol) return true;
+        } else {
+            in ^= hormiga::gis::ring_contains(one, {p.x, p.y});
+        }
+    }
+    return in;
 }
 
 std::string tag_value(const maiz::SceneNode& n, const char* ns) {

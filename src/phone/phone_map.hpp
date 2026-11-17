@@ -30,9 +30,7 @@ inline bool has_tag(const maiz::SceneNode& n, const std::string& t) {
 }
 
 inline std::string geo_str(double la, double lo) {
-    char b[64];
-    std::snprintf(b, sizeof b, "%.7g,%.7g", la, lo);
-    return b;
+    return hormiga::gis::format_geo(la, lo); // ~1 cm (gis/geo.hpp)
 }
 
 /* A distance a person reads: "12 m", "1.3 km". */

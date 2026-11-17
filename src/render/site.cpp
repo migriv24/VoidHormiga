@@ -1830,6 +1830,11 @@ std::string HormigaApp::render_site(std::string_view lang) {
                                       {"e", field_value(dn, "kind") == "ellipse"},
                                       {"c", style_hex(dn, vrules)}};
                 for (const auto& c : hormiga::shape::vertices(dn)) shp["p"].push_back({c.lat, c.lon}); // a polygon (2026-11-14)
+                for (const auto& r : hormiga::shape::extra_rings(dn)) { // its holes and parts (2026-11-17)
+                    nlohmann::json rj = nlohmann::json::array();
+                    for (const auto& c : r) rj.push_back({c.lat, c.lon});
+                    shp["r"].push_back(std::move(rj));
+                }
                 if (hormiga::shape::is_perimeter(dn)) shp["pm"] = true; // dashed, unfilled; an older page reads the box
                 /* ITS LABEL (2026-10-15), published like the shape: text, size,
                  * colour, weight, slant, place, and CSS cleaned at this seam. */

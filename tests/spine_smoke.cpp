@@ -958,7 +958,27 @@ int main() {
             CHECK(tags_of("in-notch").empty());
             CHECK(hormiga::shape::is_perimeter(*s.find("ring")) && !hormiga::shape::is_perimeter(*el));
             CHECK(std::fabs(hormiga::shape::area(*el) - 64.0) < 1e-9); // 100 less the 6x6 notch
+            /* ONCE PER CHANGE (2026-11-17): the parsed vertices are kept until the
+             * stored text differs, so an edit is seen at once and an unchanged
+             * shape is not parsed again; the memos of "inside it" and "given by"
+             * answer what the scans do. */
+            const auto g1 = hormiga::shape::geometry(*el), g2 = hormiga::shape::geometry(*el);
+            CHECK(g1 && g1 == g2);                    // the same parse, handed out twice
+            CHECK(g1 && g1->triangles().size() == 12); // six corners: four triangles
+            const auto& memo = bw::receivers_memo(s, *el, 7);
+            CHECK(memo.size() == bw::receivers(s, *el).size());
+            CHECK(bw::covering_memo(s, *s.find("in-l"), 7).size() == 2);
         }
+        CHECK(c.dispatch("set ell pts \"20,20;20,30;30,30;30,20\"").ok); // the notch filled in
+        s = project(c, "names");
+        CHECK(hormiga::shape::vertices(*s.find("ell")).size() == 4);
+        CHECK(hormiga::bestow::shape_contains(*s.find("ell"), 28, 28)); // the notch is inside now
+        {
+            std::vector<std::string> cmds;
+            const std::vector<hormiga::gis::Coord> ell = {{20, 20}, {20, 30}, {24, 30}, {24, 24}, {30, 24}, {30, 20}};
+            for (auto& v : hormiga::shape::vertex_commands("ell", ell)) CHECK(c.dispatch(v).ok); // and back
+        }
+        s = project(c, "names");
         /* GENERATED SHAPES (2026-11-14, domain/generated.hpp): `map generate` writes a
          * path through three events with a link to each, `stop-1` .. `stop-3`; its
          * recipe reads back in order; a stop moved and the recipe run again moves the

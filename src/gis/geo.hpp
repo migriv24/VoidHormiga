@@ -67,14 +67,26 @@ inline bool parse_geo(const std::string& s, Coord& c) {
     return parse_geo(s, c.lat, c.lon);
 }
 
-/* Write a `geo` field. `%.7g` is ~1 cm at the equator and is what the map's
- * place/move actions have always emitted; keeping one spelling means a rune
- * written by a click and a rune written by an agent look the same in a diff. */
-inline std::string format_geo(double lat, double lon) {
-    char buf[64];
-    std::snprintf(buf, sizeof buf, "%.7g,%.7g", lat, lon);
-    return buf;
+/* Write a `geo` field: seven decimals, trailing zeros dropped (~1 cm anywhere),
+ * so a rune written by a click and one written by an agent look the same in a
+ * diff, and a short value keeps its short spelling ("12.5,-170.25").
+ *
+ * THIS WAS `%.7g`, said to be ~1 cm. Seven SIGNIFICANT digits are four decimals
+ * at any three-digit longitude: up to ~11 m. Every place, box corner and polygon vertex the
+ * map wrote was rounded to that, and dragging one corner of an imported
+ * boundary rewrote every one of its corners at that precision (found 2026-11-17). */
+inline std::string format_coord(double v) {
+    char buf[48];
+    std::snprintf(buf, sizeof buf, "%.7f", v);
+    std::string s = buf;
+    if (s.find('.') != std::string::npos) {
+        while (!s.empty() && s.back() == '0') s.pop_back();
+        if (!s.empty() && s.back() == '.') s.pop_back();
+    }
+    if (s == "-0") s = "0";
+    return s;
 }
+inline std::string format_geo(double lat, double lon) { return format_coord(lat) + "," + format_coord(lon); }
 inline std::string format_geo(const Coord& c) { return format_geo(c.lat, c.lon); }
 
 /* ── DISTANCE IS A PROPERTY OF THE WORLD, NOT OF THE PROGRAM ─────────────────

@@ -51,3 +51,7 @@ entry itself stays as it was written.
   the map's canvas read a right press as a left one in every handler, so a
   right-click re-selected what it touched. Found when multi-selection needed
   its own menu.
+- [2026-11-17 — the boundary that froze the inspector](/discussion/2026-11-17-the-boundary-that-froze-the-inspector.md):
+  imported administrative boundaries froze 0.2.7's map Inspector at 900 ms a
+  frame. Every polygon measure had been made on shapes of four to six corners,
+  and the position writer's "~1 cm" was a comment, not a test.

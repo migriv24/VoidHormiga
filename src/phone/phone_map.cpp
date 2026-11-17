@@ -281,9 +281,12 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
          * near its border only, with a finger's tolerance, so what is inside it stays
          * reachable. Drawing a polygon on the phone waits for the author's use of the
          * phone's map (Q102). */
+        if (!sel && shape_off_view(dl, mn, mx)) continue; // off screen: nothing to draw or hit (2026-11-17)
         const auto ring = shape_screen_ring(n, mn, mx, [&](double la, double lo) { return scr(la, lo); });
         draw_map_shape(dl, n, ring, mn, mx, fill, line, (sel ? 3.0f : 1.8f) * dp, dp);
-        draw_shape_label(dl, n, mn, mx, line, ImGui::GetFontSize(), 6 * dp); // inside its own region, as on the desktop
+        ImVec2 lmn = mn, lmx = mx;
+        shape_label_box(n, ring, lmn, lmx); // the label on its main outline, not between its parts
+        draw_shape_label(dl, n, lmn, lmx, line, ImGui::GetFontSize(), 6 * dp); // inside its own region, as on the desktop
         if (map_shape_hit(n, ring, mn, mx, mouse, 12 * dp)) shape_hit = &n;
     }
 

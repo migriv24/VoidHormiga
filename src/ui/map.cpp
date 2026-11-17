@@ -357,8 +357,7 @@ std::vector<const maiz::SceneNode*> HormigaApp::map_layers() const {
 
 void HormigaApp::map_place_new(const char* glyph) {
     const std::string name = mint_name(glyph);
-    char geo[64];
-    std::snprintf(geo, sizeof geo, "%.7g,%.7g", map_ctx_lat, map_ctx_lon);
+    const std::string geo = hormiga::gis::format_geo(map_ctx_lat, map_ctx_lon);
     auto cmds = map_actions.run("place", scene,
                                 {{"glyph", glyph}, {"name", name}, {"geo", geo},
                                  {"field", geo_field_for(active_channel)}});
@@ -370,8 +369,7 @@ void HormigaApp::map_place_new(const char* glyph) {
 }
 
 void HormigaApp::map_place_existing(const std::string& name) {
-    char geo[64];
-    std::snprintf(geo, sizeof geo, "%.7g,%.7g", map_ctx_lat, map_ctx_lon);
+    const std::string geo = hormiga::gis::format_geo(map_ctx_lat, map_ctx_lon);
     auto cmds = map_actions.run("move", scene,
                                 {{"name", name}, {"geo", geo},
                                  {"field", geo_field_for(active_channel)}});
@@ -1041,6 +1039,16 @@ void HormigaApp::draw_map_section() {
             mn = map_shape_live_mn;
             mx = map_shape_live_mx;
         }
+        /* WHAT IS NOT ON SCREEN COSTS NOTHING, AND A VERTEX IS AT LEAST A PIXEL
+         * (2026-11-17): an imported set of boundaries, thousands of vertices, made a
+         * frame 54 ms. A shape off the canvas is only listed (box select reads
+         * its box); a polygon's fill is triangles cut once, its outline thinned
+         * to the screen (app_shared.cpp). */
+        const bool keep_all = ed.selected(node.name) || (poly_editing && node.name == map_poly_edit);
+        if (!keep_all && shape_off_view(dl, mn, mx)) {
+            shape_boxes.push_back({&node, mn, mx});
+            continue;
+        }
         std::vector<ImVec2> ring = shape_screen_ring(node, mn, mx, to_screen_fn);
         if (poly_editing && node.name == map_poly_edit && !map_poly_live.empty()) {
             ring = map_poly_live;
@@ -1054,6 +1062,8 @@ void HormigaApp::draw_map_section() {
             sel_mn = mn;
             sel_mx = mx;
             sel_ring = ring;
+            if (const auto g = hormiga::shape::geometry(node); g && ring.size() == g->all.size())
+                sel_ring.resize(g->v.size()); // the handles stand on the main outline (`pts`) only
         }
         // color: rules → explicit color: tag → a default green
         ImU32 col = IM_COL32(46, 107, 79, 255);
@@ -1081,7 +1091,9 @@ void HormigaApp::draw_map_section() {
         if (hormiga::shape::is_perimeter(node)) line = faded((col & 0x00FFFFFF) | 0xFF000000, sld);
         draw_map_shape(dl, node, ring, mn, mx, fill, line, sel ? 2.5f : (hormiga::shape::is_perimeter(node) ? 2.0f : 1.5f), 1.0f);
         // inside its own region: a narrow aisle's name never runs over the next one
-        draw_shape_label(dl, node, mn, mx, line, ImGui::GetFontSize(), 4.0f);
+        ImVec2 lmn = mn, lmx = mx;
+        shape_label_box(node, ring, lmn, lmx);
+        draw_shape_label(dl, node, lmn, lmx, line, ImGui::GetFontSize(), 4.0f);
         // the topmost hit wins, as drawn; a perimeter is hit only on its border
         if (hovered && map_shape_hit(node, ring, mn, mx, mouse, 6.0f)) shape_hit = &node;
     }
@@ -1278,9 +1290,7 @@ void HormigaApp::draw_map_section() {
             double la1, lo1, la2, lo2;
             to_geo(map_shape_live_mn, la1, lo1);
             to_geo(map_shape_live_mx, la2, lo2);
-            char g1[64], g2[64];
-            std::snprintf(g1, sizeof g1, "%.7g,%.7g", la1, lo1);
-            std::snprintf(g2, sizeof g2, "%.7g,%.7g", la2, lo2);
+            const std::string g1 = hormiga::gis::format_geo(la1, lo1), g2 = hormiga::gis::format_geo(la2, lo2);
             pending_cmds.push_back(maiz::compile_commit({"set " + map_shape_edit + " geo1 " + text_arg(g1),
                                                          "set " + map_shape_edit + " geo2 " + text_arg(g2)}));
         }
@@ -1320,9 +1330,7 @@ void HormigaApp::draw_map_section() {
                     name = "shape-" + std::to_string(i);
                     if (!scene.find(name)) break;
                 }
-                char g1[64], g2[64];
-                std::snprintf(g1, sizeof g1, "%.7g,%.7g", map_shape_la0, map_shape_lo0);
-                std::snprintf(g2, sizeof g2, "%.7g,%.7g", la, lo);
+                const std::string g1 = hormiga::gis::format_geo(map_shape_la0, map_shape_lo0), g2 = hormiga::gis::format_geo(la, lo);
                 pending_cmds.push_back(maiz::compile_commit(
                     {"rune new mapshape " + name,
                      "set " + name + " kind \"" +
@@ -1381,8 +1389,7 @@ void HormigaApp::draw_map_section() {
         if (!map_drag_ref.empty()) { // #4: a reference point was MOVED — its whole
             double la, lo;           // fan follows, since children are relative
             to_geo(mouse, la, lo);
-            char geo[64];
-            std::snprintf(geo, sizeof geo, "%.7g,%.7g", la, lo);
+            const std::string geo = hormiga::gis::format_geo(la, lo);
             pending_cmds.push_back("set " + map_drag_ref + " geo \"" + geo + "\"");
             map_drag_ref.clear();
         } else if (!map_drag_marker.empty()) {
@@ -1406,8 +1413,7 @@ void HormigaApp::draw_map_section() {
             } else {
                 double la, lo;
                 to_geo(mouse, la, lo);
-                char geo[64];
-                std::snprintf(geo, sizeof geo, "%.7g,%.7g", la, lo);
+                const std::string geo = hormiga::gis::format_geo(la, lo);
                 std::string mch = active_channel; // its own layer's positions
                 for (const auto& L : located_nodes)
                     if (L.node->name == map_drag_marker && L.ld) mch = L.ld->channel;
@@ -1681,8 +1687,7 @@ void HormigaApp::draw_map_section() {
                 name = "refpoint-" + std::to_string(i);
                 if (!scene.find(name)) break;
             }
-            char geo[64];
-            std::snprintf(geo, sizeof geo, "%.7g,%.7g", map_ctx_lat, map_ctx_lon);
+            const std::string geo = hormiga::gis::format_geo(map_ctx_lat, map_ctx_lon);
             pending_cmds.push_back(maiz::compile_commit(
                 {"rune new refpoint " + name, "set " + name + " geo \"" + geo + "\"",
                  "set " + name + " label \"Reference\"", "set " + name + " canvas " + text_arg(map_canvas)}));
