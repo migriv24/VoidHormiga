@@ -62,6 +62,33 @@ struct FieldDecl {
     std::string editor; // Void Maiz widget binding ("combo:a,b"), "" = text
 };
 
+/* ── capabilities, declared on the kinds that answer them (A5, 2026-11-14) ──
+ * okf/concepts/platform/antfarm/capabilities.md. A capability is a question with
+ * a typed answer ("put this file online and give me its link"); the rest of the
+ * application asks the question and never names a vendor. Which kinds of node
+ * can answer is DECLARED on the kind and written into the glyph Hormiga registers
+ * (`hints.answers`). A built-in kind is registered by the binary, not declared
+ * into the file (Void Core, glyph.md), so a .miga carries its NODES and their
+ * settings and every stock Hormiga answers for them alike: issue #3's "stock
+ * binary + one .miga". What is declared is who can be asked and what leaves; HOW a vendor
+ * is called stays the host's code, because it is the effect (the Antfarm runs no
+ * logic: dsls.md). */
+struct AnswerDecl {
+    std::string id;     // the capability: "host-file", "publish-site"
+    std::string does;   // what happens when this kind is asked
+    std::string needs;  // what it needs before it can answer
+    std::string leaves; // what leaves this device when it answers ("" = nothing)
+    bool after_publish = false; // its answer works once the website is published again
+};
+
+struct Question {
+    std::string id;       // "host-file"
+    std::string question; // in a person's words
+    std::string in, out;  // the call's types
+};
+const std::vector<Question>& questions();
+const Question* question(std::string_view id);
+
 struct Kind {
     std::string id;     // the CLI's name: `farm add filter …`
     std::string glyph;  // "farm_filter" — prefixed so v2 never collides with a v1 or data glyph
@@ -74,7 +101,9 @@ struct Kind {
     int face_h = 60;
     std::vector<FieldDecl> fields;
     std::vector<PortDecl> ports;
+    std::vector<AnswerDecl> answers; // the capabilities it answers (A5)
 
+    const AnswerDecl* answer(std::string_view capability) const;
     const PortDecl* port(std::string_view name) const;               // either direction (outputs first)
     const PortDecl* port(std::string_view name, bool out) const;     // a pass-through has `river` both ways
 };

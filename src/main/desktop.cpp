@@ -569,6 +569,8 @@ int main(int argc, char** argv) {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         if (glfwGetWindowAttrib(window, GLFW_ICONIFIED)) { glfwWaitEvents(); continue; }
+        // a database's layout, loaded between frames: ImGui cannot reload settings inside one (app/shell_app.cpp)
+        if (const std::string l = app.take_pending_layout(); !l.empty()) ImGui::LoadIniSettingsFromMemory(l.data(), l.size());
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         const bool scripted = !sim.script.empty();

@@ -17,6 +17,7 @@
 #pragma once
 
 #include "gis/geo.hpp"       // the engine owns coordinates now — see that file
+#include "domain/generated.hpp" // map generate: perimeters and paths from runes (2026-11-14)
 #include "voidmaiz/action.hpp"
 
 #include <cmath>
@@ -111,6 +112,55 @@ inline maiz::ActionRegistry make_map_actions() {
                 if (t == "located") located = true;
             if (!located) out.push_back("tag " + n->second + " +located");
             return out;
+        }});
+
+    /* map generate <which> <name> <seeds> — geometry made from runes (2026-11-14;
+     * domain/generated.hpp, okf gis/generation.md). The canvas's menu calls the same
+     * `generated::compile`, with what it draws instead of what is stored. */
+    reg.add(maiz::ActionDescriptor{
+        "generate", "Generate a shape",
+        "Make a new map shape <name> from <seeds> (rune names, comma-separated, in order): "
+        "<which> = perimeter (a dashed ring around them, which need not touch), path (a line "
+        "through them in order) or loop (a path back to the first). With ground=1 it follows "
+        "the canvas's ground (a plan's grid). Links the shape to each seed (stop-N or around) "
+        "so it can be regenerated.",
+        {{"which", "text", true, "perimeter | path | loop"},
+         {"name", "text", true, "the new shape's name (slug)"},
+         {"seeds", "text", true, "rune names, comma-separated, in order"},
+         {"canvas", "text", false, "the canvas (blank = Earth)"},
+         {"ground", "text", false, "1 = follow the canvas's ground (snap on)"},
+         {"margin", "text", false, "a perimeter's clearance: metres on Earth, the plan's unit (default 15 m / 0.5)"}},
+        "", // a menu on several selected things, not a gesture
+        [](const maiz::Scene& scene, const maiz::ActionArgs& args) {
+            auto get = [&](const char* k) {
+                auto it = args.find(k);
+                return it == args.end() ? std::string() : it->second;
+            };
+            generated::Request rq;
+            rq.which = get("which");
+            rq.name = get("name");
+            rq.canvas = get("canvas");
+            rq.use_ground = get("ground") == "1";
+            std::string cur;
+            for (char c : get("seeds") + ",") {
+                if (c == ',' || c == ' ') {
+                    if (!cur.empty()) rq.seeds.push_back(cur);
+                    cur.clear();
+                } else cur += c;
+            }
+            const bool earth = rq.canvas.empty();
+            const std::string m = get("margin");
+            const double margin = m.empty() ? (earth ? 15.0 : 0.5) : std::atof(m.c_str());
+            if (earth) { // metres to degrees about the seeds' latitude
+                double lat = 0;
+                const auto seeds = generated::seeds_of(scene, rq.seeds, rq.canvas, generated::stored_place(rq.canvas));
+                if (!seeds.empty()) lat = seeds.front().at.y;
+                rq.margin_y = margin / 110574.0;
+                rq.margin_x = margin / (111320.0 * std::max(0.01, std::cos(lat * gis::kPi / 180.0)));
+            } else {
+                rq.margin_x = rq.margin_y = margin;
+            }
+            return generated::compile(scene, rq, generated::stored_place(rq.canvas)).commands;
         }});
 
     return reg;

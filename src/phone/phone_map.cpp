@@ -274,23 +274,17 @@ void HormigaApp::PhoneUi::map(HormigaApp& app, PhoneUi& ph, Frame& f) {
         const MarkerLook sl = marker_look(n, spl ? spl->rules : rules, app.allo_style_for("map", n.name));
         if (sl.col != glyph_marker_colour(n.glyph)) col = sl.col;
         const bool sel = m.sheet == MapUi::Shape && m.sel == n.name;
-        const ImU32 fill = with_alpha(col, 0x33), line = with_alpha(col, sel ? 0xFF : 0xBB);
-        if (hormiga::temper::field_value(n, "kind") == "ellipse") {
-            const ImVec2 c((mn.x + mx.x) * 0.5f, (mn.y + mx.y) * 0.5f), r((mx.x - mn.x) * 0.5f, (mx.y - mn.y) * 0.5f);
-            dl->AddEllipseFilled(c, r, fill);
-            dl->AddEllipse(c, r, line, 0, 0, (sel ? 3.0f : 1.8f) * dp);
-        } else {
-            dl->AddRectFilled(mn, mx, fill, 4 * dp);
-            dl->AddRect(mn, mx, line, 4 * dp, 0, (sel ? 3.0f : 1.8f) * dp);
-        }
+        const bool perim = hormiga::shape::is_perimeter(n);
+        const ImU32 fill = with_alpha(col, 0x33), line = with_alpha(col, sel || perim ? 0xFF : 0xBB);
+        /* POLYGONS AND PERIMETERS (2026-11-14): drawn and hit by the desktop's own
+         * functions (app_shared.cpp), so the two cannot disagree. A perimeter is hit
+         * near its border only, with a finger's tolerance, so what is inside it stays
+         * reachable. Drawing a polygon on the phone waits for the author's use of the
+         * phone's map (Q102). */
+        const auto ring = shape_screen_ring(n, mn, mx, [&](double la, double lo) { return scr(la, lo); });
+        draw_map_shape(dl, n, ring, mn, mx, fill, line, (sel ? 3.0f : 1.8f) * dp, dp);
         draw_shape_label(dl, n, mn, mx, line, ImGui::GetFontSize(), 6 * dp); // inside its own region, as on the desktop
-        if (mouse.x >= mn.x && mouse.x <= mx.x && mouse.y >= mn.y && mouse.y <= mx.y &&
-            (hormiga::temper::field_value(n, "kind") != "ellipse" || [&] {
-                const float rx = (mx.x - mn.x) * 0.5f, ry = (mx.y - mn.y) * 0.5f;
-                const float nx = (mouse.x - (mn.x + rx)) / std::max(1.0f, rx), ny = (mouse.y - (mn.y + ry)) / std::max(1.0f, ry);
-                return nx * nx + ny * ny <= 1.0f;
-            }()))
-            shape_hit = &n;
+        if (map_shape_hit(n, ring, mn, mx, mouse, 12 * dp)) shape_hit = &n;
     }
 
     // ── reference points: the gizmo that fans co-located markers (editor-only) ─

@@ -17,6 +17,10 @@
 #include "app/save_writer.hpp"    // the working copy, written off the UI thread
 #include "app/working_store.hpp"  // a database larger than the machine: a Rancho store, partly loaded
 #include "ui/connections.hpp"     // the connections view's state
+#include "gis/polygon.hpp"         // gis::Coord, gis::XY: a polygon being drawn (2026-11-14)
+#include "app/shell_ui.hpp"        // the application as data: tabs, layout (2026-11-15)
+#include "platform/device_link.hpp"  // sending to a device without blocking a frame (2026-11-15)
+#include "ui/map_shapes.hpp"        // MapFrame: what a map frame hands its shape tools
 #include "platform/storage.hpp" // the SQLite Data holiday (phase C)
 #include "platform/vault.hpp"   // the passphrase-locked credential store (.miga v2)
 #include "app/busy.hpp"          // the busy curtain, and work off the UI thread
@@ -721,8 +725,22 @@ private:
     std::string map_place_arm;   // "click the map to place <name>" mode
     std::string map_ctx_marker;  // marker under the right-click menu
     // #3 drawable map SHAPES: a draw mode + the in-progress drag
-    int map_draw_shape = 0;      // 0 off, 1 rect, 2 ellipse (arm to draw)
+    int map_draw_shape = 0;      // 0 off, 1 rect, 2 ellipse, 3 polygon (arm to draw)
     bool map_shape_dragging = false;
+    // POLYGONS, PERIMETERS, SNAP (2026-11-14): the tools are ui/map_shapes.cpp
+    std::vector<hormiga::gis::Coord> map_poly_draft; // the polygon being clicked out
+    bool map_new_perimeter = false, map_snap = false; // the tools draw perimeters; snap (off until asked)
+    std::string map_poly_edit, map_box_shape;  // the polygon in hand; a shift-press that began on a shape
+    int map_poly_idx = -1;                     // its corner in hand; -1 = the whole polygon moves
+    std::vector<ImVec2> map_poly_start, map_poly_live; ImVec2 map_poly_grab; // its corners at the press, now; the press
+    void map_polygon_tool(const MapFrame& f);
+    bool map_polygon_handles(const MapFrame& f, const maiz::SceneNode& sel, const std::vector<ImVec2>& ring, ImVec2 mn,
+                             ImVec2 mx);
+    bool map_polygon_release(const MapFrame& f);
+    void map_generate(const MapFrame& f, const std::string& which, const std::vector<std::string>& names);
+    void map_regenerate(const MapFrame& f, const maiz::SceneNode& shape);
+    void map_set_style(const std::vector<std::string>& names, bool perimeter);
+    void map_multi_menu(const MapFrame& f);
     // reshaping a shape by its handles, 0..7 clockwise from top left, 8 = move (ui/map.cpp)
     std::string map_shape_edit;
     int map_shape_edit_idx = -1;
@@ -1123,6 +1141,13 @@ private:
 public:
     const hormiga::WorkingStore& working_store() const { return wstore; }
     void open_from_shell(const std::string& path); // `--open`, a double-clicked .miga (database.cpp)
+    // THE APPLICATION AS DATA (2026-11-15): a database's tabs and default layout (app/shell_app.cpp)
+    ShellUi shellui;
+    void shell_register(); void shell_load(); void shell_frame(); void shell_save_layout(); void shell_use_layout();
+    std::string take_pending_layout(); // the desktop loads it before the next frame begins
+    bool* shell_flag(const std::string& id); std::vector<std::string> screen_mantles(); bool try_shell_verb(const std::string& cmd);
+    void draw_screens(); void run_screen_action(const std::string& mantle, const std::string& action, const std::string* input);
+    hormiga::devices::Sender devices; bool device_send(const std::string& node, const std::string& text); void devices_frame();
     int store_check(const std::string& bundle, int synthetic, const std::string& folder); // app/store_check.cpp
 private:
     std::vector<std::string> pending_cmds;     // deferred (e.g. tag suggestions)

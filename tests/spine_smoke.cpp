@@ -17,6 +17,7 @@
 #include "../src/platform/storage.hpp"
 #include "../src/domain/temper.hpp"
 #include "../src/domain/bestow.hpp"     // regions give categories, per canvas
+#include "../src/domain/generated.hpp"  // generated shapes and their recipes
 #include "../src/domain/workspaces.hpp" // the demos of the kinds release
 #include "../src/domain/date_query.hpp" // date_field_of
 #include "../src/domain/naming.hpp"     // names follow titles
@@ -921,6 +922,87 @@ int main() {
             CHECK(g.count("picnic") && g.at("picnic") == "teal");     // inside both: the smaller gives
             CHECK(g.count("east") && g.at("east") == "e07a1f");       // north overlaps east
             CHECK(!g.count("north"));  // never itself, and never from a smaller shape inside it
+        }
+        /* POLYGONS AND PERIMETERS (2026-11-14, domain/shape_geom.hpp). An L: the
+         * point in its notch is inside its box and NOT inside it. Its vertices go
+         * through the dispatcher as written by every tool (shape::vertex_commands),
+         * so a `pts` full of ';' must come back whole. A perimeter of the same
+         * outline gives exactly what an area does. */
+        {
+            const std::vector<hormiga::gis::Coord> ell = {{20, 20}, {20, 30}, {24, 30}, {24, 24}, {30, 24}, {30, 20}};
+            std::vector<std::string> cmds = {"rune new mapshape ell", "set ell kind \"polygon\"",
+                                             "set ell bestows \"zone-l\"", "rune new mapshape ring",
+                                             "set ring kind \"polygon\"", "set ring style \"perimeter\"",
+                                             "set ring bestows \"zone-p\"", "rune new event in-l",
+                                             "set in-l geo \"22,28\"", "rune new event in-notch",
+                                             "set in-notch geo \"28,28\""};
+            for (auto& v : hormiga::shape::vertex_commands("ell", ell)) cmds.push_back(v);
+            for (auto& v : hormiga::shape::vertex_commands("ring", ell)) cmds.push_back(v);
+            for (const auto& cmd : cmds) CHECK(c.dispatch(cmd).ok);
+        }
+        s = project(c, "names");
+        {
+            namespace bw = hormiga::bestow;
+            const maiz::SceneNode* el = s.find("ell");
+            CHECK(el && hormiga::shape::vertices(*el).size() == 6); // the ';'s survived the command language
+            CHECK(el && hormiga::temper::field_value(*el, "geo1") == "20,20"); // its box, kept beside it
+            CHECK(el && hormiga::temper::field_value(*el, "geo2") == "30,30");
+            CHECK(el && bw::shape_contains(*el, 22, 28));
+            CHECK(el && !bw::shape_contains(*el, 28, 28)); // inside the box, outside the L
+            auto tags_of = [&](const char* n) {
+                std::string t;
+                for (const auto& b : bw::covering(s, *s.find(n))) t += b.tag + " ";
+                return t;
+            };
+            CHECK(tags_of("in-l") == "zone-l zone-p "); // a perimeter gives as an area does
+            CHECK(tags_of("in-notch").empty());
+            CHECK(hormiga::shape::is_perimeter(*s.find("ring")) && !hormiga::shape::is_perimeter(*el));
+            CHECK(std::fabs(hormiga::shape::area(*el) - 64.0) < 1e-9); // 100 less the 6x6 notch
+        }
+        /* GENERATED SHAPES (2026-11-14, domain/generated.hpp): `map generate` writes a
+         * path through three events with a link to each, `stop-1` .. `stop-3`; its
+         * recipe reads back in order; a stop moved and the recipe run again moves the
+         * path; and a path with a reach gives its tags to what lies that close. */
+        for (const char* cmd : {"rune new event g-a", "set g-a geo \"44.050,-123.100\"", "rune new event g-b",
+                                "set g-b geo \"44.052,-123.096\"", "rune new event g-c", "set g-c geo \"44.049,-123.092\""})
+            CHECK(c.dispatch(cmd).ok);
+        s = project(c, "names");
+        {
+            const auto acts = hormiga::make_map_actions();
+            const auto cmds = acts.run("generate", s, {{"which", "path"}, {"name", "route"}, {"seeds", "g-a,g-c,g-b"}});
+            CHECK(!cmds.empty());
+            CHECK(c.dispatch(maiz::compile_commit(cmds)).ok);
+        }
+        s = project(c, "names");
+        {
+            const maiz::SceneNode* route = s.find("route");
+            CHECK(route && hormiga::shape::is_line(*route) && hormiga::shape::vertices(*route).size() == 3);
+            const auto r = route ? hormiga::generated::recipe_of(s, *route) : hormiga::generated::Recipe{};
+            CHECK(r.which == "path" && r.ground == "free");
+            CHECK(r.seeds == (std::vector<std::string>{"g-a", "g-c", "g-b"})); // the order chosen, kept by the links
+            CHECK(route && hormiga::shape::vertices(*route)[1].lon > -123.093); // through g-c second
+        }
+        CHECK(c.dispatch("set g-c geo \"44.060,-123.092\"").ok);
+        s = project(c, "names");
+        {
+            const auto rg = hormiga::generated::regenerate(s, *s.find("route"), hormiga::generated::stored_place(""), 0, 0);
+            CHECK(rg.error.empty() && !rg.commands.empty());
+            CHECK(c.dispatch(maiz::compile_commit(rg.commands)).ok);
+        }
+        for (const char* cmd : {"set route reach \"40\"", "set route bestows \"route:north\"", "rune new event g-near",
+                                "set g-near geo \"44.0510,-123.0990\"", "rune new event g-far", "set g-far geo \"44.040,-123.100\""})
+            CHECK(c.dispatch(cmd).ok);
+        s = project(c, "names");
+        {
+            const maiz::SceneNode* route = s.find("route");
+            CHECK(route && std::fabs(hormiga::shape::vertices(*route)[1].lat - 44.060) < 1e-9); // it followed its stop
+            auto gives = [&](const char* n) {
+                for (const auto& b : hormiga::bestow::covering(s, *s.find(n)))
+                    if (b.tag == "route:north") return true;
+                return false;
+            };
+            CHECK(gives("g-near"));  // about 14 m from the first leg, within its 40 m reach
+            CHECK(!gives("g-far"));  // over a kilometre away
         }
         // a layer holds what was made on it (domain/canvas.hpp)
         for (const char* cmd : {"rune new map base", "set base order \"0\"", "rune new map upper", "set upper order \"1\"",

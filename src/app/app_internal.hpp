@@ -158,6 +158,18 @@ bool color_wheel(const char* id, unsigned stored, unsigned& out);
  * canvas and the phone draw it with this, so they cannot disagree. */
 void draw_shape_label(ImDrawList* dl, const maiz::SceneNode& n, ImVec2 mn, ImVec2 mx, unsigned line, float px,
                       float pad);
+/* A MAP SHAPE, drawn and hit alike on the desktop canvas and the phone
+ * (2026-11-14). `shape_screen_ring` is its outline on screen: a polygon's
+ * vertices through `to_screen`, else the box [mn, mx] as a rectangle or a
+ * sampled ellipse. An AREA is filled and outlined; a PERIMETER is a dashed
+ * outline only, and is hit only within `tol` of that outline, so whatever is
+ * inside it can be clicked (domain/shape_geom.hpp). */
+std::vector<ImVec2> shape_screen_ring(const maiz::SceneNode& n, ImVec2 mn, ImVec2 mx,
+                                      const std::function<ImVec2(double, double)>& to_screen);
+void draw_map_shape(ImDrawList* dl, const maiz::SceneNode& n, const std::vector<ImVec2>& ring, ImVec2 mn, ImVec2 mx,
+                    unsigned fill, unsigned line, float width, float dp);
+bool map_shape_hit(const maiz::SceneNode& n, const std::vector<ImVec2>& ring, ImVec2 mn, ImVec2 mx, ImVec2 p,
+                   float tol);
 
 // ── base-map SOURCES: now `gis::MapSource` (2026-08-21) ────────────────────
 //

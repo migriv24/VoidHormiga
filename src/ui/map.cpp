@@ -694,6 +694,15 @@ void HormigaApp::draw_map_section() {
                                ImGuiButtonFlags_MouseButtonRight);
     bool hovered = ImGui::IsItemHovered();
     ImVec2 mouse = ImGui::GetIO().MousePos;
+    /* THE LEFT BUTTON PRESSES, THE RIGHT ONE ASKS (2026-11-14). The surface takes
+     * both buttons so a right-click reaches the menus, but a right press also
+     * "activates" it, and every press below used to treat it as a left one: a
+     * right-click re-selected the one thing under it (so a multi-selection could
+     * never reach its menu), a right-drag drew a rectangle, and the polygon tool
+     * took a right-click as a corner. Presses and releases are the left button's;
+     * the right-click section selects for itself. */
+    const bool left_press = ImGui::IsItemActivated() && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    const bool left_release = ImGui::IsItemDeactivated() && ImGui::IsMouseReleased(ImGuiMouseButton_Left);
 
     // ── tiles (with ancestor/child FALLBACK so zooming never goes gray) ─────
     // While the exact tile downloads, draw the best cached stand-in: a parent
@@ -964,20 +973,31 @@ void HormigaApp::draw_map_section() {
     // ── #3 MAP SHAPES (drawn annotations): rect/ellipse runes over the map,
     // colored by the same rules/tags as markers, under the markers. Click a
     // shape to select it; right-click for its menu. ────────────────────────
+    /* SNAP (2026-11-14). Off until a person turns it on (the author: "automatically
+     * off (so it isn't annoying)"). On a drawn plan it is the plan's grid; on Earth
+     * it will be the streets, once street data is loaded (okf gis/ground.md), and
+     * until then it does nothing there. */
+    auto snap_screen = [&](ImVec2 p) {
+        if (!map_snap || !plan || cvs.grid <= 0) return p;
+        double la, lo;
+        to_geo(p, la, lo);
+        return to_screen(hormiga::gis::snap_to(la, cvs.grid), hormiga::gis::snap_to(lo, cvs.grid));
+    };
     const maiz::SceneNode* shape_hit = nullptr;
     // the shape being reshaped follows the pointer (its handles: see below)
     const bool reshaping = !map_shape_edit.empty() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
     if (reshaping) {
         ImVec2 a = map_shape_mn0, b = map_shape_mx0;
+        const ImVec2 sm = snap_screen(mouse); // a handle lands on the grid when snap is on
         switch (map_shape_edit_idx) {
-            case 0: a = mouse; break;
-            case 1: a.y = mouse.y; break;
-            case 2: b.x = mouse.x; a.y = mouse.y; break;
-            case 3: b.x = mouse.x; break;
-            case 4: b = mouse; break;
-            case 5: b.y = mouse.y; break;
-            case 6: a.x = mouse.x; b.y = mouse.y; break;
-            case 7: a.x = mouse.x; break;
+            case 0: a = sm; break;
+            case 1: a.y = sm.y; break;
+            case 2: b.x = sm.x; a.y = sm.y; break;
+            case 3: b.x = sm.x; break;
+            case 4: b = sm; break;
+            case 5: b.y = sm.y; break;
+            case 6: a.x = sm.x; b.y = sm.y; break;
+            case 7: a.x = sm.x; break;
             default: { // 8: the whole shape moves
                 const ImVec2 d(mouse.x - map_shape_grab.x, mouse.y - map_shape_grab.y);
                 a = ImVec2(a.x + d.x, a.y + d.y);
@@ -989,6 +1009,23 @@ void HormigaApp::draw_map_section() {
     }
     const maiz::SceneNode* sel_shape = nullptr; // the ONE selected shape: it gets handles
     ImVec2 sel_mn, sel_mx;
+    std::vector<ImVec2> sel_ring;               // its outline on screen (a polygon's vertices)
+    // the polygon whose vertices are in hand follows the pointer
+    const bool poly_editing = !map_poly_edit.empty() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if (poly_editing && !map_poly_start.empty()) {
+        map_poly_live = map_poly_start;
+        if (map_poly_idx >= 0 && map_poly_idx < (int)map_poly_live.size()) {
+            map_poly_live[(size_t)map_poly_idx] = snap_screen(mouse);
+        } else { // the whole polygon, by the pointer's travel since the press
+            ImVec2 d(mouse.x - map_poly_grab.x, mouse.y - map_poly_grab.y);
+            const ImVec2 first = snap_screen(ImVec2(map_poly_start[0].x + d.x, map_poly_start[0].y + d.y));
+            d = ImVec2(first.x - map_poly_start[0].x, first.y - map_poly_start[0].y); // a snapped move keeps the shape
+            for (auto& p : map_poly_live) p = ImVec2(p.x + d.x, p.y + d.y);
+        }
+    }
+    struct ShapeBox { const maiz::SceneNode* node; ImVec2 mn, mx; };
+    std::vector<ShapeBox> shape_boxes; // every shape drawn, for box select
+    auto to_screen_fn = [&](double la, double lo) { return to_screen(la, lo); };
     for (const auto& node : scene.nodes) {
         if (node.glyph != "mapshape" || !hormiga::canvas::on(node, map_canvas)) continue;
         const LayerDraw* sld = layer_draw(node);
@@ -1004,10 +1041,19 @@ void HormigaApp::draw_map_section() {
             mn = map_shape_live_mn;
             mx = map_shape_live_mx;
         }
+        std::vector<ImVec2> ring = shape_screen_ring(node, mn, mx, to_screen_fn);
+        if (poly_editing && node.name == map_poly_edit && !map_poly_live.empty()) {
+            ring = map_poly_live;
+            mn = mx = ring.front();
+            for (const auto& p : ring)
+                mn = ImVec2(std::min(mn.x, p.x), std::min(mn.y, p.y)), mx = ImVec2(std::max(mx.x, p.x), std::max(mx.y, p.y));
+        }
+        shape_boxes.push_back({&node, mn, mx});
         if (ed.selection.size() == 1 && ed.selection.front() == node.name) {
             sel_shape = &node;
             sel_mn = mn;
             sel_mx = mx;
+            sel_ring = ring;
         }
         // color: rules → explicit color: tag → a default green
         ImU32 col = IM_COL32(46, 107, 79, 255);
@@ -1031,22 +1077,13 @@ void HormigaApp::draw_map_section() {
         bool sel = ed.selected(node.name);
         ImU32 fill = faded((col & 0x00FFFFFF) | 0x33000000, sld); // ~20% fill
         ImU32 line = faded((col & 0x00FFFFFF) | (sel ? 0xFF000000 : 0xBB000000), sld);
-        bool ellipse = hormiga::temper::field_value(node, "kind") == "ellipse";
-        if (ellipse) {
-            ImVec2 c((mn.x + mx.x) * 0.5f, (mn.y + mx.y) * 0.5f);
-            dl->AddEllipseFilled(c, ImVec2((mx.x - mn.x) * 0.5f, (mx.y - mn.y) * 0.5f),
-                                 fill);
-            dl->AddEllipse(c, ImVec2((mx.x - mn.x) * 0.5f, (mx.y - mn.y) * 0.5f), line,
-                           0, 0, sel ? 2.5f : 1.5f);
-        } else {
-            dl->AddRectFilled(mn, mx, fill, 4.0f);
-            dl->AddRect(mn, mx, line, 4.0f, 0, sel ? 2.5f : 1.5f);
-        }
+        // an area is filled; a perimeter is a dashed outline, a little stronger so it reads alone
+        if (hormiga::shape::is_perimeter(node)) line = faded((col & 0x00FFFFFF) | 0xFF000000, sld);
+        draw_map_shape(dl, node, ring, mn, mx, fill, line, sel ? 2.5f : (hormiga::shape::is_perimeter(node) ? 2.0f : 1.5f), 1.0f);
         // inside its own region: a narrow aisle's name never runs over the next one
         draw_shape_label(dl, node, mn, mx, line, ImGui::GetFontSize(), 4.0f);
-        if (hovered && mouse.x >= mn.x && mouse.x <= mx.x && mouse.y >= mn.y &&
-            mouse.y <= mx.y)
-            shape_hit = &node;
+        // the topmost hit wins, as drawn; a perimeter is hit only on its border
+        if (hovered && map_shape_hit(node, ring, mn, mx, mouse, 6.0f)) shape_hit = &node;
     }
 
     /* A MARKER'S LOOK, ONCE PER CHANGE (2026-10-15). `marker_look` matches
@@ -1181,7 +1218,23 @@ void HormigaApp::draw_map_section() {
      * it. Drawn over the markers so a handle is never hidden by one. */
     int handle_hit = -1;
     bool shape_released = false;
-    if (sel_shape && !map_draw_shape) {
+    /* A POLYGON'S HANDLES (2026-11-14): corners, edge middles, right-click to remove,
+     * drag inside to move; written on release (ui/map_shapes.cpp). A box turned
+     * polygon in the Inspector has no vertices yet and starts from its box's corners. */
+    const MapFrame F{dl, mouse, ctr, hovered, left_press, poly_editing, hit, to_screen_fn,
+                     [&](ImVec2 p, double& la, double& lo) { to_geo(p, la, lo); },
+                     [&](ImVec2 p) { return snap_screen(p); },
+                     [&](const maiz::SceneNode* n, ImVec2& at) {
+                         for (const auto& L : located_nodes)
+                             if (L.node == n) return at = L.s, true;
+                         return false;
+                     }};
+    const bool sel_is_poly = sel_shape && (hormiga::shape::kind_of(*sel_shape) == "polygon" ? sel_ring.size() >= 3
+                                           : hormiga::shape::is_line(*sel_shape) && sel_ring.size() >= 2);
+    const bool vertex_removed =
+        sel_is_poly && !map_draw_shape && map_polygon_handles(F, *sel_shape, sel_ring, sel_mn, sel_mx);
+    if (map_polygon_release(F)) shape_released = true;
+    if (sel_shape && !sel_is_poly && !map_draw_shape) {
         const ImVec2 hp[8] = {{sel_mn.x, sel_mn.y}, {(sel_mn.x + sel_mx.x) * 0.5f, sel_mn.y},
                               {sel_mx.x, sel_mn.y}, {sel_mx.x, (sel_mn.y + sel_mx.y) * 0.5f},
                               {sel_mx.x, sel_mx.y}, {(sel_mn.x + sel_mx.x) * 0.5f, sel_mx.y},
@@ -1206,7 +1259,7 @@ void HormigaApp::draw_map_section() {
                 ImGuiMouseCursor_ResizeNESW, ImGuiMouseCursor_ResizeEW,   ImGuiMouseCursor_ResizeAll};
             ImGui::SetMouseCursor(cur[reshaping ? map_shape_edit_idx : over]);
         }
-        if (ImGui::IsItemActivated() && over >= 0 && !ImGui::GetIO().KeyShift) {
+        if (left_press && over >= 0 && !ImGui::GetIO().KeyShift) {
             map_shape_edit = sel_shape->name;
             map_shape_edit_idx = over;
             map_shape_mn0 = map_shape_live_mn = sel_mn;
@@ -1236,15 +1289,17 @@ void HormigaApp::draw_map_section() {
         shape_released = true;
     }
 
-    bool was_drawing = (map_draw_shape != 0) || map_shape_dragging || !map_shape_edit.empty() || shape_released;
-    if (map_draw_shape) {
+    bool was_drawing = (map_draw_shape != 0) || map_shape_dragging || !map_shape_edit.empty() || !map_poly_edit.empty() ||
+                       shape_released;
+    if (map_draw_shape == 3) map_polygon_tool(F); // click out a polygon (ui/map_shapes.cpp)
+    if (map_draw_shape == 1 || map_draw_shape == 2) {
         if (hovered && ImGui::IsKeyPressed(ImGuiKey_Escape)) map_draw_shape = 0;
-        if (ImGui::IsItemActivated() && hovered) {
-            to_geo(mouse, map_shape_la0, map_shape_lo0);
+        if (left_press && hovered) {
+            to_geo(snap_screen(mouse), map_shape_la0, map_shape_lo0);
             map_shape_dragging = true;
         }
         if (map_shape_dragging) { // live preview
-            ImVec2 a = to_screen(map_shape_la0, map_shape_lo0), b = mouse;
+            ImVec2 a = to_screen(map_shape_la0, map_shape_lo0), b = snap_screen(mouse);
             ImVec2 mn(std::min(a.x, b.x), std::min(a.y, b.y));
             ImVec2 mx(std::max(a.x, b.x), std::max(a.y, b.y));
             if (map_draw_shape == 2) {
@@ -1255,9 +1310,9 @@ void HormigaApp::draw_map_section() {
                 dl->AddRect(mn, mx, IM_COL32(46, 107, 79, 220), 4, 0, 2);
             }
         }
-        if (ImGui::IsItemDeactivated() && map_shape_dragging) {
+        if (left_release && map_shape_dragging) {
             double la, lo;
-            to_geo(mouse, la, lo);
+            to_geo(snap_screen(mouse), la, lo);
             if (std::abs(la - map_shape_la0) > 1e-6 ||
                 std::abs(lo - map_shape_lo0) > 1e-6) {
                 std::string name;
@@ -1274,6 +1329,7 @@ void HormigaApp::draw_map_section() {
                          (map_draw_shape == 2 ? "ellipse" : "rect") + "\"",
                      "set " + name + " geo1 \"" + g1 + "\"",
                      "set " + name + " geo2 \"" + g2 + "\"",
+                     "set " + name + " style \"" + std::string(map_new_perimeter ? "perimeter" : "area") + "\"",
                      "set " + name + " canvas " + text_arg(map_canvas),
                      "tag " + name + " +type:mapshape" +
                          (hormiga::canvas::join_layer(scene, maps, map_sel, name).empty() ? std::string() : " +layer:" + map_sel)}));
@@ -1288,7 +1344,7 @@ void HormigaApp::draw_map_section() {
     // ── input: shift = SELECT (box on empty, toggle on a marker); plain drag on
     // a marker MOVES it; plain drag on empty PANS; wheel zooms (author #2) ────
     bool shift = ImGui::GetIO().KeyShift;
-    if (!was_drawing && ImGui::IsItemActivated()) {
+    if (!was_drawing && left_press) {
         if (hit && !shift) {
             map_drag_marker = hit->name; // plain press on a marker → move it
         } else if (ref_hit && !shift) {  // plain press on a gizmo → MOVE it (#4)
@@ -1303,9 +1359,10 @@ void HormigaApp::draw_map_section() {
                                    ed.selection.end());
             else
                 ed.selection.push_back(hit->name);
-        } else if (!hit && shift) {      // shift-drag on empty → box select
+        } else if (!hit && shift) {      // shift-drag → box select; a shift-CLICK on a shape toggles it
             map_box_active = true;
             map_box_start = mouse;
+            map_box_shape = shape_hit ? shape_hit->name : std::string();
         }
     }
     /* A CLICK IS NOT A DRAG (2026-10-15): the press and the release within a
@@ -1315,7 +1372,7 @@ void HormigaApp::draw_map_section() {
      * every click used to do (a `move` to where it already was). */
     const ImVec2 pressed_at = ImGui::GetIO().MouseClickedPos[0];
     const bool a_click = std::fabs(mouse.x - pressed_at.x) < 4 && std::fabs(mouse.y - pressed_at.y) < 4;
-    if (!was_drawing && ImGui::IsItemDeactivated()) {
+    if (!was_drawing && left_release) {
         if (a_click && !map_drag_marker.empty()) { // selected, not moved
             ed.selection = {map_drag_marker};
             map_drag_marker.clear();
@@ -1362,16 +1419,50 @@ void HormigaApp::draw_map_section() {
             }
             map_drag_marker.clear();
         } else if (map_box_active) { // box select done: gather everything inside
+            /* SHAPES ARE SELECTED LIKE MARKERS (2026-11-14). The author: "shift select
+             * multiple areas/permittier/kinds or objects and do things to them". A
+             * shift-click on a shape toggles it; a shift-drag adds every marker inside
+             * the box and every shape that fits wholly inside it, to what is already
+             * selected (shift adds, as in a drawing program). */
             ImVec2 a = map_box_start, b = mouse;
             float x0 = std::min(a.x, b.x), x1 = std::max(a.x, b.x);
             float y0 = std::min(a.y, b.y), y1 = std::max(a.y, b.y);
-            if (!shift || (x1 - x0 < 3 && y1 - y0 < 3)) {} // tiny box: keep sel
-            std::vector<std::string> picked;
-            for (const auto& L : located_nodes)
-                if (L.on_screen && L.s.x >= x0 && L.s.x <= x1 && L.s.y >= y0 &&
-                    L.s.y <= y1)
-                    picked.push_back(L.node->name);
-            if (!picked.empty()) ed.selection = picked;
+            auto toggle = [&](const std::string& nm) {
+                auto it = std::find(ed.selection.begin(), ed.selection.end(), nm);
+                if (it != ed.selection.end()) ed.selection.erase(it);
+                else ed.selection.push_back(nm);
+            };
+            if (a_click && !map_box_shape.empty()) {
+                toggle(map_box_shape);
+            } else if (x1 - x0 >= 3 || y1 - y0 >= 3) {
+                /* THE ORDER THEY JOIN IN IS A PATH'S ORDER (2026-11-14): a shift-click adds
+                 * one at a time, in the order clicked; a box adds many at once, so they are
+                 * chained nearest-first from what was selected last (or the box's corner). */
+                std::vector<std::pair<std::string, ImVec2>> got;
+                for (const auto& L : located_nodes)
+                    if (L.on_screen && L.s.x >= x0 && L.s.x <= x1 && L.s.y >= y0 && L.s.y <= y1 && !ed.selected(L.node->name))
+                        got.push_back({L.node->name, L.s});
+                for (const auto& sb : shape_boxes)
+                    if (sb.mn.x >= x0 && sb.mx.x <= x1 && sb.mn.y >= y0 && sb.mx.y <= y1 && !ed.selected(sb.node->name))
+                        got.push_back({sb.node->name, ImVec2((sb.mn.x + sb.mx.x) * 0.5f, (sb.mn.y + sb.mx.y) * 0.5f)});
+                ImVec2 from = map_box_start;
+                if (!ed.selection.empty())
+                    for (const auto& L : located_nodes)
+                        if (L.node->name == ed.selection.back()) from = L.s;
+                while (!got.empty()) {
+                    size_t best = 0;
+                    float bd = 1e30f;
+                    for (size_t k = 0; k < got.size(); ++k) {
+                        const float d = (got[k].second.x - from.x) * (got[k].second.x - from.x) +
+                                        (got[k].second.y - from.y) * (got[k].second.y - from.y);
+                        if (d < bd) bd = d, best = k;
+                    }
+                    from = got[best].second;
+                    ed.selection.push_back(got[best].first);
+                    got.erase(got.begin() + (long)best);
+                }
+            }
+            map_box_shape.clear();
             map_box_active = false;
         } else if (a_click && !hit && !shape_hit && !ref_hit && !shift) {
             ed.selection.clear(); // clicked away: nothing selected
@@ -1464,9 +1555,14 @@ void HormigaApp::draw_map_section() {
 
     // right-click: a MARKER gets its own menu (act on the thing); empty map
     // gets the place menu (create here)
-    if (!was_drawing && hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+    if (!was_drawing && !vertex_removed && hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
         to_geo(mouse, map_ctx_lat, map_ctx_lon);
-        if (hit) {
+        const maiz::SceneNode* under = hit ? hit : ref_hit ? ref_hit : shape_hit;
+        const bool on_selection = under && ed.selection.size() >= 2 && ed.selected(under->name);
+        if (under && !on_selection) ed.selection = {under->name}; // as a left click would
+        if (on_selection) {
+            ImGui::OpenPopup("map-multi-menu"); // act on everything selected, which stays selected
+        } else if (hit) {
             map_ctx_marker = hit->name;
             ImGui::OpenPopup("map-marker-menu");
         } else if (ref_hit) {
@@ -1507,6 +1603,7 @@ void HormigaApp::draw_map_section() {
         }
         ImGui::EndPopup();
     }
+    map_multi_menu(F); // several selected (ui/map_shapes.cpp)
     if (ImGui::BeginPopup("map-shape-menu")) { // #3: a drawn shape's actions
         const maiz::SceneNode* sp = scene.find(map_ctx_shape);
         if (!sp) ImGui::CloseCurrentPopup();
@@ -1515,6 +1612,13 @@ void HormigaApp::draw_map_section() {
                                 hormiga::temper::field_value(*sp, "kind").c_str());
             ImGui::Separator();
             if (ImGui::MenuItem("Edit (inspector)")) ed.selection = {sp->name};
+            const bool perim = hormiga::shape::is_perimeter(*sp);
+            if (ImGui::MenuItem(perim ? "Draw as an area (filled)" : "Draw as a perimeter (dashed outline)"))
+                map_set_style({sp->name}, !perim);
+            if (ImGui::MenuItem(ICON_FA_DRAW_POLYGON "  Generate perimeter around it")) map_generate(F, "perimeter", {sp->name});
+            if (!hormiga::temper::field_value(*sp, "made_by").empty() &&
+                ImGui::MenuItem(ICON_FA_ROTATE "  Regenerate from what it was made from"))
+                map_regenerate(F, *sp);
             std::string cur_color = tag_value(*sp, "color");
             if (ImGui::BeginMenu("Color")) {
                 if (ImGui::MenuItem("(default)", nullptr, cur_color.empty()) &&
@@ -1624,7 +1728,10 @@ void HormigaApp::draw_map_section() {
             if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.42f, 0.30f, 1));
             if (on) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
             ImGui::PushID(which);
-            if (ImGui::Button(icon, ImVec2(b, b))) map_draw_shape = which;
+            if (ImGui::Button(icon, ImVec2(b, b))) {
+                if (which != 3) map_poly_draft.clear(); // a half-drawn polygon is dropped, as Esc would
+                map_draw_shape = which;
+            }
             ImGui::PopID();
             if (on) ImGui::PopStyleColor(2);
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tip);
@@ -1632,6 +1739,36 @@ void HormigaApp::draw_map_section() {
         tool(ICON_FA_ARROW_POINTER, "Select and move\n(drag the map to pan; right-click to add)", 0);
         tool(ICON_FA_VECTOR_SQUARE, "Draw a rectangle: drag across the map (Esc stops)", 1);
         tool(ICON_FA_CIRCLE, "Draw an ellipse: drag across the map (Esc stops)", 2);
+        tool(ICON_FA_DRAW_POLYGON,
+             "Draw a polygon: click each corner; click the first corner,\n"
+             "double-click or press Enter to finish (Backspace undoes a corner, Esc stops)", 3);
+        ImGui::Separator();
+        /* WHAT THE TOOLS DRAW (2026-11-14): an AREA (filled) or a PERIMETER (a dashed
+         * outline with nothing inside, so what is inside stays easy to click and
+         * move). The two give tags alike; only the look and the hit differ. */
+        auto toggle = [&](const char* icon, bool on, const char* tip) {
+            if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.42f, 0.30f, 1));
+            if (on) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 1, 1));
+            const bool clicked = ImGui::Button(icon, ImVec2(b, b));
+            if (on) ImGui::PopStyleColor(2);
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", tip);
+            return clicked;
+        };
+        if (toggle(map_new_perimeter ? ICON_FA_BORDER_ALL : ICON_FA_SQUARE_FULL, false,
+                   map_new_perimeter ? "New shapes are PERIMETERS: a dashed outline, nothing inside\n(click: draw areas instead)"
+                                     : "New shapes are AREAS: filled\n(click: draw perimeters instead)"))
+            map_new_perimeter = !map_new_perimeter;
+        /* SNAP (off until asked). On a drawn plan it is the plan's grid. On Earth it
+         * is the streets, which need street data loaded from a file (okf gis/ground.md);
+         * until that is built the button says so instead of pretending. */
+        ImGui::BeginDisabled(!plan);
+        if (toggle(ICON_FA_MAGNET, map_snap && plan,
+                   plan ? (map_snap ? "Snap to the grid: ON\n(corners and handles land on the plan's grid)"
+                                    : "Snap to the grid: off")
+                        : "Snap to streets: needs street data for this area,\n"
+                          "loaded from an OpenStreetMap file (coming next)"))
+            map_snap = !map_snap;
+        ImGui::EndDisabled();
         ImGui::EndChild();
         ImGui::SetCursorScreenPos(ImVec2(p0.x + sz.x - b - 18, p0.y + sz.y - 2 * b - 34));
         ImGui::BeginChild("##map-zoom", ImVec2(0, 0), cf, ImGuiWindowFlags_NoScrollbar);

@@ -140,10 +140,15 @@ What that buys:
   ([three DSLs](/concepts/foundation/dsls.md)) is exactly a typed call by
   capability id. `host-file(flier-3)` from a script and from a button would be
   the same call.
-- **Glyph declarations travel in the state document** (Void Core 0.2.14), so a
-  `.miga` would carry which capabilities its Antfarm can answer. That is the
-  "summary of what its Antfarm can do" [Q79](/developer_questions.md) wants on
-  the database's profile, for free.
+- **A database can say what its Antfarm can answer**, from the nodes it holds:
+  the "summary of what its Antfarm can do" [Q79](/developer_questions.md) wants
+  on the database's profile. *(Corrected 2026-11-14: this said glyph
+  declarations travel in the state document. A database's own kinds are
+  **declared** and do travel; the Antfarm's built-in kinds are **registered** by
+  the binary and do not (Void Core, glyph.md: a declaration would shadow the
+  registration, so an old file's copy would override a newer Hormiga's). What
+  travels is the nodes and their settings, and every stock Hormiga answers for
+  them alike.)*
 
 **What must not move into the declaration:** the *implementation*. The branch
 in `host_online` stays C++, because it is the effect. A declaration that could
@@ -156,3 +161,67 @@ says who can be asked.
 `hints.editors`, `hints.face`). An `answers` hint would be Hormiga vocabulary
 until a second host wants it. Interaction Combinators does not, so it stays
 ours, stored the way `hints.category` is: data Void Maiz carries and ignores.
+
+# Built: capabilities declared on node kinds (2026-11-14)
+
+Decision A5, made in the [redesign](/concepts/platform/antfarm/redesign.md) and
+not built until issue #3 asked for it (below):
+
+- **An `answers` list on every v2 kind** (`farm::Kind::answers`, `AnswerDecl`):
+  the capability's id, what the kind *does* when asked, what it *needs*, what
+  *leaves* the device, and whether its answer waits for a publish. Written into
+  the glyph Hormiga registers, as `hints.answers`, beside `hints.ports`.
+- **The questions** (`farm::questions()`): each capability's question in a
+  person's words and its types. A question nothing answers is still listed,
+  because it says what is missing.
+
+  | capability | the question | answered by |
+  |---|---|---|
+  | `host-file` | Put this file online and give me its link | bucket, image-host, web-domain (after the next publish) |
+  | `publish-site` | Put this website where people can visit it | local-domain (a preview), web-domain |
+  | `keep-copy` | Keep a copy of this database somewhere else | store |
+  | `import-rows` | Bring rows in from a spreadsheet | import-csv, import-sheets (planned) |
+  | `send-newsletter` | Send this newsletter to the people on its list | mail-domain (planned) |
+  | `send-to-device` | Send this to a device | device (2026-11-15) |
+
+- **No printer, no product lookup** (the author, 2026-11-15: *"That's too
+  granular and specific. We have to think general"*). Two planned kinds were
+  added for issue #3 and removed the next day. In their place: a general
+  **device** node (where a device is, and how it is reached) answering
+  `send-to-device`, and the client's own screens and actions saying what to
+  send ([the application as data](/concepts/platform/shell.md)).
+- **The CLI twins** (rule 8): `farm kinds --answers <capability>` (as
+  [cli](/concepts/platform/antfarm/v2/cli.md) specified) and `farm capabilities`
+  (every question, what answers it, what it needs, what leaves, how many such
+  nodes this database has).
+- `farm_smoke` checks the answerers in order, the planned pair, that every
+  answer names a known question, the registered glyph, and both verbs.
+
+**Not yet:** the header tables (`domain/hosting.hpp`, `domain/collab.hpp`) still
+serve the format before 2026-09-28, and `effect host-online` still finds its
+answerer through rivers (migration.md) rather than through `answers`; the
+Antfarm's faces do not draw what a node answers; Allomone has no call by
+capability id. Each is a step below.
+
+# Issue #3: a database that carries its own workflow
+
+A client asked (issue #3, 2026-11-14) to run the **stock** application with its
+whole workflow carried in one `.miga`: a product catalogue, a queue of scanned
+barcodes, and a label printer, with no modified build. Their own analysis is
+right about what already works (kinds, workspaces as seeds, values on edges,
+the file as a store) and about what does not. Restated as requirements, by the
+layer that owns each:
+
+| layer | what is missing | status |
+|---|---|---|
+| **Hormiga** | capabilities as declarations | ✅ (above) |
+| **Hormiga** | the application in the file: its tabs, its layout, and screens a client builds | ✅ [the application as data](/concepts/platform/shell.md) |
+| **Hormiga** | talking to devices, generally | ✅ `device` and `send-to-device` over TCP; `ask` over HTTP is next |
+| **Void Allomone** | a step that *changes* the database ("when a scanned item matches, create a product"), and calling a capability from a script by its id | ⬜ Q135: Allomone is derive-only on purpose |
+| **Void Maiz** | a small window described as data | ✅ answered in Hormiga: a `screen` document built in the Builder (the author, 2026-11-15) |
+| **Void Rancho** | a database's own kinds, ranged and planned for like the built-ins | ⬜ a verification, asked of Rancho once the rest exists |
+
+What the issue rules out, and Hormiga agrees: the transports stay host code
+(only their address, port and the name of a vault entry travel in the file),
+and no secret is ever in the `.miga` (keys are sealed and named, never valued).
+

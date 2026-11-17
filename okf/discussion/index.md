@@ -47,3 +47,7 @@ entry itself stays as it was written.
   the LAN beacon stopped by closing a socket, which wakes a blocked receive on
   Windows and not on Linux or Android. It shipped from 0.1, and hung 0.2.6's CI
   with no test named.
+- [2026-11-14 — the button that pressed twice](/discussion/2026-11-14-the-button-that-pressed-twice.md):
+  the map's canvas read a right press as a left one in every handler, so a
+  right-click re-selected what it touched. Found when multi-selection needed
+  its own menu.

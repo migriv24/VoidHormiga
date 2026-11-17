@@ -347,6 +347,25 @@ void HormigaApp::install_host() {
             if (a[0] == "missing") return std::to_string(host_missing_images(prefer));
             return host_image(a[0], prefer) ? json_str(a[0]) : std::string();
         }
+        /* SEND TO A DEVICE (2026-11-15, okf/concepts/platform/shell.md "Devices"):
+         * `effect send <device-node> <text>`. The Antfarm's `device` node says
+         * where; this queues the bytes, and devices_frame reports when they have
+         * gone (or why not). Nothing waits on the device: the window keeps going. */
+        if (op == "send") {
+            std::vector<std::string> a;
+            try {
+                auto aj = nlohmann::json::parse(args);
+                if (aj.contains("args"))
+                    for (const auto& x : aj["args"]) a.push_back(x.is_string() ? x.get<std::string>() : x.dump());
+            } catch (...) {}
+            if (a.size() < 2) {
+                toast("send: name a device node, then what to send", true);
+                return {};
+            }
+            std::string text;
+            for (size_t i = 1; i < a.size(); ++i) text += (i > 1 ? " " : "") + a[i];
+            return device_send(a[0], text) ? json_str("queued") : std::string();
+        }
         if (op == "import-rescue") { // the Supabase Import node's button
             import_rescue_effect();
             return {};
@@ -897,7 +916,9 @@ std::vector<std::string> HormigaApp::allo_published_runes() {
     try { data = maiz::project_scene(core, ep); } catch (...) { return out; }
 
     std::vector<std::string> queries;
+    const std::vector<std::string> screens = screen_mantles(); // a screen shows runes, it does not publish them
     for (const std::string& doc : list_documents()) { // a document IS a mantle
+        if (std::find(screens.begin(), screens.end(), doc) != screens.end()) continue;
         maiz::ProjectOptions dp;
         dp.mantle = doc;
         maiz::Scene blocks;
@@ -1338,6 +1359,8 @@ void HormigaApp::init() {
     }
 
     read_view_config();
+    shell_register(); // the device's record of applied layouts, in imgui.ini
+    shell_load();
     apply_theme();
 
     // the "path" and "image" editor kinds, the gallery and the ImgBB upload
@@ -2398,7 +2421,7 @@ void HormigaApp::frame_prelude() {
         std::vector<std::string> cmds;
         cmds.swap(pending_cmds);
         for (const auto& c : cmds)
-            if (!try_map_verb(c) && !try_doc_verb(c) && !try_farm_verb(c)) dispatch_and_reproject(c);
+            if (!try_map_verb(c) && !try_doc_verb(c) && !try_farm_verb(c) && !try_shell_verb(c)) dispatch_and_reproject(c);
     }
     if (fv2.convert && pending_cmds.empty() && !busy.action) convert_antfarm(); // after a load's own commands
     // a date-tag temper pass runs once the import's commands have all landed
@@ -2550,6 +2573,14 @@ void HormigaApp::frame() {
             ImGui::MenuItem("Profile", nullptr, &win_profile);
             ImGui::MenuItem("Style", nullptr, &win_style);
             ImGui::MenuItem("Console", nullptr, &win_console);
+            for (const auto& m : screen_mantles()) // this database's own tabs (app/shell_app.cpp)
+                ImGui::MenuItem(("Screen: " + m).c_str(), nullptr, &shellui.screen_open[m]);
+            ImGui::Separator(); // the application as data: the arrangement travels in the .miga
+            if (ImGui::MenuItem("Save this layout to the database")) shell_save_layout();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("the tabs open now, and how they are arranged, become this database's:\n"
+                                  "anyone who opens it gets them once, and keeps their own changes");
+            if (ImGui::MenuItem("Use the database's layout")) shell_use_layout();
             ImGui::EndMenu();
         }
         ImGui::SameLine(0, 24);
@@ -2604,17 +2635,30 @@ void HormigaApp::frame() {
                      ImGuiWindowFlags_NoDocking);
     ImGui::PopStyleVar(3);
     ImGuiID dock = ImGui::GetID("hormiga-dock");
+    shellui.dock_id = dock; // a screen tab docks here when it first appears (ui/screens.cpp)
     // seed the default arrangement ONLY when there is no saved layout for this
     // node — so the user's own rearrangement (persisted in imgui.ini) wins on
     // later launches. Seeded BEFORE DockSpace() submits the node.
-    if (!dock_seeded && ImGui::DockBuilderGetNode(dock) == nullptr) {
+    /* THE DATABASE'S TAB ORDER (2026-11-15, app/shell_app.cpp): the first seed, and
+     * a reseed when a database's order is applied (`shell move`, its first open on
+     * this device, "Use the database's layout" when it has no saved layout), dock
+     * the tabs in `shell.tabs` order. Windows the list does not name keep their
+     * old place in the order after them. */
+    if ((!dock_seeded && ImGui::DockBuilderGetNode(dock) == nullptr) || shellui.reseed) {
         dock_seeded = true;
+        shellui.reseed = false;
         ImGui::DockBuilderRemoveNode(dock);
         ImGui::DockBuilderAddNode(dock, ImGuiDockNodeFlags_DockSpace);
         ImGui::DockBuilderSetNodeSize(dock, vp->WorkSize);
         ImGuiID center = dock, bottom;
         bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.26f, nullptr,
                                              &center);
+        for (const auto& t : shellui.tabs) {
+            if (t.id == "console") continue;
+            if (const auto* b = hormiga::shell::builtin(t.id)) ImGui::DockBuilderDockWindow(b->window, center);
+            else if (hormiga::shell::is_screen(t.id))
+                ImGui::DockBuilderDockWindow(("###screen-" + hormiga::shell::screen_mantle(t.id)).c_str(), center);
+        }
         ImGui::DockBuilderDockWindow("Data", center);
         ImGui::DockBuilderDockWindow("Builder", center);
         ImGui::DockBuilderDockWindow("Antfarm", center);
@@ -2627,6 +2671,18 @@ void HormigaApp::frame() {
         ImGui::DockBuilderDockWindow("Settings", center);
         ImGui::DockBuilderDockWindow("Style", center);
         ImGui::DockBuilderDockWindow("Console", bottom);
+        /* A fresh tab bar orders its tabs by each window's DockOrder, not by the order
+         * they are docked in; docking resets it (DockBuilderDockWindow), so the database's
+         * order is written AFTER docking, and the next frame sorts the tabs by it. */
+        int order = 0;
+        for (const auto& t : shellui.tabs) {
+            const auto* b = hormiga::shell::builtin(t.id);
+            const std::string w = b ? std::string(b->window)
+                                    : hormiga::shell::is_screen(t.id) ? "###screen-" + hormiga::shell::screen_mantle(t.id)
+                                                                      : std::string();
+            if (ImGuiWindow* win = w.empty() ? nullptr : ImGui::FindWindowByName(w.c_str())) win->DockOrder = (short)order;
+            ++order;
+        }
         ImGui::DockBuilderFinish(dock);
     }
     ImGui::DockSpace(dock, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -2663,6 +2719,7 @@ void HormigaApp::frame() {
     section_window("Builder", Builder);
     section_window("Antfarm", Antfarm);
     section_window("Map", Map);
+    draw_screens(); // this database's own tabs (ui/screens.cpp; okf/concepts/platform/shell.md)
     /* PUBLISH is a dockable tab rather than a fifth main Section, deliberately.
      * The four sections are the four things this application IS (data, builder,
      * antfarm, map); publishing is something you DO to one of them, occasionally,
@@ -2739,6 +2796,8 @@ void HormigaApp::frame() {
      * dispatcher commands -- an update is a fact about the installation, not a
      * change to the organization's data. */
     updates_drain();
+    devices_frame(); // sends to devices, moved along without waiting (app/shell_app.cpp)
+    shell_frame(); // a database's default layout, once its device record is read (app/shell_app.cpp)
     draw_update_modal();
     draw_job_overlay();
     draw_busy_overlay();

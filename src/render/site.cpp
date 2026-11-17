@@ -1820,7 +1820,7 @@ std::string HormigaApp::render_site(std::string_view lang) {
             // #3: shapes (rect/ellipse annotations) into the widget too
             nlohmann::json sj = nlohmann::json::array();
             for (const auto& dn : data.nodes) {
-                if (dn.glyph != "mapshape" || drawn_canvas || !hormiga::canvas::on(dn, "") || // Earth's only
+                if (dn.glyph != "mapshape" || hormiga::shape::is_line(dn) || drawn_canvas || !hormiga::canvas::on(dn, "") || // Earth's; no paths (2026-11-14)
                     (view && hormiga::canvas::layer_of(dn, web_layers) != view->name)) continue;
                 double a1, o1, a2, o2;
                 if (!hormiga::parse_geo(field_value(dn, "geo1"), a1, o1) ||
@@ -1829,6 +1829,8 @@ std::string HormigaApp::render_site(std::string_view lang) {
                 nlohmann::json shp = {{"a1", a1}, {"o1", o1}, {"a2", a2}, {"o2", o2},
                                       {"e", field_value(dn, "kind") == "ellipse"},
                                       {"c", style_hex(dn, vrules)}};
+                for (const auto& c : hormiga::shape::vertices(dn)) shp["p"].push_back({c.lat, c.lon}); // a polygon (2026-11-14)
+                if (hormiga::shape::is_perimeter(dn)) shp["pm"] = true; // dashed, unfilled; an older page reads the box
                 /* ITS LABEL (2026-10-15), published like the shape: text, size,
                  * colour, weight, slant, place, and CSS cleaned at this seam. */
                 if (const std::string sl = field_value(dn, "label"); !sl.empty()) {

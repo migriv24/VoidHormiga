@@ -166,7 +166,9 @@ BUDGET = {
     # the six fields, which the glyph linter needs to see here.
     # 2331 -> 2334 (2026-10-15, later): a map block shows what is ON its layer
     # (domain/canvas.hpp), and a shape's colour reaches what it covers, live.
-    'src/render/site.cpp': 2334,
+    # 2334 -> 2335 (2026-11-14): a map shape publishes a polygon's vertices and
+    # whether it is a perimeter, two lines (domain/shape_geom.hpp does the rest).
+    'src/render/site.cpp': 2335,
     'src/domain/allomone_legacy.hpp': 900,  # unshipped, frozen
     # NEW ENTRY 2026-09-15 (was on the 1000 default): the newsletter's own theme,
     # bands, the hero banner and the preview of images not uploaded yet. The
@@ -274,7 +276,13 @@ BUDGET = {
     # cache, which took 10.6 ms off every frame on every tab (measured).
     # 1308 -> 1327 (2026-11-03): stage 5, the working store and its Data tab
     # strip as members, one line each (app/working_store.hpp is the subsystem).
-    'src/app/app.hpp': 1327,
+    # 1327 -> 1338 (2026-11-14): polygons, perimeters and snap on the map: the
+    # state of a polygon being drawn or edited and the six shape tools, whose
+    # code is ui/map_shapes.cpp (split out so ui/map.cpp stayed in budget).
+    # 1338 -> 1347 (2026-11-15): the application as data: the shell, screens and
+    # devices, as one ShellUi member and their entry points; the code is
+    # app/shell_app.cpp, ui/screens.cpp and platform/device_link.cpp.
+    'src/app/app.hpp': 1347,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

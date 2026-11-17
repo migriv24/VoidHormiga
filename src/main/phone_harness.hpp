@@ -17,7 +17,8 @@
  *   scroll DY      a mouse wheel where the finger last was (a canvas zooms)
  *   drag X0 Y0 X1 Y1   press, move over several frames, release
  *   type TEXT      characters into whatever field is active
- *   key enter|back
+ *   key enter|back|escape|backspace
+ *   shift down|up  hold or let go of Shift (a desktop's shift-click and shift-drag)
  *   wait N         N frames
  *   shot PATH      a PNG of the whole screen, safe area included
  *   perf N         over the next N frames: frame times (median, 95th, worst) to stderr

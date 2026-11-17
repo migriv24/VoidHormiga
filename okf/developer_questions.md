@@ -11,6 +11,42 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q135 — a workflow step that changes the database: Allomone, or beside
+  it?** (Opened 2026-11-14, issue #3,
+  [capabilities](/concepts/platform/antfarm/capabilities.md) "Issue #3".) A
+  client's workflow needs "when a scanned item matches, create a product" and
+  "print this label" from data in the `.miga`. Allomone is **derive-only on
+  purpose**: its merge laws, its refusal of fixpoints and its place beside
+  Palabra and Rancho all rest on it never writing (Void Rancho's *the algebra*
+  §12 found the same). **Lean: keep Allomone derive-only, and let it
+  *propose*.** A script derives a proposal ("create product 0123 with these
+  fields", "print a label for 0123"), shown to a person and applied by a button,
+  or applied by an Antfarm run as one batch with one undo. Allomone's own
+  principle is *propose, do not generate*; the mutation stays a dispatcher
+  command a person or a run is accountable for (rule 3). A call by capability id
+  from a script is then a proposal of a call. **What would change the lean:** a
+  workflow that must act with no person present and no run to attach it to.
+
+- **Q133 — a path through an area: to its centre, or to its edge?** (Opened
+  2026-11-14, [generation](/concepts/sections/gis/generation.md).) A path's stop
+  that is a shape is reached at the shape's centre today. For a route that
+  visits a neighbourhood, the centre is a fair stand-in; for a large park or a
+  building's outline, the nearest point of its edge (or its entrance, if one is
+  ever marked) is where a person arrives. **Lean: the centre for now** (simple,
+  the same every time, and a person can drag the path's point); the edge as an
+  option once paths follow streets, where "the nearest street to the area" is
+  the real question.
+
+- **Q134 — should a generated shape follow its seeds when they move?** (Opened
+  2026-11-14.) A generated shape keeps its recipe (links to its seeds), and
+  *Regenerate* rebuilds it on request. It could instead rebuild by itself
+  whenever a seed moves. **Lean: on request, with a mark when it is out of
+  date.** A shape someone has adjusted by hand would be silently overwritten by
+  a live rebuild, and a rebuild on the ground can be long (a bar every time a
+  marker is nudged). The mark (the shape drawn as stale when a seed has moved
+  since it was made) needs the seeds' positions at making time, which the
+  recipe does not keep yet.
+
 - **Q129 — what is the unit a device holds: a cluster as a mantle, or a cluster
   loaded out of one?** (Opened 2026-10-25, from the author's "smaller and smaller
   clusters", see [clusters](/concepts/platform/clusters.md).) Leiden hierarchies
@@ -202,15 +238,6 @@ fold into concepts and clear from here.
   event, an incident or an organization's description, and the Add sheet makes
   those one tap away. The alternative (a `public` note) would be the first hole
   in the render seam made on purpose.
-
-- **Q102 — polygons, and on which surface first?** (Opened 2026-10-04.) Regions
-  are rectangles and ellipses on both front-ends. A real neighbourhood or a
-  canvass turf is a polygon. **Lean: a `polygon` kind of `mapshape` (a list of
-  vertices), placed by tapping each corner on the phone and clicking on the
-  desktop** (never by crosshair: the field research found it twice as slow), with
-  `bestow::shape_contains` learning point-in-polygon so a polygon can give its
-  tag. After the author has used the phone's map, because how people draw on it
-  should decide the gesture.
 
 - **Q88 — where does at-rest encryption live, now that the network is
   Reticulum?** (Opened 2026-09-23.) Reticulum seals what *travels*. It has no
@@ -2397,6 +2424,68 @@ settled it named. They are not a place to think out loud forever.
   structure does not depend on the words.
 
 # Decided
+
+## By the author, 2026-11-15 (the application as data)
+
+- **The application is in the `.miga`, not only the database.** *"the layout of
+  the tabs, the tabs it has, etc, should be able to be modifiable ... those
+  modifications should be able to store themselves in a miga file."* Built:
+  [the application as data](/concepts/platform/shell.md).
+- **Q136 — a small window as data. Answered: a Builder document kind,
+  `screen`**, rendered live as a tab, with interactive components in the
+  palette; asked and chosen over a separate tab editor.
+- **Layout: the database carries a default; a person's arrangement is theirs**
+  until they save it to the database. Asked and chosen.
+- **Q137 — a label printer and a product lookup in the stock binary. Answered:
+  no.** *"We shouldn't have specific stuff for printers or label printers ...
+  give clients the tools to implement the functionality themselves. Printers
+  sound like hardware, and hardware communication should be what we offer."*
+  The general `device` node and `send-to-device` replaced them.
+
+## By the author, 2026-11-14 (the map builder, second round)
+
+- **Grade, and the lowest surface grade wins.** The vertical order of real
+  roads is their *grade* (grade-separated, at-grade), never *layer*, which is
+  only ever a drawing layer (the author: *"We shouldn't mix up terminologies
+  here"*). Where roads cross without meeting, the lowest surface road is the
+  baseline for drawing, snapping and blocks; tunnels are below the surface and
+  never win, though a path may go through one
+  ([roads](/concepts/sections/gis/roads.md)).
+- **Q131 — where the street index lives. Answered: the `.miga` keeps a ledger.**
+  *"the miga should store ... some way of tracking the most loaded areas and the
+  things that should be downloaded when the miga is loaded ... Which chunks are
+  most frequent ... smarter loading between shared files ... when reopening the
+  same miga file ... where we are downloading things from."* The ledger
+  (sources, chunks with their use, the preload set) travels in the database;
+  the tiles are a rebuildable cache beside it
+  ([the ground](/concepts/sections/gis/ground.md), "The ledger").
+- **Q132 — crediting OpenStreetMap. Answered: everywhere.** *"we can be liberal
+  in crediting open street map. We are already open source, so let's just credit
+  it everywhere, just to be on the safe side for legal things."* The PNG export
+  stamps the credit on every Earth picture (built); every surface that draws
+  street data will.
+- **Generation is one system.** Perimeters and paths (and whatever comes next)
+  are compositions of the same seeds and grounds
+  ([generation](/concepts/sections/gis/generation.md)), stored as Void Core
+  stores things: vertices, a recipe, and ordered links.
+- **Complex map features are unsupported for web export, for now.** The
+  website's map leaves paths out, says so where a map is added to a website,
+  and is not where the effort goes yet.
+
+## By the author, 2026-11-14 (the map builder)
+
+- **Q102 — polygons, and on which surface first? Answered: the desktop first.**
+  The author asked for polygons, perimeters and selecting several on the map
+  builder. Built: a `polygon` kind with `pts`, drawn by clicking corners and
+  edited by its handles, contained by the even-odd rule
+  ([territory](/concepts/sections/gis/territory.md), "Polygons and perimeters").
+  The phone draws them; drawing one on the phone waits for the author's use of
+  the phone's map.
+- **Street data comes from a file a person imports**, not from a download
+  Hormiga makes. Asked the same day (*"if this isn't possible, that should be
+  decided first"*): snapping to streets is possible offline only from vector
+  street data, and the author chose *"Import a file"* over a one-time download
+  or both ([the ground](/concepts/sections/gis/ground.md)).
 
 ## By the author, 2026-10-19 (one Antfarm)
 

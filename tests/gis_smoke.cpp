@@ -26,8 +26,12 @@
 #include "../src/gis/source.hpp"
 #include "../src/gis/marker.hpp"
 #include "../src/gis/view.hpp"
+#include "../src/gis/polygon.hpp"
+#include "../src/gis/generate.hpp"
+#include "../src/gis/relate.hpp"
 
 #include <cmath>
+#include <set>
 #include <cstdio>
 #include <string>
 
@@ -265,6 +269,100 @@ int main() {
         near_eq(f.metres_per_px(), 1.0 / 32, 1e-12, "metres per px is the plan's own (32 px a metre at zoom 5)");
     }
 
+
+    std::printf("gis: polygons, hulls, dashes, the grid (2026-11-14)\n");
+    {
+        using namespace hormiga::gis;
+        const std::vector<XY> L = {{0, 0}, {10, 0}, {10, 4}, {4, 4}, {4, 10}, {0, 10}};
+        ok(ring_contains(L, {2, 8}) && ring_contains(L, {8, 2}), "inside both arms of an L");
+        ok(!ring_contains(L, {8, 8}), "the L's notch is outside it, though inside its box");
+        near_eq(ring_area(L), 64.0, 1e-12, "the L's area is its box less the notch");
+        near_eq(ring_edge_dist(L, {2, 8}), 2.0, 1e-12, "the distance to the nearest edge");
+        const auto hull = convex_hull({{0, 0}, {10, 0}, {10, 10}, {0, 10}, {5, 5}, {3, 7}});
+        ok(hull.size() == 4, "the hull of a square and points inside it is the square");
+        const auto grown = padded_hull({{0, 0}, {10, 0}, {5, 5}}, 1, 1);
+        bool all_in = true;
+        for (const XY& p : std::vector<XY>{{0, 0}, {10, 0}, {5, 5}}) all_in = all_in && ring_contains(grown, p) && ring_edge_dist(grown, p) > 0.9;
+        ok(all_in, "a padded hull keeps its margin clear of every point");
+        const auto d = dashes({{0, 0}, {30, 0}}, false, 9, 6);
+        double on = 0;
+        for (const auto& [a, b] : d) on += std::hypot(b.x - a.x, b.y - a.y);
+        ok(d.size() == 2 && std::fabs(on - 18.0) < 1e-9, "30 units of 9-on 6-off dashes: two dashes, 18 on");
+        const auto sq = dashes(rect_ring({0, 0}, {15, 15}), true, 9, 6);
+        on = 0;
+        for (const auto& [a, b] : sq) on += std::hypot(b.x - a.x, b.y - a.y);
+        near_eq(on, 36.0, 1e-9, "a closed ring keeps the dash pace round its corners");
+        const std::vector<Coord> r = {{44.05, -123.09}, {44.06, -123.08}, {44.04, -123.07}};
+        const auto back = parse_ring(format_ring(r));
+        ok(back.size() == 3 && std::fabs(back[1].lon + 123.08) < 1e-9, "a ring round-trips through its field");
+        ok(parse_ring("1,2;oops;3,4").size() == 2, "an unreadable vertex is skipped, not fatal");
+        near_eq(snap_to(2.6, 0.5), 2.5, 1e-12, "a value snaps to the nearest grid line");
+        near_eq(snap_to(2.6, 0), 2.6, 1e-12, "no grid, no snap");
+    }
+
+    std::printf("gis: generators on a ground, and how drawn things relate (2026-11-14)\n");
+    {
+        using namespace hormiga::gis;
+        const FreeGround free;
+        const GridGround grid(1.0);
+        const std::vector<Seed> three = {point_seed("a", {0.4, 0.2}), point_seed("b", {3.6, 2.7}), point_seed("c", {6.2, 0.9})};
+        const Made fp = make_path(three, free, {});
+        ok(fp.ok() && fp.pts.size() == 3 && !fp.closed, "on free space a path goes straight through its stops, in order");
+        std::string why;
+        const auto leg = grid.trace({0.4, 0.2}, {3.6, 2.7}, why);
+        ok(leg.size() == 3 && leg[0].x == 0 && leg[0].y == 0 && leg[1].x == 4 && leg[1].y == 0 && leg[2].x == 4 && leg[2].y == 3,
+           "on a grid a leg is a staircase along its lines: across, then down");
+        const Made gp = make_path(three, grid, {});
+        bool axis = gp.ok();
+        for (size_t k = 0; axis && k + 1 < gp.pts.size(); ++k)
+            axis = gp.pts[k].x == gp.pts[k + 1].x || gp.pts[k].y == gp.pts[k + 1].y;
+        ok(axis, "every run of a grid path follows the grid");
+        const Made lp = make_path(three, free, {true});
+        ok(lp.ok() && lp.pts.back().x == lp.pts.front().x && lp.pts.back().y == lp.pts.front().y, "a loop comes back to its first stop");
+        ok(!make_path({three[0]}, free, {}).ok(), "a path needs two stops");
+        ok(!generate("nonsense", three, free, {}).ok(), "an unknown generator says so");
+
+        PerimeterOptions po;
+        po.margin_x = po.margin_y = 0.6;
+        const std::vector<Seed> apart = {point_seed("p", {1.5, 1.5}), area_seed("q", rect_ring({6, 4}, {8, 6}))};
+        const Made fper = make_perimeter(apart, free, po);
+        ok(fper.ok() && fper.closed && ring_contains(fper.pts, {1.5, 1.5}) && ring_contains(fper.pts, {7, 5}),
+           "a perimeter on free space holds what it goes round, though they do not touch");
+        const Made gper = make_perimeter(apart, grid, po);
+        bool on_lines = gper.ok();
+        for (const auto& p : gper.pts) on_lines = on_lines && p.x == std::round(p.x) && p.y == std::round(p.y);
+        for (size_t k = 0; on_lines && k < gper.pts.size(); ++k) {
+            const XY& a = gper.pts[k];
+            const XY& b = gper.pts[(k + 1) % gper.pts.size()];
+            on_lines = a.x == b.x || a.y == b.y;
+        }
+        ok(on_lines && ring_contains(gper.pts, {1.5, 1.5}) && ring_contains(gper.pts, {7, 5}),
+           "a perimeter on a grid is made of whole cells and still holds both");
+        ok(grid.cover_cost(rect_ring({0, 0}, {9, 9})) == 100, "a grid says what a cover will cost before it runs");
+        std::set<std::pair<std::int64_t, std::int64_t>> ringcells; // a 3x3 block less its middle
+        for (int i = 0; i < 3; ++i)
+            for (int j = 0; j < 3; ++j)
+                if (i != 1 || j != 1) ringcells.insert({i, j});
+        const auto outline = cells_outline(ringcells, 1.0);
+        ok(outline.size() == 4 && std::fabs(ring_area(outline) - 9.0) < 1e-12, "cells round a hole: the outline fills the hole");
+        const auto ell = cells_outline({{0, 0}, {1, 0}, {0, 1}}, 2.0);
+        ok(ell.size() == 6 && std::fabs(ring_area(ell) - 12.0) < 1e-12, "three cells in an L: six corners, their area");
+
+        const Geom h{GeomKind::Line, {{0, 0}, {10, 0}}}, v{GeomKind::Line, {{5, -5}, {5, 5}}};
+        const auto hv = relate(h, v, 1e-9);
+        ok(hv.crossings == 1 && hv.name() == "crosses", "two roads that cross: one crossing");
+        const Geom along{GeomKind::Line, {{2, 0}, {8, 0}, {8, 3}}};
+        const auto ha = relate(h, along, 1e-6);
+        ok(ha.shared > 5.9 && ha.shared < 6.1 && ha.name() == "overlaps", "two paths down the same street share its length");
+        const Geom pt{GeomKind::Point, {{3, 2}}};
+        const auto hp = relate(pt, h, 1e-9);
+        ok(hp.distance > 1.99 && hp.distance < 2.01 && hp.name(3) == "near" && hp.name(1) == "disjoint", "near is the distance asked about");
+        const Geom box{GeomKind::Ring, rect_ring({-1, -1}, {11, 1})};
+        ok(relate(h, box, 1e-9).name() == "within", "a path inside an area is within it");
+        ok(relate(box, h, 1e-9).name() == "contains", "and the area contains it");
+        const XY m = local_metres({0, 1}, 0);
+        ok(std::fabs(m.y - 110574) < 1, "a degree of latitude is about 110.6 km");
+    }
 
     std::printf(failures ? "\nFAILED (%d)\n" : "\nOK - the map engine holds\n",
                 failures);

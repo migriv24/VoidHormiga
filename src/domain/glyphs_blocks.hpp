@@ -531,6 +531,27 @@ inline void register_block_glyphs(maiz::Core& core) {
           R"__("query":"Entry query (tags; empty = events only)",)__"
           R"__("mode":"agenda (a list) or month (a grid); default agenda",)__"
           R"__("caption_en":"Caption (English)","caption_es":"Titulo (espanol)")__");
+    /* ── SCREEN COMPONENTS (2026-11-15, okf/concepts/platform/shell.md) ──────────
+     * A `screen` document is drawn live as a tab inside Hormiga, and these are the
+     * parts that make it interactive. Declared here like every block, so they are
+     * in the Builder's palette by existing. A website or a newsletter has no use
+     * for them and leaves them out. Their ACTION is lines of the console's own
+     * language with placeholders (domain/actions.hpp). */
+    block("ui_list", "list (screen)", R"("title_en","query","columns","limit")", "#3f6fae", 72, false, "Screen",
+          R"("query":"text","columns":"text")",
+          R"__("title_en":"Heading (blank = none)","query":"Which runes (the search grammar: @tag type:product)",)__"
+          R"__("columns":"Fields shown, comma-separated (blank = the name)","limit":"At most this many rows (blank = all)")__");
+    block("ui_form", "form (screen)", R"("title_en","fields")", "#3f6fae", 60, false, "Screen", "",
+          R"__("title_en":"Heading (blank = none)",)__"
+          R"__("fields":"Fields of the selected rune to edit, comma-separated (blank = all of its kind's)")__");
+    block("ui_input", "input (screen)", R"("label_en","placeholder","action")", "#3f6fae", 72, false, "Screen",
+          R"("action":"multiline:60")",
+          R"__("label_en":"Label","placeholder":"Hint shown while it is empty",)__"
+          R"__("action":"On Enter: console lines; {{input}} is what was typed (or scanned)")__");
+    block("ui_button", "button (screen)", R"("label_en","action")", "#3f6fae", 60, false, "Screen",
+          R"("action":"multiline:60")",
+          R"__("label_en":"Label",)__"
+          R"__("action":"On click: console lines; {{selected}}, {{selected.field}}, {{new}}, {{today}}")__");
     // the DOCUMENT rune (builder.md): one per document — its kind names the
     // builder (newsletter = HTML components, website = JS components); the
     // THEME socket lives here from day one (the Style tab grows into it)
@@ -538,7 +559,7 @@ inline void register_block_glyphs(maiz::Core& core) {
         R"({"glyph":"document","label":"Document",)"
         R"("fields":["kind","title","theme_accent","theme_bg"],)"
         R"("hints":{"color":"#6f6f78","face":{"w":220,"h":56},"category":"Content",)"
-        R"("editors":{"kind":"combo:newsletter,website"},)"
+        R"("editors":{"kind":"combo:newsletter,website,screen"},)" // screen: a tab inside Hormiga (shell.md)
         R"("labels":{"kind":"Document kind","title":"Title",)"
         R"__("theme_accent":"Theme accent (hex)","theme_bg":"Theme background (hex)"}}})__");
 }

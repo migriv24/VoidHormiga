@@ -262,8 +262,50 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
         std::string ct = tag_value(node, "color");
         color_value(ct, scol);
         bool ell = hormiga::temper::field_value(node, "kind") == "ellipse";
+        /* POLYGONS AND PERIMETERS (2026-11-14, domain/shape_geom.hpp). A polygon is
+         * filled where the even-odd test says inside and outlined within 1.2 px of
+         * its edges. A PERIMETER, of any kind, has no fill and a dashed outline made
+         * of the same dash segments the canvas draws (gis::dashes, 9 on, 6 off). */
+        const auto verts = hormiga::shape::vertices(node);
+        const bool perim = hormiga::shape::is_perimeter(node);
+        std::vector<hormiga::gis::XY> ring;
+        if (!verts.empty()) {
+            for (const auto& c : verts) {
+                int vx, vy;
+                sxy(c.lat, c.lon, vx, vy);
+                ring.push_back({(double)vx, (double)vy});
+            }
+        } else if (ell) {
+            ring = hormiga::gis::ellipse_ring({(double)mnx, (double)mny}, {(double)mxx, (double)mxy}, 96);
+        } else {
+            ring = hormiga::gis::rect_ring({(double)mnx, (double)mny}, {(double)mxx, (double)mxy});
+        }
         float rx = (mxx - mnx) * 0.5f, ry = (mxy - mny) * 0.5f;
         float ccx = (mnx + mxx) * 0.5f, ccy = (mny + mxy) * 0.5f;
+        const bool line = hormiga::shape::is_line(node);
+        if (perim || line) { // a perimeter's dashes, or a path's line (dashed when its style says so)
+            std::vector<std::pair<hormiga::gis::XY, hormiga::gis::XY>> strokes;
+            if (line && !perim)
+                for (size_t k = 0; k + 1 < ring.size(); ++k) strokes.push_back({ring[k], ring[k + 1]});
+            else strokes = hormiga::gis::dashes(ring, !line, 9.0, 6.0);
+            for (const auto& [a, b] : strokes) {
+                const double L = std::hypot(b.x - a.x, b.y - a.y);
+                const int steps = std::max(1, (int)(L * 2));
+                for (int k = 0; k <= steps; ++k) {
+                    const double t = (double)k / steps, px = a.x + (b.x - a.x) * t, py = a.y + (b.y - a.y) * t;
+                    for (int dy = -1; dy <= 1; ++dy)
+                        for (int dx = -1; dx <= 1; ++dx)
+                            if (dx * dx + dy * dy <= 1) blend_px((int)std::lround(px) + dx, (int)std::lround(py) + dy, scol, 0.55f);
+                }
+            }
+        } else if (!verts.empty()) {
+            for (int y = std::max(0, mny); y <= std::min(H - 1, mxy); ++y)
+                for (int x = std::max(0, mnx); x <= std::min(W - 1, mxx); ++x) {
+                    const hormiga::gis::XY q{(double)x, (double)y};
+                    if (hormiga::gis::ring_edge_dist(ring, q) <= 1.2) blend_px(x, y, scol, 0.9f);
+                    else if (hormiga::gis::ring_contains(ring, q)) blend_px(x, y, scol, 0.2f);
+                }
+        } else
         for (int y = std::max(0, mny); y <= std::min(H - 1, mxy); ++y)
             for (int x = std::max(0, mnx); x <= std::min(W - 1, mxx); ++x) {
                 bool inside = true, edge = false;
@@ -293,7 +335,7 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
             const bool bold = hormiga::temper::field_value(node, "label_bold") == "1";
             const float shear = hormiga::temper::field_value(node, "label_italic") == "1" ? 0.2f : 0.0f;
             std::string pos = hormiga::temper::field_value(node, "label_pos");
-            if (pos.empty()) pos = ell ? "tc" : "tl"; // an ellipse's corner is outside it
+            if (pos.empty()) pos = ell ? "tc" : !verts.empty() ? "c" : "tl"; // an ellipse's (or a polygon's) corner is outside it
             const char row = pos[0], col = pos.size() > 1 ? pos[1] : 'c';
             const float tw = text_w(sl) * mul, th = font_px * label_scale * 1.15f * mul;
             const int pad = 4;
@@ -433,6 +475,21 @@ std::string HormigaApp::export_map_png(const std::string& view_name,
                 blit_text(tx, py0 + 16, label, true); // force: ignore show_labels
             }
         }
+    }
+    /* OPENSTREETMAP IS CREDITED ON THE PICTURE ITSELF (2026-11-14). The author: "we
+     * can be liberal in crediting open street map ... let's just credit it
+     * everywhere". The base map's own line, bottom left, on a plate, on every Earth
+     * export, so a picture that travels without its page still says where its
+     * streets came from. */
+    if (ex_canvas.empty() && atlas && bsrc.attribution && *bsrc.attribution) {
+        const std::string credit = bsrc.attribution;
+        const int cw = (int)text_w(credit) + 12, ch = 22, cx0 = 8, cy0 = H - ch - 8;
+        for (int y = std::max(0, cy0); y < cy0 + ch && y < H; ++y)
+            for (int x = cx0; x < cx0 + cw && x < W; ++x) {
+                unsigned char* p = &img[((size_t)y * W + x) * 3];
+                for (int k = 0; k < 3; ++k) p[k] = (unsigned char)(p[k] * 0.3f + 255 * 0.7f);
+            }
+        blit_text(cx0 + 6, cy0 + 3, credit, true);
     }
     std::error_code ec;
     fs::create_directories(data_dir("exports"), ec);

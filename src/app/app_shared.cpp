@@ -11,6 +11,7 @@ extern "C" {
 #include <cstdlib>
 #include "app/app_internal.hpp"
 #include "gis/marker.hpp" // the marker outlines, one geometry for every surface
+#include "domain/shape_geom.hpp" // a map shape's kind, style and ring (2026-11-14)
 
 #include "json.hpp" // unjson_str decodes a setjson-escaped field
 #include "domain/clock.hpp" // parse_clock — ONE time parser, grid and .ics alike
@@ -120,7 +121,10 @@ void draw_shape_label(ImDrawList* dl, const maiz::SceneNode& n, ImVec2 mn, ImVec
     const bool bold = hormiga::temper::field_value(n, "label_bold") == "1";
     const bool italic = hormiga::temper::field_value(n, "label_italic") == "1";
     std::string pos = hormiga::temper::field_value(n, "label_pos");
-    if (pos.empty()) pos = hormiga::temper::field_value(n, "kind") == "ellipse" ? "tc" : "tl"; // inside the curve
+    if (pos.empty()) { // inside the curve; a polygon's box corner is usually outside it
+        const std::string k = hormiga::temper::field_value(n, "kind");
+        pos = k == "ellipse" ? "tc" : k == "polygon" ? "c" : "tl";
+    }
     ImFont* f = ImGui::GetFont();
     const float size = px * scale;
     const ImVec2 ts = f->CalcTextSizeA(size, FLT_MAX, 0, text.c_str());
@@ -137,6 +141,76 @@ void draw_shape_label(ImDrawList* dl, const maiz::SceneNode& n, ImVec2 mn, ImVec
         for (int i = v0; i < dl->VtxBuffer.Size; ++i) dl->VtxBuffer[i].pos.x += (base - dl->VtxBuffer[i].pos.y) * 0.2f;
     }
     dl->PopClipRect();
+}
+
+std::vector<ImVec2> shape_screen_ring(const maiz::SceneNode& n, ImVec2 mn, ImVec2 mx,
+                                      const std::function<ImVec2(double, double)>& to_screen) {
+    std::vector<ImVec2> out;
+    const std::string kind = hormiga::shape::kind_of(n);
+    if (kind == "polygon" || kind == "path") {
+        const auto v = hormiga::shape::vertices(n);
+        if (!v.empty()) {
+            out.reserve(v.size());
+            for (const auto& c : v) out.push_back(to_screen(c.lat, c.lon));
+            return out;
+        }
+    }
+    const auto r = kind == "ellipse" ? hormiga::gis::ellipse_ring({mn.x, mn.y}, {mx.x, mx.y}, 72)
+                                     : hormiga::gis::rect_ring({mn.x, mn.y}, {mx.x, mx.y});
+    out.reserve(r.size());
+    for (const auto& p : r) out.push_back(ImVec2((float)p.x, (float)p.y));
+    return out;
+}
+
+void draw_map_shape(ImDrawList* dl, const maiz::SceneNode& n, const std::vector<ImVec2>& ring, ImVec2 mn, ImVec2 mx,
+                    unsigned fill, unsigned line, float width, float dp) {
+    const std::string kind = hormiga::shape::kind_of(n);
+    const bool poly = kind == "polygon" && ring.size() >= 3 && !hormiga::shape::vertices(n).empty();
+    if (hormiga::shape::is_line(n) && ring.size() >= 2) { // a PATH: an open line, dashed when its style says so
+        if (!hormiga::shape::is_perimeter(n)) {
+            dl->AddPolyline(ring.data(), (int)ring.size(), line, 0, width + 1.0f);
+            return;
+        }
+        std::vector<hormiga::gis::XY> r;
+        for (const auto& p : ring) r.push_back({p.x, p.y});
+        for (const auto& [a, b] : hormiga::gis::dashes(r, false, 9.0 * dp, 6.0 * dp))
+            dl->AddLine(ImVec2((float)a.x, (float)a.y), ImVec2((float)b.x, (float)b.y), line, width + 1.0f);
+        return;
+    }
+    if (hormiga::shape::is_perimeter(n)) { // an outline only, dashed: what is inside stays in reach
+        std::vector<hormiga::gis::XY> r;
+        r.reserve(ring.size());
+        for (const auto& p : ring) r.push_back({p.x, p.y});
+        for (const auto& [a, b] : hormiga::gis::dashes(r, true, 9.0 * dp, 6.0 * dp))
+            dl->AddLine(ImVec2((float)a.x, (float)a.y), ImVec2((float)b.x, (float)b.y), line, width);
+        return;
+    }
+    if (poly) {
+        dl->AddConcavePolyFilled(ring.data(), (int)ring.size(), fill);
+        dl->AddPolyline(ring.data(), (int)ring.size(), line, ImDrawFlags_Closed, width);
+    } else if (kind == "ellipse") {
+        const ImVec2 c((mn.x + mx.x) * 0.5f, (mn.y + mx.y) * 0.5f), r((mx.x - mn.x) * 0.5f, (mx.y - mn.y) * 0.5f);
+        dl->AddEllipseFilled(c, r, fill);
+        dl->AddEllipse(c, r, line, 0, 0, width);
+    } else {
+        dl->AddRectFilled(mn, mx, fill, 4.0f * dp);
+        dl->AddRect(mn, mx, line, 4.0f * dp, 0, width);
+    }
+}
+
+bool map_shape_hit(const maiz::SceneNode& n, const std::vector<ImVec2>& ring, ImVec2 mn, ImVec2 mx, ImVec2 p,
+                   float tol) {
+    if (p.x < mn.x - tol || p.x > mx.x + tol || p.y < mn.y - tol || p.y > mx.y + tol) return false;
+    std::vector<hormiga::gis::XY> r;
+    r.reserve(ring.size());
+    for (const auto& q : ring) r.push_back({q.x, q.y});
+    if (hormiga::shape::is_line(n)) { // a path is hit along its line, never "inside"
+        for (size_t i = 0; i + 1 < r.size(); ++i)
+            if (hormiga::gis::seg_dist({p.x, p.y}, r[i], r[i + 1]) <= tol) return true;
+        return false;
+    }
+    if (hormiga::shape::is_perimeter(n)) return hormiga::gis::ring_edge_dist(r, {p.x, p.y}) <= tol;
+    return hormiga::gis::ring_contains(r, {p.x, p.y});
 }
 
 std::string tag_value(const maiz::SceneNode& n, const char* ns) {

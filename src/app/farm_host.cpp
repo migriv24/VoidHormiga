@@ -523,6 +523,7 @@ MigratePlan migrate_plan(maiz::Core& core) {
         std::string kind = "newsletter";
         for (const auto& n : project(core, m).nodes)
             if (n.glyph == "document" && !field_value(n, "kind").empty()) kind = field_value(n, "kind");
+        if (kind == "screen") continue; // a tab inside Hormiga, never published (okf/concepts/platform/shell.md)
         const std::string d = safe_name("doc-" + m);
         add(kind == "website" ? "farm_website" : "farm_newsletter", d);
         c.push_back(mq(d, "document", m));
@@ -721,6 +722,10 @@ farm::SeedInfo seed_info(maiz::Core& core, const std::string& website_doc, const
     if (s.website.empty())
         for (const auto& m : mantle_names(core))
             if (is_document_mantle(m)) {
+                bool screen = false; // a screen is a tab inside Hormiga, never the website (shell.md)
+                for (const auto& n : project(core, m).nodes)
+                    if (n.glyph == "document" && field_value(n, "kind") == "screen") screen = true;
+                if (screen) continue;
                 s.website = m;
                 break;
             }

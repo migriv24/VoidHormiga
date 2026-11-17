@@ -235,14 +235,19 @@
         var mny=Math.min(y1,y2),mxy=Math.max(y1,y2);
         var b=lbl[i];if(b){b.style.left=mnx+'px';b.style.top=mny+'px';
           b.style.width=(mxx-mnx)+'px';b.style.height=(mxy-mny)+'px';}
-        ctx.save();ctx.globalAlpha=0.2;ctx.fillStyle=sp.c;
-        if(sp.e){ctx.beginPath();
-          ctx.ellipse((mnx+mxx)/2,(mny+mxy)/2,(mxx-mnx)/2,(mxy-mny)/2,0,0,7);
-          ctx.fill();ctx.globalAlpha=0.9;ctx.strokeStyle=sp.c;ctx.lineWidth=2;ctx.stroke();
-        }else{ctx.fillRect(mnx,mny,mxx-mnx,mxy-mny);
-          ctx.globalAlpha=0.9;ctx.strokeStyle=sp.c;ctx.lineWidth=2;
-          ctx.strokeRect(mnx,mny,mxx-mnx,mxy-mny);}
-        ctx.restore();});
+        // its outline as a path: a polygon's vertices ("p"), else its box as an
+        // ellipse or a rectangle; a perimeter ("pm") is dashed with no fill
+        // (src/gis/polygon.hpp's dashes: 9 on, 6 off; keep the two in step)
+        ctx.save();ctx.beginPath();
+        if(sp.p&&sp.p.length>2){sp.p.forEach(function(v,k){
+            var px=W/2+(mx(v[1],z)-cx)*256,py=H/2+(my(v[0],z)-cy)*256;
+            if(k)ctx.lineTo(px,py);else ctx.moveTo(px,py);});ctx.closePath();}
+        else if(sp.e)ctx.ellipse((mnx+mxx)/2,(mny+mxy)/2,(mxx-mnx)/2,(mxy-mny)/2,0,0,7);
+        else ctx.rect(mnx,mny,mxx-mnx,mxy-mny);
+        if(!sp.pm){ctx.globalAlpha=0.2;ctx.fillStyle=sp.c;ctx.fill('evenodd');}
+        ctx.globalAlpha=sp.pm?1:0.9;ctx.strokeStyle=sp.c;ctx.lineWidth=2;
+        if(sp.pm)ctx.setLineDash([9,6]);
+        ctx.stroke();ctx.restore();});
       mk.forEach(function(m){
         var sx=W/2+(mx(m.lo,z)-cx)*256+(m.dx||0),sy=H/2+(my(m.la,z)-cy)*256+(m.dy||0);
         if(sx<-20||sx>W+20||sy<-20||sy>H+20)return;

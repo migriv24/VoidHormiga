@@ -77,6 +77,35 @@ int main() {
     for (const auto& w : s.wires) linguine += w.kind == maiz::SceneWire::Kind::Linguine;
     CHECK(linguine == (int)g.wires.size()); // named wires draw between sockets
 
+    // ── capabilities, declared on the kinds that answer them (A5, 2026-11-14) ──
+    {
+        auto answering = [](const char* cap) {
+            std::string ids;
+            for (const auto& k : farm::kinds())
+                if (k.answer(cap)) ids += k.id + " ";
+            return ids;
+        };
+        CHECK(answering("host-file") == "bucket image-host web-domain "); // in table order
+        CHECK(farm::kind_by_id("web-domain")->answer("host-file")->after_publish);
+        CHECK(!farm::kind_by_id("image-host")->answer("host-file")->after_publish);
+        // a planned answerer is listed, and says so
+        CHECK(answering("send-newsletter") == "mail-domain " && farm::kind_by_id("mail-domain")->planned);
+        for (const auto& k : farm::kinds()) // every answer names a question the catalogue knows
+            for (const auto& a : k.answers) CHECK(farm::question(a.id));
+        // in the glyph Hormiga registers with Void Core, so every surface reads one shape (a built-in
+        // kind is REGISTERED by the binary, not declared into the file: Void Core, glyph.md)
+        const std::string gj = farm::glyph_json(*farm::kind_by_id("bucket"));
+        CHECK(gj.find("\"answers\"") != std::string::npos && gj.find("host-file") != std::string::npos &&
+              gj.find("the file, to the bucket") != std::string::npos);
+        const auto ka = verb(core, "kinds --answers host-file");
+        CHECK(ka.ok && ka.text.find("image-host") != std::string::npos && ka.text.find("folder") == std::string::npos);
+        CHECK(!verb(core, "kinds --answers teleport").ok);
+        const auto caps = verb(core, "capabilities");
+        CHECK(caps.ok && caps.text.find("send-newsletter: Send this newsletter") != std::string::npos &&
+              caps.text.find("mail-domain (planned)") != std::string::npos &&
+              caps.text.find("leaves: the issue and every recipient's address") != std::string::npos);
+    }
+
     // ── a graph read from a TEMPORARY scene keeps its fields (2026-11-02) ──
     // `read` used to point its nodes into the scene it was given; read from a
     // temporary, every field after the line was freed memory, and quoting the

@@ -214,6 +214,18 @@ std::vector<Kind> build() {
          true, "a Google Sheet, import only", PL, 36, {{"sheet_url", "Sheet address", ""}},
          {in("key", "key"), out("rows", "mantle")}});
 
+    /* ── devices (okf/concepts/platform/shell.md, "Devices", 2026-11-15) ─────
+     * General, never a printer: where a device is and how it is reached. What is
+     * sent is the client's (a label in its printer's own language, a line to a
+     * sign); the bytes travel through Void Hammer's transports. TCP is built. */
+    add({"device", "farm_device", "Device", "Devices", Stratum::Ground, false,
+         "a device on this network (a printer, a sign, a scale, a sensor), reached at an address",
+         GR, 88,
+         {{"transport", "Connection", "combo:tcp"}, {"address", "Address (IPv4, e.g. 192.168.1.50)", ""},
+          {"port", "Port", ""}, {"line_end", "End each send with", "combo:none,lf,crlf"},
+          {"model", "Model (a Void Hammer dictionary entry)", ""}, kPlacement},
+         {}});
+
     // ── the network (network.md) ───────────────────────────────────────────
     add({"profile", "farm_profile", "Profile", "Network", Stratum::Network, false,
          "a profile in the Network chamber: one device, one person's key",
@@ -223,6 +235,33 @@ std::vector<Kind> build() {
     add({"reroute", "farm_reroute", "Reroute", "Tidying", Stratum::Chambers, false,
          "fits any wire, to tidy the drawing", 0x8a8f99, 0, {},
          {in("in", ""), out("out", "")}});
+
+    /* ── what each kind answers (A5, capabilities.md) ─────────────────────────
+     * One place, after the table, so a kind's ports and its answers can be read
+     * apart. Order matters: when nothing is chosen, the first ready answerer wins,
+     * and a link that works at once comes before one that waits for a publish. */
+    auto answers = [&](const char* id, AnswerDecl a) {
+        for (auto& x : k)
+            if (x.id == id) x.answers.push_back(std::move(a));
+    };
+    answers("image-host", {"host-file", "uploads the file to the provider and returns its link",
+                           "the provider's key", "the file, to the provider"});
+    answers("bucket", {"host-file", "uploads the file to the bucket and returns its public address",
+                       "a bucket, its key and a public address", "the file, to the bucket"});
+    answers("web-domain", {"host-file", "copies the file into the website; the link works after the next publish",
+                           "the website's address", "the file, with the next publish", true});
+    answers("web-domain", {"publish-site", "puts the website on GitHub Pages, Cloudflare Pages or an S3 website",
+                           "a key and a repository or project", "every page and file of the website"});
+    answers("local-domain", {"publish-site", "serves the website on this device, for a preview", "", ""});
+    answers("store", {"keep-copy", "puts the database's files, or a sealed copy, into a river",
+                      "a river to put them in", "a sealed copy, if the river is off this device"});
+    answers("import-csv", {"import-rows", "reads a CSV file as records, in one batch with one undo", "the file", ""});
+    answers("import-sheets", {"import-rows", "reads a Google Sheet as records", "a Google key",
+                              "the request, with the key, to Google"});
+    answers("device", {"send-to-device", "sends the text to the device and reports anything it answers",
+                       "its address and port", "exactly what is sent, to the device"});
+    answers("mail-domain", {"send-newsletter", "sends the newsletter from this address",
+                            "a sender and its key", "the issue and every recipient's address"});
     return k;
 }
 
@@ -231,6 +270,33 @@ std::vector<Kind> build() {
 const std::vector<Kind>& kinds() {
     static const std::vector<Kind> k = build();
     return k;
+}
+
+/* THE QUESTIONS (capabilities.md, "Capabilities waiting for this shape"). What a
+ * caller asks, in a person's words, with the call's types. A question no kind
+ * answers yet is still listed: it says what is missing. */
+const std::vector<Question>& questions() {
+    static const std::vector<Question> q = {
+        {"host-file", "Put this file online and give me its link", "file", "link"},
+        {"publish-site", "Put this website where people can visit it", "website", "address"},
+        {"keep-copy", "Keep a copy of this database somewhere else", "database", "a copy, where it is"},
+        {"import-rows", "Bring rows in from a spreadsheet", "spreadsheet", "records"},
+        {"send-newsletter", "Send this newsletter to the people on its list", "newsletter + recipients", "a send report"},
+        {"send-to-device", "Send this to a device", "text", "a report, and anything it answers"},
+    };
+    return q;
+}
+
+const Question* question(std::string_view id) {
+    for (const auto& q : questions())
+        if (q.id == id) return &q;
+    return nullptr;
+}
+
+const AnswerDecl* Kind::answer(std::string_view capability) const {
+    for (const auto& a : answers)
+        if (a.id == capability) return &a;
+    return nullptr;
 }
 
 const Kind* kind_by_id(std::string_view id) {
@@ -267,6 +333,17 @@ std::string glyph_json(const Kind& k) {
     json hints = {{"color", color}, {"category", k.group}, {"labels", labels},
                   {"ports", ports}, {"stratum", stratum_name(k.stratum)}};
     if (!editors.empty()) hints["editors"] = editors;
+    if (!k.answers.empty()) { // A5: what it can be asked, carried in the database with the glyph
+        json ans = json::array();
+        for (const auto& a : k.answers) {
+            json ja = {{"id", a.id}, {"does", a.does}};
+            if (!a.needs.empty()) ja["needs"] = a.needs;
+            if (!a.leaves.empty()) ja["leaves"] = a.leaves;
+            if (a.after_publish) ja["after_publish"] = true;
+            ans.push_back(ja);
+        }
+        hints["answers"] = ans;
+    }
     if (k.id == "reroute")
         hints["shape"] = {{"kind", "polygon"}, {"sides", 6}};
     else

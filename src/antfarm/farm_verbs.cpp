@@ -112,6 +112,8 @@ std::string help() {
            "farm ls [--stratum S]         nodes\n"
            "farm show <node>              one node: readiness, face, ports and what they are wired to\n"
            "farm kinds [group]            the palette\n"
+           "farm kinds --answers <cap>    the kinds that can be asked a capability\n"
+           "farm capabilities             every question, what answers it, what leaves, how many here\n"
            "farm ports <kind>             a kind's sockets\n"
            "farm eval <node>.<port>       the value of an output, now\n"
            "farm status [node]            readiness (no network), and wires that went around the door\n"
@@ -297,13 +299,47 @@ VerbResult run(const std::vector<std::string>& a, const Graph& g, bool exists, E
     if (verb == "kinds") {
         std::ostringstream o;
         std::string last;
+        // `farm kinds --answers Q`: the kinds that can be asked Q (cli.md; capabilities.md)
+        std::string answers_q, group_q;
+        for (size_t i = 1; i < a.size(); ++i) {
+            if (a[i] == "--answers" && i + 1 < a.size()) answers_q = a[++i];
+            else group_q = a[i];
+        }
+        if (!answers_q.empty() && !question(answers_q))
+            return fail("no capability called " + answers_q + " - `farm capabilities` lists them");
         for (const auto& k : kinds()) {
-            if (a.size() > 1 && k.group != a[1]) continue;
+            if (!group_q.empty() && k.group != group_q) continue;
+            if (!answers_q.empty() && !k.answer(answers_q)) continue;
             if (k.group != last) o << k.group << "\n", last = k.group;
             char buf[200];
             std::snprintf(buf, sizeof buf, "  %-15s %-9s %s%s", k.id.c_str(), stratum_name(k.stratum),
                           k.planned ? "(planned) " : "", k.doc.c_str());
             o << buf << "\n";
+        }
+        return r.text = o.str(), r;
+    }
+    /* `farm capabilities` (A5, 2026-11-14): every question the application can ask,
+     * which kinds answer it, and how many nodes in this database could. A question
+     * nothing here answers says what to add; a planned one says no code answers it
+     * yet. What leaves the device is said before it leaves (data-planes.md). */
+    if (verb == "capabilities") {
+        std::ostringstream o;
+        for (const auto& q : questions()) {
+            o << q.id << ": " << q.question << "  (" << q.in << " -> " << q.out << ")\n";
+            bool any = false;
+            for (const auto& k : kinds()) {
+                const AnswerDecl* ans = k.answer(q.id);
+                if (!ans) continue;
+                any = true;
+                int here = 0;
+                for (const auto& n : g.nodes)
+                    if (n.kind == &k) ++here;
+                o << "  " << k.id << (k.planned ? " (planned)" : "") << ": " << ans->does; // says when it works
+                o << "\n    needs: " << (ans->needs.empty() ? "nothing" : ans->needs)
+                  << "; leaves: " << (ans->leaves.empty() ? "nothing" : ans->leaves) << "; in this database: " << here
+                  << "\n";
+            }
+            if (!any) o << "  nothing answers this yet\n";
         }
         return r.text = o.str(), r;
     }

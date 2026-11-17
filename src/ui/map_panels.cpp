@@ -628,6 +628,10 @@ void HormigaApp::draw_map_panels() {
         maiz::dim_wrapped("A map block shows a layer: on a website, a map visitors can move and zoom but "
                           "never change; in a newsletter, a picture. Contacts and notes never appear in "
                           "either. It opens at the layer's home view.");
+        // the author, 2026-11-14: "complex features of map are currently unsupported for web export"
+        maiz::dim_wrapped(ICON_FA_TRIANGLE_EXCLAMATION "  Complex features of the map are currently unsupported for "
+                          "web export: paths are left out, and polygons and perimeters are drawn there untested. "
+                          "The newsletter's picture draws them all.");
         const std::string home_c = hormiga::temper::field_value(*cur, "center");
         const std::string home_z = hormiga::temper::field_value(*cur, "zoom");
         ImGui::TextDisabled("home view: %s  zoom %s", home_c.empty() ? "(not set)" : home_c.c_str(),

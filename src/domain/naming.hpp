@@ -38,6 +38,7 @@
 
 #include "domain/kinds.hpp"       // own kinds name themselves by `title`
 #include "domain/scene_value.hpp" // temper::field_value
+#include "domain/temper.hpp"      // which declares it: naming used to rely on its includer for this
 
 #include "voidmaiz/scene.hpp"
 

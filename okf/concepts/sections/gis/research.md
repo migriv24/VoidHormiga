@@ -45,6 +45,32 @@ Sources: [Delikostidis & van Elzakker](https://research.utwente.nl/en/publicatio
 [north-up vs track-up](https://stars.library.ucf.edu/scopus2000/389),
 [location permission studies](https://research.aalto.fi/en/publications/general-area-or-approximate-location-how-people-understand-locati/).
 
+# The ground: snapping, tracing and blocks (2026-11-14)
+
+The author asked whether snapping to streets, paths that follow streets and
+perimeters that form around them were possible offline, and asked for that to be
+decided first. What decided it ([the ground](/concepts/sections/gis/ground.md)):
+
+| finding | source | what it decided |
+|---|---|---|
+| QGIS's tracing tool (since 2.14) builds new geometry along existing features: it snaps both clicked points to the vector network and joins them by the shortest path (Dijkstra). It needs snapping on, works only on vector features and **never on raster imagery**, and turns itself off when too many features are in view | QGIS user manual, "Editing"; Lutra Consulting, trace digitising | the author's "path that uses the road geometry" is an established digitizing technique, and it needs vector streets: Hormiga's raster tiles cannot supply them. Tracing becomes a part of the polygon tool, bounded by area as QGIS bounds it by feature count |
+| Street networks are approximately but not truly planar: overpasses and underpasses cross without meeting, and planar models can drastically misstate intersection density, street lengths, routing and connectivity | Boeing, *Planarity and street network representation in urban form analysis*, EPB 47(5), 2020 | blocks (the graph's faces) leave out bridge and tunnel edges, and split level crossings that share no node |
+| OpenStreetMap is published as regional extracts (`.osm.pbf`), updated daily, free to download, under the ODbL (attribution; share-alike for a derivative database); the raw extracts carry no user names or ids | Geofabrik download server | the data is a file a person imports (the author's choice), never an API; attribution is shown while it is used (Q132) |
+| OSM PBF is zlib-compressed protobuf; `protozero` is a minimal, header-only C++ decoder (BSD-2), the one libosmium and OSRM use | protozero's repository | the reader is ours, on the zlib Hormiga already vendors; protozero is the vendor candidate if it grows |
+
+| OSM's `layer` is relative, not an elevation: it only orders two features where they cross, defaults to 0, runs about -5 to 5; bridges are usually positive and tunnels negative but should be tagged; crossing ways at different layers must not share a node; `level` is for floors in buildings | OSM wiki, *Key:layer* | Hormiga reads it into *grade* and compares grades only at crossings; the author's ruling, the lowest surface grade wins, is applied per crossing ([roads](/concepts/sections/gis/roads.md)) |
+| The relations between two shapes are named by how their interiors, boundaries and exteriors meet (DE-9IM, Clementini and Egenhofer): equals, disjoint, touches, crosses, overlaps, within, contains, intersects, standardized in the OGC Simple Features | Wikipedia, *DE-9IM*; OGC 99-050 | Hormiga's interactions use those names, measured for points, lines and rings ([interactions](/concepts/sections/gis/interactions.md)) |
+| Real places that break naive street geometry: a five-level interchange (Huangjuewan, Chongqing), a highway tunnel under a downtown (Boston's O'Neill Tunnel, 2.4 km), a spiral approach (Nanpu Bridge, Shanghai), a ring of mini-roundabouts (Swindon), chamfered octagonal blocks (Barcelona's Eixample), a car-free medina (Fez el-Bali), streets that are stairs (Pittsburgh), a road across 180° (Taveuni, Fiji) | the sources on [roads](/concepts/sections/gis/roads.md) | the ground's test areas, each for what it breaks |
+
+Sources: [QGIS editing](https://docs.qgis.org/3.44/en/docs/user_manual/working_with_vector/editing_geometry_attributes.html),
+[Lutra: trace digitising](https://www.lutraconsulting.co.uk/blogs/trace-digitising-in-qgis),
+[Boeing 2020 (arXiv 1806.01805)](https://arxiv.org/abs/1806.01805),
+[Geofabrik downloads](https://download.geofabrik.de/),
+[protozero](https://github.com/mapbox/protozero),
+[OSM Key:layer](https://wiki.openstreetmap.org/wiki/Key:layer),
+[DE-9IM](https://en.wikipedia.org/wiki/DE-9IM),
+[OGC Simple Features 99-050](https://docs.ogc.org/is/99-050/99-050.pdf).
+
 # Keep in mind before adding a map feature
 
 1. **Which world is it for?** Classify it in [worlds](/concepts/sections/gis/worlds.md)
@@ -85,4 +111,9 @@ Sources: [Delikostidis & van Elzakker](https://research.utwente.nl/en/publicatio
 - **Georeferencing**: affine and similarity transforms from control points, and
   how QGIS's georeferencer presents them, for anchored worlds.
 - **Polygon digitizing on touch**: direct-tap vertices, snapping, undoing the
-  last vertex (Q102).
+  last vertex. The desktop's polygon tool is built (2026-11-14); the phone's
+  waits for this reading and the author's use of the phone's map.
+- **Faces of a planar graph and street blocks**: the doubly connected edge list
+  (de Berg et al., *Computational Geometry*, ch. 2) and how urban-morphology
+  tools derive blocks from OSM, before [the ground](/concepts/sections/gis/ground.md)'s
+  step 5.

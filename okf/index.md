@@ -117,7 +117,14 @@ with it.
   answers, location on a tap, notes on places, pins from their own geometry);
   [worlds](/concepts/sections/gis/worlds.md) (universal, anchored and
   Earth-only ideas: a feature asks the world whether it can exist there);
-  [research](/concepts/sections/gis/research.md); and the
+  [the ground](/concepts/sections/gis/ground.md) (2026-11-14: snapping, paths
+  and perimeters that follow streets, from an imported OSM extract; one graph
+  per canvas); [roads](/concepts/sections/gis/roads.md) (grade, the lowest
+  surface grade wins, the edge cases and the places that test them);
+  [generation](/concepts/sections/gis/generation.md) (perimeters and paths as
+  one system, stored as a recipe of ordered links);
+  [interactions](/concepts/sections/gis/interactions.md) (how drawn things
+  meet, derived, never stored); [research](/concepts/sections/gis/research.md); and the
   [roadmap](/concepts/sections/gis/roadmap.md).
 - [Hormiga on a phone](/concepts/sections/mobile.md) — **opened 2026-09-22**:
   a significantly smaller Hormiga that puts UX first, as the author asked. The
@@ -131,6 +138,11 @@ with it.
   one portable, switchable, backup-able bundle: every mantle + assets +
   encrypted secrets; working-copy vs bundle (git-shaped); re-derivable vs
   irreplaceable; online/offline load. Resolves Q17 + Q19.
+- [The application as data](/concepts/platform/shell.md) — **2026-11-15.** The
+  `.miga` carries the application as well as the database: its tabs, their
+  order, a default layout, and *screens* a client builds in the Builder (lists,
+  forms, inputs, buttons whose actions are console lines). Devices are reached
+  through the Antfarm's general `device` node.
 - [The Antfarm](/concepts/platform/antfarm/index.md) — **a folder since
   2026-09-22**, for the redesign the author is about to lead: holidays as the
   visible nervous system (one rune per backend, payload-typed ports, gated

@@ -398,6 +398,7 @@ void HormigaApp::new_database(const std::string& workspace) {
     map_sel.clear();
     reproject();
     read_view_config();
+    shell_load(); // its tabs, and its default layout once per device (app/shell_app.cpp)
     apply_theme();
     if (const auto cv = hormiga::canvas::find(scene, opens_on); cv.plan()) { // centred on its floor
         map_canvas = cv.name;
@@ -518,6 +519,7 @@ void HormigaApp::adopt_core(maiz::Core&& fresh, const hormiga::Prepared* in_stor
     channel_fields.clear();
     reproject();
     read_view_config();
+    shell_load(); // its tabs, and its default layout once per device (app/shell_app.cpp)
     apply_theme();
     do_save(); // write the opened database into the working .db
     cur_page.clear();

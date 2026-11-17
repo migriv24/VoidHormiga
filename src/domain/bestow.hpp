@@ -36,6 +36,8 @@
 
 #include "domain/canvas.hpp"      // which canvas a shape is on, and its positions
 #include "domain/scene_value.hpp" // temper::field_value
+#include "domain/shape_geom.hpp"  // kinds, rings, polygons (2026-11-14)
+#include "gis/relate.hpp"          // a path's reach, and what it meets (2026-11-14)
 #include "gis/geo.hpp"            // parse_geo
 
 #include <algorithm>
@@ -55,8 +57,28 @@ struct Bestower {
 };
 
 /* Is (lat, lon) inside this map shape? `rect` is the box between the two
- * corners; `ellipse` is the ellipse inscribed in that box. */
+ * corners; `ellipse` is the ellipse inscribed in that box; `polygon` (2026-11-14)
+ * is its vertices, by the even-odd rule (gis/polygon.hpp). A PERIMETER contains
+ * exactly what an area of the same outline does: the style is only how it is
+ * drawn (the author: "computationally they are the same"). */
+/* Two geometries in local metres (Earth) or the plan's unit, for `gis::relate`. A
+ * rune on a plan is already in its unit; on Earth, degrees become metres about
+ * the first one's latitude. */
+inline gis::Geom geom_of(const maiz::SceneNode& n, bool earth, double lat0) {
+    gis::Geom g;
+    g.kind = shape::is_line(n) ? gis::GeomKind::Line : gis::GeomKind::Ring;
+    for (const auto& p : shape::ring(n, 32)) g.pts.push_back(earth ? gis::local_metres(p, lat0) : p);
+    return g;
+}
+
 inline bool shape_contains(const maiz::SceneNode& shape, double lat, double lon) {
+    if (shape::is_line(shape)) { // a PATH gives to what lies within its reach (2026-11-14)
+        const double reach = shape::reach_of(shape);
+        const bool earth = canvas::of(shape).empty();
+        gis::Geom pt{gis::GeomKind::Point, {earth ? gis::local_metres({lon, lat}, lat) : gis::XY{lon, lat}}};
+        const gis::Geom line = geom_of(shape, earth, lat);
+        return !line.pts.empty() && gis::relate(pt, line, 1e-9).distance <= reach;
+    }
     double la1, lo1, la2, lo2;
     if (!parse_geo(temper::field_value(shape, "geo1"), la1, lo1) ||
         !parse_geo(temper::field_value(shape, "geo2"), la2, lo2))
@@ -64,7 +86,16 @@ inline bool shape_contains(const maiz::SceneNode& shape, double lat, double lon)
     const double laL = std::min(la1, la2), laH = std::max(la1, la2);
     const double loL = std::min(lo1, lo2), loH = std::max(lo1, lo2);
     if (lat < laL || lat > laH || lon < loL || lon > loH) return false;
-    if (temper::field_value(shape, "kind") != "ellipse") return true;
+    const std::string kind = shape::kind_of(shape);
+    if (kind == "polygon") {
+        const auto v = shape::vertices(shape);
+        if (v.empty()) return true; // too few vertices: it is its box
+        std::vector<gis::XY> r;
+        r.reserve(v.size());
+        for (const auto& c : v) r.push_back(gis::xy_of(c));
+        return gis::ring_contains(r, {lon, lat});
+    }
+    if (kind != "ellipse") return true;
     const double ry = (laH - laL) / 2.0, rx = (loH - loL) / 2.0;
     if (rx <= 0.0 || ry <= 0.0) return false;
     const double dx = (lon - (loL + loH) / 2.0) / rx;
@@ -124,9 +155,9 @@ inline std::vector<Bestower> bestowers(const maiz::Scene& data) {
  * bestow tags to each other."* A shape is an area, not a point, so "inside"
  * becomes "shares some area with", and it runs both ways: each gives the other
  * what it gives. Same canvas only (an aisle and a neighbourhood are never on
- * one plane). Exact for two rectangles; with an ellipse, the shared box is
- * sampled on a 16 x 16 grid and a point inside both decides it, which misses
- * only a sliver thinner than a sixteenth of the box. */
+ * one plane). Exact for two rectangles; with an ellipse or a polygon, the shared
+ * box is sampled on a 16 x 16 grid and a point inside both decides it, which
+ * misses only a sliver thinner than a sixteenth of the box. */
 inline bool shapes_overlap(const maiz::SceneNode& a, const maiz::SceneNode& b) {
     if (a.name == b.name || canvas::of(a) != canvas::of(b)) return false;
     double a1, o1, a2, o2, b1, p1, b2, p2;
@@ -135,8 +166,14 @@ inline bool shapes_overlap(const maiz::SceneNode& a, const maiz::SceneNode& b) {
         return false;
     const double laL = std::max(std::min(a1, a2), std::min(b1, b2)), laH = std::min(std::max(a1, a2), std::max(b1, b2));
     const double loL = std::max(std::min(o1, o2), std::min(p1, p2)), loH = std::min(std::max(o1, o2), std::max(p1, p2));
+    if (shape::is_line(a) || shape::is_line(b)) { // a path meets what it touches, or comes within its reach of
+        const bool earth = canvas::of(a).empty();
+        const double lat0 = (a1 + a2) / 2;
+        const double reach = std::max(shape::reach_of(a), shape::reach_of(b));
+        return gis::relate(geom_of(a, earth, lat0), geom_of(b, earth, lat0), 1e-9).distance <= reach;
+    }
     if (laL >= laH || loL >= loH) return false; // the boxes do not even touch
-    if (temper::field_value(a, "kind") != "ellipse" && temper::field_value(b, "kind") != "ellipse") return true;
+    if (shape::kind_of(a) == "rect" && shape::kind_of(b) == "rect") return true; // two boxes: exact
     constexpr int N = 16;
     for (int i = 0; i < N; ++i)
         for (int j = 0; j < N; ++j) {
@@ -189,18 +226,11 @@ inline std::map<std::string, std::string> given_values(const maiz::Scene& data, 
                 v = t.substr(ns.size() + 1);
                 break;
             }
-        double a1, o1, a2, o2;
-        if (v.empty() || !parse_geo(temper::field_value(s, "geo1"), a1, o1) ||
-            !parse_geo(temper::field_value(s, "geo2"), a2, o2))
-            continue;
-        const double area = std::abs((a2 - a1) * (o2 - o1));
+        if (v.empty()) continue;
+        const double area = shape::area(s); // the outline's own area (a polygon is not its box)
+        if (area <= 0) continue;
         for (const maiz::SceneNode* r : receivers(data, s)) {
-            if (r->glyph == "mapshape") {
-                double b1, p1, b2, p2;
-                if (!parse_geo(temper::field_value(*r, "geo1"), b1, p1) ||
-                    !parse_geo(temper::field_value(*r, "geo2"), b2, p2) || std::abs((b2 - b1) * (p2 - p1)) >= area)
-                    continue;
-            }
+            if (r->glyph == "mapshape" && shape::area(*r) >= area) continue;
             auto it = best.find(r->name);
             if (it == best.end() || area < it->second.first) best[r->name] = {area, v};
         }

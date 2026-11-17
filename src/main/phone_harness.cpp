@@ -60,8 +60,8 @@ void PhoneHarness::inject(ImGuiIO& io) {
         }
     }
     if (std::getenv("HORMIGA_SIM_TRACE"))
-        std::fprintf(stderr, "sim: pos %.0f,%.0f down %d capture %d\n", io.MousePos.x, io.MousePos.y,
-                     (int)io.MouseDown[0], (int)io.WantCaptureMouse);
+        std::fprintf(stderr, "sim: pos %.0f,%.0f down %d capture %d shift %d\n", io.MousePos.x, io.MousePos.y,
+                     (int)io.MouseDown[0], (int)io.WantCaptureMouse, (int)io.KeyShift);
     /* A SCRIPTED FINGER GOES THROUGH VOID MAIZ'S TOUCH GATE (2026-09-27), as a
      * phone's does: the gate decides tap, press, scroll or pinch and tells
      * ImGui only that. ImGui's pointer is re-asserted to what the gate last
@@ -252,9 +252,19 @@ void PhoneHarness::inject(ImGuiIO& io) {
         if (op == "key") {
             std::string k;
             in >> k;
-            const ImGuiKey key = k == "back" ? ImGuiKey_AppBack : ImGuiKey_Enter;
+            const ImGuiKey key = k == "back"        ? ImGuiKey_AppBack
+                                 : k == "escape"    ? ImGuiKey_Escape
+                                 : k == "backspace" ? ImGuiKey_Backspace
+                                                    : ImGuiKey_Enter;
             io.AddKeyEvent(key, true);
             io.AddKeyEvent(key, false);
+            return;
+        }
+        if (op == "shift") { // held until released: a desktop's shift-click and shift-drag (2026-11-14)
+            std::string st;
+            in >> st;
+            io.AddKeyEvent(ImGuiMod_Shift, st == "down");
+            io.AddKeyEvent(ImGuiKey_LeftShift, st == "down");
             return;
         }
         if (op == "wait") {

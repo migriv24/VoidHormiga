@@ -724,3 +724,85 @@ The author asked for ten things in one message; these are the map's:
   Inspector on the desktop and in the region's sheet on the phone, through one
   registry editor (`bestow`). Stored as one comma-separated field;
   `domain/bestow.hpp` reads it as a list.
+
+# Polygons and perimeters, several selected, and snapping (2026-11-14)
+
+The author asked for six things for the map builder; the first three are built
+here, the rest are designed in [the ground](/concepts/sections/gis/ground.md).
+
+- **Polygons** (answers Q102). `kind = polygon`, its corners in `pts`
+  (`lat,lon;lat,lon;…`), and **its box still in `geo1`/`geo2`**, written with
+  every change to `pts` (`shape::vertex_commands`, the one place both are
+  written). So anything that reads boxes is still right about where it is: an
+  older Hormiga draws the polygon as its box instead of failing, and the overlap
+  pre-check keeps working. Containment is the even-odd rule
+  (`gis/polygon.hpp`), so an L gives nothing to its notch. Drawn with a fourth
+  tool: click each corner; click the first corner, double-click, or Enter to
+  finish; Backspace undoes a corner; Esc drops it. Selected, it shows a handle
+  per corner (drag it), a smaller one at each edge's middle (drag it to add a
+  corner), right-click a corner to remove it (three stay), and drag inside to
+  move it all. A box turned polygon in the Inspector starts from its four
+  corners.
+- **Perimeters.** `style = perimeter` on any kind (`area`, the default, is
+  filled). The author: *"computationally they are the same ... i just want an
+  outline ... i want to be able to easily edit things inside it"*. A perimeter
+  gives its tags and colours exactly as an area does (`bestow.hpp` never reads
+  the style); it is drawn as a **dashed outline with no fill** (9 on, 6 off, the
+  same dashes on the canvas, the phone and the PNG, and `setLineDash([9,6])` on
+  the website), and it is **hit only within a few pixels of its border**, so a
+  click inside reaches what is inside. A toggle under the tools sets what the
+  tools draw; a shape's menu switches one.
+- **Several selected.** Shift-click a shape toggles it, as it always did a
+  marker; a shift-drag adds every marker in the box and every shape wholly
+  inside it **to** the selection (shift adds, as in a drawing program; it used
+  to replace). Right-click anything in a selection of two or more for its
+  menu: *Generate perimeter around them*, draw the shapes as perimeters or as
+  areas, colour all, and delete the shapes (never the contacts or events among
+  them).
+- **Generate perimeter.** One dashed polygon around everything selected, which
+  need not touch: today the convex hull of every shape's outline and every
+  marker's place, kept 14 px clear of them at the zoom it was made at, rounded
+  (eight steps round each point, so it can still be edited by hand). Named as
+  made ("Around A, B and 2 more"). On the ground it will follow streets.
+- **Snap.** A magnet under the tools, **off until turned on** (the author: *"so
+  it isn't annoying"*). On a drawn plan, corners, polygon vertices and box
+  handles land on the plan's grid. On Earth it is disabled and says that
+  snapping to streets needs street data; see [the ground](/concepts/sections/gis/ground.md).
+- **The right button stopped pressing** (found while building this). The
+  canvas takes both buttons, and every press handler treated a right press as a
+  left one: a right-click re-selected the one thing under it (so a
+  multi-selection could never reach its menu), a right-drag with the rectangle
+  tool drew a rectangle. Presses and releases are now the left button's; the
+  right-click selects what it is about, unless that is already part of a
+  multi-selection ([discussion](/discussion/2026-11-14-the-button-that-pressed-twice.md)).
+- **One drawing for both front-ends.** `shape_screen_ring`, `draw_map_shape`
+  and `map_shape_hit` (`app_shared.cpp`) draw and hit a shape on the desktop and
+  the phone alike. The phone draws polygons and perimeters; **drawing a polygon
+  on the phone is not built**, because how people draw on it should decide the
+  gesture (research: corners by direct tap, never by crosshair).
+
+# Paths, one generation system, and a credit on every picture (2026-11-14, later)
+
+The author's second round ([generation](/concepts/sections/gis/generation.md),
+[interactions](/concepts/sections/gis/interactions.md),
+[roads](/concepts/sections/gis/roads.md)):
+
+- **Paths.** A fourth kind, `kind = path`: an open line through `pts` (two
+  points at least), drawn as a line (dashed if its style says perimeter), hit
+  along its length, edited by its points like a polygon (no edge back to the
+  start; it keeps two). It gives its tags to what lies within its `reach`.
+- ***Generate path through them*** beside *Generate perimeter* on several
+  selected: through each in the order they were selected. Both are now one
+  system (seeds, a ground, a generator), and both follow the canvas's ground
+  when snap is on: on a plan, a path is a staircase along the grid and a
+  perimeter is made of whole cells.
+- **A generated shape keeps its recipe**: `made_by`, `ground`, and a link to
+  each seed (`stop-1`, `stop-2`, ... for a path; `around` for a perimeter). Its
+  menu has *Regenerate from what it was made from*.
+- **The order a box adds things in**: nearest-first from what was selected last
+  (a shift-click adds one at a time, in the order clicked).
+- **`map generate`** does the same headless, for the CLI and agents.
+- **The PNG credits OpenStreetMap** on every Earth picture, bottom left (Q132).
+- **Web export.** The author: *"complex features of map are currently
+  unsupported for web export."* The website's map leaves paths out, and the
+  Actions panel says so where a map is added to a website.

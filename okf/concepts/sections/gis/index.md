@@ -55,10 +55,27 @@ command goes through `map_actions`; a view only draws and compiles commands.
 4. [The map on a phone](/concepts/sections/gis/phone.md) — the phone's own
    interaction model, every desktop feature with what it became, location, and
    what Void Maiz gained for it.
-5. [Research](/concepts/sections/gis/research.md) — what the field and HCI
+5. [The ground](/concepts/sections/gis/ground.md) — **2026-11-14.** What a map
+   lets you travel on: one graph per canvas (streets on Earth, the grid on a
+   plan) and five operations on it (snap, trace, polygons that follow streets,
+   blocks, perimeters). Why snapping to streets needs an imported OSM extract
+   and cannot come from the tiles. Planned, with the plan's grid built as a
+   full ground.
+6. [Roads](/concepts/sections/gis/roads.md) — **2026-11-14.** How a road is
+   built in the data, *grade* (never *layer*) and the ruling that the lowest
+   surface grade wins, the edge cases (stacked interchanges, tunnels, spirals,
+   roundabouts, steps, the antimeridian), and the real places that test them.
+7. [Generation](/concepts/sections/gis/generation.md) — **2026-11-14.** One
+   system for geometry made from what is selected: seeds, a ground, and
+   generators made of the two (perimeter, path, loop); stored as vertices plus
+   a recipe of ordered links; regenerated on request.
+8. [Interactions](/concepts/sections/gis/interactions.md) — **2026-11-14.** How
+   paths, areas and placed things meet (the DE-9IM relations), measured on
+   demand and never stored; what a path gives to what lies within its reach.
+9. [Research](/concepts/sections/gis/research.md) — what the field and HCI
    literature says, what each finding decided, and what to keep in mind (and
    read next) before adding a feature.
-6. [Roadmap](/concepts/sections/gis/roadmap.md) — the do-list, with ✅ / 🔨 / ⬜.
+10. [Roadmap](/concepts/sections/gis/roadmap.md) — the do-list, with ✅ / 🔨 / ⬜.
 
 # Status (2026-10-05)
 
@@ -67,5 +84,8 @@ points, PNG and web exports). The phone has a map since 0.1.11, run in the
 harness and not yet on a device. Markers are one outline across every surface.
 Every world Hormiga ships is Earth (OSM and CARTO tiles); the flat-world half of
 the engine is tested and has no caller yet. Open: Q42 (Void GIS), Q100
-(storing a GPS place's accuracy), Q101 (notes on public maps), Q102 (polygons),
-in [developer questions](/developer_questions.md).
+(storing a GPS place's accuracy), Q101 (notes on public maps), Q133 (a path
+through an area), Q134 (generated shapes following their seeds), in
+[developer questions](/developer_questions.md). **2026-11-14:** polygons,
+perimeters, selecting several and *Generate perimeter* are built on the
+desktop; [the ground](/concepts/sections/gis/ground.md) is designed.

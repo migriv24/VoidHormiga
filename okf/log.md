@@ -7298,3 +7298,301 @@ changes:
 
 **Not done:** 0.2.6 on a phone; the connections view on a phone; Void Rancho's
 2026-11-09 answer, unconsumed.
+
+
+# The map builder: polygons, perimeters, several selected, and the ground (2026-11-14)
+
+The author: *"lets start working a bit more on the UI and UX of the map builder
+in hormiga"*, in six items: polygon areas; perimeters (*"computationally they
+are the same ... i just want an outline ... a bit like a dashed line"*);
+shift-selecting several and acting on them; snapping, abstracted (*"for google
+maps based maps ... 'snap to street' ... for grocery store maps ... maybe it's
+literally just a grid"*), with paths that follow the roads; loading bars for
+whatever is generated; and *Generate perimeter* around selected areas, built on
+the ground under the map. And: *"if this isn't possible, that should be decided
+first."*
+
+**Decided first: snapping to streets is possible from street data, never from
+the tiles.** The base map is raster tiles, pictures of streets. QGIS's tracing
+tool, which is exactly the author's "path that uses the road geometries", works
+only on vector features. The vector data is OpenStreetMap's, published as
+regional `.osm.pbf` extracts under the ODbL. Asked how a person gets it, **the
+author chose: import a file** (over a one-time download, or both). The design is
+[the ground](/concepts/sections/gis/ground.md): one graph per canvas (streets on
+Earth, the grid on a plan) and five operations on it (snap, trace, polygons that
+follow streets, blocks as the graph's faces with bridges and tunnels left out,
+perimeters as the union of the blocks a hull meets), each bounded by area,
+behind a bar when long. Research in [research](/concepts/sections/gis/research.md)
+"The ground".
+
+**Built** ([territory](/concepts/sections/gis/territory.md), "Polygons and
+perimeters"):
+- `gis/polygon.hpp`: rings, even-odd containment, distance to an outline, area,
+  the convex hull and a padded hull, dashes that keep their pace round corners,
+  and grid snapping. `domain/shape_geom.hpp`: a shape's kind, style and ring, and
+  `vertex_commands`, the one writer of `pts` with its box.
+- **Polygons** (`kind = polygon`, `pts`, the box kept in `geo1`/`geo2` so a
+  box-only reader is still right): a fourth tool; corner handles, edge handles
+  that add a corner, right-click to remove one, drag inside to move.
+- **Perimeters** (`style = perimeter`, any kind): dashed, unfilled, hit on the
+  border only, giving exactly what an area gives. A toggle sets what the tools
+  draw.
+- **Several selected**: shift-click toggles a shape; a shift-drag adds markers
+  and whole shapes; a right-click on the selection opens its menu (generate a
+  perimeter, perimeters or areas, colour all, delete the shapes).
+- ***Generate perimeter***: a padded convex hull, eight steps round each point
+  (14 vertices around two shapes), named "Around A, B". The ground's version
+  will follow streets and run behind the busy bar; this one takes microseconds,
+  so it shows none.
+- **Snap** (off by default): a plan's grid, for corners, vertices and handles.
+  On Earth the magnet is disabled and says street data is needed.
+- **Every surface**: the desktop canvas and the phone share `draw_map_shape`
+  and `map_shape_hit`; the PNG fills polygons by the same test and dashes
+  perimeters with the same segments; the website publishes `p` (vertices) and
+  `pm` (perimeter) and draws them with `setLineDash([9,6])`.
+- **The right button stopped pressing**: every press handler on the canvas read
+  a right press as a left one ([discussion](/discussion/2026-11-14-the-button-that-pressed-twice.md)).
+- The window harness gained `shift down|up` and `key escape|backspace`.
+- **Split:** the polygon tool, a polygon's handles, *Generate perimeter* and the
+  multi-selection menu are `ui/map_shapes.cpp`, called from `draw_map_section`
+  with a `MapFrame` (`ui/map_shapes.hpp`): what the frame knows. `ui/map.cpp`
+  stays within its budget (1,885 of 1,950); `app.hpp` (1,338) and
+  `render/site.cpp` (2,335) were raised by what this added, with the reasons in
+  `tools/find_long.py`.
+
+**Measured in the window** (harness scripts on a 40 × 24 m floor): a polygon
+drawn with snap on stored `2,24;2,36;10,36;10,27` from clicks a few tenths of a
+metre off the grid; a concave L fills correctly; two shapes shift-selected
+reach the multi-selection menu; *Generate perimeter* drew one outline round two
+shapes that do not touch; a click on a marker inside a perimeter selected the
+marker. The PNG export drew an L polygon, a dashed polygon perimeter and a
+dashed rectangle perimeter on Earth.
+
+**Tests:** `gis_smoke` 12 new checks (an L's notch is outside it, the hull, the
+padded hull's margin, dash totals, a ring's round trip, snapping);
+`spine_smoke` dispatches a polygon through Core (its `;`-separated `pts`
+survives), and an L area and an L perimeter give the same tags, and nothing to
+the notch. The golden render's `app.js` hash was re-captured (the website's
+shape drawing changed on purpose; every other output byte-identical). 64/64.
+
+**Not done:** the website's polygons seen in a browser (`app.js` parses; not
+rendered); drawing a polygon on the phone; everything on the ground past the
+plan's grid snap (Q131, Q132).
+
+
+# The map builder, second round: grade, one generation system, paths, and roads (2026-11-14, later)
+
+The author, in one message:
+- *"bottom most street wins for drawing ... there's often highways and freeways
+  that go over while neighborhoods. We want to use the bottom most layer of
+  things as our baseline"*, then, at once: *"when I said 'bottom wins' for layers
+  I was referring to the 3D aspect of roads ... They were not related to our
+  layer system ... We shouldn't mix up terminologies here."*
+- *Generate perimeter* looked at again so it generalizes, with *Generate path*
+  through selected points in the order selected: *"the modules and code that
+  create this SHOULD work for both."*
+- the web export left alone with a note; Q131 and Q132 answered; how paths fit
+  Void Core and how they *"interact"*; and road design documented with real
+  places as edge cases and tests.
+
+**Words and the ruling.** Asked, the author chose **grade** (grade-separated,
+at-grade) for the vertical order of roads, so *layer* only ever means a drawing
+layer, and **the lowest surface grade wins**: tunnels are below the surface and
+never bound blocks, though a path may go through one (the literal "lowest"
+would have cut downtown Boston's blocks along the I-93 tunnel).
+OpenStreetMap's `layer` is relative (it orders two features only where they
+cross), so grades are compared per crossing. [Roads](/concepts/sections/gis/roads.md)
+documents the data, the ruling, fourteen edge cases and nine test places, each
+chosen for what it breaks.
+
+**One generation system** ([generation](/concepts/sections/gis/generation.md)),
+`gis/generate.hpp`: seeds (what was selected, in order: points or areas), a
+ground (`snap`, `trace`, `cover`, `cover_cost`; free space and a plan's grid
+today, streets later) and generators composed of them: `perimeter` (the cover
+of a padded hull), `path` (traced legs through the stops in order), `loop`. A
+plan's grid is now a full ground: a path is a staircase along its lines, a
+perimeter is whole cells with holes filled (`cells_outline`). The ground
+follows snap.
+
+**Stored the Void Core way** (`domain/generated.hpp`): vertices and box, so it
+never needs the ground again, plus a recipe: `made_by`, `ground`, and a link to
+each seed, `stop-N` for a path (the order in the relation's label: a weight is
+a magnitude, a place in a sequence is not) and `around` for a perimeter.
+Links, not a field of names, because names follow titles and Core repoints
+links on a rename and drops them on a removal. *Regenerate* reads the recipe
+back and runs it again. `map generate` compiles through the same code headless.
+Generation is split into `prepare` (reads the database), `make` (pure, may run
+on a worker) and `finish`, so long work goes behind the busy bar (past 200,000
+units of a ground's work).
+
+**Interactions** ([interactions](/concepts/sections/gis/interactions.md)),
+`gis/relate.hpp`: distance, proper crossings, the length two lines run
+together, containment; named with the OGC/DE-9IM words. Derived on demand,
+never stored, and not Core bindings (nothing should *happen* because two paths
+cross; and a binding per pair would be quadratic). A path gives its tags to
+what lies within its `reach` and meets the shapes and paths it touches.
+
+**Paths on the canvas:** a `path` kind, drawn as a line on the desktop, the
+phone and the PNG, edited by its points (no closing edge; it keeps two); a box
+selection joins nearest-first so its order means something.
+
+**Q131 answered:** the `.miga` keeps a **ground ledger** (sources: file,
+provider, address, date, hash; chunks with their use; the preload set) while
+the tiles stay a rebuildable cache; counts are config tier, written at save.
+**Q132 answered:** credit OpenStreetMap everywhere; the PNG now stamps it on
+every Earth picture. **Web export:** paths are left out of the website's map,
+and the Actions panel says *"Complex features of the map are currently
+unsupported for web export."* New: Q133 (a path through an area: centre or
+edge), Q134 (should a generated shape follow its seeds).
+
+**Found on the way:** `domain/naming.hpp` used `temper::` without including it,
+relying on whoever included it first; it includes it now.
+
+**Measured in the window:** three markers shift-selected on the test floor with
+snap on, *Generate path through them*: the path stepped along the grid
+(`5,6;5,26;19,26;19,32;16,32`), linked `stop-1` apples, `stop-2` milk, `stop-3`
+bread, in one batch, and showed point handles on its open edges only.
+
+**Tests:** `gis_smoke` 17 more (free and grid paths, a loop, perimeters on both
+grounds, `cover_cost`, a ring of cells with its hole filled, crossings, a shared
+run, near, within and contains, metres per degree); `spine_smoke` a path made
+by `map generate` through Core, its recipe read back in the order chosen,
+regenerated after a stop moved, and its reach giving a tag 14 m away and not a
+kilometre away.
+
+**Not done:** streets (the importer, the ledger, the test extracts), Allomone's
+relation predicates, a loop on the menu, and anything on the website.
+
+
+# GitHub issues read; capabilities declared on node kinds (2026-11-14, evening)
+
+The author: *"let's read some submitted issues from our GitHub page, and begin
+work there."* Three open issues, all from one client:
+
+- **#1** (opening a large database froze the window) and **#2** (a database two
+  orders of magnitude past the documented scale: values on edges, the Data tab,
+  determinate progress, a stale comment) were worked on 2026-10-24 to 25 and
+  shipped in 0.2.3: open and save on a worker with a determinate bar, the Data
+  tab drawn O(visible), the bundle five times faster, the measures
+  investigation, the comment corrected. Never answered on GitHub. Replies are
+  drafted for the author to approve; nothing is posted. Still synchronous from
+  #1: *New database*, joining a shared database, publishing.
+- **#3** (filed today): run the stock application with a whole workflow (a
+  catalogue, a queue of scanned barcodes, a label printer) carried in one
+  `.miga`, across four layers. The author chose to start with Hormiga's own:
+  capabilities as data.
+
+**Built** ([capabilities](/concepts/platform/antfarm/capabilities.md), "Built"):
+decision A5, leaned in the redesign and never built. Every v2 kind carries an
+`answers` list (what it does when asked, what it needs, what leaves the
+device, whether it waits for a publish), registered with its glyph as
+`hints.answers`; a catalogue of seven questions (`host-file`, `publish-site`,
+`keep-copy`, `import-rows`, `send-newsletter`, `lookup-product`,
+`print-label`); two **planned** kinds named for #3 (*Product lookup*, *Label
+printer*), placeable and configurable, with no code answering them yet;
+`farm kinds --answers <cap>` and `farm capabilities`. `farm_smoke` checks them.
+
+**Corrected:** the capabilities page claimed glyph declarations travel in the
+state document, so a `.miga` would carry what its Antfarm can answer. Measured:
+the Antfarm's kinds are *registered* by the binary and not stored in the file;
+only a database's own *declared* kinds travel, and a declaration shadows a
+registration (Void Core, glyph.md), so declaring built-ins into files would let
+an old file override a newer Hormiga. What travels is the nodes and their
+settings, which is what #3 asks for.
+
+**For the author:** Q135 (a step that changes the database: Allomone stays
+derive-only and *proposes*, lean), Q136 (a window as data: a `panel` rune in
+Hormiga first, lean), Q137 (ship the label printer and the product lookup in
+the stock binary, lean yes).
+
+**Also:** the client's handle is now in the local private-terms list, which the
+October work had not done.
+
+
+# The application as data: the shell, screens, and devices (2026-11-15)
+
+The author, after reading issue #3's plan: *"the hormiga application itself, the
+layout of the tabs, the tabs it has, etc, should be able to be modifiable. New
+tabs and functionalities should be modifiable and those modifications should be
+able to store themselves in a miga file. It's not just the database that's
+being loaded anymore, but the configuration of the application itself."* And:
+*"We shouldn't have specific stuff for printers or label printers ... give
+clients the tools to implement the functionality themselves ... hardware
+communication should be what we offer ... Drivers, connecting to other
+devices, and sending data somewhere to do an action (like printing), would be
+something for the ant farm as well."* No GitHub replies: *"just build something
+good, quality, and working."*
+
+**Asked and decided:** new tabs are a **Builder document kind, `screen`**
+(over a separate tab editor or data only), and the **database carries a
+default layout while a person's arrangement stays theirs** until they save it
+to the database. Design: [the application as data](/concepts/platform/shell.md).
+
+**Removed:** the planned *Product lookup* and *Label printer* kinds and their
+two capabilities, added the day before for issue #3 (Q137 answered: no).
+
+**Built:**
+- **The shell** (`domain/shell.hpp`, `app/shell_app.cpp`): `shell.tabs` (order,
+  which start closed, a screen's title), `shell.layout` (ImGui's docking text,
+  windows and docking sections only) and `shell.id`, all config, so they travel
+  in the `.miga`. A built-in tab can be reordered or start closed, never
+  removed. A device applies a database's default once per `shell.id`, recorded
+  in a section of its own `imgui.ini` (a settings handler), decided only after
+  the first frame has read that file, and loaded between frames. The dock
+  seeds in the database's tab order, and reseeds when `shell move` runs or a
+  database with an order but no saved layout first opens here. *Windows > Save
+  this layout to the database* and *Use the database's layout*; `shell`,
+  `shell move|hide|show|title`, `shell save-layout`, `shell use-layout`.
+- **Screens** (`ui/screens.cpp`): a document whose `document` rune says
+  `kind: screen` is drawn live as a dockable tab named by its title.
+  `ui_list` (the one search grammar, columns, a clipper), `ui_form` (the
+  selection's fields, each edit a `set`), `ui_input` (Enter runs its action
+  with `{{input}}` and keeps focus for the next scan) and `ui_button` (shows its
+  lines on hover) are Builder blocks under *Screen*. Content blocks draw as
+  text; anything else says it is not shown in a tab yet.
+- **Actions** (`domain/actions.hpp`): console lines with `{{input}}`,
+  `{{selected}}`, `{{selected.<field>}}`, `{{new}}`, `{{today}}`. A value is
+  always one argument quoted by Void Core's rule (`maiz::arg`); a name goes in
+  bare only when command-safe; an unknown or unfillable placeholder refuses the
+  whole action. Commands run in the data mantle as one batch; verb lines run as
+  verbs.
+- **Devices** (`platform/device_link.*`): the Antfarm's `device` kind (TCP;
+  address, port, line ending, a Void Hammer model, placement) answers
+  `send-to-device`; `effect send <node> <text>` queues the bytes, moved once a
+  frame through Void Hammer's non-blocking `Tcp` (by Void Maiz's forwarding
+  header), with a report and anything the device answered.
+- Screens are kept out of what publishes: the conversion of the old Antfarm
+  format, the seed's choice of a website, and Allomone's `published`.
+
+**Found on the way:** `domain/generated.hpp` (2026-11-14) quoted a label with
+backslash escapes inside double quotes; Void Core's tokenizer has none there,
+so a label with a quote would have been stored wrong. It and every new
+command now use `maiz::arg`, the one rule (SPEC §6.1).
+
+**Measured in the window:** a screen built by commands appeared as a tab; typing
+*Ana O'Brien* made the contact in one batch; selecting her filled the form;
+editing the email wrote it; *Mark done* tagged her and not Ben; a button running
+`effect send printer {{selected.display_name}}` against a device node at a
+local stand-in listener delivered exactly `Ben\r\n` and reported *"sent 5 bytes
+to 127.0.0.1:9911; it answered: OK"*.
+
+**Two devices, one database:** on the first, `shell move screen:counter 1`,
+`shell hide notes`, `shell save-layout`; the database opened on a second (a
+folder with no `imgui.ini`) arrived with Counter first and Notes closed, and the
+second device recorded the layout's id in its own `imgui.ini`, so its own
+rearranging is kept. **Two things found doing it:** ImGui orders a rebuilt tab
+bar by each window's `DockOrder`, and `DockBuilderDockWindow` resets it, so the
+database's order is written after docking; and `config set` keeps its argument
+as text, so a value written as a JSON string comes back wrapped twice and is
+unwrapped on reading (the layout must stay one command line).
+
+**Tests:** `screen_smoke` (an action's values through a real Void Core: quotes,
+an apostrophe, a backslash and a newline followed by `rm ana`, stored exactly
+and nothing else ran; the refusals; the shell's tabs and their round trip),
+`device_smoke` (a loopback device received exactly the bytes and answered; a
+dead port fails plainly), `farm_smoke` (`device` answers `send-to-device`).
+`app.hpp`'s budget rose by the entry points (`tools/find_long.py`).
+
+**Not done:** screens on the phone; `ask` over HTTP mapped onto fields; UDP,
+Bluetooth LE and serial; device names looked up; a Hammer model filling a
+node's port; `ui_list` over the store rather than what is loaded.

@@ -58,6 +58,11 @@ Read in this order the first time:
   One application set up for different kinds of work: an outreach
   organization, a grocery store, a smart home, a volunteer organization, a D&D
   campaign. A workspace is where a database starts, not a mode: one data model.
+- [The application as data](/concepts/platform/shell.md) — **2026-11-15.** A
+  `.miga` carries the application: its tabs, their order, a default layout, and
+  *screens*, tabs a client builds in the Builder from lists, forms, inputs and
+  buttons whose actions are console lines. Devices are reached through the
+  Antfarm's general `device` node.
 - [Identity](/concepts/platform/identity.md) — **opened 2026-08-27.** Who is
   making a change: the admin profile, the signed-in identity, and the contact.
   Three different things that a conventional design would collapse into one

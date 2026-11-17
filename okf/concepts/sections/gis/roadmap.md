@@ -20,7 +20,10 @@ E = Earth only ([worlds](/concepts/sections/gis/worlds.md)).
 | ✅ | a continuous-zoom viewport | E | `view.hpp`; mercator only |
 | ✅ | one containment test (rectangle, ellipse) | U | `domain/bestow.hpp` |
 | ✅ | the viewport over a flat world | U | `SlippyView::flat`, 2026-10-06, `gis_smoke` |
-| ⬜ | point-in-polygon | U | with polygons (Q102) |
+| ✅ | point-in-polygon, hulls, dashes, grid snap | U | `polygon.hpp`, 2026-11-14 |
+| ⬜ | the ground: one graph per canvas, and snap, trace, blocks, perimeter on it | U | [ground](/concepts/sections/gis/ground.md); streets need an imported extract (E); a plan's grid is built (U) |
+| ✅ | one generation system: seeds, grounds (free, grid), generators (perimeter, path, loop) | U | `generate.hpp`, [generation](/concepts/sections/gis/generation.md), 2026-11-14 |
+| ✅ | relations between drawn things (DE-9IM names), measured, never stored | U | `relate.hpp`, [interactions](/concepts/sections/gis/interactions.md) |
 | ⬜ | georeferencing: control points → a transform | A | the first piece of the map builder; unlocks GPS on a floor plan |
 | ⬜ | formats: GeoJSON / GPX in and out | E (A through a transform) | import as a holiday, export as a render |
 
@@ -43,7 +46,16 @@ E = Earth only ([worlds](/concepts/sections/gis/worlds.md)).
 | 🔨 | the phone's location, accuracy circle, follow | A | built; the system prompt and a real fix are unwitnessed |
 | ⬜ | ghosted layers of other visible layers on the phone | U | desktop has them |
 | ⬜ | share a map picture from the phone | U | needs the platform's share intent |
-| ⬜ | polygons, drawn by tapping corners (Q102) | U | never by crosshair |
+| ✅ | polygons on the desktop: click corners, edit by handles | U | 2026-11-14; drawn on every surface |
+| ✅ | perimeters (a dashed outline that gives as an area does) | U | 2026-11-14 |
+| ✅ | several shapes selected; a menu for them; *Generate perimeter*, *Generate path* | U | 2026-11-14; on the grid when snap is on |
+| ✅ | paths: drawn, edited by their points, giving tags within their reach | U | 2026-11-14 |
+| ✅ | a generated shape's recipe (ordered links) and *Regenerate* | U | 2026-11-14 |
+| ⬜ | Allomone predicates over relations (`on-path`, `crosses`, `shares`, `within`) | U | [interactions](/concepts/sections/gis/interactions.md) |
+| ⬜ | complex map features on the website (paths; polygons seen in a browser) | E | unsupported for now, by the author's choice |
+| ✅ | snap to a plan's grid, off by default | U | 2026-11-14 |
+| ⬜ | snap to streets, polygons that follow streets, street-aware perimeters | E | [ground](/concepts/sections/gis/ground.md), after *Load street data…* |
+| ⬜ | polygons drawn on the phone | U | never by crosshair; after the author uses the phone's map |
 | ⬜ | clustering on the desktop | U | the phone has it |
 | ⬜ | a continuous zoom on the desktop | E | `view.hpp` is ready for it |
 | ⬜ | live containment highlight before a region's tag is applied | U | territory, 2026-07-24 |
@@ -70,6 +82,9 @@ E = Earth only ([worlds](/concepts/sections/gis/worlds.md)).
 |---|---|---|---|
 | ✅ | online tiles with a disk cache; Android's HTTP on a phone | E | OSM, CARTO |
 | ⬜ | offline areas for field work | E | not from OSM's servers (their policy); an extract or vector tiles |
+| ⬜ | street data from an imported OSM extract (*Load street data…*) | E | the author's choice, 2026-11-14: a file, no network; [ground](/concepts/sections/gis/ground.md) |
+| ⬜ | the ground ledger in the `.miga`: sources, chunks and their use, the preload set | E | Q131's answer |
+| ⬜ | test extracts of the places on [roads](/concepts/sections/gis/roads.md) | E | with the importer |
 | ⬜ | geocoding (an address to a point), opt-in | E | an Antfarm holiday |
 | ⬜ | weather and external conditions as a layer (T3) | E | |
 | ⬜ | anchored image worlds (a floor plan, a site map) | A | see worlds, "what an anchored world would take" |
