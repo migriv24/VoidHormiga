@@ -7615,3 +7615,29 @@ protocol are otherwise untouched, so 0.2.7 syncs with 0.2.6.
 Every sibling was already pushed (Void Maiz, Void Palabra, Void Core, Void
 Hammer, Void Allomone at `origin/main`), so nothing goes upstream first.
 `mago doctor`'s one error and three warnings are in other projects.
+
+## 0.2.7 shipped (2026-11-17)
+
+- **Commits `b5ab46e` (the work) and `9caf131` (the version), tag `v0.2.7`.**
+  66/66 tests passed here at 0.2.7, `reduce_conformance` excluded as before.
+  CI passed on Windows and Linux. **Its macOS job never ran:** *"The job was
+  not acquired by Runner of type hosted even after multiple attempts"*, with
+  GitHub's notice of capacity limits on macOS arm64 runners. That is not a test
+  result.
+- **Runners:** linux-x64 and macos-x64 built. macos-arm64 was cancelled again on
+  the retired `macos-14` image (0.2.6 shipped); the `macos-15` edit still waits
+  for a token with `workflow` scope.
+- **Windows installer:** `mago stage`, then `makensis`. Its script equals 0.2.6's
+  with versions and dates masked; Void Core's DLL is byte-identical.
+  `25b63e07…`, 17,619,756 bytes. The staged CLI reports `Void Hormiga 0.2.7`.
+- **APK:** version code 207, the Hormiga key (certificate `37d0ee24…`), so it
+  installs over 0.2.6. `f42f998d…`.
+- **Feed:** the Linux archive was downloaded before `mago feed --artifacts`. Its
+  digest `1c7413bd…` equals the runner's own, and both feed artifacts hash to
+  what the feed says and match its `bytes`.
+- **Live:** 12 assets, as in 0.2.6. `releases/latest/download/void-updates.json`
+  says `latest 0.2.7`, and the stable installer, APK and Linux URLs serve the
+  files above.
+
+**Not done:** 0.2.7 on a phone; screens on the phone; a database's layout
+applied on a second real machine (it was checked on two folders of this one).
