@@ -7711,3 +7711,30 @@ counter-clockwise fill) and one behavior change: **a shape with `rings`, opened
 in 0.2.7 or earlier, shows only its main outline**; its other rings stay in the
 file. The sync protocol is untouched, so 0.3.0 syncs with 0.2.7. Every sibling
 was already pushed.
+
+## 0.3.0 shipped (2026-11-17)
+
+- **Commits `4b0ae93` (the work) and `597ee1c` (the version), tag `v0.3.0`.**
+  66/66 tests passed here at 0.3.0, `reduce_conformance` excluded as before.
+  CI passed on Windows, Linux **and macOS** (its job ran this time).
+- **Runners:** linux-x64 and macos-x64 built; macos-arm64 cancelled again on the
+  retired `macos-14` image (the `macos-15` edit still waits for a token with
+  `workflow` scope).
+- **Windows installer:** `mago stage`, then `makensis`. Its script equals 0.2.7's
+  with versions and dates masked; Void Core's DLL is byte-identical.
+  `3a2231d2…`, 17,664,571 bytes. The staged CLI reports `Void Hormiga 0.3.0`.
+- **APK:** version code 300, the Hormiga key (certificate `37d0ee24…`), so it
+  installs over 0.2.7. `7b7b08d6…`.
+- **Feed:** the Linux archive was downloaded before `mago feed --artifacts`; its
+  digest `44e8444e…` equals the runner's own, and both feed artifacts hash to
+  what the feed says and match its `bytes`. (A first `mago feed` run from the
+  wrong folder wrote an empty feed; it was re-run before upload. Run it from
+  Void Mago's root.)
+- **Live:** 12 assets. `releases/latest/download/void-updates.json` says
+  `latest 0.3.0`, and the stable installer, APK and Linux URLs serve the files
+  above.
+- **A stray `members.json`** (this machine's own member record) appeared at the
+  repository root during the 0.3.0 test run. It was not committed and was moved
+  out; what wrote it is not known yet.
+
+**Not done:** 0.3.0 on a phone; a GeoJSON importer; `gis_smoke`'s 72 s.
