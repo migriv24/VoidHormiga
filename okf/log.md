@@ -7930,3 +7930,28 @@ release block: `compatible` (the `.miga` format and the sync protocol are
 unchanged), eleven adds, two behavior changes (saving means the `.miga`; the
 working files moved). Released with Void Maiz (`ListSelect`) and Void Rancho
 (`rancho/authority.hpp`) pushed first: the runners clone both.
+
+## 0.4.0 shipped (2026-11-18)
+
+- **Commits `48bd36e` (the work) and `46b6007` (the version), tag `v0.4.0`.**
+  Void Maiz (`423f8f5`, ListSelect) and Void Rancho (`c73524f`, authority, with
+  its working tree as found since 2026-11-03; `.github/` left out, which this
+  machine's token cannot push) were pushed first. 67/67 here.
+- **Caught before shipping:** the first installer staged the 0.3.0 binaries
+  (the version was bumped in `CMakeLists.txt` without a rebuild; the staged CLI
+  said `Void Hormiga 0.3.0`). Rebuilt, restaged and recompiled; both binaries
+  inside report 0.4.0. **Check the staged CLI's version every release.**
+- **CI:** Windows and Linux passed; macOS failed in Void Maiz's `select_smoke`,
+  because ImGui's macOS behaviour makes the contract's Ctrl the Cmd key. The test
+  now asks for the same keys everywhere (Void Maiz `10d76a2`); the app was right.
+- **Runners:** linux-x64 and macos-x64 built; macos-arm64 cancelled (the retired
+  `macos-14` image, unchanged).
+- **Windows installer:** `fdb590ab…`, 17,769,918 bytes; its script equals 0.3.0's
+  but for the comment naming Void Allomone 0.1.1; Void Core's DLL byte-identical.
+- **APK:** version code 400, the Hormiga key (`37d0ee24…`). `fcbbbd45…`.
+- **Feed:** the Linux archive (`478b3e4e…`, the runner's own digest) downloaded
+  before `mago feed`, run from Void Mago's root; both artifacts match.
+- **Live:** 12 assets; `latest 0.4.0`; the stable installer, APK and Linux URLs
+  serve the files above.
+
+**Not done:** 0.4.0 on a phone; the start with no database run by a person.
