@@ -3,7 +3,7 @@
   "name": "voidhormiga",
   "display_name": "Void Hormiga",
   "kind": "application",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "license": "MIT",
   "repository": "https://github.com/migriv24/VoidHormiga",
   "description": "The outreach organization's application: people, events, images and resources as tagged runes, composed into newsletters and static websites as snapping content blocks.",
@@ -43,13 +43,13 @@
     {
       "name": "voidallomone",
       "kind": "runtime",
-      "version": "*",
+      "version": ">=0.1.1",
       "sibling": "../VoidAllomone",
       "repository": "https://github.com/migriv24/VoidAllomone",
       "cmake_var": "VOIDALLOMONE_ROOT",
       "link": "static",
       "via": "voidmaiz",
-      "note": "the rules language; reached through Void Maiz's forwarding headers under the maiz:: names"
+      "note": "the rules language; reached through Void Maiz's forwarding headers under the maiz:: names. The floor is 0.1.1 because the Allomone tab reads `settled_by == \"tiebreak\"` (a tie decided by order, surfaced as such): an older engine says \"strength\" for those cells, which our explanation would read as one rule beating another on merit."
     },
     {
       "name": "voidpalabra",
@@ -260,28 +260,38 @@
   "platforms_note": "`platforms` is a SHIPPING RECORD - what has been built, run by a person and handed to somebody - not a claim about what compiles. Void Hormiga 0.1.0 shipped for windows-x64 on 2026-09-08 and that is the only entry this array has earned. What COMPILES is broader and is measured rather than asserted: .github/workflows/ci.yml builds the library, the CLI, the GUI and the tests on windows-latest, macos-latest and ubuntu-latest. The distinction is Void Maiz's, adopted here the day they stated it (their platforms_note, 2026-09-08), and it is load-bearing rather than pedantic - no runner has a display, so CI cannot witness a window opening, and `it ran there` for a GUI means a person watched it. The download page states all three platforms and says `no build yet` on two of the cards; this field is what that sentence is true because of. An entry moves in here when somebody has looked at a screen. linux-x64 moved in on 2026-09-15: the author ran the Linux archive on a Linux machine and built newsletters and websites, used the map and the rest of the application, and reported it working as well as on Windows (file dialogs aside, fixed the same day).",
   "_release_note": "The `release` block is what turns an update prompt from \"a new version is available\" into something worth reading -- Void Mago asked for it on 2026-09-04 and the update client renders every field of it. `behavior_changes` is specifically the category a version number cannot express and a dependency resolver structurally cannot see: nothing broke, no signature moved, and somebody's data is quietly different.",
   "release": {
-    "version": "0.3.0",
-    "previous": "0.2.7",
+    "version": "0.4.0",
+    "previous": "0.3.0",
     "change": "compatible",
-    "date": "2026-11-17",
-    "summary": "large map shapes stay fast, and one shape can have holes and separate parts",
+    "date": "2026-11-18",
+    "summary": "the .miga is the file you work in, and every list selects the same way",
     "adds": [
-      "The map and its Inspector stay fast with large imported shapes (thousands of corners). Selecting a large shape no longer freezes the window",
-      "A map shape can have holes and separate parts: one district with islands inside it and pieces apart from it is one shape, with no seam lines",
-      "A selected shape with many corners shows a handle only where corners are spaced apart on screen; zoom in to reach the rest",
-      "Exporting a map as a picture is much faster for large shapes",
-      "Positions on the map are saved to about 1 cm. They were rounded to as much as 11 m, and moving one corner of a large shape rounded all of its corners",
-      "A polygon drawn counter-clockwise no longer fills its notches"
+      "Hormiga works directly on the .miga you open. Its working files are kept out of sight in your user folder and rebuilt from the .miga if they are ever lost, so nothing appears beside the .miga and the window title names it",
+      "Ctrl+S and File > Save save the .miga itself, and closing the window saves it when it has changes. Unsaved changes from a session that ended unexpectedly are still there when you reopen that file",
+      "Every list selects the same way: click, Ctrl+click to add or remove one, Shift+click for a run, Ctrl+A for all, Escape or a click on empty space to clear, a drag across rows to select them, and Delete to delete what is selected (one undo brings it back). This includes the map's Overview, the Data list and cards, Notes, the calendar, the Antfarm and lists on tabs a database adds",
+      "Several selected show one panel everywhere: how many, which, tag them all, delete them all",
+      "On the map, Ctrl+click adds or removes like Shift+click, and dragging with the middle mouse button pans the map and the connections view",
+      "A button on a database's own tab that acts on the selected item now acts on each selected item, as one undo",
+      "The Allomone tab lists values decided by a tie (two equally sharp rules disagreeing) and lets you keep one by decision",
+      "Settings can no longer be hidden by a database, so there is always a way back to every other tab",
+      "Faster: checks of a path's reach no longer take seconds, and the Notes and Allomone tabs no longer redo work every frame",
+      "A .miga written without its data or its default document opens cleanly instead of showing errors in every tab",
+      "On a touch screen, a tap on a row of the Data list selects it"
     ],
     "behavior_changes": [
       {
-        "what": "A SHAPE WITH HOLES OR SEPARATE PARTS, OPENED IN 0.2.7 OR EARLIER, SHOWS ONLY ITS MAIN OUTLINE. Its holes and other parts are kept in the file and come back in 0.3.0.",
-        "who_is_affected": "Anyone who shares a database between devices that are not all on 0.3.0, once a shape with holes or parts is in it."
+        "what": "SAVING MEANS THE .miga. Ctrl+S used to save only the working files; it now saves the .miga (with a backup first), and closing the window saves it too. A database not yet saved asks where to save it.",
+        "who_is_affected": "Everyone who uses Ctrl+S or closes the window with changes."
+      },
+      {
+        "what": "THE WORKING FILES MOVED out of the folder Hormiga was started in (demo-org.json, demo-org.db, org.miga, assets) into your user folder. On the first start, an old working copy there is kept as a .miga among the backups, and the saved credentials are carried over. Backups and the window layout now live in your user folder too; exports go to an exports folder beside the .miga.",
+        "who_is_affected": "Anyone who looked for those files beside where Hormiga was started, or kept credentials there."
       }
     ],
     "read_more": [
-      "okf/concepts/sections/gis/territory.md",
-      "okf/discussion/2026-11-17-the-boundary-that-froze-the-inspector.md"
+      "okf/concepts/platform/miga-format.md",
+      "okf/concepts/platform/conventions.md",
+      "okf/concepts/platform/app-as-program.md"
     ]
   },
   "update": {
