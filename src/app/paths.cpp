@@ -30,6 +30,7 @@
 #include "platform/app_settings.hpp" // the recent databases
 #include "app/app_internal.hpp"
 #include "app/paths.hpp"
+#include "rancho/authority.hpp" // keep_root: backups are a keepsake
 
 #include "json.hpp" // the machine-local note beside the working copy
 
@@ -67,6 +68,31 @@ std::filesystem::path resolve_data_dir(maiz::Core& core,
 std::filesystem::path HormigaApp::data_dir(const std::string& name) const {
     auto it = data_dir_cache.find(name);
     if (it != data_dir_cache.end()) return it->second;
+    /* A WORKING COPY THAT IS A CACHE OF THE .miga (2026-11-18, app/working_copy.cpp)
+     * keeps what is rebuilt from the .miga (assets, tiles, site, documents) in the
+     * cache. What is not: BACKUPS are a keepsake, per person, outside the cache;
+     * EXPORTS are made for a person to find, beside the .miga; and a relative
+     * `paths.<name>` is relative to the .miga's folder, never to a cache. */
+    if (!wc.cache.empty()) {
+        const std::filesystem::path anchor =
+            cur_miga.empty() ? std::filesystem::path() : std::filesystem::path(cur_miga).parent_path();
+        std::filesystem::path p;
+        std::string v = const_cast<maiz::Core&>(core).dispatch("config get paths." + name).data;
+        if (v.size() >= 2 && v.front() == '"' && v.back() == '"') v = v.substr(1, v.size() - 2);
+        if (v == "null") v.clear();
+        if (!v.empty()) {
+            const std::filesystem::path given(v);
+            p = given.is_absolute() ? given : (anchor.empty() ? base_dir : anchor) / given;
+        } else if (name == "backups") {
+            p = rancho::keep_root("hormiga") / "backups";
+        } else if (name == "exports" && !anchor.empty()) {
+            p = anchor / "exports";
+        } else {
+            p = base_dir / name;
+        }
+        data_dir_cache.emplace(name, p);
+        return p;
+    }
     const std::filesystem::path p = hormiga::resolve_data_dir(
         const_cast<maiz::Core&>(core), base_dir, name);
     data_dir_cache.emplace(name, p);

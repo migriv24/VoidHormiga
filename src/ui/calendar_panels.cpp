@@ -20,7 +20,10 @@ const char* kWeekday[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"
 
 void HormigaApp::draw_calendar_panels() {
     // one entry as a row: its colour, its title, and (when timed) its time
-    auto entry_row = [&](const CalEntry& e, bool selected) {
+    /* every list selects the same way (Void Maiz's ListSelect; okf/concepts/
+     * platform/conventions.md): a row is item `idx` of the list `ls` */
+    auto entry_row = [&](const CalEntry& e, maiz::ListSelect& ls, long idx) {
+        const bool selected = ls.item(idx, e.node->name);
         const maiz::SceneNode& n = *e.node;
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float h = ImGui::GetTextLineHeight();
@@ -31,7 +34,8 @@ void HormigaApp::draw_calendar_panels() {
         if (!t.empty()) label = clock_label(t, clock24) + "   " + label;
         if (e.incident) label += "   (incident)";
         ImGui::PushID(n.name.c_str());
-        const bool hit = ImGui::Selectable(label.c_str(), selected);
+        ImGui::Selectable(label.c_str(), selected);
+        const bool hit = maiz::ListSelect::plain_click();
         ImGui::PopID();
         return hit;
     };
@@ -40,7 +44,9 @@ void HormigaApp::draw_calendar_panels() {
     {
         const maiz::SceneNode* sn =
             ed.selection.size() == 1 ? scene.find(ed.selection.front()) : nullptr;
-        if (sn) {
+        if (draw_many_selected()) {
+            // several: the shared panel (ui/widgets.cpp)
+        } else if (sn) {
             ImGui::TextUnformatted(rune_title(*sn).c_str());
             ImGui::SameLine();
             ImGui::TextDisabled("(%s)", hormiga::kinds::current().title(sn->glyph).c_str());
@@ -61,8 +67,11 @@ void HormigaApp::draw_calendar_panels() {
             ImGui::Separator();
             const auto es = cal_entries_on(cal_year, cal_month, cal_day);
             if (es.empty()) ImGui::TextDisabled("nothing on this day");
-            for (const auto& e : es)
-                if (entry_row(e, false)) ed.selection = {e.node->name};
+            maiz::ListSelect ls;
+            ls.begin(ed.selection, (long)es.size(), [&es](long i) { return es[(size_t)i].node->name; },
+                     {.scope_rect = true});
+            for (long i = 0; i < (long)es.size(); ++i) entry_row(es[(size_t)i], ls, i);
+            ls.end();
             ImGui::Spacing();
             if (ImGui::Button(ICON_FA_PLUS "  New event on this day", ImVec2(-FLT_MIN, 0)))
                 cal_new_dated("event", cal_year, cal_month, cal_day);
@@ -80,24 +89,34 @@ void HormigaApp::draw_calendar_panels() {
     {
         int y, m, d;
         cal_today(y, m, d);
+        struct Day {
+            int y, m, d, i;
+            std::vector<CalEntry> es;
+        };
+        std::vector<Day> days; // first gathered, so the list has one order for Shift+click
+        std::vector<std::string> names;
         int shown = 0;
         for (int i = 0; i < 62 && shown < 80; ++i) {
-            const auto es = cal_entries_on(y, m, d);
+            auto es = cal_entries_on(y, m, d);
             if (!es.empty()) {
-                char hdr[64];
-                std::snprintf(hdr, sizeof hdr, "%s, %s %d%s", kWeekday[cal_dow(y, m, d)], kMonthNames[m - 1], d,
-                              i == 0 ? "  - today" : i == 1 ? "  - tomorrow" : "");
-                ImGui::SeparatorText(hdr);
-                for (const auto& e : es) {
-                    if (entry_row(e, ed.selected(e.node->name))) {
-                        ed.selection = {e.node->name};
-                        cal_year = y, cal_month = m, cal_day = d; // the grid follows
-                    }
-                    ++shown;
-                }
+                for (const auto& e : es) names.push_back(e.node->name);
+                shown += (int)es.size();
+                days.push_back({y, m, d, i, std::move(es)});
             }
             cal_add_days(y, m, d, 1);
         }
+        maiz::ListSelect ls;
+        ls.begin(ed.selection, (long)names.size(), [&names](long k) { return names[(size_t)k]; });
+        long idx = 0;
+        for (const Day& dd : days) {
+            char hdr[64];
+            std::snprintf(hdr, sizeof hdr, "%s, %s %d%s", kWeekday[cal_dow(dd.y, dd.m, dd.d)], kMonthNames[dd.m - 1],
+                          dd.d, dd.i == 0 ? "  - today" : dd.i == 1 ? "  - tomorrow" : "");
+            ImGui::SeparatorText(hdr);
+            for (const auto& e : dd.es)
+                if (entry_row(e, ls, idx++)) cal_year = dd.y, cal_month = dd.m, cal_day = dd.d; // the grid follows
+        }
+        ls.end();
         if (!shown) maiz::dim_wrapped("Nothing in the next two months that the filter shows.");
     }
     ImGui::End();

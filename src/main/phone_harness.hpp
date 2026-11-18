@@ -19,6 +19,7 @@
  *   type TEXT      characters into whatever field is active
  *   key enter|back|escape|backspace
  *   shift down|up  hold or let go of Shift (a desktop's shift-click and shift-drag)
+ *   ctrl down|up   hold or let go of Ctrl (Ctrl+click; with `key a`, select all; with `key s`, save)
  *   wait N         N frames
  *   shot PATH      a PNG of the whole screen, safe area included
  *   perf N         over the next N frames: frame times (median, 95th, worst) to stderr

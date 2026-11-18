@@ -1271,7 +1271,7 @@ void HormigaApp::draw_map_section() {
                 ImGuiMouseCursor_ResizeNESW, ImGuiMouseCursor_ResizeEW,   ImGuiMouseCursor_ResizeAll};
             ImGui::SetMouseCursor(cur[reshaping ? map_shape_edit_idx : over]);
         }
-        if (left_press && over >= 0 && !ImGui::GetIO().KeyShift) {
+        if (left_press && over >= 0 && !ImGui::GetIO().KeyShift && !ImGui::GetIO().KeyCtrl) {
             map_shape_edit = sel_shape->name;
             map_shape_edit_idx = over;
             map_shape_mn0 = map_shape_live_mn = sel_mn;
@@ -1351,7 +1351,9 @@ void HormigaApp::draw_map_section() {
 
     // ── input: shift = SELECT (box on empty, toggle on a marker); plain drag on
     // a marker MOVES it; plain drag on empty PANS; wheel zooms (author #2) ────
-    bool shift = ImGui::GetIO().KeyShift;
+    /* Ctrl is Shift here (2026-11-17, okf/concepts/platform/conventions.md): on a
+     * canvas both add to or take from the selection, as in a drawing program. */
+    bool shift = ImGui::GetIO().KeyShift || ImGui::GetIO().KeyCtrl;
     if (!was_drawing && left_press) {
         if (hit && !shift) {
             map_drag_marker = hit->name; // plain press on a marker → move it
@@ -1484,6 +1486,22 @@ void HormigaApp::draw_map_section() {
         } else if (d.x != 0 || d.y != 0) {
             map_cam.x = (float)lon_of(cx - d.x / 256.0, z);
             map_cam.y = (float)lat_of(cy - d.y / 256.0, z);
+        }
+    }
+    /* THE MIDDLE BUTTON PANS EVERY CANVAS (2026-11-17, conventions.md), whatever
+     * tool is in hand: a drawing tool's left drag stays the tool's. */
+    {
+        static bool mid_pan = false;
+        if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) mid_pan = true;
+        if (mid_pan && ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+            const ImVec2 d = ImGui::GetIO().MouseDelta;
+            if (d.x != 0 || d.y != 0) {
+                map_cam.x = (float)lon_of(cx - d.x / 256.0, z);
+                map_cam.y = (float)lat_of(cy - d.y / 256.0, z);
+            }
+        } else if (mid_pan) {
+            mid_pan = false;
+            pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
         }
     }
     if (map_box_active) { // the selection rectangle

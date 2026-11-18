@@ -55,23 +55,7 @@ void HormigaApp::draw_map_panels() {
         const bool have_sel = !ed.selection.empty() && scene.find(ed.selection.front());
         if (ed.selection.size() > 1) {
         // ── MULTI-SELECT (box/shift, author #2): act on the whole set at once ─
-        if (ImGui::SmallButton("deselect all")) ed.selection.clear();
-        ImGui::SameLine();
-        ImGui::Text("%d selected", (int)ed.selection.size());
-        ImGui::Separator();
-        for (const auto& nm : ed.selection) {
-            const maiz::SceneNode* n = scene.find(nm);
-            ImGui::BulletText("%s%s", nm.c_str(),
-                              n ? ("  (" + n->glyph + ")").c_str() : "");
-        }
-        ImGui::Spacing();
-        ImGui::TextDisabled("apply to all selected:");
-        // tag every selected entity (the reusable tag picker, #4)
-        std::string t = tag_picker("##multitag", tag_pick_input, sizeof tag_pick_input,
-                                   "tag all selected...");
-        if (!t.empty())
-            for (const auto& nm : ed.selection)
-                pending_cmds.push_back("tag " + nm + " +" + t);
+        draw_many_selected(); // the panel every tab shows for several (ui/widgets.cpp); the map's own below
         // color/icon submenus via a small popup
         if (ImGui::Button("Color all")) ImGui::OpenPopup("##multicolor");
         ImGui::SameLine();
@@ -84,11 +68,6 @@ void HormigaApp::draw_map_panels() {
                 if (fld == "geo") c.push_back("tag " + nm + " -located");
                 pending_cmds.push_back(maiz::compile_commit(c));
             }
-            ed.selection.clear();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Delete all")) {
-            for (const auto& nm : ed.selection) pending_cmds.push_back("rm " + nm);
             ed.selection.clear();
         }
         if (ImGui::BeginPopup("##multicolor")) {
@@ -194,6 +173,7 @@ void HormigaApp::draw_map_panels() {
             std::string title;
         };
         static std::map<std::string, std::vector<Row>> by_kind;
+        static std::vector<const Row*> flat; // every row in drawing order: the list's order for Shift+click
         static std::string by_kind_key;
         static int total = 0;
         if (const std::string key = std::to_string(model_gen) + "|" + map_canvas + "|" + active_channel + "|" + map_filter;
@@ -215,27 +195,41 @@ void HormigaApp::draw_map_panels() {
             }
             for (auto& [kind, rows] : by_kind)
                 std::sort(rows.begin(), rows.end(), [](const Row& x, const Row& y) { return x.title < y.title; });
+            flat.clear();
+            for (const auto& [kind, rows] : by_kind)
+                for (const auto& r : rows) flat.push_back(&r);
         }
         ImGui::SeparatorText(("On the map (" + std::to_string(total) + ")").c_str());
         if (map_filter[0]) ImGui::TextDisabled("filtered: %s", map_filter);
         ImGui::BeginChild("##overview-list");
+        /* EVERY LIST SELECTS THE SAME WAY (2026-11-17, the author: "in the
+         * overview tab for the map, i should be able to shift select multiple
+         * things. or ctrl select"): Void Maiz's ListSelect over every group, in
+         * one order, so a Shift+click runs across groups. A plain click still
+         * goes to the place; Delete deletes what is selected, undoably. */
+        maiz::ListSelect ls;
+        ls.begin(ed.selection, (long)flat.size(), [](long i) { return flat[(size_t)i]->n->name; });
+        long base = 0;
         for (auto& [kind, rows] : by_kind) {
             const std::string kname = kind == "mapshape" ? "Regions" : kind == "refpoint" ? "Reference points"
                                                                                     : humanize(kind);
             const std::string head = std::string(glyph_icon(kind)) + "  " + kname + "  (" +
                                      std::to_string(rows.size()) + ")";
-            if (!ImGui::CollapsingHeader((head + "##" + kind).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) continue;
+            if (!ImGui::CollapsingHeader((head + "##" + kind).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                base += (long)rows.size();
+                continue;
+            }
             ImGuiListClipper clip;
             clip.Begin((int)rows.size());
             while (clip.Step())
                 for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i) {
                     const Row& r = rows[(size_t)i];
                     ImGui::PushID(r.n->name.c_str());
-                    if (ImGui::Selectable(r.title.c_str(), ed.selected(r.n->name))) {
+                    ImGui::Selectable(r.title.c_str(), ls.item(base + i, r.n->name));
+                    if (maiz::ListSelect::plain_click()) { // one place: go to it
                         map_cam.x = (float)r.lo;
                         map_cam.y = (float)r.la;
                         pending_cmds.push_back(maiz::compile_camera(map_cam, hormiga::canvas::camera_key("view.map.camera", map_canvas)));
-                        ed.selection = {r.n->name};
                     }
                     if (kind != "mapshape" && kind != "refpoint" && ImGui::BeginPopupContextItem("##rowmenu")) {
                         marker_menu_items(*r.n); // the same menu as the marker on the map
@@ -243,7 +237,10 @@ void HormigaApp::draw_map_panels() {
                     }
                     ImGui::PopID();
                 }
+            base += (long)rows.size();
         }
+        ls.end();
+        delete_selected_on_key(); // Delete: what is selected, one batch (conventions.md)
         if (total == 0)
             ImGui::TextDisabled(map_filter[0] ? "nothing on the map matches the filter"
                                               : "nothing placed yet - right-click the map");

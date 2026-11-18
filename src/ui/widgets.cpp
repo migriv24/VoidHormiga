@@ -875,3 +875,56 @@ void HormigaApp::draw_save_check(const maiz::SceneNode& n, std::vector<std::stri
         line(info, ICON_FA_CIRCLE_INFO, "This database is not shared with anyone");
     }
 }
+
+/* SEVERAL SELECTED, ONE PANEL (2026-11-17; okf/concepts/platform/conventions.md).
+ * Every list selects several the same way, so every detail pane shows several
+ * the same way: how many, which, and what can be done to all of them at once,
+ * each as ONE batch (one undo). A tab adds its own actions under it (the map:
+ * colour, icon, remove from the map). False, and nothing drawn, when fewer
+ * than two are selected. */
+bool HormigaApp::draw_many_selected() {
+    if (ed.selection.size() < 2) return false;
+    ImGui::Text("%d selected", (int)ed.selection.size());
+    ImGui::SameLine();
+    if (ImGui::SmallButton("deselect all")) ed.selection.clear();
+    if (ed.selection.empty()) return true;
+    ImGui::BeginChild("##many", ImVec2(0, std::min(140.0f, ImGui::GetTextLineHeightWithSpacing() * (float)(ed.selection.size() + 1))),
+                      ImGuiChildFlags_Borders);
+    ImGuiListClipper clip;
+    clip.Begin((int)ed.selection.size());
+    while (clip.Step())
+        for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i) {
+            const std::string& nm = ed.selection[(size_t)i];
+            const maiz::SceneNode* n = scene.find(nm);
+            ImGui::BulletText("%s%s", n ? rune_title(*n).c_str() : nm.c_str(), n ? ("  (" + n->glyph + ")").c_str() : "");
+        }
+    ImGui::EndChild();
+    ImGui::TextDisabled("to all of them:");
+    static char tag_buf[64] = {};
+    if (const std::string t = tag_picker("##manytag", tag_buf, sizeof tag_buf, "tag all selected..."); !t.empty()) {
+        std::vector<std::string> c;
+        for (const auto& nm : ed.selection) c.push_back("tag " + nm + " +" + t);
+        pending_cmds.push_back(maiz::compile_commit(c));
+    }
+    if (ImGui::Button(ICON_FA_TRASH "  Delete all selected")) {
+        std::vector<std::string> c;
+        for (const auto& nm : ed.selection) c.push_back("rm " + nm);
+        pending_cmds.push_back(maiz::compile_commit(c));
+        toast("deleted " + std::to_string(c.size()) + " - undo brings them back");
+        ed.selection.clear();
+    }
+    return true;
+}
+
+/* Delete, after a list (conventions.md): what is selected, as one batch, so one
+ * undo brings it all back. Only when that list's window has focus and nothing is
+ * being typed (maiz::ListSelect::delete_pressed). */
+void HormigaApp::delete_selected_on_key() {
+    if (!maiz::ListSelect::delete_pressed() || ed.selection.empty()) return;
+    std::vector<std::string> gone;
+    for (const auto& t : ed.selection)
+        if (scene.find(t)) gone.push_back("rm " + t);
+    if (!gone.empty()) pending_cmds.push_back(maiz::compile_commit(gone));
+    toast("deleted " + std::to_string(gone.size()) + " - undo brings them back");
+    ed.selection.clear();
+}

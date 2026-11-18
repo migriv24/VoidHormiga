@@ -7738,3 +7738,195 @@ was already pushed.
   out; what wrote it is not known yet.
 
 **Not done:** 0.3.0 on a phone; a GeoJSON importer; `gis_smoke`'s 72 s.
+
+
+# Every list selects the same way, and the application as a program (2026-11-17)
+
+The author: *"in the overview tab for the map, i should be able to shift select
+multiple things. or ctrl select individual things and such. UI/UX features like
+that should just come with any sort of list view that exists ... build systems
+such that they are in every list thing ... we should definitely have some rules
+and lines to hold ... we need to consider how UI changes effect the MOBILE app
+... it comes down to our programming language of allomone ... What even ARE its
+scripts? what does allomone need to work on to really work?"*
+
+**Built (phase 0 of the plan below):**
+
+- **The contract is Void Maiz's** (`../VoidMaiz/okf/concepts/conventions.md`,
+  recorded in its log): `maiz::ListSelect` over ImGui's multi-select, and the
+  model rule `voidmaiz/select.hpp`. Tested there headless, clicks included.
+- **Every selection list in Hormiga is on it** ([conventions](/concepts/platform/conventions.md)):
+  the Data list and cards, the map's Overview (one order across its groups),
+  Notes, the calendar's day list and Upcoming, the Antfarm's connections, and a
+  screen's `ui_list`. Delete deletes the selection as one batch
+  (`delete_selected_on_key`); several selected show one shared panel
+  (`draw_many_selected`: how many, which, tag all, delete all) in Data, the
+  map's and the calendar's inspectors.
+- **Screens keep the contract with no setting**, and a button whose action
+  names `{{selected}}` runs once per selected rune in one batch.
+- **Canvases:** Ctrl is Shift on the map; the middle button pans the map and
+  the connections view; the connections view clears on a click on nothing and on
+  Escape, and Ctrl/Shift toggles a node.
+- **A line held:** Settings can never be hidden (`shell hide settings` is
+  refused, and a stored list that hides it is overruled), so there is always a
+  way back.
+- **The harness** takes `ctrl down|up` and `key delete|a`.
+
+**Found:** the Data list's rows were a selectable with the picture and name laid
+over it as items (`AllowOverlap`). Such a selectable is pressed only if it was
+hovered the frame before, which a tap never is, so on a touch screen (and in the
+harness) the converted row never selected. Each row is now one plain
+selectable with its contents painted on it.
+
+**Checked in the window:** a fresh database with six contacts: a click selected
+one; Shift+click four, with the shared panel; Ctrl+click took one away; a click
+on empty space cleared; Ctrl+A selected six; Escape cleared; Delete removed five
+as one batch and one undo brought all five back. The map's Overview: a click,
+Shift+click across three, Ctrl+click adding a fourth, Ctrl+click removing one,
+and the Inspector showing the three with the map's own actions.
+
+**Investigated:** [the application as a program](/concepts/platform/app-as-program.md):
+the lines a database cannot move (interaction, commands, built-in tabs, privacy,
+capabilities, quoting, a phone form for every component, per-person
+arrangement); every component's phone renderer, and editing from both at once;
+what an Allomone script is today (a rune, a set of rules, derive-only) and what
+it should become (rules, *views*, *plans*); plans as the write path (derived so
+the dry run is free, shown, scoped, budgeted, one batch, tested, never feeding
+each other until the effect graph allows, never writing scripts); Allomone as
+the language of every Void application, with Voidscript as the mechanism and a
+domain library per host; and what Allomone needs (plans, aggregates, name-to-id
+references, host context predicates, bounded evaluation, errors, tests as data).
+Phases 1–5 and Q138–Q141 (Q135 annotated). The asks to Void Allomone are
+drafted locally (`MESSAGE_FOR_VOIDALLOMONE_hormiga-plans-views-and-the-app-as-a-program-2026-11-17.md`),
+not posted.
+
+**Not done:** arrow-key navigation (needs ImGui keyboard navigation); the
+phone's long-press selection; screens on the phone (phase 1); a choice of what
+the wheel does on a node canvas (Q138).
+
+
+# Void Allomone 0.1.1 adopted: ties are called ties (2026-11-18)
+
+The author: *"allomone has updated, you should update accordingly."* Void
+Allomone 0.1.1 (2026-11-17, `2a0a8e3`) corrected the merge's accounts: a tie
+decided by content order says `tiebreak` (it said `strength`, or `agreement`
+under `Any`), recency across maps is order-free, a lone `Tally` source is
+`arithmetic`, and conformance vectors pin it. No derived value changed. Its log
+names our gap: *"`explain()` sends `tiebreak` to its default branch ... a
+`tiebreak` branch is theirs to add."*
+
+- `explain()` has the branch; the Allomone tab lists ties under *Decided by a
+  tie* with *keep this*; `allomone_smoke` §10b pins it; `void.json` requires
+  `>=0.1.1` ([adoption](/concepts/allomone/adoption.md), "Void Allomone 0.1.1").
+- Nothing else here reads `settled_by`, verdicts or the interaction graph's
+  outcomes (checked in Hormiga and Void Maiz).
+- Our answer to its VA4 (keep a within-source tie a labelled tie, not ⊤) is
+  added to the drafted message
+  (`MESSAGE_FOR_VOIDALLOMONE_hormiga-plans-views-and-the-app-as-a-program-2026-11-17.md`),
+  still not posted.
+
+
+# The .miga is in charge: the working copy is its cache (2026-11-18)
+
+The author, on finding a `demo-org.json` beside every database: *"i would want the
+miga to be the main thing people are opening. we can keep json stuff for loading
+purposes ... the miga file is what will be shared and moved around ... If for some
+reason the json file gets deleted, oh well ... this structure on how files are
+stored and what is really in charge belongs to void rancho to set a foundation
+first. so i give you permission to edit void rancho, and then continue
+development."*
+
+**Found first:** the working copy was the folder the app was STARTED in
+(`base_dir = current_path()`), shared by every database: a double-clicked `.miga`
+was unpacked there, beside whatever else was in it; every start loaded that
+folder's state and then opened the default database over it; edits reached the
+`.miga` only on *Save database*; and `org.miga` beside it was the credentials
+vault, not a database.
+
+**Void Rancho, first** (its log, 2026-11-18): [authority](/concepts/platform/miga-format.md)
+as a concept (four kinds of file, seven rules) and `rancho/authority.hpp`
+(per-user cache and keepsake roots, a cache per authority FILE found by an index,
+a note saying how cache and file stand, Save As by reassigning). Six promises
+tested; Rancho 12/12. It answers Rancho's open questions 16 and 17.
+
+**Hormiga, adopting it** (`app/working_copy.cpp`;
+[the format](/concepts/platform/miga-format.md), "The authority"):
+- a `.miga` is worked on in its own cache, chosen before init, so init loads it
+  and nothing is opened twice; a new or stale cache is filled from the file; a
+  cache holding last session's unsaved edits is used, and says so;
+- File > Open switches cache (the lock, the SQLite mirror, the store and the
+  saver let go and are taken again); leaving a database keeps its edits in its
+  cache; a database with no file is packed into the backups when left;
+- Ctrl+S and File > Save write the `.miga`; closing writes it when it has
+  changes; Save As makes the cache the new file's; edits during a background
+  save keep the cache marked ahead;
+- the title names the `.miga`;
+- credentials and backups are keepsakes (`rancho::keep_root`); exports go beside
+  the `.miga`; a relative `paths.<name>` is relative to the `.miga`'s folder;
+- the first start keeps an older launch-folder working copy among the backups,
+  takes its `.miga` as the default, and copies the old vault;
+- `--state`, the phone and a scripted run naming no `.miga` are unchanged.
+
+**Checked in the window**, with the cache and keepsake roots in a scratch folder:
+opened, two contacts added, closed: only the `.miga` beside the `.miga`, holding
+both; the cache `current`; a backup kept. Reopened from the cache; then with the
+cache deleted, from the `.miga`: both there each time. 67/67 here (the budget of
+`app.hpp` raised by four lines, `tools/find_long.py`).
+
+**Consumed:** Void Rancho's *the deed* (2026-11-06). Its two questions: *is
+`.miga` v4 a bale?* Yes: Hormiga's bale, and its database's authority, in its own
+form; a Rancho bale form would be offered, not imposed. *Whose id?* The `.miga`
+carries it (`sync.database`); a cache records it and is keyed by the file. Both
+answers are now Rancho's open questions 16 and 17. Its news (the deed, mantles by
+id, expectations) needed nothing of us. Folded here and deleted.
+
+**Not done:** `imgui.ini` still in the launch folder; the phone and the CLI on
+caches; relative pointers written after an open; a merge for a diverged cache;
+the start with no database not yet run in the harness.
+
+
+# Small things, before 0.4.0 (2026-11-18)
+
+The author: *"find some other things to fix up, then bump version, push, and
+release (dont waste a new release, find several small things you can do to give
+this new release some weight."*
+
+- **A path's reach took seconds; `gis_smoke` took 72 s.** `gis::shared_length`
+  sampled every segment every `tol`, and every caller passes 1e-9: L / 1e-9
+  samples, past an int's range, each tested against every segment of the other
+  shape. It ran wherever a path's reach is tested (`domain/bestow.hpp`) and in
+  the test of an area containing a line (20 s alone). Capped at 2,048 samples a
+  segment: right to 1/2,048 of each. `gis_smoke` 72 s → 0.06 s; the suite 80 s
+  → 45 s.
+- **A `.miga` without its data mantle, or its default document,** opened onto
+  "no such mantle" errors in every tab. It gets empty ones at open and at start
+  (`adopt_core`, `init`), as an older database gets its Allomone mantle.
+- **The window layout (`imgui.ini`) was written to whatever folder the app
+  started in.** In cache mode it is a keepsake (`rancho::keep_root`); one in the
+  launch folder is carried over once.
+- **"saved demo-org.json"** was still said on every save: the cache's name, the
+  one thing a person should not meet. A cache is now written without a word; the
+  `.miga`'s save says so.
+- **Projected every frame, now once per change:** the Notes tab projected the
+  whole Antfarm to read one setting (~5 ms a frame on a large database, the same
+  cost `share_settings_now` was written to remove in 2026-10), and three
+  Allomone panes projected the rules mantle (one cached helper,
+  `allo_scene_now`).
+- **The harness** takes `key s` (with `ctrl down`: save).
+
+**Checked in the window** (scratch cache and keepsake folders): a `.miga` with
+no data mantle opened with no errors; a contact added and Ctrl+S: one toast, the
+`.miga`'s; `imgui.ini` and `credentials.vault` among the keepsakes, nothing in
+the launch folder but the harness's own files, nothing beside the `.miga` but
+it. 67/67.
+
+
+# 0.4.0: the .miga is the file you work in, and every list selects the same way (2026-11-18)
+
+A minor version: how every database is opened and saved changed (the working
+copy is a cache of the `.miga`), with the list contract, Allomone 0.1.1's ties,
+the line that keeps Settings visible, and the small fixes above. `void.json`'s
+release block: `compatible` (the `.miga` format and the sync protocol are
+unchanged), eleven adds, two behavior changes (saving means the `.miga`; the
+working files moved). Released with Void Maiz (`ListSelect`) and Void Rancho
+(`rancho/authority.hpp`) pushed first: the runners clone both.

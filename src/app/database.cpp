@@ -224,6 +224,26 @@ static void back_up_bundle(const fs::path& bundle, const fs::path& backups) {
     for (size_t i = 0; i + 10 < mine.size(); ++i) fs::remove(mine[i], ec);
 }
 
+/* A working copy's edits that no .miga will get, kept as a .miga among the
+ * backups (a keepsake, Rancho's authority.md): a database with no file being
+ * left, or a cache that is a store being reopened from its file. */
+void HormigaApp::wc_keep_aside(const char* why) {
+    do_save();
+    std::error_code ec;
+    const fs::path dir = rancho::keep_root("hormiga") / "backups";
+    fs::create_directories(dir, ec);
+    char stamp[32];
+    const std::time_t t = std::time(nullptr);
+    std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", std::localtime(&t));
+    const std::string stem = cur_miga.empty() ? std::string("unsaved") : fs::path(cur_miga).stem().string();
+    const fs::path keep = dir / (stem + "-" + why + "-" + stamp + ".miga");
+    const std::string state = core.export_state();
+    const auto r = wstore.active() ? pack_store(store_file(), base_dir, assets_dir(), referenced_files(state), keep, stem)
+                                   : hormiga::miga::pack(state, base_dir, keep, stem, assets_dir(), referenced_files(state));
+    if (r.ok) toast("your unsaved changes were kept in " + keep.string());
+    else toast("could not keep the unsaved changes: " + r.error, true);
+}
+
 static std::string saved_line(const fs::path& out, const hormiga::miga::PackResult& r) {
     return "saved database " + out.filename().string() + " (" + std::to_string(r.assets) +
            " assets, " + std::to_string(r.bytes / 1024) + " KB)";
@@ -240,6 +260,7 @@ void HormigaApp::save_database(bool background) {
         return;
     }
     do_save(); // flush the live state into the working .db first
+    const unsigned long at = wc.edits; // what the .miga will hold: the cache as it stands now
     if (wstore.active()) { // the database is the store: packed from it, never from what is loaded
         const std::string state = core.export_state();
         const auto extra = referenced_files(state);
@@ -249,18 +270,18 @@ void HormigaApp::save_database(bool background) {
         if (!background) {
             back_up_bundle(out, backups);
             auto r = pack_store(from, base, adir, extra, out, name);
-            if (r.ok) toast(saved_line(out, r));
+            if (r.ok) toast(saved_line(out, r)), wc_matched(at);
             else toast("save database failed: " + r.error, true);
             return;
         }
-        run_busy_async("Saving database…", [this, extra, out, base, adir, backups, from,
-                                             name](const hormiga::BusyReport& report) -> hormiga::BusyFinish {
+        run_busy_async("Saving database…", [this, extra, out, base, adir, backups, from, name,
+                                             at](const hormiga::BusyReport& report) -> hormiga::BusyFinish {
             report(0.0, "Keeping a backup");
             back_up_bundle(out, backups);
             auto r = std::make_shared<hormiga::miga::PackResult>(pack_store(
                 from, base, adir, extra, out, name, [&](double f, const char* ph) { report(0.05 + 0.95 * f, ph); }));
-            return [this, r, out] {
-                if (r->ok) toast(saved_line(out, *r));
+            return [this, r, out, at] {
+                if (r->ok) toast(saved_line(out, *r)), wc_matched(at);
                 else toast("save database failed: " + r->error, true);
             };
         });
@@ -274,19 +295,19 @@ void HormigaApp::save_database(bool background) {
     if (!background) {
         back_up_bundle(out, backups);
         auto r = hormiga::miga::pack(state, base, out, out.stem().string(), adir, extra);
-        if (r.ok) toast(saved_line(out, r));
+        if (r.ok) toast(saved_line(out, r)), wc_matched(at);
         else toast("save database failed: " + r.error, true);
         return;
     }
-    run_busy_async("Saving database…", [this, state, extra, out, base, adir, backups](const hormiga::BusyReport& report)
+    run_busy_async("Saving database…", [this, state, extra, out, base, adir, backups, at](const hormiga::BusyReport& report)
                                            -> hormiga::BusyFinish {
         report(0.0, "Keeping a backup");
         back_up_bundle(out, backups);
         auto r = std::make_shared<hormiga::miga::PackResult>(hormiga::miga::pack(
             state, base, out, out.stem().string(), adir, extra, {},
             [&](double f, const char* phase) { report(0.05 + 0.95 * f, phase); }));
-        return [this, r, out] {
-            if (r->ok) toast(saved_line(out, *r));
+        return [this, r, out, at] {
+            if (r->ok) toast(saved_line(out, *r)), wc_matched(at);
             else toast("save database failed: " + r->error, true);
         };
     });
@@ -308,16 +329,22 @@ void HormigaApp::save_database_as(const std::string& path, bool background) {
     const bool copying = !cur_miga.empty() && !(fs::exists(out, sec) && fs::equivalent(out, cur_miga, sec));
     const std::string was = copying ? LanRuntime::fork_identity(*this) : std::string();
     do_save(); // flush live state into the working .db first
+    const unsigned long at = wc.edits;
     const std::string state = core.export_state();
     const auto extra = referenced_files(state);
     // what happens once the file exists (or does not), on the main thread either way
-    const auto landed = [this, out, was](const hormiga::miga::PackResult& r) {
+    const auto landed = [this, out, was, at](const hormiga::miga::PackResult& r) {
         // no new file, no new database: the open one is still the original, with its identity
         if (!r.ok && !was.empty()) core.dispatch("config set sync.database " + was);
         if (r.ok) {
             cur_miga = out.string();
             remember_bundle(cur_miga);
             LanRuntime::claim_home(*this);
+            if (!wc.cache.empty()) { // this cache is the new file's now (Rancho's reassign: nothing moves)
+                rancho::reassign(wc.cache, out, rancho::cache_root("hormiga"));
+                wc_matched(at);
+            }
+            wc_title();
             toast("saved database to " + out.string() + " (" + std::to_string(r.assets) +
                   " assets, " + std::to_string(r.bytes / 1024) + " KB)");
         } else {
@@ -357,6 +384,8 @@ void HormigaApp::save_database_as(const std::string& path, bool background) {
  * .miga). This is the multi-database "new project" entry the app was missing. */
 void HormigaApp::new_database(const std::string& workspace) {
     LanRuntime::leave_database(*this); // out of the shared one: a new database is nobody's yet
+    if (!wc.filling) wc_new(); // a cache of its own (at start, wc_boot_unsaved made it already)
+    wc.filling = false;
     reset_working_copy(true); // a fresh db owns nothing from the old working copy
     retire_store_copy(); // and its working copy is a whole document again
     core = maiz::Core(); // a fresh, empty state (no demo data)
@@ -415,6 +444,7 @@ void HormigaApp::new_database(const std::string& workspace) {
     cur_page.clear();
     ed.selection.clear();
     do_save();             // flush the fresh structure into the working .db
+    wc_title();
     if (!phone) // a phone names it first
         toast(workspace.empty() || workspace == "organization"
                   ? "new database (empty) - use 'Save database as...' to name & place it"
@@ -516,6 +546,13 @@ void HormigaApp::adopt_core(maiz::Core&& fresh, const hormiga::Prepared* in_stor
         retire_store_copy();
     }
     install_host();
+    /* A DATABASE WITHOUT ITS DATA MANTLE (2026-11-18): one written by a script or
+     * an older tool opened onto "no such mantle" errors in every tab. It gets an
+     * empty one, as an older database gets its Allomone mantle. */
+    for (const char* m : {kDataMantle, "issue-demo"}) // and the document every section opens into
+        if (core.dispatch("mantles --json").data.find("\"" + std::string(m) + "\"") == std::string::npos)
+            core.dispatch(std::string("mantle new ") + m);
+    core.dispatch(std::string("use ") + kDataMantle);
     channel_fields.clear();
     reproject();
     read_view_config();
@@ -554,6 +591,9 @@ void HormigaApp::finish_open(const std::string& path, const hormiga::miga::OpenR
     remember_bundle(path);
     LanRuntime::claim_home(*this); // a copy of a database this device knows is a database of its own
     load_secrets(); // an imgbb.key beside THIS bundle
+    wc.filling = false;
+    wc_matched(wc.edits); // the cache holds the .miga as it is
+    wc_title();
     /* What the open cost, phase by phase, in the log: issue #2 promised
      * measurements, and this is where anybody's come from. */
     char line[200];
@@ -597,6 +637,9 @@ void HormigaApp::finish_open_store(const std::string& path, const hormiga::Prepa
     remember_bundle(path);
     LanRuntime::claim_home(*this);
     load_secrets();
+    wc.filling = false;
+    wc_matched(wc.edits); // the cache holds the .miga as it is
+    wc_title();
     log.push_back({"info", "open", "the store's phases: " + p.timings});
     char line[240];
     std::snprintf(line, sizeof line,
@@ -612,6 +655,7 @@ void HormigaApp::finish_open_store(const std::string& path, const hormiga::Prepa
 
 void HormigaApp::open_database(const std::string& path) {
     LanRuntime::leave_database(*this); // the one open now stops being this device's shared one
+    if (!wc.filling && wc_open(path)) return; // its own cache, as it stands: nothing to unpack
     reset_working_copy(false);         // the caches; the assets folder is mirrored by the open
     if (opens_into_store(path)) {
         const auto t0 = std::chrono::steady_clock::now();
@@ -647,6 +691,10 @@ void HormigaApp::run_busy_async(const std::string& label, hormiga::BusyWork work
 
 void HormigaApp::begin_open_database(const std::string& path, std::function<void()> then) {
     LanRuntime::leave_database(*this);
+    if (!wc.filling && wc_open(path)) { // its own cache, as it stands: nothing to unpack
+        if (then) then();
+        return;
+    }
     reset_working_copy(false);
     const fs::path base = base_dir, adir = assets_dir();
     if (opens_into_store(path)) {

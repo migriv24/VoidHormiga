@@ -102,6 +102,8 @@ inline std::vector<Tab> effective(const std::vector<Tab>& stored, const std::vec
                         (is_screen(t.id) && std::find(screens.begin(), screens.end(), screen_mantle(t.id)) != screens.end());
         if (ok && !has(t.id)) out.push_back(t);
     }
+    for (auto& t : out) // Settings always opens: the way back to every other tab (app-as-program.md, line 3)
+        if (t.id == "settings") t.hidden = false;
     for (const auto& b : builtins())
         if (!has(b.id)) out.push_back({b.id, "", false});
     for (const auto& m : screens)
@@ -150,6 +152,8 @@ inline VerbResult verb(const std::vector<std::string>& a, const std::vector<Tab>
         next.erase(it);
         next.insert(next.begin() + (n - 1), t);
     } else if (v == "hide" || v == "show") {
+        if (v == "hide" && it->id == "settings")
+            return fail("Settings always opens: it is the way back to every other tab");
         it->hidden = v == "hide";
     } else if (v == "title") {
         if (!is_screen(it->id)) return fail("a built-in tab keeps its own name");

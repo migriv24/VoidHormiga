@@ -465,13 +465,31 @@ void HormigaApp::draw_physics_view(float /*body_h*/) {
     if (hit >= 0 && !dragged && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && hovered &&
         ImGui::GetIO().MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < 16.0f) {
         const std::uint32_t id = v.cut[(std::size_t)hit];
-        if (t.is_node(id)) ed.selection = {m.graph.names[id]};
-        else if (!open_group(v, id))
+        if (t.is_node(id)) { // Ctrl or Shift adds or takes one (conventions.md); a plain click is that one
+            const ImGuiIO& io = ImGui::GetIO();
+            if (io.KeyCtrl || io.KeyShift) ed.toggle(m.graph.names[id]);
+            else ed.selection = {m.graph.names[id]};
+        } else if (!open_group(v, id))
             toast("that group has too many parts to show at once: close another group first", true);
     }
     if (hit >= 0 && hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
         const std::uint32_t p = t.parent[v.cut[(std::size_t)hit]];
         if (p != ov::Tree::kNone && v.open[p]) close_group(v, p);
+    }
+    if (hit < 0 && !dragged && hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
+        ImGui::GetIO().MouseDragMaxDistanceSqr[ImGuiMouseButton_Left] < 16.0f && !ImGui::GetIO().KeyCtrl &&
+        !ImGui::GetIO().KeyShift)
+        ed.selection.clear(); // clicked away: nothing selected (conventions.md)
+    if (hovered && ImGui::IsKeyPressed(ImGuiKey_Escape)) ed.selection.clear();
+    { // the middle button pans every canvas (conventions.md)
+        static bool mid_pan = false;
+        if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) mid_pan = true;
+        if (mid_pan && ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+            v.cam.x += ImGui::GetIO().MouseDelta.x;
+            v.cam.y += ImGui::GetIO().MouseDelta.y;
+        } else {
+            mid_pan = false;
+        }
     }
     if (hovered && ImGui::GetIO().MouseWheel != 0)
         v.zoom = std::clamp(v.zoom * (ImGui::GetIO().MouseWheel > 0 ? 1.15f : 0.87f), 0.05f, 4.0f);

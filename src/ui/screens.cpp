@@ -62,11 +62,24 @@ void HormigaApp::run_screen_action(const std::string& mantle, const std::string&
     const maiz::Scene* data = scene.mantle == kDataMantle ? &scene : nullptr;
     if (!data)
         if (auto it = scenes_idle.find(kDataMantle); it != scenes_idle.end()) data = &it->second;
-    if (const auto s = shellui.selected.find(mantle); s != shellui.selected.end() && data) cx.selected = data->find(s->second);
-    const auto c = hormiga::actions::compile(action, cx);
-    if (!c.ok()) {
-        toast(c.error, true);
-        return;
+    /* SEVERAL SELECTED (2026-11-17): every list selects several the same way,
+     * so an action that names {{selected}} runs once for each of them, all in
+     * the one batch (one undo). One that does not name it runs once. */
+    std::vector<const maiz::SceneNode*> targets;
+    if (const auto s = shellui.selected.find(mantle); s != shellui.selected.end() && data)
+        for (const auto& nm : s->second)
+            if (const maiz::SceneNode* n = data->find(nm)) targets.push_back(n);
+    const bool per_item = action.find("{{selected") != std::string::npos && targets.size() > 1;
+    if (!per_item) cx.selected = targets.empty() ? nullptr : targets.front();
+    hormiga::actions::Compiled c;
+    for (std::size_t k = 0; k < (per_item ? targets.size() : 1); ++k) {
+        if (per_item) cx.selected = targets[k];
+        auto one = hormiga::actions::compile(action, cx);
+        if (!one.ok()) {
+            toast(one.error, true);
+            return;
+        }
+        c.lines.insert(c.lines.end(), one.lines.begin(), one.lines.end());
     }
     const std::string prev = scene.mantle;
     pending_cmds.push_back(std::string("use ") + kDataMantle);
@@ -140,8 +153,8 @@ void HormigaApp::draw_screens() {
             ImGui::End();
             continue;
         }
-        std::string& sel = shellui.selected[m];
-        const maiz::SceneNode* sel_node = sel.empty() ? nullptr : data->find(sel);
+        std::vector<std::string>& sel = shellui.selected[m];
+        const maiz::SceneNode* sel_node = sel.size() == 1 ? data->find(sel.front()) : nullptr;
         if (comps.empty())
             maiz::dim_wrapped("This screen is empty. Build it in the Builder: a list, a form, an input and a button "
                               "are under Screen in the palette.");
@@ -189,6 +202,10 @@ void HormigaApp::draw_screens() {
                         if (limit > 0 && (int)rows.size() >= limit) break;
                     }
                     const int ncol = 1 + (int)cols.size();
+                    // a screen's list selects as every list does (okf/concepts/platform/conventions.md)
+                    maiz::ListSelect ls;
+                    ls.begin(sel, (long)rows.size(), [&rows](long k) { return rows[(size_t)k]->name; },
+                             {.scope_rect = true});
                     if (ImGui::BeginTable("##list", ncol,
                                           ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY |
                                               ImGuiTableFlags_Resizable,
@@ -204,9 +221,8 @@ void HormigaApp::draw_screens() {
                                 const maiz::SceneNode& n = *rows[(size_t)r];
                                 ImGui::TableNextRow();
                                 ImGui::TableNextColumn();
-                                if (ImGui::Selectable((rune_title(n) + "##" + n.name).c_str(), sel == n.name,
-                                                      ImGuiSelectableFlags_SpanAllColumns))
-                                    sel = n.name; // the screen's selection: forms and actions read it
+                                ImGui::Selectable((rune_title(n) + "##" + n.name).c_str(), ls.item(r, n.name),
+                                                  ImGuiSelectableFlags_SpanAllColumns); // forms and actions read it
                                 for (const auto& col : cols) {
                                     ImGui::TableNextColumn();
                                     ImGui::TextUnformatted(hormiga::temper::field_value(n, col.c_str()).c_str());
@@ -214,10 +230,14 @@ void HormigaApp::draw_screens() {
                             }
                         ImGui::EndTable();
                     }
-                    ImGui::TextDisabled("%d", (int)rows.size());
+                    ls.end();
+                    ImGui::TextDisabled(sel.size() > 1 ? "%d  (%d selected)" : "%d", (int)rows.size(), (int)sel.size());
                 } else if (c.glyph == "ui_form") {
                     if (!f("title_en").empty()) ImGui::SeparatorText(f("title_en").c_str());
-                    if (!sel_node) {
+                    if (sel.size() > 1) {
+                        ImGui::TextDisabled("%d selected: the form shows one at a time; a button acts on all of them",
+                                            (int)sel.size());
+                    } else if (!sel_node) {
                         ImGui::TextDisabled("select something in a list on this screen");
                     } else {
                         ImGui::TextDisabled("%s", rune_title(*sel_node).c_str());

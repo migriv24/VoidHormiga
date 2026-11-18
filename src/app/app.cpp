@@ -76,6 +76,11 @@ static bool claim_the_floor(const fs::path& state_file) {
     return true;
 }
 
+/* Moving the working copy (app/working_copy.cpp) lets go of the floor in one
+ * folder and takes it in the next. */
+void hormiga_release_floor() { g_floor.reset(); }
+bool hormiga_claim_floor(const fs::path& state_file) { return claim_the_floor(state_file); }
+
 fs::path HormigaApp::org_file() const { return base_dir / state_name; }
 /* The SQLite mirror is named after the document it mirrors. It was the literal
  * "demo-org.db", so pointing the app at `org_01.state.json` would have mirrored
@@ -87,7 +92,14 @@ fs::path HormigaApp::db_file() const {
     return base_dir / (fs::path(state_name).stem().string() + ".db");
 }
 fs::path HormigaApp::assets_dir() const { return data_dir("assets"); }
-fs::path HormigaApp::vault_path() const { return base_dir / "org.miga"; }
+/* The credentials are a KEEPSAKE (Void Rancho's authority.md): per person, never
+ * in a cache, never inside a .miga a person shares. Beside a working copy of its
+ * own (`--state`) they stay where they always were, `org.miga`, a name that is
+ * not a database despite its extension. */
+fs::path HormigaApp::vault_path() const {
+    if (wc.cache.empty()) return base_dir / "org.miga";
+    return rancho::keep_root("hormiga") / "credentials.vault";
+}
 
 /* Populate secrets from the unlocked vault if present, else the plaintext
  * imgbb.key (off-by-default encryption; security.md §2). */
@@ -1040,14 +1052,17 @@ maiz::Result HormigaApp::dispatch_and_reproject(const std::string& cmd_in) {
                     break;
                 }
             }
-            if (!reads_only) ++edits_since_save;
+            if (!reads_only) ++edits_since_save, wc_edited(); // the cache is ahead of its .miga
         }
     }
     return r;
 }
 
 void HormigaApp::do_save() {
-    if (dispatch_and_reproject("save").ok)
+    /* A working copy that is a cache of the .miga is written without a word: the
+     * person saves the .miga, and its cache's file name is not theirs to meet
+     * (2026-11-18). A working copy of its own still says where it went. */
+    if (dispatch_and_reproject("save").ok && wc.cache.empty())
         toast("saved " + org_file().filename().string());
 }
 
@@ -1175,7 +1190,8 @@ void HormigaApp::init() {
     farm::register_glyphs(core);
     hormiga::chambers::register_glyphs(core);
     core.dispatch("config set actor human:hormiga");
-    if (state.empty()) { // truly fresh: seed the shipped default (the Cat Colony)
+    if (state.empty() && !wc.filling) { // truly fresh: seed the shipped default (the Cat Colony); a cache
+                                        // being filled from its .miga starts empty instead (working_copy.cpp)
         for (const auto& cmd : hormiga::seed_cat_transcript()) core.dispatch(cmd);
         for (const auto& cmd : hormiga::seed_cat_issue_transcript()) core.dispatch(cmd);
         // The LEGACY example library is no longer seeded (2026-08-11): its tab
@@ -1219,6 +1235,10 @@ void HormigaApp::init() {
         if (core.dispatch("mantles --json").data.find("\"" + std::string(kAlloMantle) +
                                                       "\"") == std::string::npos)
             core.dispatch(std::string("mantle new ") + kAlloMantle);
+        // and the data mantle, for a database written without one (adopt_core says why)
+        for (const char* m : {kDataMantle, "issue-demo"}) // and the document every section opens into
+            if (core.dispatch("mantles --json").data.find("\"" + std::string(m) + "\"") == std::string::npos)
+                core.dispatch(std::string("mantle new ") + m);
         core.dispatch(std::string("use ") + kDataMantle); // leave data active
     }
 
@@ -1789,13 +1809,7 @@ void HormigaApp::init() {
      * The FOLDER is what disambiguates (every org's document is `<name>.json`
      * in a different place), so it leads, and the full path follows for the
      * case where two folders share a name. */
-    if (on_title) {
-        std::error_code tec;
-        const fs::path abs = fs::absolute(org_file(), tec);
-        on_title(tec ? std::string("Hormiga")
-                     : "Hormiga - " + abs.parent_path().filename().string() +
-                           " - " + abs.string());
-    }
+    wc_title(); // the .miga, when the working copy is its cache; else the document's folder
 
     /* LAST, AND ONLY WHERE A PERSON IS LOOKING. `updates_boot` reads a
      * preferences file and then either asks a question, starts a check, or does
@@ -1815,6 +1829,10 @@ void HormigaApp::init() {
 }
 
 void HormigaApp::shutdown() {
+    /* CLOSING SAVES THE .miga (2026-11-18): the person handles the .miga, so what
+     * they did is in it when the window closes. A database with no file yet stays
+     * in its cache, and is kept among the backups when it is left. */
+    if (!wc.cache.empty() && !cur_miga.empty() && wc.ahead) save_database(false);
     do_save();
     saver.flush(); // on disk before the floor is released
     for (const auto& r : saver.take_reports())
@@ -2453,13 +2471,16 @@ void HormigaApp::frame() {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Save", "Ctrl+S")) do_save();
+            if (ImGui::MenuItem("Save", "Ctrl+S")) { // the .miga, when the working copy is its cache
+                if (!wc.cache.empty()) save_database(!cur_miga.empty());
+                else do_save();
+            }
             // "Preview newsletter" left this menu (2026-09-15, the author: it "doesn't
             // belong there"). File is the database; the preview is the Builder's.
             ImGui::Separator();
             // ── the DATABASE bundle (.miga v3): the whole org, portable ──────
             ImGui::TextDisabled("%s", cur_miga.empty()
-                                    ? "database: (unsaved working copy)"
+                                    ? "database: (not saved to a file yet)"
                                     : ("database: " +
                                        fs::path(cur_miga).filename().string())
                                           .c_str());
@@ -2593,9 +2614,13 @@ void HormigaApp::frame() {
         LanRuntime::draw_presence_strip(*this); // who else is here, and you
         ImGui::EndMainMenuBar();
     }
-    // Ctrl+S saves the working copy; Ctrl+Shift+S saves the database bundle
+    /* Ctrl+S saves the working copy; Ctrl+Shift+S saves the database bundle. When
+     * the working copy is a cache of a .miga (2026-11-18), saving means the .miga,
+     * so Ctrl+S saves it, and a database with no file yet asks where. */
     if (io.KeyCtrl && !io.WantTextInput && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
-        if (io.KeyShift && !cur_miga.empty())
+        if (!wc.cache.empty() && !io.KeyShift)
+            save_database(!cur_miga.empty());
+        else if (io.KeyShift && !cur_miga.empty())
             run_busy("Saving database…", [this] { save_database(true); });
         else if (io.KeyShift)
             save_database(); // no file yet → its own Save-As dialog

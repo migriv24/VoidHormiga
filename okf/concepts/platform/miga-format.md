@@ -13,6 +13,62 @@ you switch between projects. This supersedes **v2** (a credentials-only vault),
 which is now **LEGACY**. v3 is a new format; the app reads v2 for migration and
 writes v3 going forward.
 
+# The authority: a person handles the .miga, and only the .miga (2026-11-18)
+
+The author: *"i would want the miga to be the main thing people are opening. we
+can keep json stuff for loading purposes. however, loading a 'demo org' json file
+would seem counter intuitive if the user had just opened a miga file ... the
+miga file is what will be shared and moved around ... If for some reason the json
+file gets deleted, oh well, we will deal with that. the miga file would be almost
+impossible to replace."* The foundation is Void Rancho's
+(`../VoidRancho/okf/concepts/authority.md`): four kinds of file.
+
+| kind | in Hormiga | where | lost |
+|---|---|---|---|
+| **authority** | the `.miga` | wherever the person puts it | the database |
+| **cache** | the working copy: `demo-org.json` (the state document), `demo-org.db` (its SQLite mirror), `<name>-store.db`, `assets/`, `tiles/`, `site/`, `documents/`, the journal, the lock, the machine note | `rancho::cache_root("hormiga")` (`%LOCALAPPDATA%\Void\hormiga\cache` on Windows), one folder per `.miga` FILE, with `cache.json` saying how it stands | rebuilt from the `.miga` |
+| **keepsake** | the credentials (`credentials.vault`), backups | `rancho::keep_root("hormiga")` | to this computer only |
+| **pointer** | exports (`exports/` beside the `.miga`), a relative `paths.<name>` (relative to the `.miga`'s folder), files a database names elsewhere | where they are | a region not loaded |
+
+**What a person sees** (app/working_copy.cpp):
+- **Opening a `.miga`** (a double-click, `--open`, File > Open, or Settings'
+  default at start) works in that file's own cache. If the cache matches the
+  file, it is used as it is, with nothing unpacked; if it is new or the file
+  changed since, the file is unpacked into it; if it holds edits from last time
+  that were never saved, they are there and the app says so.
+- **Saving means the `.miga`.** Ctrl+S and File > Save write it (with a backup
+  first, as Save database always did); closing the window writes it when it has
+  changes. A database with no file yet asks where (Save As), and until then
+  works in an `unsaved-` cache; Save As makes that cache the new file's.
+- **The window's title names the `.miga`**, never `demo-org.json`.
+- **Nothing is written beside the `.miga`** but what a person asks for (exports).
+- **Leaving a database loses nothing:** its cache keeps any unsaved edits, and
+  the next open of that file finds them. A database with no file being left is
+  packed into the backups.
+- **The first start with caches** keeps any working copy an older Hormiga left
+  in the launch folder as a `.miga` among the backups, takes its `.miga` as the
+  default if none is set, and copies the old `org.miga` (the credentials vault,
+  not a database despite its extension) to `credentials.vault`.
+
+**Unchanged:** `--state <file>` (a working copy of its own, for agents and the
+CLI), the phone, and a scripted harness run that names no `.miga` (so the
+harness can never open or save into a person's own default database).
+
+**Checked in the window** (cache and keepsake folders in a scratch place): a
+`.miga` opened, two contacts added, the window closed: the file beside the `.miga`
+was the `.miga` alone, now holding both; the cache's note said `current`; a backup
+was among the keepsakes. Reopened: both there, from the cache. The whole cache
+deleted and reopened: both there, from the `.miga`.
+
+**Not yet:** `imgui.ini` (the window layout) is still written to the launch
+folder; the phone and the CLI keep working copies of their own; a relative
+pointer written after an open (a `download.file` beside the `.miga`) still
+resolves against the cache unless it is bundled; a *diverged* cache (the file
+changed elsewhere after unsaved edits here) keeps the edits and warns, with no
+merge; the start with no database at all (the `unsaved-` cache and the clearing
+of older ones) is built but not yet run in the harness, which avoids Settings on
+purpose.
+
 # The mental model: a bundle and its working copy (git-shaped)
 
 The author's own framing: *"saving is basically a commit; sharing is a push."*

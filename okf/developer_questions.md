@@ -11,6 +11,41 @@ fold into concepts and clear from here.
 
 # Open
 
+- **Q138 — the mouse wheel on a canvas: zoom, or pan?** (Opened 2026-11-17,
+  [conventions](/concepts/platform/conventions.md).) The author: *"to pan over
+  a canvas like area, you should be able to use the mouse wheel."* Every canvas
+  today zooms on the wheel (the map, as web maps do; the node canvases; the
+  connections view) and now pans on a **middle-button drag** everywhere, which
+  may be what was meant. Design tools (Figma, Miro) instead **scroll to pan and
+  Ctrl+wheel (or a pinch) to zoom**. **Lean: keep wheel = zoom on the map**
+  (what every map does) **and make it a setting for the node canvases**, wheel
+  pans and Ctrl+wheel zooms there if the author wants the design-tool feel.
+  **What would change it:** the author meant the wheel itself, everywhere.
+
+- **Q139 — scripts that change data: plans.** (Opened 2026-11-17,
+  [the application as a program](/concepts/platform/app-as-program.md) §5;
+  refines Q135.) The author: *"it's scary to use allomone to actually transform
+  or modify data ... its seeming like that's something we're gonna need to
+  figure out now."* **Lean: Allomone gains a *plan* kind**: rules whose effects
+  are commands, derived like any rule (so the dry run is free), shown before
+  they apply, scoped to what they declare they write, budgeted, applied as one
+  batch with one undo and attributed to the script, carrying their own tests,
+  never feeding each other until the effect graph allows it, never writing
+  scripts. Built in Void Allomone (rule 4), adopted here by phase 3.
+
+- **Q140 — screens on the phone: by rule, or a second layout?** (Opened
+  2026-11-17, app-as-program §3.) **Lean: by rule.** Components are meanings
+  (a list, a form, an input, a button), each with a phone renderer; a screen's
+  rows become the phone's order and a list with its form becomes a list that
+  opens a sheet. A screen may hint (`phone.order`, `phone.hide`), never carry a
+  second layout, and a new component kind is accepted only with both renderers.
+
+- **Q141 — view scripts: a component's state from Allomone.** (Opened
+  2026-11-17, app-as-program §4.) Derive-only, so safe now: visible, enabled,
+  label, and a list's members as an Allomone condition instead of a search
+  string. **Lean: yes, as phase 2**, once Allomone can name the host's context
+  (`screen`, `selected`, `input`).
+
 - **Q135 — a workflow step that changes the database: Allomone, or beside
   it?** (Opened 2026-11-14, issue #3,
   [capabilities](/concepts/platform/antfarm/capabilities.md) "Issue #3".) A
@@ -26,6 +61,8 @@ fold into concepts and clear from here.
   command a person or a run is accountable for (rule 3). A call by capability id
   from a script is then a proposal of a call. **What would change the lean:** a
   workflow that must act with no person present and no run to attach it to.
+  *2026-11-17:* the author asked that changing data with Allomone be worked out
+  now. The proposal becomes a **plan** (Q139): the same lean, made concrete.
 
 - **Q133 — a path through an area: to its centre, or to its edge?** (Opened
   2026-11-14, [generation](/concepts/sections/gis/generation.md).) A path's stop

@@ -729,6 +729,19 @@ std::string explain(const maiz::MergedCell& cell) {
                                                           : cell.source) + ")";
     if (cell.settled_by == "agreement")
         return cell.value + " — every source agreed";
+    /* A TIE, DECIDED BY ORDER (Void Allomone 0.1.1): equal strength, different
+     * values, nothing sharper; the engine kept one by content (the smaller value
+     * within a script, the least source id under Any). Until 0.1.1 these cells
+     * said "strength", and this read "X, beating Y", which was false: X was not
+     * better, only first. */
+    if (cell.settled_by == "tiebreak" || cell.settled_by == "recency") {
+        std::string out = cell.value + " — " + label(w) +
+                          (cell.settled_by == "recency" ? ", the latest of equal-strength opinions"
+                                                        : ", by order: a tie nothing was sharper than");
+        for (const maiz::CellVerdict& v : vs)
+            if (v.lost || v.verdict == "tiebreak") out += "; " + label(v) + " said " + v.value;
+        return out;
+    }
     std::string out = cell.value + " — " + label(w);
     for (const maiz::CellVerdict& v : vs)
         if (v.lost) { out += ", beating " + label(v) + "=" + v.value; break; }

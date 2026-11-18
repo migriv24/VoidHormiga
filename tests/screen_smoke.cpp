@@ -113,6 +113,12 @@ int main() {
         CHECK(sh::verb({"shell", "title", "screen:counter", "Till", "one"}, eff).tabs[0].title == "Till one");
         CHECK(!sh::verb({"shell", "hide", "nowhere"}, eff).ok);
         CHECK(sh::verb({"shell", "hide", "notes"}, eff).tabs[1].hidden);
+        // a line held: Settings always opens, by the verb and against a stored list that says otherwise
+        CHECK(!sh::verb({"shell", "hide", "settings"}, eff).ok);
+        const auto forced = sh::effective(sh::parse(R"([{"id":"settings","hidden":true}])"), {});
+        bool settings_open = false;
+        for (const auto& t : forced) settings_open = settings_open || (t.id == "settings" && !t.hidden);
+        CHECK(settings_open);
     }
 
     if (failures) std::printf("%d failure(s)\n", failures);

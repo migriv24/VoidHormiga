@@ -63,6 +63,15 @@ Read in this order the first time:
   *screens*, tabs a client builds in the Builder from lists, forms, inputs and
   buttons whose actions are console lines. Devices are reached through the
   Antfarm's general `device` node.
+- [Conventions](/concepts/platform/conventions.md) — **2026-11-17.** Every list
+  and canvas behaves the same (click, Ctrl, Shift, Ctrl+A, Escape, click away,
+  box select, Delete with undo; wheel, middle button), screens included, on Void
+  Maiz's `ListSelect`; one panel for several selected.
+- [The application as a program](/concepts/platform/app-as-program.md) —
+  **2026-11-17, an investigation.** The lines a database cannot move, how every
+  component reaches the phone, what an Allomone script is, and *plans*: the
+  write path (derived, previewed, scoped, budgeted, one batch) that makes
+  changing data with a script safe. A phased plan; Q138–Q141.
 - [Identity](/concepts/platform/identity.md) — **opened 2026-08-27.** Who is
   making a change: the admin profile, the signed-in identity, and the contact.
   Three different things that a conventional design would collapse into one

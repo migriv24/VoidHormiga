@@ -132,7 +132,7 @@ bool HormigaApp::map_polygon_handles(const MapFrame& f, const maiz::SceneNode& s
     const bool on_it = hovered && map_shape_hit(*sel_shape, R, sel_mn, sel_mx, mouse, 6.0f) && !hit;
     if (vhit >= 0 || mhit >= 0) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     else if (on_it || (poly_editing && map_poly_idx < 0)) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-    if (left_press && (vhit >= 0 || mhit >= 0 || on_it) && !ImGui::GetIO().KeyShift) {
+    if (left_press && (vhit >= 0 || mhit >= 0 || on_it) && !ImGui::GetIO().KeyShift && !ImGui::GetIO().KeyCtrl) {
         map_poly_edit = sel_shape->name;
         map_poly_start = R;
         map_poly_idx = vhit;

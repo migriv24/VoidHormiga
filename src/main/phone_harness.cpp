@@ -255,9 +255,19 @@ void PhoneHarness::inject(ImGuiIO& io) {
             const ImGuiKey key = k == "back"        ? ImGuiKey_AppBack
                                  : k == "escape"    ? ImGuiKey_Escape
                                  : k == "backspace" ? ImGuiKey_Backspace
+                                 : k == "delete"    ? ImGuiKey_Delete // the list contract (2026-11-17)
+                                 : k == "a"         ? ImGuiKey_A      // with `ctrl down`: select all
+                                 : k == "s"         ? ImGuiKey_S      // with `ctrl down`: save (2026-11-18)
                                                     : ImGuiKey_Enter;
             io.AddKeyEvent(key, true);
             io.AddKeyEvent(key, false);
+            return;
+        }
+        if (op == "ctrl") { // held until released: Ctrl+click, Ctrl+A (2026-11-17, conventions.md)
+            std::string st;
+            in >> st;
+            io.AddKeyEvent(ImGuiMod_Ctrl, st == "down");
+            io.AddKeyEvent(ImGuiKey_LeftCtrl, st == "down");
             return;
         }
         if (op == "shift") { // held until released: a desktop's shift-click and shift-drag (2026-11-14)

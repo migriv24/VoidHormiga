@@ -80,18 +80,21 @@ void HormigaApp::draw_farm_section() {
         /* ── CONNECTIONS: what this database is connected to, by question ── */
         ImGui::BeginChild("##farm-conn");
         std::string group;
+        maiz::ListSelect ls; // every list selects the same way (okf/concepts/platform/conventions.md)
+        ls.begin(ed.selection, (long)fv2.rows.size(), [this](long i) { return fv2.rows[(size_t)i].name; });
+        long ri = -1;
         for (const auto& r : fv2.rows) {
+            ++ri;
             if (r.group != group) {
                 group = r.group;
                 ImGui::SeparatorText(group.c_str());
             }
             ImGui::PushID((r.group + r.name + r.why).c_str());
             const ImVec2 p = ImGui::GetCursorScreenPos();
-            const bool sel = !r.name.empty() && !ed.selection.empty() && ed.selection.front() == r.name;
+            const bool sel = ls.item(ri, r.name) && !r.name.empty();
             if (ImGui::Selectable("##row", sel, ImGuiSelectableFlags_AllowDoubleClick,
                                   ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 1.6f)) &&
                 !r.name.empty()) {
-                ed.selection = {r.name};
                 if (ImGui::IsMouseDoubleClicked(0)) { // open it on the graph
                     if (const maiz::SceneNode* n = scene.find(r.name)) {
                         const ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -113,6 +116,7 @@ void HormigaApp::draw_farm_section() {
             }
             ImGui::PopID();
         }
+        ls.end();
         if (fv2.rows.empty()) ImGui::TextDisabled("nothing here yet");
         ImGui::Spacing();
         ImGui::TextDisabled("Double-click a row to find it on the graph. The same list: `farm` in the console.");

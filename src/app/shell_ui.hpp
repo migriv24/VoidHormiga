@@ -19,6 +19,6 @@ struct ShellUi {
     std::map<std::string, bool> screen_open; // a screen tab's open flag, by its document mantle
     // SCREENS (ui/screens.cpp)
     unsigned dock_id = 0;                          // the main dock area, where a new screen tab lands
-    std::map<std::string, std::string> selected;   // a screen's selected rune, by its document mantle
+    std::map<std::string, std::vector<std::string>> selected; // a screen's selected runes, by its document mantle
     std::map<std::string, std::string> buffers;    // an input's or a form field's text, by component
 };

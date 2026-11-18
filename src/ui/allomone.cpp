@@ -14,6 +14,17 @@
 #include "app/app_internal.hpp"
 #include "json.hpp" // script bodies travel through setjson
 #include "domain/allomone_legacy.hpp" // the frozen dialect, still deriving
+// the rules mantle, once per model change: three panes projected it every frame (2026-11-18)
+static const maiz::Scene& allo_scene_now(maiz::Core& core, unsigned gen) {
+    static maiz::Scene as; static unsigned at = ~0u;
+    if (at != gen) {
+        maiz::ProjectOptions po;
+        po.mantle = kAlloMantle;
+        try { as = maiz::project_scene(core, po); } catch (...) { as = maiz::Scene(); }
+        at = gen;
+    }
+    return as;
+}
 
 // ── ALLOMONE ENGINE (derive-only): the color the scripts derived for this node,
 // looked up from the cache the interpreter filled (refresh_allo_rules → the
@@ -304,10 +315,7 @@ void HormigaApp::draw_civic_body() {
 }
 
 void HormigaApp::draw_allomone_body() {
-    maiz::ProjectOptions po;
-    po.mantle = kAlloMantle;
-    maiz::Scene as;
-    try { as = maiz::project_scene(core, po); } catch (...) {}
+    const maiz::Scene& as = allo_scene_now(core, model_gen); // once per change, not per frame
 
     const size_t nconf = allo_derived.merged.conflicts().size();
     ImGui::TextDisabled(
@@ -911,11 +919,24 @@ void HormigaApp::draw_allomone_conflicts_pane() {
         ImGui::PopID();
     }
 
+    // TIES DECIDED BY ORDER (Allomone 0.1.1): no ⊤, but an opinion is missing; surfaced, as upstream advises
+    std::vector<const maiz::MergedCell*> ties;
+    for (const maiz::MergedCell& c : allo_derived.merged.cells)
+        if (c.settled_by == "tiebreak" && ties.size() < 200) ties.push_back(&c);
+    if (!ties.empty())
+        ImGui::SeparatorText(("Decided by a tie: make one rule sharper, or keep one (" + std::to_string(ties.size()) + ")").c_str());
+    for (const maiz::MergedCell* c : ties) {
+        ImGui::PushID((c->subject + "\t" + c->property).c_str());
+        ImGui::TextColored(ImVec4(0.80f, 0.62f, 0.20f, 1), "%s . %s", c->subject.c_str(), c->property.c_str());
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", hormiga::allomone::explain(*c).c_str());
+        ImGui::SameLine();
+        if (ImGui::SmallButton("keep this")) settle({c->subject, c->property, c->source, ""}); // by decision, not order
+        ImGui::PopID();
+    }
+
     // The rulings already made — model content, so removable like any rune.
-    maiz::ProjectOptions po;
-    po.mantle = kAlloMantle;
-    maiz::Scene as;
-    try { as = maiz::project_scene(core, po); } catch (...) {}
+    const maiz::Scene& as = allo_scene_now(core, model_gen);
     bool any = false;
     for (const auto& n : as.nodes)
         if (n.glyph == "allomone-resolution") any = true;
@@ -1823,9 +1844,7 @@ void HormigaApp::draw_allomone_dev_body() {
     ImGui::TextDisabled("  [styling %d thing(s)]", (int)allo_colors.size());
     ImGui::Separator();
 
-    maiz::ProjectOptions po; po.mantle = kAlloMantle;
-    maiz::Scene as;
-    try { as = maiz::project_scene(core, po); } catch (...) {}
+    const maiz::Scene& as = allo_scene_now(core, model_gen);
     std::vector<const maiz::SceneNode*> scripts;
     for (const auto& n : as.nodes) if (n.glyph == "script") scripts.push_back(&n);
     if (allo_sel.empty() ||

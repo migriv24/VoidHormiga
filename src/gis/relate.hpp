@@ -84,7 +84,14 @@ inline double shared_length(const Geom& a, const Geom& b, double tol) {
     for (const auto& [p, q] : segments(a)) {
         const double L = std::hypot(q.x - p.x, q.y - p.y);
         if (L <= 0) continue;
-        const int steps = std::max(1, (int)std::ceil(L / std::max(tol, 1e-9)));
+        /* A sample every `tol`, AT MOST 2,048 per segment (2026-11-18). Uncapped,
+         * the tolerance every caller passes (1e-9) asked for L / 1e-9 samples: 10^10
+         * for a ten-metre segment, past an int's range, and each one tested against
+         * every segment of `b`. A path's reach test (domain/bestow.hpp) took seconds;
+         * the test of an area containing a line, twenty. Capped, the answer is right
+         * to 1/2,048 of each segment. */
+        const double want = std::ceil(L / std::max(tol, 1e-9));
+        const int steps = (int)std::clamp(want, 1.0, 2048.0);
         int on = 0;
         for (int k = 0; k < steps; ++k) { // sample the segment's middles
             const double t = (k + 0.5) / steps;

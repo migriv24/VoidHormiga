@@ -364,10 +364,11 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
     std::vector<const maiz::SceneNode*> rows;
     rows.reserve(dr.rows.size());
     for (size_t i : dr.rows) rows.push_back(&scene.nodes[i]);
-    auto pick = [&](const std::string& nm) { // shared click → selection rule
-        if (ImGui::GetIO().KeyCtrl) ed.toggle(nm);
-        else ed.selection = {nm};
-    };
+    /* EVERY LIST SELECTS THE SAME WAY (2026-11-17, Void Maiz's ListSelect;
+     * okf/concepts/platform/conventions.md): click, Ctrl+click, Shift+click,
+     * Ctrl+A, Escape, a click on empty space, a drag across rows; Delete
+     * deletes what is selected, undoably. One wrapper round both views. */
+    maiz::ListSelect lsel;
     /* RIGHT-CLICK A CARD OR A ROW (the author, 2026-09-27: "i would like to be
      * able to right click the things on the data window, and delete them or
      * something"). On what was clicked, or on the whole selection when the
@@ -394,6 +395,8 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         }
         ImGui::EndPopup();
     };
+    lsel.begin(ed.selection, (long)rows.size(), [&rows](long i) { return rows[(size_t)i]->name; },
+               {.grid = data_view_mode == 1});
     if (rows.empty()) {
         ImGui::TextDisabled(scene.nodes.empty() ? "nothing here yet"
                                                 : "nothing matches");
@@ -420,14 +423,18 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
             if (i % cols != 0) ImGui::SameLine(0, gap);
             ImGui::PushID((int)i);
             ImVec2 p0 = ImGui::GetCursorScreenPos();
-            ImGui::InvisibleButton("card", ImVec2(cw, ch));
+            const bool card_sel = lsel.item((long)i, n.name);
+            ImGui::PushStyleColor(ImGuiCol_Header, IM_COL32(0, 0, 0, 0)); // the card draws its own state
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, IM_COL32(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, IM_COL32(0, 0, 0, 0));
+            ImGui::Selectable("##card", card_sel, ImGuiSelectableFlags_None, ImVec2(cw, ch));
+            ImGui::PopStyleColor(3);
             row_menu(n);
             // only DRAW visible cards — the manual ImDrawList geometry bypasses
             // ImGui's off-screen culling, so drawing all N would overflow the
             // 16-bit index buffer (the InvisibleButton above still lays out).
             if (!ImGui::IsItemVisible()) { ImGui::PopID(); continue; }
             bool sel = ed.selected(n.name), hov = ImGui::IsItemHovered();
-            if (ImGui::IsItemClicked()) pick(n.name);
             ImVec2 p1(p0.x + cw, p0.y + ch);
             panel_shadow(p0, p1, 10.0f);
             ImU32 bg = sel ? ImGui::GetColorU32(ImGuiCol_Header)
@@ -519,59 +526,53 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
         while (clip.Step())
         for (int ri = clip.DisplayStart; ri < clip.DisplayEnd; ++ri) {
             const maiz::SceneNode& n = *rows[(size_t)ri];
-            const float slot_y = ImGui::GetCursorPosY();
-            bool row_clicked = false;
-            /* a 42 x 42 leading slot for a picture or an avatar, the same width on
-             * every row so the names line up in one column */
+            /* THE WHOLE ROW IS ONE SELECTABLE (2026-11-17), so a click anywhere on
+             * it obeys the list's rules; its picture, name and subtitle are
+             * painted on it, not laid over it as items. (Laid over, it needed
+             * AllowOverlap, which only presses what was hovered the frame before:
+             * a tap, on a touch screen or from the harness, never was.) */
+            const ImVec2 row_at = ImGui::GetCursorScreenPos();
+            ImGui::PushID(n.name.c_str());
+            ImGui::Selectable("##row", lsel.item((long)ri, n.name), ImGuiSelectableFlags_None,
+                              ImVec2(0, row_h - ImGui::GetStyle().ItemSpacing.y));
+            row_menu(n);
+            ImGui::PopID();
+            if (!ImGui::IsItemVisible()) continue;
+            ImDrawList* rdl = ImGui::GetWindowDrawList();
+            // a 42 x 42 leading slot for a picture or an avatar, the same on every row
             if (n.glyph == "image") {
                 std::string p = field_value(n, "path");
                 HostTexture t = p.empty() ? HostTexture{} : texture_for(p);
                 if (t.id && t.w > 0 && t.h > 0) {
                     const float k = 42.0f / (float)std::max(t.w, t.h); // fit, never crop
-                    const ImVec2 sz((float)t.w * k, (float)t.h * k), at = ImGui::GetCursorScreenPos();
-                    ImGui::SetCursorScreenPos(ImVec2(at.x + (42 - sz.x) / 2, at.y + (42 - sz.y) / 2));
-                    ImGui::Image((ImTextureID)(intptr_t)t.id, sz);
-                    row_clicked = ImGui::IsItemClicked();
-                    ImGui::SetCursorScreenPos(at);
+                    const ImVec2 sz((float)t.w * k, (float)t.h * k);
+                    const ImVec2 at(row_at.x + (42 - sz.x) / 2, row_at.y + (42 - sz.y) / 2);
+                    rdl->AddImage((ImTextureID)(intptr_t)t.id, at, ImVec2(at.x + sz.x, at.y + sz.y));
                 }
-                ImGui::Dummy(ImVec2(42, 42)); // the slot, decoded or not
-                row_clicked = row_clicked || ImGui::IsItemClicked();
-                ImGui::SameLine();
             } else if (n.glyph == "contact" || n.glyph == "organization") {
-                const ImVec2 cur = ImGui::GetCursorScreenPos();
-                draw_avatar(n, ImVec2(cur.x + 21, cur.y + 21), 15.0f);
-                ImGui::Dummy(ImVec2(42, 42));
-                row_clicked = ImGui::IsItemClicked();
-                ImGui::SameLine();
+                draw_avatar(n, ImVec2(row_at.x + 21, row_at.y + 21), 15.0f);
             } else { // every other kind: its icon in the same slot, so no name starts further left
-                const ImVec2 cur = ImGui::GetCursorScreenPos();
                 const char* icon = glyph_icon(n.glyph);
                 const ImVec2 isz = ImGui::CalcTextSize(icon);
-                ImGui::GetWindowDrawList()->AddText(ImVec2(cur.x + (42 - isz.x) / 2, cur.y + (42 - isz.y) / 2),
-                                                    ImGui::GetColorU32(ImGuiCol_TextDisabled), icon);
-                ImGui::Dummy(ImVec2(42, 42));
-                row_clicked = ImGui::IsItemClicked();
-                ImGui::SameLine();
+                rdl->AddText(ImVec2(row_at.x + (42 - isz.x) / 2, row_at.y + (42 - isz.y) / 2),
+                             ImGui::GetColorU32(ImGuiCol_TextDisabled), icon);
             }
-            ImGui::BeginGroup(); // the name, and its subtitle under it
-            if (ImGui::Selectable(n.name.c_str(), ed.selected(n.name)) || row_clicked)
-                pick(n.name);
-            ImGui::PushID(n.name.c_str());
-            row_menu(n);
-            ImGui::PopID();
+            const float tx = row_at.x + 42 + ImGui::GetStyle().ItemSpacing.x;
+            rdl->AddText(ImVec2(tx, row_at.y), ImGui::GetColorU32(ImGuiCol_Text), n.name.c_str());
+            const ImVec2 nsz = ImGui::CalcTextSize(n.name.c_str());
             // declares "table:data shows this rune" AND draws the marks, in one
             // call (Void Maiz's netview: a view cannot do half of it). Only rows
             // on screen reach here, which is what "shows" ought to mean.
-            maiz::presence_item(surfaces, roster, net_settings.show, "table:data", n.id,
-                                maiz::Mark::Badge, share_now && !share_now(n));
+            maiz::presence_rect(surfaces, roster, net_settings.show, "table:data", n.id,
+                                ImVec2(tx, row_at.y), ImVec2(tx + nsz.x, row_at.y + nsz.y), maiz::Mark::Badge,
+                                share_now && !share_now(n));
             const std::string sub = subtitle(n);
-            if (!sub.empty()) ImGui::TextDisabled("%s", sub.c_str());
-            ImGui::EndGroup();
-            // fill the rest of the slot, so every row is exactly row_h tall
-            const float used = ImGui::GetCursorPosY() - slot_y;
-            ImGui::Dummy(ImVec2(0, std::max(0.0f, row_h - used - ImGui::GetStyle().ItemSpacing.y)));
+            if (!sub.empty())
+                rdl->AddText(ImVec2(tx, row_at.y + line_h), ImGui::GetColorU32(ImGuiCol_TextDisabled), sub.c_str());
         }
     }
+    lsel.end();
+    delete_selected_on_key(); // Delete: what is selected, one batch (conventions.md)
     ImGui::EndChild();
 
     // splitter 2: list | detail (fraction of the region right of the sidebar)
@@ -589,7 +590,9 @@ void HormigaApp::draw_data_section(float /*avail_h*/) {
     ImGui::BeginChild("data-detail", ImVec2(0, body_h), ImGuiChildFlags_Borders);
     const maiz::SceneNode* sel = nullptr;
     if (!ed.selection.empty()) sel = scene.find(ed.selection.front());
-    if (!sel) {
+    if (draw_many_selected()) {
+        // several: the shared panel (ui/widgets.cpp)
+    } else if (!sel) {
         ImGui::TextDisabled("select something on the left,");
         ImGui::TextDisabled("or press + New");
     } else {
@@ -882,9 +885,8 @@ void HormigaApp::draw_data_tools_window() {
 // a far-future build (Q22). Everything is still a dispatcher command. ────────
 void HormigaApp::draw_notes_body() {
     // the Antfarm says which tag keeps a note on this computer (lan-sharing.md §7)
-    maiz::ProjectOptions farm_po;
-    farm_po.mantle = kAntfarmMantle;
-    const auto share = hormiga::collab::share_settings(maiz::project_scene(core, farm_po));
+    // once per change (share_settings_now): projecting the Antfarm every frame cost ~5 ms (lan_share.cpp)
+    const auto& share = share_settings_now();
     const std::string private_tag = share.private_tags.empty() ? "private" : share.private_tags.front();
     auto notes_private_tag = [&private_tag] { return private_tag; };
     // top: name search + the SAME tag-filter builder as the Data tab (author
@@ -909,21 +911,28 @@ void HormigaApp::draw_notes_body() {
     if (ImGui::Button(ICON_FA_SQUARE_PLUS " New note", ImVec2(-1, 0)))
         new_rune("note");
     ImGui::Separator();
-    int shown = 0;
+    std::vector<const maiz::SceneNode*> listed;
     for (const auto& n : scene.nodes) {
         if (n.glyph != "note") continue;
         if (!search_match(n, notes_search) && !contains_ci(hormiga::temper::field_value(n, "text"), notes_search))
             continue;
         if (!maiz::node_matches(notes_filter_expr, n)) continue;
-        ++shown;
+        listed.push_back(&n);
+    }
+    const int shown = (int)listed.size();
+    maiz::ListSelect ls; // every list selects the same way (okf/concepts/platform/conventions.md)
+    ls.begin(ed.selection, (long)listed.size(), [&listed](long i) { return listed[(size_t)i]->name; });
+    for (long i = 0; i < (long)listed.size(); ++i) {
+        const maiz::SceneNode& n = *listed[(size_t)i];
         const bool priv = std::find(n.tags.begin(), n.tags.end(), notes_private_tag()) != n.tags.end();
         // listed by its NAME (or first line), not its handle (2026-10-05)
-        if (ImGui::Selectable(((priv ? ICON_FA_LOCK " " : "") + marker_caption(n) + "##" + n.name).c_str(),
-                              ed.selected(n.name)))
-            ed.selection = {n.name};
+        ImGui::Selectable(((priv ? ICON_FA_LOCK " " : "") + marker_caption(n) + "##" + n.name).c_str(),
+                          ls.item(i, n.name));
         maiz::presence_item(surfaces, roster, net_settings.show, "list:notes", n.id,
                             maiz::Mark::Badge, share_now && !share_now(n));
     }
+    ls.end();
+    delete_selected_on_key(); // Delete: what is selected, one batch (conventions.md)
     if (shown == 0)
         ImGui::TextDisabled(notes_search[0] || notes_filter_expr[0]
                                 ? "no notes match"

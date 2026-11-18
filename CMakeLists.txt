@@ -293,7 +293,7 @@ set(HORMIGA_APP_SOURCES src/app/app.cpp src/app/app_shared.cpp src/app/paths.cpp
   src/ui/data.cpp src/ui/documents.cpp src/render/site.cpp
     src/render/index.cpp src/render/email.cpp
   src/render/theme.cpp src/render/assets.cpp src/ui/allomone.cpp
-  src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/map_panels.cpp src/ui/map_shapes.cpp src/app/shell_app.cpp src/ui/screens.cpp src/platform/device_link.cpp src/ui/inspector.cpp src/ui/calendar.cpp src/ui/calendar_panels.cpp
+  src/ui/builder.cpp src/ui/antfarm.cpp src/ui/map.cpp src/ui/map_panels.cpp src/ui/map_shapes.cpp src/app/shell_app.cpp src/app/working_copy.cpp src/ui/screens.cpp src/platform/device_link.cpp src/ui/inspector.cpp src/ui/calendar.cpp src/ui/calendar_panels.cpp
   src/ui/calendar_export.cpp src/ui/calendar_toolbar.cpp src/ui/builder_ext.cpp
   src/ui/tags.cpp src/ui/store_strip.cpp src/ui/connections.cpp src/domain/connections.cpp src/ui/niche_tools.cpp vendor/qrcodegen/qrcodegen.cpp
   src/ui/style.cpp src/ui/settings.cpp src/ui/widgets.cpp src/ui/updates.cpp

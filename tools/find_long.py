@@ -284,7 +284,11 @@ BUDGET = {
     # 1338 -> 1347 (2026-11-15): the application as data: the shell, screens and
     # devices, as one ShellUi member and their entry points; the code is
     # app/shell_app.cpp, ui/screens.cpp and platform/device_link.cpp.
-    'src/app/app.hpp': 1347,
+    # 1347 -> 1349 (2026-11-17): the two helpers every list now shares,
+    # draw_many_selected and delete_selected_on_key (okf conventions.md).
+    # 1349 -> 1353 (2026-11-18): the working copy is a cache of the .miga: one
+    # WorkingCopy member, its entry points and an include (app/working_copy.cpp).
+    'src/app/app.hpp': 1353,
     'src/domain/hormiga_allomone.cpp': 900,
     # NEW ENTRY 2026-08-28 (was on the 1000 default): two effects the field
     # report asked for -- `query`, which is `ls --tag` plus the clock because

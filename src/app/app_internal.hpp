@@ -62,6 +62,8 @@
 #include "voidmaiz/face.hpp"
 #include "voidmaiz/gesture.hpp"
 #include "voidmaiz/inspector.hpp"
+#include "voidmaiz/listselect.hpp" // every list selects the same way (okf/concepts/platform/conventions.md)
+#include "rancho/authority.hpp"     // the working copy is a cache of the .miga (app/working_copy.cpp)
 #include "voidmaiz/project.hpp"
 
 #include "imgui.h"
@@ -731,3 +733,7 @@ std::string shade(const std::string& hex, double amount);
  * does not meet the floor. */
 std::string meet_contrast(const std::string& fg, const std::string& bg,
                           double target);
+
+// the floor (app.cpp): let go of one working copy's lock and take another's (app/working_copy.cpp)
+void hormiga_release_floor();
+bool hormiga_claim_floor(const std::filesystem::path& state_file);

@@ -18,7 +18,8 @@
 #include "app/working_store.hpp"  // a database larger than the machine: a Rancho store, partly loaded
 #include "ui/connections.hpp"     // the connections view's state
 #include "gis/polygon.hpp"         // gis::Coord, gis::XY: a polygon being drawn (2026-11-14)
-#include "app/shell_ui.hpp"        // the application as data: tabs, layout (2026-11-15)
+#include "app/shell_ui.hpp"
+#include "app/working_copy.hpp" // the working copy is a cache of the .miga (2026-11-18)        // the application as data: tabs, layout (2026-11-15)
 #include "platform/device_link.hpp"  // sending to a device without blocking a frame (2026-11-15)
 #include "ui/map_shapes.hpp"        // MapFrame: what a map frame hands its shape tools
 #include "platform/storage.hpp" // the SQLite Data holiday (phase C)
@@ -1074,6 +1075,8 @@ private:
     float view_layer_opacity(const maiz::SceneNode* v) const;
     float view_layer_brightness(const maiz::SceneNode* v) const;
     char tag_pick_input[64] = {}; // the tag-adding search picker buffer (#4)
+    bool draw_many_selected(); // several selected: one panel to act on them all (ui/widgets.cpp); false when not
+    void delete_selected_on_key(); // after a list: Delete deletes what is selected, one batch (ui/widgets.cpp)
     // a tag entry that searches EXISTING tags as you type (author #4). Returns a
     // chosen/typed tag (without the sigil) or "" ; clears the buffer on commit.
     std::string tag_picker(const char* id, char* buf, size_t bufsz,
@@ -1141,6 +1144,9 @@ private:
 public:
     const hormiga::WorkingStore& working_store() const { return wstore; }
     void open_from_shell(const std::string& path); // `--open`, a double-clicked .miga (database.cpp)
+    // THE WORKING COPY IS A CACHE OF THE .miga (2026-11-18, app/working_copy.cpp; Void Rancho's authority.md)
+    WorkingCopy wc; std::string wc_boot_target(const std::string& open_arg); bool wc_boot(const std::string& miga); void wc_boot_unsaved(); void wc_switch(const std::filesystem::path& dir);
+    bool wc_open(const std::string& miga); void wc_new(); void wc_edited(); void wc_matched(unsigned long at); void wc_keep_aside(const char* why); void wc_title(); void wc_start_new() { new_database(); }
     // THE APPLICATION AS DATA (2026-11-15): a database's tabs and default layout (app/shell_app.cpp)
     ShellUi shellui;
     void shell_register(); void shell_load(); void shell_frame(); void shell_save_layout(); void shell_use_layout();

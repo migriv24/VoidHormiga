@@ -32,7 +32,8 @@
 #include "stb_image.h" // vendored, public domain (vendor/stb/LICENSE.md)
 
 #include "IconsFontAwesome6.h" // vendored (vendor/fonts) — icon codepoints
-#include "main/phone_harness.hpp" // --phone-screen / --safe / --script
+#include "main/phone_harness.hpp"
+#include "rancho/authority.hpp" // keep_root: the window layout is a keepsake // --phone-screen / --safe / --script
 #include "platform/device_paths.hpp" // a phone run keeps its own folders
 #include "voidmaiz/mobile.hpp"    // reserve_safe_area
 
@@ -555,10 +556,43 @@ int main(int argc, char** argv) {
     }
     app.on_shell_capture = shell_capture;
     const bool first_run = !std::filesystem::exists(app.base_dir / app.state_name); // before init makes it
+    /* THE WORKING COPY IS A CACHE OF THE .miga (2026-11-18, app/working_copy.cpp;
+     * Void Rancho's authority.md). A person's desktop works on the .miga it opens
+     * (a double-click, `--open`, else Settings' default) in that file's own cache,
+     * chosen before init so init loads it: nothing appears beside the .miga, and
+     * nothing is opened twice. A cache that is new or stale is filled from the
+     * .miga after init. `--state` and the phone keep a working copy of their own;
+     * a scripted run (the harness) uses a cache only for a .miga it names, so it
+     * can never open, or save into, the person's own default database. */
+    const bool scripted_run = !sim.script.empty();
+    bool cached = false, fill = false;
+    std::string boot_target;
+    if (!named_database && !phone_mode && (!scripted_run || !open_bundle_arg.empty())) {
+        cached = true;
+        std::error_code bec;
+        boot_target = scripted_run ? std::filesystem::absolute(open_bundle_arg, bec).string()
+                                   : app.wc_boot_target(open_bundle_arg);
+        if (!boot_target.empty()) fill = !app.wc_boot(boot_target);
+        else app.wc_boot_unsaved();
+        /* The window layout is a keepsake too (this computer's, never the
+         * database's): it was written to whatever folder the app started in.
+         * One already there is carried over once. Read at the first frame. */
+        static std::string ini;
+        std::error_code iec;
+        const std::filesystem::path keep_ini = rancho::keep_root("hormiga") / "imgui.ini";
+        std::filesystem::create_directories(keep_ini.parent_path(), iec);
+        if (!std::filesystem::exists(keep_ini, iec) && std::filesystem::is_regular_file("imgui.ini", iec))
+            std::filesystem::copy_file("imgui.ini", keep_ini, iec);
+        ini = keep_ini.string();
+        ImGui::GetIO().IniFilename = ini.c_str();
+    }
     app.init();
     // Settings > Starting Hormiga: the default database, unless one was named
     // (a phone reopens its last; see HormigaApp::open_default_database)
-    if (!open_bundle_arg.empty()) {
+    if (cached) {
+        if (boot_target.empty()) app.wc_start_new();
+        else if (fill) app.open_from_shell(boot_target);
+    } else if (!open_bundle_arg.empty()) {
         std::error_code oec;
         app.open_from_shell(std::filesystem::absolute(open_bundle_arg, oec).string());
     } else if (!named_database || phone_mode) {

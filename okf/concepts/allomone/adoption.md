@@ -376,6 +376,28 @@ callback originally iterated `maiz::allo_tokens(src)` directly and kept
 the *loop*, not one line past it, so both pointers dangled immediately after.
 It worked. Name the token vector.
 
+# Void Allomone 0.1.1: ties are called ties (2026-11-18)
+
+Upstream's 0.1.1 made every cell's account true: an equal-strength disagreement
+decided by content order (two of one script's rules, or `Any`'s least source
+id) now says `settled_by == "tiebreak"`, where it used to say `"strength"`, and
+a contributor that lost that way has the verdict `"tiebreak"`. No derived
+value changed. What it changed here:
+
+- **`hormiga::allomone::explain`** gives `tiebreak` (and `recency`) their own
+  words: *"X, by order: a tie nothing was sharper than; Y said Z"*. Before, it
+  fell to the default branch and read *"X, beating Y"*, which claimed a win on
+  merit that never happened.
+- **The conflicts pane surfaces ties** under *Decided by a tie*, each with *keep
+  this* (a resolution, so the choice is a person's, not the order's).
+  Overrides, a default yielding to its exception, stay silent, as upstream
+  advises.
+- **Pinned:** `allomone_smoke` §10b, two equally sharp rules of one script.
+- **Required:** `void.json` asks for `voidallomone >=0.1.1`.
+
+Upstream's open VA4 asks whether such a tie should be ⊤ instead. Our view, in
+the drafted message: keep it a labelled tie, now that a host can surface it.
+
 # What we have not taken
 
 Each of these is available and deliberately not wired, so that a future session

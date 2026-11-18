@@ -315,6 +315,26 @@ int main() {
     for (const auto& f : cyd->fields)
         if (f.first == "notes") CHECK(f.second.empty());
 
+    // 10b. A TIE INSIDE ONE SCRIPT IS SAID TO BE A TIE (Void Allomone 0.1.1). Two
+    // of one author's rules, equally sharp, disagreeing: not ⊤ (one source), and
+    // a value is kept by order. The account must say "tiebreak", not "strength",
+    // and our explanation must not claim one rule beat the other on merit.
+    script(core, "ties",
+           "when glyph \"event\" then label \"Bravo\"\n"
+           "when glyph \"event\" then label \"Alpha\"\n");
+    scripts = maiz::project_scene(core, sp);
+    allo::Derivation tied = allo::derive(data, scripts, opts);
+    if (const maiz::MergedCell* cell = tied.merged.find("potluck", "label")) {
+        CHECK(cell->settled_by == "tiebreak");
+        CHECK(!cell->conflicted);
+        const std::string why = allo::explain(*cell);
+        CHECK(why.find("by order") != std::string::npos);
+        CHECK(why.find("beating") == std::string::npos);
+        std::cout << "a tie inside one script: potluck.label - " << why << "\n";
+    } else {
+        CHECK(false); // the label was derived
+    }
+
     // 11. EVERY WORD WE OFFER CAN TEACH ITSELF. The editor's right-click
     // explain is the difference between a vocabulary you can type and one you
     // can learn, and ours is large enough that a gap would be invisible: nine
